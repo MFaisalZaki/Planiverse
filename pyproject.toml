@@ -1,0 +1,19 @@
+[project]
+name = "planiverse"
+version = "0.1.0"
+description = "A Python library for planning with simulators."
+authors = [
+    {name = "Mustafa Faisal",email = "mustafa.faisal.eng@gmail.com"}
+]
+license = {text = "GPL-3.0 license"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pddlgym (>=0.0.7,<0.0.8)",
+    "pyboy (>=2.5.1,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
