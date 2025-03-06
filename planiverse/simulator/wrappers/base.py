@@ -24,6 +24,12 @@ class SimulatorBase:
         Returns a list of possible successors and their actions of the given state.
         """
         raise NotImplementedError
+    
+    def is_goal(self, state):
+        """!
+        Returns True if the given state is goal, otherwise False.
+        """
+        raise NotImplementedError
 
     def is_terminal(self, state):
         """!
