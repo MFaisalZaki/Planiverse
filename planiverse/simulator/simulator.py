@@ -2,6 +2,7 @@
 from gym.wrappers.order_enforcing import OrderEnforcing
 
 from planiverse.simulator.wrappers.pddlgymenv import PDDLGymEnv
+from planiverse.problems.retro_games.base import RetroGame
 
 # The idea of the simulator is to give it an env: ppdlgym, pyboy, ... etc. And it provides a
 # single interface for the planner to use.
@@ -10,8 +11,10 @@ class Simulator:
         self.simulator = None
         if isinstance(envobj, OrderEnforcing):
             self.simulator = PDDLGymEnv(f"{envobj.env.domain.domain_name}", envobj)
-        else:
-            assert False, f"Unsupported environment type: {type(envobj)}"
+        elif isinstance(envobj, RetroGame):
+            self.simulator = envobj
+        
+        assert self.simulator is not None, f"Unsupported environment type: {type(envobj)}"
     
     def reset(self):
         return self.simulator.reset()
@@ -34,4 +37,7 @@ class Simulator:
     def validate(self, plan):
         self.reset()
         return self.simulator.validate(plan)
+    
+    def goal(self):
+        return self.simulator.goal()
     
