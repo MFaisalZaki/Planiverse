@@ -262,6 +262,10 @@ class PuzznicGame(RetroGame):
         self.current_score = 0
         self.grid_history  = []
         self.grid_history  += [deepcopy(self.current_level)]
+        return self.current_level, {'score': self.current_score, 
+                                    'grid': self.current_level.grid, 
+                                    'action_space': self.get_action_space()
+                                    }
     
     def step(self, action):
         if self.current_level is None: raise ValueError("Game not initialized.")
@@ -296,6 +300,9 @@ class PuzznicGame(RetroGame):
         raise NotImplementedError("Not implemented yet.")
 
     def validate(self, plan):
+        raise NotImplementedError("Not implemented yet.")
+    
+    def goal(self):
         raise NotImplementedError("Not implemented yet.")
 
 

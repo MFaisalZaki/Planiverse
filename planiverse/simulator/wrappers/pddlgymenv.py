@@ -38,7 +38,7 @@ class PDDLGymEnv(SimulatorBase):
         return [(a, self.__apply_action__(state, a)) for a in sorted(self.envobj.env.action_space.all_ground_literals(state), key=str)]
     
     def is_terminal(self, state):
-        return self.__check_goal__(state, self.goal_state)
+        return False # The terminal state means that this state has no successors and is not a goal state.
 
     def is_goal(self, state):
         return self.__check_goal__(state, self.init_state.goal)
@@ -53,3 +53,6 @@ class PDDLGymEnv(SimulatorBase):
     
     def validate(self, plan):
         return self.is_terminal(self.simulate(plan)[-1])
+    
+    def goal(self):
+        return self.goal_state
