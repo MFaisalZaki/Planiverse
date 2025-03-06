@@ -22,6 +22,9 @@ class Simulator:
     def successors(self, state):
         return self.simulator.successors(state)
     
+    def is_goal(self, state):
+        return self.simulator.is_goal(state)
+
     def is_terminal(self, state):
         return self.simulator.is_terminal(state)
     
@@ -29,5 +32,6 @@ class Simulator:
         return self.simulator.simulate(plan)
     
     def validate(self, plan):
+        self.reset()
         return self.simulator.validate(plan)
     

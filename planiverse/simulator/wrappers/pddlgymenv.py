@@ -40,6 +40,9 @@ class PDDLGymEnv(SimulatorBase):
     def is_terminal(self, state):
         return self.__check_goal__(state, self.goal_state)
 
+    def is_goal(self, state):
+        return self.__check_goal__(state, self.init_state.goal)
+
     def simulate(self, plan):
         state, info = self.reset()
         ret_states = [state]
