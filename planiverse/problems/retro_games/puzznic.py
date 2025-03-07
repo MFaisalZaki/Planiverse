@@ -101,7 +101,6 @@ class PuzznicState:
         if self.is_terminal(): 
             self.literals |= frozenset(["terminal-state"])
             self.literals |= frozenset([f"score({self.score})"])
-        
 
     def apply_action(self, action:str):
         hold = 'hold' in action
@@ -358,3 +357,7 @@ class PuzznicGame(RetroGame):
 
     def validate(self, plan):
         return self.simulate(plan)[-1].is_goal()
+    
+    def get_actions(self):
+        return list(self.state.action_map.keys())        
+
