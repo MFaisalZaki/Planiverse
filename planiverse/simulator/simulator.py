@@ -38,6 +38,5 @@ class Simulator:
         self.reset()
         return self.simulator.validate(plan)
     
-    def goal(self):
-        return self.simulator.goal()
-    
+    def get_goal_predicates(self):
+        return self.simulator.get_goal_predicates()

@@ -255,9 +255,17 @@ class PuzznicGame(RetroGame):
 
     def _commit_state_(self):
         self.state_history += [deepcopy(self.state)]
+    
+    def _compute_successor_state_(self, state:PuzznicState, action:str):
+        successor_state = deepcopy(state)
+        successor_state.apply_action(action)
+        successor_state = self._apply_gravity_(successor_state)
+        successor_state = self._check_and_remove_matches_(successor_state)
+        successor_state.score += self._compute_score_(successor_state.grid, state.grid)
+        return successor_state
 
     def reset(self):
-        self.state, info= self.level.reset()
+        self.state, info = self.level.reset()
         self.state_history = [deepcopy(self.state)]
         return self.state, info
     
@@ -265,10 +273,7 @@ class PuzznicGame(RetroGame):
         if self.state is None: raise ValueError("Game not initialized.")
         assert self.state.isvalid_action(action), "Invalid action."
         self._commit_state_() # save a copy of the state.
-        self.state.apply_action(action) # apply the action to the state.
-        self.state = self._apply_gravity_(self.state)
-        self.state = self._check_and_remove_matches_(self.state)
-        self.state.score += self._compute_score_(self.state.grid, self.state_history[-1].grid)
+        self.state = self._compute_successor_state_(self.state, action)
         self._commit_state_()
         return self.state, self.state.score
 
@@ -291,20 +296,22 @@ class PuzznicGame(RetroGame):
     def successors(self, state):
         ret_successors = []
         for action in state.action_map.keys():
-            new_state = deepcopy(state)
-            new_state.apply_action(action)
-            new_state = self._apply_gravity_(new_state)
-            new_state = self._check_and_remove_matches_(new_state)
-            new_state.score += self._compute_score_(new_state.grid, state.grid)
+            new_state = self._compute_successor_state_(state, action)
             if state == new_state: continue # skip the state if it is the same as the current state.
             ret_successors.append((action, new_state))
         return ret_successors
 
     def simulate(self, plan):
-        raise NotImplementedError("Not implemented yet.")
+        state, _ = self.level.reset()
+        ret_states_trace = [state]
+        for action in plan:
+            successor_state = self._compute_successor_state_(state, action)
+            ret_states_trace.append(successor_state)
+            state = successor_state
+        return ret_states_trace
 
     def validate(self, plan):
-        raise NotImplementedError("Not implemented yet.")
+        return self.simulate(plan)[-1].is_goal()
     
     def goal(self):
-        raise NotImplementedError("Not implemented yet.")
+        return self.state
