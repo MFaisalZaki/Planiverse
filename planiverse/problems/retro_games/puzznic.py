@@ -279,14 +279,17 @@ class PuzznicGame(RetroGame):
 
     def render(self):
         # first remove the duplicate states
+        ret_render_txt = []
         unique_states = []
         for state in self.state_history:
             if state not in unique_states: unique_states.append(state)
         for t, state in enumerate(unique_states):
             print(f"Step: {t}")
             print(state)
+            ret_render_txt.append(str(state))
             print('--------------')
-
+        return ret_render_txt
+    
     def is_goal(self, state):
         return state.is_goal()
     
@@ -312,6 +315,3 @@ class PuzznicGame(RetroGame):
 
     def validate(self, plan):
         return self.simulate(plan)[-1].is_goal()
-    
-    def goal(self):
-        return self.state

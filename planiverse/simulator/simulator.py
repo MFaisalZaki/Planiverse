@@ -1,4 +1,3 @@
-
 from gym.wrappers.order_enforcing import OrderEnforcing
 
 from planiverse.simulator.wrappers.pddlgymenv import PDDLGymEnv
@@ -37,6 +36,3 @@ class Simulator:
     def validate(self, plan):
         self.reset()
         return self.simulator.validate(plan)
-    
-    def get_goal_predicates(self):
-        return self.simulator.get_goal_predicates()
