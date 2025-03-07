@@ -1,13 +1,12 @@
 
 from copy import deepcopy
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple, List
 
 from planiverse.problems.retro_games.base import RetroGame
 
-
 class Element:
-    def __init__(self, letter, pos:Tuple):
+    def __init__(self, letter:str, pos:Tuple):
         self.letter = letter
         self.pos = pos
     
@@ -49,19 +48,95 @@ class EmptySpace(Element):
     def __init__(self, pos:Tuple):
         super().__init__(' ', pos)
     
-class Level:
-    def __init__(self, levelstr):
-        self.levelstr = levelstr.strip().split('\n')
-        self.grid     = self._parse_level(self.levelstr)
-        self.cursor   = self._locate_cursor(self.levelstr)
+class PuzznicState:
+    def __init__(self, grid:List[List[Element]], cursor:Cursor, score:float):
+        self.grid          = grid
+        self.cursor        = cursor
+        self.score         = score
+        self.cleared_boxes = []
 
-        self.elements   = set([str(item) for sublist in self.grid for item in sublist])
+        self.shape       = (len(grid), len(grid[0]))
+        self.action_map  = {
+            'left':       (0, -1),
+            'right':      (0,  1),
+            'up':         (-1, 0),
+            'down':       (1,  0),
+            'left-hold':  (0, -1),
+            'right-hold': (0,  1),
+        }
+
+        self.inbound_check  = lambda pos: 0 <= pos[0] < self.shape[0] and 0 <= pos[1] < self.shape[1]
+        self.isvalid_action = lambda action: action in self.action_map.keys()
+        self.literals = frozenset([])
+        self.__update__()
     
     def __str__(self):
         _map = [[str(cell) for cell in row] for row in self.grid]
         _map[self.cursor.pos[0]][self.cursor.pos[1]] = 'c' if _map[self.cursor.pos[0]][self.cursor.pos[1]] == ' ' else '¢'
         return '\n'.join([''.join(row) for row in _map])
-        
+
+    def __eq__(self, value):
+        return self.grid == value.grid and self.cursor == value.cursor
+
+    def __update__(self):
+        # this function update the boolean predicates of the state.
+        # the representation is simple for now, 
+        for ridx, row in enumerate(self.grid):
+            for cidx, cell in enumerate(row):
+                if isinstance(cell, Wall) or isinstance(cell, EmptySpace): continue
+                self.literals |= frozenset([f"at(box-{cell.letter}, {ridx}, {cidx})"])
+        self.literals |= frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
+        self.literals |= frozenset([f"score({self.score})"])
+        for cleared_box in self.cleared_boxes:
+            self.literals |= frozenset([f"cleared(box-{cleared_box.letter}, {cleared_box.pos[0]}, {cleared_box.pos[1]})"])
+        # reached goal
+        if self.is_goal(): self.literals     |= frozenset(["goal-reached"])
+        if self.is_terminal(): self.literals |= frozenset(["terminal-state"])
+
+    def apply_action(self, action:str):
+        hold = 'hold' in action
+        if hold and action in ['up', 'down']: return False
+        new_x, new_y = self.cursor + self.action_map[action]
+        if not self.inbound_check((new_x, new_y)): return False
+        # don't allow the cursor to move to a wall cell.
+        if isinstance(self.grid[new_x][new_y], Wall): return False
+        # move box if we are holding it and the next cell is empty
+        if hold and\
+           isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box) and\
+           isinstance(self.grid[new_x][new_y], EmptySpace):
+            # move box
+            self.grid[new_x][new_y] = self.grid[self.cursor.pos[0]][self.cursor.pos[1]]
+            self.grid[self.cursor.pos[0]][self.cursor.pos[1]].update((new_x, new_y))
+            # clear old box position
+            self.grid[self.cursor.pos[0]][self.cursor.pos[1]] = EmptySpace(self.cursor.pos)
+        self.cursor.update((new_x, new_y))
+        self.__update__()
+    
+    def clear_boxes(self, boxes:List[Element]):
+        self.cleared_boxes += boxes
+        for box in boxes:
+            self.grid[box.pos[0]][box.pos[1]] = EmptySpace(box.pos)
+        self.__update__()
+
+    def is_goal(self):
+        # check that we dont have any boxes left.
+        return not any([isinstance(item, Box) for sublist in self.grid for item in sublist])
+    
+    def is_terminal(self):
+        # check if there are no pairs of boxes left.
+        current_boxes = list(filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]))
+        letter_counter = defaultdict(int)
+        for letter in map(lambda o: o.letter, current_boxes):
+            letter_counter[letter] += 1
+        return 1 in set(letter_counter.values())
+
+class Level:
+    def __init__(self, levelstr:str):
+        self.levelstr = levelstr.strip().split('\n')
+        self.grid     = self._parse_level(self.levelstr)
+        self.cursor   = self._locate_cursor(self.levelstr)
+        self.state    = PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), 0)
+
     def _parse_level(self, level):
         """!
         This function parses the level string and returns a 2D grid.
@@ -82,7 +157,6 @@ class Level:
                 elif cell.isdigit(): 
                     if int(cell) == 0: currrow.append(EmptySpace((x, y)))
                     else: currrow.append(Box(cell, (x, y)))
-                # elif cell == 'c': currrow.append(Cursor((x, y)))
             row.append(currrow)
         return row
 
@@ -98,119 +172,60 @@ class Level:
                     return Cursor((x, y))
         raise ValueError("Cursor not found in the grid.")
     
-    def _parse_direction(self, direction):
-        """!
-        This function converts a direction string to a delta (dx, dy).
-        """
-        # Note the direction is reversed because left and right are preformed on the columns
-        # and up and down are performed on the rows.
-        directions = {
-            'left':  (0, -1),
-            'right': (0,  1),
-            'up':    (-1, 0),
-            'down':  (1,  0),
-            'nop':   (0,  0)
-        }
-        return directions[direction]
+    def __str__(self):
+        return str(self.state)
     
-    def _is_inbound_(self, x, y):
-        """!
-        This function checks if the position (x, y) is within the grid bounds.
-        """
-        return 0 <= x < len(self.grid[0]) and 0 <= y < len(self.grid)
-
-
-    def move(self, direction, hold):
-        """!
-        This function moves the cursor in the specified direction.
-        If hold is True, the cursor will hold the block in its current position.
-        """
-        # We cannot hold a box and move up or down.
-        if hold and direction in ['up', 'down']: return False
-
-        # first check if the cursor is holding a block.
-        # if yes then mark this block as marked.
-        box_to_move = []
-        if hold and isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box):
-            box_to_move.append(self.cursor.pos)
-
-        new_x, new_y = self.cursor + self._parse_direction(direction)
-        if not self._is_inbound_(new_x, new_y): return False
-
-        for box in box_to_move:
-            # we need to update the grid to move the block in the direction
-            if isinstance(self.grid[new_x][new_y], EmptySpace):
-                self.grid[new_x][new_y] = self.grid[box[0]][box[1]]
-                self.grid[box[0]][box[1]].update((new_x, new_y))
-                self.grid[box[0]][box[1]] = EmptySpace((box[0], box[1]))
-
-        self.cursor.update((new_x, new_y))
-        return True
+    def reset(self):
+        return PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), 0), {}
     
-    def update(self, new_grid):
-        self.grid = new_grid
-
 class PuzznicGame(RetroGame):
     def __init__(self, levelstr:str):
-        self.current_level = None
-        self.current_score = 0
-        self.levelstr      = levelstr
-        self.grid_history  = []
-        self.action_space  = [
-            'up', 
-            'down', 
-            'left', 
-            'right', 
-            'nop',
-            'left-hold', 
-            'right-hold'
-        ]
+        self.state_history = []
+        self.state    = None
+        self.level    = Level(levelstr)
+    
+    def __str__(self):
+        return str(self.state)
 
-
-    # now we need a function that applies gravity to the boxes.
-    def _apply_gravity_(self, level:Level):
+    def _apply_gravity_(self, state:PuzznicState):
         """!
         This function applies gravity to the boxes in the level.
         """
-        updated_grid = deepcopy(level.grid)
-        for ridx, row in enumerate(updated_grid):
+        successor_state = deepcopy(state)
+        for ridx, row in enumerate(successor_state.grid):
             # skip all wall rows
             if all(isinstance(cell, Wall) for cell in row): continue
             for yidx, cell in enumerate(row):
                 # We will move the boxes with empty spaces below them.
                 if isinstance(cell, Box):
                     # check if the box has empty spaces below it.
-                    if ridx + 1 < len(updated_grid) and isinstance(updated_grid[ridx + 1][yidx], EmptySpace):
-                        updated_grid[ridx + 1][yidx] = cell
-                        updated_grid[ridx][yidx] = EmptySpace((ridx, yidx))
+                    if ridx + 1 < successor_state.shape[0] and isinstance(successor_state.grid[ridx + 1][yidx], EmptySpace):
+                        successor_state.grid[ridx + 1][yidx] = cell
+                        successor_state.grid[ridx][yidx] = EmptySpace((ridx, yidx))
                         cell.update((ridx + 1, yidx))
-        return updated_grid
+        return successor_state
 
-    def _check_and_remove_matches_(self, level:Level):
+    def _check_and_remove_matches_(self, state:PuzznicState):
         """!
         This function checks and removes all horizontal/vertical matches of 2+ blocks.
         """
-        updated_grid = deepcopy(level.grid)
+        matched_successor_state = deepcopy(state)
         to_remove = set()
 
         # Check horizontal matches
-        for ridx, row in enumerate(updated_grid):
+        for ridx, row in enumerate(matched_successor_state.grid):
             # skip all wall rows
             if all(isinstance(cell, Wall) for cell in row): continue
             for cidx, cell in enumerate(row):
                 if isinstance(cell, EmptySpace) or isinstance(cell, Wall): continue
                 # for every box we need to check the four directions if there are any matches.
                 for dir in ['left', 'right', 'up', 'down']:
-                    newx, newy = cell + level._parse_direction(dir)
-                    if not updated_grid[newx][newy].letter == cell.letter: continue
+                    newx, newy = cell + matched_successor_state.action_map[dir]
+                    if not matched_successor_state.grid[newx][newy].letter == cell.letter: continue
                     to_remove.add((cell.letter, (ridx, cidx)))
-                    pass
-        
-        # remove the matched blocks
-        for letter, pos in to_remove:
-            updated_grid[pos[0]][pos[1]] = EmptySpace(pos)
-        
-        return updated_grid
+
+        matched_successor_state.clear_boxes([Box(letter, pos) for letter, pos in to_remove])
+        return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
         removed_boxes = set()
@@ -235,66 +250,55 @@ class PuzznicGame(RetroGame):
         more_than_two_blocks_score = 0
         letters_list = list(map(lambda o:o[0], removed_boxes))
         for l in cascaded_blocks:
-            if letters_list.count(l) > 2:
-                more_than_two_blocks_score += 50
+            if letters_list.count(l) > 2: more_than_two_blocks_score += 50
         return each_casecade_score + more_than_two_blocks_score
 
-    def _parse_action_(self, action):
-        if 'hold' in action: return action.split('-')[0], True
-        return action, False
-
-    def levels(self):
-        return [
-            """######\n#12c0#\n###00#\n#0000#\n#2001#\n##21##\n######"""
-        ]
-
-    def get_action_space(self):
-        return self.action_space
-    
-    def score(self):
-        return self.current_score
+    def _commit_state_(self):
+        self.state_history += [deepcopy(self.state)]
 
     def reset(self):
-        """!
-        Initialize the game with the specified level.
-        """
-        self.current_level = Level(self.levelstr)
-        self.current_score = 0
-        self.grid_history  = []
-        self.grid_history  += [deepcopy(self.current_level)]
-        return self.current_level, {'score': self.current_score, 
-                                    'grid': self.current_level.grid, 
-                                    'action_space': self.get_action_space()
-                                    }
+        self.state, info= self.level.reset()
+        self.state_history = [deepcopy(self.state)]
+        return self.state, info
     
-    def step(self, action):
-        if self.current_level is None: raise ValueError("Game not initialized.")
-        assert action in self.get_action_space(), "Invalid action."
-        self.current_level.move(*self._parse_action_(action))
-        self.current_level.update(self._apply_gravity_(self.current_level))
-        self.grid_history  += [deepcopy(self.current_level)]
-        self.current_level.update(self._check_and_remove_matches_(self.current_level))
-        self.current_score += self._compute_score_(self.current_level.grid, self.grid_history[-1].grid)
-        self.grid_history  += [deepcopy(self.current_level)]
-    
-    def is_goal(self):
-        """!
-        A goal state is reached when there are no boxes in the grid.
-        """
-        return not any([isinstance(item, Box) for sublist in self.current_level.grid for item in sublist])
+    def step(self, action:str):
+        if self.state is None: raise ValueError("Game not initialized.")
+        assert self.state.isvalid_action(action), "Invalid action."
+        self._commit_state_() # save a copy of the state.
+        self.state.apply_action(action) # apply the action to the state.
+        self.state = self._apply_gravity_(self.state)
+        self.state = self._check_and_remove_matches_(self.state)
+        self.state.score += self._compute_score_(self.state.grid, self.state_history[-1].grid)
+        self._commit_state_()
+        return self.state, self.state.score
 
-    def is_terminal(self):
-        """!
-        A terminal state is a state where no pairs of blocks exist.
-        """
-        current_boxes = list(filter(lambda o: isinstance(o, Box), [item for sublist in self.current_level.grid for item in sublist]))
-        letter_counter = defaultdict(int)
-        for letter in map(lambda o: o.letter, current_boxes):
-            letter_counter[letter] += 1
-        return 1 in set(letter_counter.values())
+    def render(self):
+        # first remove the duplicate states
+        unique_states = []
+        for state in self.state_history:
+            if state not in unique_states: unique_states.append(state)
+        for t, state in enumerate(unique_states):
+            print(f"Step: {t}")
+            print(state)
+            print('--------------')
+
+    def is_goal(self, state):
+        return state.is_goal()
+    
+    def is_terminal(self, state):
+        return state.is_terminal()
     
     def successors(self, state):
-        raise NotImplementedError("Not implemented yet.")
+        ret_successors = []
+        for action in state.action_map.keys():
+            new_state = deepcopy(state)
+            new_state.apply_action(action)
+            new_state = self._apply_gravity_(new_state)
+            new_state = self._check_and_remove_matches_(new_state)
+            new_state.score += self._compute_score_(new_state.grid, state.grid)
+            if state == new_state: continue # skip the state if it is the same as the current state.
+            ret_successors.append((action, new_state))
+        return ret_successors
 
     def simulate(self, plan):
         raise NotImplementedError("Not implemented yet.")
@@ -304,52 +308,3 @@ class PuzznicGame(RetroGame):
     
     def goal(self):
         raise NotImplementedError("Not implemented yet.")
-
-
-
-# game = PuzznicGame()
-# for i, lvl in enumerate(game.levels()):
-#     game.start(lvl)
-#     # apply this plan.
-#     plan = ['left', 'right-hold', 'left', 'left', 'right-hold', 'right-hold', 'down', 'down', 'down', 'left-hold']
-#     plan = ['left', 'right-hold', 'down', 'down', 'down', 'left-hold', 'right', 'up', 'up', 'up', 'left', 'left', 'right-hold', 'right-hold']
-#     for action in plan:
-#         game.step(action)
-    
-#     # if game.goal_reached():
-#     #     pass
-#     # elif game.terminal_state():
-#     #     pass
-
-#     # for dev only.
-#     for i, grid in enumerate(game.grid_history):
-#         print(f"Step {i}")
-#         print(grid)
-#         print()
-#     pass
-
-
-
-# level = Level(level1)
-
-# print(level)
-
-# level.move(, False)
-# level.update(apply_gravity(level))
-# print("After moving left")
-# print(level)
-# level.move(, True)
-# level.update(apply_gravity(level))
-# print("After moving right")
-# print(level)
-
-# updated_level = deepcopy(level)
-# updated_level.update(apply_gravity(updated_level))
-# oldgrid = deepcopy(updated_level.grid)
-# updated_level.update(check_and_remove_matches(updated_level))
-# score = compute_score(updated_level.grid, oldgrid)
-# print("After removing matches")
-# print(updated_level)
-# print("Score:", score)
-pass
-
