@@ -36,3 +36,6 @@ class Simulator:
     def validate(self, plan):
         self.reset()
         return self.simulator.validate(plan)
+    
+    def get_actions(self):
+        return self.simulator.get_actions()
