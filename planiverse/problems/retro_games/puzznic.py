@@ -80,18 +80,28 @@ class PuzznicState:
 
     def __update__(self):
         # this function update the boolean predicates of the state.
-        # the representation is simple for now, 
+        # the representation is simple for now,
+        
+        self.literals = frozenset([])
+        
+        self.literals |= frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
+
         for ridx, row in enumerate(self.grid):
             for cidx, cell in enumerate(row):
                 if isinstance(cell, Wall) or isinstance(cell, EmptySpace): continue
                 self.literals |= frozenset([f"at(box-{cell.letter}, {ridx}, {cidx})"])
-        self.literals |= frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
-        self.literals |= frozenset([f"score({self.score})"])
+        
         for cleared_box in self.cleared_boxes:
             self.literals |= frozenset([f"cleared(box-{cleared_box.letter}, {cleared_box.pos[0]}, {cleared_box.pos[1]})"])
-        # reached goal
-        if self.is_goal(): self.literals     |= frozenset(["goal-reached"])
-        if self.is_terminal(): self.literals |= frozenset(["terminal-state"])
+
+        if self.is_goal(): 
+            self.literals |= frozenset(["goal-reached"])
+            self.literals |= frozenset([f"score({self.score})"])
+
+        if self.is_terminal(): 
+            self.literals |= frozenset(["terminal-state"])
+            self.literals |= frozenset([f"score({self.score})"])
+        
 
     def apply_action(self, action:str):
         hold = 'hold' in action
@@ -185,7 +195,7 @@ class PuzznicGame(RetroGame):
         self.level     = None
         self.index     = 0
         self.levelsstr = [
-            """######\n#12c0#\n###00#\n#0000#\n#2001#\n##21##\n######""",
+            """######\n#12c #\n###  #\n#    #\n#2  1#\n##21##\n######""",
             """#######\n#  c ##\n#  1  #\n#  2  #\n# 13  #\n# 24  #\n#243 3#\n#######""",
             """########\n###  ###\n##  c ##\n#1 78 1#\n#8 ## 7#\n##8  7##\n###  ###\n########""",
             """#######\n##8####\n#67c###\n##6 6 #\n##7 7##\n#####8#\n#######""",
@@ -280,6 +290,8 @@ class PuzznicGame(RetroGame):
         self.state_history += [deepcopy(self.state)]
     
     def _compute_successor_state_(self, state:PuzznicState, action:str):
+        # don't generate successors for goal/terminal states.
+        if state.is_goal() or state.is_terminal(): return deepcopy(state)
         successor_state = deepcopy(state)
         successor_state.apply_action(action)
         successor_state = self._apply_gravity_(successor_state)
