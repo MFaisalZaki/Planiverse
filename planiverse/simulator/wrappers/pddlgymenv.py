@@ -54,5 +54,5 @@ class PDDLGymEnv(SimulatorBase):
     def validate(self, plan):
         return self.is_terminal(self.simulate(plan)[-1])
     
-    def goal(self):
-        return self.goal_state
+    def get_goal_predicates(self):
+        return list(map(lambda g:(g, g._str), self.goal_state.literals))

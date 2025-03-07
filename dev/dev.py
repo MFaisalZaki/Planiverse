@@ -299,6 +299,8 @@ class PuzznicGame:
 game = PuzznicGame("""######\n#12c0#\n###00#\n#0000#\n#2001#\n##21##\n######""")
 game.reset()
 plan = ['left', 'right-hold', 'left', 'left', 'right-hold', 'right-hold', 'down', 'down', 'down', 'left-hold']
+plan = ['left', 'right-hold', 'left', 'left', 'right-hold', 'right-hold', 'down', 'down', 'down', 'left-hold']
+plan = ['left', 'right-hold', 'left', 'left', 'right-hold', 'right-hold', 'right', 'down', 'left', 'down', 'left', 'down', 'right', 'left-hold']
 for idx, action in enumerate(plan):
     if idx > 3:
         pass
