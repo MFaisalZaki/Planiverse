@@ -179,10 +179,33 @@ class Level:
         return PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), 0), {}
     
 class PuzznicGame(RetroGame):
-    def __init__(self, levelstr:str):
+    def __init__(self):
         self.state_history = []
-        self.state    = None
-        self.level    = Level(levelstr)
+        self.state     = None
+        self.level     = None
+        self.index     = 0
+        self.levelsstr = [
+            """######\n#12c0#\n###00#\n#0000#\n#2001#\n##21##\n######""",
+            """#######\n#  c ##\n#  1  #\n#  2  #\n# 13  #\n# 24  #\n#243 3#\n#######""",
+            """########\n###  ###\n##  c ##\n#1 78 1#\n#8 ## 7#\n##8  7##\n###  ###\n########""",
+            """#######\n##8####\n#67c###\n##6 6 #\n##7 7##\n#####8#\n#######""",
+            """#####\n#3c1#\n#2 2#\n## 4#\n#  2#\n#  4#\n#1#3#\n#####""",
+            """#######\n#c  ###\n#57  ##\n##67  #\n###5 6#\n#### 5#\n#######""",
+            """#######\n#     #\n#c    #\n#2   8#\n##1  ##\n#18 78#\n#21 87#\n##2878#\n#######""",
+            """######\n#c 21#\n#  13#\n#  32#\n#  21#\n######""",
+            """########\n#c    2#\n#     3#\n#5  4 5#\n#43 3 ##\n#352#5##\n########""",
+            """#######\n###c5##\n#7  65#\n##7 56#\n### 6##\n#######""",
+            """########\n#c   27#\n#  8 ###\n#  #   #\n#7 #   #\n###  12#\n#2  821#\n########""",
+            """#########\n#654c456#\n#### ####\n###   ###\n##5   5##\n###   ###\n###   ###\n###654###\n#########""",
+            """##########\n#4323c234#\n##### ####\n#####  ###\n#####  ###\n####2  ###\n##### ####\n##########""",
+            """#######\n##1c ##\n##2  ##\n# 2 31#\n##2#1##\n#######""",
+            """#######\n###2c##\n#2 1 2#\n## 2 1#\n#1 #12#\n##1####\n#######""",
+            """##########\n#        #\n#  c632  #\n#   5#8  #\n#   ###  #\n#686  4 3#\n#8#7  8#2#\n####  ####\n#  565   #\n#  7#4   #\n#  ###   #\n##########""",
+            """#########\n#343c231#\n##31 14##\n###2 4###\n####1####\n#########""",
+            """########\n##2#8#2#\n##1#1#1#\n##8c8 2#\n### ####\n#  1  ##\n#1 #  ##\n##   ###\n### ####\n###1####\n########""",
+            """#######\n#456c4#\n#3#346#\n#2 235#\n## ####\n## ####\n#32####\n#24####\n#######""",
+            """#######\n###6c##\n###5  #\n#7 7 ##\n#5 6 ##\n## 5  #\n###6###\n#######"""
+        ]
     
     def __str__(self):
         return str(self.state)
@@ -264,7 +287,15 @@ class PuzznicGame(RetroGame):
         successor_state.score += self._compute_score_(successor_state.grid, state.grid)
         return successor_state
 
+    def _levels_str_(self, index):
+        assert 0 <= index < len(self.levelsstr), "Invalid level index."
+        return self.levelsstr[index]
+
+    def fix_index(self, index:int):
+        self.index = index
+
     def reset(self):
+        self.level = Level(self._levels_str_(self.index))
         self.state, info = self.level.reset()
         self.state_history = [deepcopy(self.state)]
         return self.state, info
