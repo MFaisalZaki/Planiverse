@@ -50,7 +50,8 @@ class EmptySpace(Element):
     
 class PuzznicState:
     def __init__(self, grid:List[List[Element]], cursor:Cursor, score:float):
-        self.grid          = grid
+        self.grid          = deepcopy(grid)
+        self.prev_grid     = deepcopy(grid)
         self.cursor        = cursor
         self.score         = score
         self.cleared_boxes = []
@@ -103,8 +104,11 @@ class PuzznicState:
             self.literals |= frozenset([f"score({self.score})"])
 
     def apply_action(self, action:str):
+        self.prev_grid = deepcopy(self.grid)
         hold = 'hold' in action
         if hold and action in ['up', 'down']: return False
+        # do nothing if hold is true and the cursor is not on a box.
+        if hold and not isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box): return False
         new_x, new_y = self.cursor + self.action_map[action]
         if not self.inbound_check((new_x, new_y)): return False
         # don't allow the cursor to move to a wall cell.
