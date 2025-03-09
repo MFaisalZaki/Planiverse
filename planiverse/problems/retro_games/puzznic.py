@@ -188,7 +188,7 @@ class Level:
         return str(self.state)
     
     def reset(self):
-        return PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), []), {}
+        return PuzznicState(self.grid, self.cursor, []), {}
     
 class PuzznicGame(RetroGame):
     def __init__(self):
@@ -264,7 +264,7 @@ class PuzznicGame(RetroGame):
         """!
         This function checks and removes all horizontal/vertical matches of 2+ blocks.
         """
-        matched_successor_state = deepcopy(state)
+        matched_successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes) #deepcopy(state)
         to_remove = set()
 
         # Check horizontal matches
@@ -309,7 +309,7 @@ class PuzznicGame(RetroGame):
         return [each_casecade_score + more_than_two_blocks_score]
 
     def _commit_state_(self):
-        self.state_history += [deepcopy(self.state)]
+        self.state_history += [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
     
     def _compute_successor_state_(self, state:PuzznicState, action:str):
         # don't generate successors for goal/terminal states.
@@ -331,7 +331,7 @@ class PuzznicGame(RetroGame):
     def reset(self):
         self.level = Level(self._levels_str_(self.index))
         self.state, info = self.level.reset()
-        self.state_history = [deepcopy(self.state)]
+        self.state_history = [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
         return self.state, info
     
     def step(self, action:str):
