@@ -15,6 +15,9 @@ class Element:
 
     def __str__(self):
         return self.letter
+    
+    def __hash__(self):
+        return hash((self.letter, self.pos))
 
 class Box(Element):
     def __init__(self, letter:str, pos:Tuple):
@@ -49,12 +52,16 @@ class EmptySpace(Element):
         super().__init__(' ', pos)
     
 class PuzznicState:
-    def __init__(self, grid:List[List[Element]], cursor:Cursor, score:float):
-        self.grid          = deepcopy(grid)
-        self.prev_grid     = deepcopy(grid)
-        self.cursor        = cursor
-        self.score         = score
-        self.cleared_boxes = []
+    def __init__(self, grid:List[List[Element]], cursor:Cursor, score:float, cleared_boxes:List[Element]=[]):
+        # self.grid          = deepcopy(grid)
+        # self.cursor        = deepcopy(cursor)
+        # self.score         = deepcopy(score)
+        # self.cleared_boxes = deepcopy(cleared_boxes)
+        self.grid = [row[:] for row in grid]  # Shallow copy of the grid
+        self.cursor = Cursor(cursor.pos)  # Create a new Cursor instance with the same position
+        self.score = score  # No need to deepcopy a float
+        self.cleared_boxes = cleared_boxes[:]  # Shallow copy of the list
+
 
         self.shape       = (len(grid), len(grid[0]))
         self.action_map  = {
@@ -104,7 +111,6 @@ class PuzznicState:
             self.literals |= frozenset([f"score({self.score})"])
 
     def apply_action(self, action:str):
-        self.prev_grid = deepcopy(self.grid)
         hold = 'hold' in action
         if hold and action in ['up', 'down']: return False
         # do nothing if hold is true and the cursor is not on a box.
@@ -250,7 +256,7 @@ class PuzznicGame(RetroGame):
         """!
         This function applies gravity to the boxes in the level.
         """
-        successor_state = deepcopy(state)
+        successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
         for ridx, row in enumerate(successor_state.grid):
             # skip all wall rows
             if all(isinstance(cell, Wall) for cell in row): continue
@@ -282,8 +288,10 @@ class PuzznicGame(RetroGame):
                     newx, newy = cell + matched_successor_state.action_map[dir]
                     if not matched_successor_state.grid[newx][newy].letter == cell.letter: continue
                     to_remove.add((cell.letter, (ridx, cidx)))
+                    # to_remove.add(cell)
 
         matched_successor_state.clear_boxes([Box(letter, pos) for letter, pos in to_remove])
+        # matched_successor_state.clear_boxes(to_remove)
         return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
@@ -317,8 +325,9 @@ class PuzznicGame(RetroGame):
     
     def _compute_successor_state_(self, state:PuzznicState, action:str):
         # don't generate successors for goal/terminal states.
-        if state.is_goal() or state.is_terminal(): return deepcopy(state)
-        successor_state = deepcopy(state)
+        successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
+        if state.is_goal() or state.is_terminal(): return successor_state
+        #deepcopy(state)
         successor_state.apply_action(action)
         successor_state = self._apply_gravity_(successor_state)
         successor_state = self._check_and_remove_matches_(successor_state)
