@@ -86,14 +86,10 @@ class PuzznicState:
         # this function update the boolean predicates of the state.
         # the representation is simple for now,
         
-        self.literals = frozenset([])
+        self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
         
-        self.literals |= frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
-
-        for ridx, row in enumerate(self.grid):
-            for cidx, cell in enumerate(row):
-                if isinstance(cell, Wall) or isinstance(cell, EmptySpace): continue
-                self.literals |= frozenset([f"at(box-{cell.letter}, {ridx}, {cidx})"])
+        for box in filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]):
+            self.literals |= frozenset([f"at(box-{box.letter}, {box.pos[0]}, {box.pos[1]})"])
         
         for cleared_box in self.cleared_boxes:
             self.literals |= frozenset([f"cleared(box-{cleared_box.letter}, {cleared_box.pos[0]}, {cleared_box.pos[1]})"])
@@ -117,7 +113,7 @@ class PuzznicState:
         # don't allow the cursor to move to a wall cell.
         # if isinstance(self.grid[new_x][new_y], Wall): return False
         # move box if we are holding it and the next cell is empty
-        if hold and\
+        if hold and \
            isinstance(self.grid[new_x][new_y], EmptySpace):
             self.grid[new_x][new_y] = Box(marked_cell.letter, (new_x, new_y))
             self.grid[self.cursor.pos[0]][self.cursor.pos[1]] = EmptySpace(self.cursor.pos)
@@ -136,9 +132,8 @@ class PuzznicState:
     
     def is_terminal(self):
         # check if there are no pairs of boxes left.
-        current_boxes = list(filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]))
         letter_counter = defaultdict(int)
-        for letter in map(lambda o: o.letter, current_boxes):
+        for letter in map(lambda o: o.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])):
             letter_counter[letter] += 1
         return 1 in set(letter_counter.values())
 
@@ -284,15 +279,9 @@ class PuzznicGame(RetroGame):
         return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
-        removed_boxes = set()
-        for (ridx, row_newgird), (_, row_oldgrid) in zip(enumerate(newgrid), enumerate(oldgrid)):
-            if all(isinstance(cell, Wall) for cell in row_newgird): continue
-            for (cidx, cell_newgrid), (_, cell_oldgrid) in zip(enumerate(row_newgird), enumerate(row_oldgrid)):
-                if isinstance(cell_newgrid, Wall): continue
-                if cell_newgrid == cell_oldgrid: continue
-                removed_boxes.add((cell_oldgrid.letter, (ridx, cidx)))
-                pass
-            pass
+        newgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in newgrid for item in sublist]))
+        oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in oldgrid for item in sublist]))
+        removed_boxes = (oldgrid_boxes - newgrid_boxes).union(newgrid_boxes - oldgrid_boxes)
 
         # scoring logic (assumed)
         # Each cleared block awards points (e.g., 10 points per block).
@@ -300,11 +289,11 @@ class PuzznicGame(RetroGame):
         # Matching more than 2 blocks adds a bonus (e.g., +50 points per extra block).
 
         each_block_score    = len(removed_boxes) * 10  
-        cascaded_blocks     = set(map(lambda o:o[0], removed_boxes))
+        cascaded_blocks     = set(map(lambda o:o.letter, removed_boxes))
         each_casecade_score = each_block_score * len(cascaded_blocks) * 1.5 if len(cascaded_blocks) > 1 else each_block_score
 
         more_than_two_blocks_score = 0
-        letters_list = list(map(lambda o:o[0], removed_boxes))
+        letters_list = list(map(lambda o:o.letter, removed_boxes))
         for l in cascaded_blocks:
             if letters_list.count(l) > 2: more_than_two_blocks_score += 50
         return [each_casecade_score + more_than_two_blocks_score]
