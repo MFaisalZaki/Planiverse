@@ -280,6 +280,7 @@ class PuzznicGame(RetroGame):
                     to_remove.add(cell)
         assert len(to_remove) != 1, "Invalid state, more than one box to remove."
         matched_successor_state.clear_boxes(to_remove)
+
         return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
