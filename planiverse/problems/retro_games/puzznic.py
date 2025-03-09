@@ -52,18 +52,14 @@ class EmptySpace(Element):
         super().__init__(' ', pos)
     
 class PuzznicState:
-    def __init__(self, grid:List[List[Element]], cursor:Cursor, score:float, cleared_boxes:List[Element]=[]):
-        # self.grid          = deepcopy(grid)
-        # self.cursor        = deepcopy(cursor)
-        # self.score         = deepcopy(score)
-        # self.cleared_boxes = deepcopy(cleared_boxes)
-        self.grid = [row[:] for row in grid]  # Shallow copy of the grid
-        self.cursor = Cursor(cursor.pos)  # Create a new Cursor instance with the same position
-        self.score = score  # No need to deepcopy a float
-        self.cleared_boxes = cleared_boxes[:]  # Shallow copy of the list
-
+    def __init__(self, grid:List[List[Element]], cursor:Cursor, score:List[float], cleared_boxes:List[Element]=[]):
+        self.grid          = [row[:] for row in grid]
+        self.cursor        = Cursor(cursor.pos)  
+        self.score         = score[:]  
+        self.cleared_boxes = cleared_boxes[:]
 
         self.shape       = (len(grid), len(grid[0]))
+        
         self.action_map  = {
             'left':       (0, -1),
             'right':      (0,  1),
@@ -73,7 +69,7 @@ class PuzznicState:
             'right-hold': (0,  1),
         }
 
-        self.inbound_check  = lambda pos: 0 <= pos[0] < self.shape[0] and 0 <= pos[1] < self.shape[1]
+        self.inbound_check  = lambda pos: 0 <= pos[0] < self.shape[0]-1 and 0 <= pos[1] < self.shape[1]-1
         self.isvalid_action = lambda action: action in self.action_map.keys()
         self.literals = frozenset([])
         self.__update__()
@@ -104,36 +100,30 @@ class PuzznicState:
 
         if self.is_goal(): 
             self.literals |= frozenset(["goal-reached"])
-            self.literals |= frozenset([f"score({self.score})"])
+            self.literals |= frozenset([f"score({sum(self.score)})"])
 
         if self.is_terminal(): 
             self.literals |= frozenset(["terminal-state"])
-            self.literals |= frozenset([f"score({self.score})"])
+            self.literals |= frozenset([f"score({sum(self.score)})"])
 
     def apply_action(self, action:str):
         hold = 'hold' in action
         if hold and action in ['up', 'down']: return False
+        marked_cell = self.grid[self.cursor.pos[0]][self.cursor.pos[1]]
         # do nothing if hold is true and the cursor is not on a box.
-        if hold and not\
-            (isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box) or\
-             isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], EmptySpace)): 
-            return False
+        if hold and not isinstance(marked_cell, Box):  return False
         new_x, new_y = self.cursor + self.action_map[action]
         if not self.inbound_check((new_x, new_y)): return False
         # don't allow the cursor to move to a wall cell.
         # if isinstance(self.grid[new_x][new_y], Wall): return False
         # move box if we are holding it and the next cell is empty
         if hold and\
-           isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box) and\
            isinstance(self.grid[new_x][new_y], EmptySpace):
-            # move box
-            self.grid[new_x][new_y] = self.grid[self.cursor.pos[0]][self.cursor.pos[1]]
-            self.grid[self.cursor.pos[0]][self.cursor.pos[1]].update((new_x, new_y))
-            # clear old box position
+            self.grid[new_x][new_y] = Box(marked_cell.letter, (new_x, new_y))
             self.grid[self.cursor.pos[0]][self.cursor.pos[1]] = EmptySpace(self.cursor.pos)
         self.cursor.update((new_x, new_y))
         self.__update__()
-    
+            
     def clear_boxes(self, boxes:List[Element]):
         self.cleared_boxes += boxes
         for box in boxes:
@@ -157,7 +147,7 @@ class Level:
         self.levelstr = levelstr.strip().split('\n')
         self.grid     = self._parse_level(self.levelstr)
         self.cursor   = self._locate_cursor(self.levelstr)
-        self.state    = PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), 0)
+        self.state    = PuzznicState(self.grid, self.cursor, [])
 
     def _parse_level(self, level):
         """!
@@ -198,7 +188,7 @@ class Level:
         return str(self.state)
     
     def reset(self):
-        return PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), 0), {}
+        return PuzznicState(deepcopy(self.grid), deepcopy(self.cursor), []), {}
     
 class PuzznicGame(RetroGame):
     def __init__(self):
@@ -260,14 +250,14 @@ class PuzznicGame(RetroGame):
         for ridx, row in enumerate(successor_state.grid):
             # skip all wall rows
             if all(isinstance(cell, Wall) for cell in row): continue
+            if all(isinstance(cell, EmptySpace) for cell in row): continue
             for yidx, cell in enumerate(row):
+                if not isinstance(cell, Box): continue
                 # We will move the boxes with empty spaces below them.
-                if isinstance(cell, Box):
-                    # check if the box has empty spaces below it.
-                    if ridx + 1 < successor_state.shape[0] and isinstance(successor_state.grid[ridx + 1][yidx], EmptySpace):
-                        successor_state.grid[ridx + 1][yidx] = cell
-                        successor_state.grid[ridx][yidx] = EmptySpace((ridx, yidx))
-                        cell.update((ridx + 1, yidx))
+                # check if the box has empty spaces below it.
+                if isinstance(successor_state.grid[ridx + 1][yidx], EmptySpace):
+                    successor_state.grid[ridx + 1][yidx] = Box(cell.letter, (ridx + 1, yidx))
+                    successor_state.grid[ridx][yidx]     = EmptySpace((ridx, yidx))
         return successor_state
 
     def _check_and_remove_matches_(self, state:PuzznicState):
@@ -287,11 +277,9 @@ class PuzznicGame(RetroGame):
                 for dir in ['left', 'right', 'up', 'down']:
                     newx, newy = cell + matched_successor_state.action_map[dir]
                     if not matched_successor_state.grid[newx][newy].letter == cell.letter: continue
-                    to_remove.add((cell.letter, (ridx, cidx)))
-                    # to_remove.add(cell)
-
-        matched_successor_state.clear_boxes([Box(letter, pos) for letter, pos in to_remove])
-        # matched_successor_state.clear_boxes(to_remove)
+                    to_remove.add(cell)
+        assert len(to_remove) != 1, "Invalid state, more than one box to remove."
+        matched_successor_state.clear_boxes(to_remove)
         return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
@@ -318,7 +306,7 @@ class PuzznicGame(RetroGame):
         letters_list = list(map(lambda o:o[0], removed_boxes))
         for l in cascaded_blocks:
             if letters_list.count(l) > 2: more_than_two_blocks_score += 50
-        return each_casecade_score + more_than_two_blocks_score
+        return [each_casecade_score + more_than_two_blocks_score]
 
     def _commit_state_(self):
         self.state_history += [deepcopy(self.state)]
@@ -327,7 +315,6 @@ class PuzznicGame(RetroGame):
         # don't generate successors for goal/terminal states.
         successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
         if state.is_goal() or state.is_terminal(): return successor_state
-        #deepcopy(state)
         successor_state.apply_action(action)
         successor_state = self._apply_gravity_(successor_state)
         successor_state = self._check_and_remove_matches_(successor_state)
@@ -384,11 +371,9 @@ class PuzznicGame(RetroGame):
 
     def simulate(self, plan):
         state, _ = self.level.reset()
-        ret_states_trace = [state]
+        ret_states_trace = [PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)]
         for action in plan:
-            successor_state = self._compute_successor_state_(state, action)
-            ret_states_trace.append(successor_state)
-            state = successor_state
+            ret_states_trace.append(self._compute_successor_state_(ret_states_trace[-1], action))
         return ret_states_trace
 
     def validate(self, plan):
