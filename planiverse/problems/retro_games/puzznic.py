@@ -108,11 +108,14 @@ class PuzznicState:
         hold = 'hold' in action
         if hold and action in ['up', 'down']: return False
         # do nothing if hold is true and the cursor is not on a box.
-        if hold and not isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box): return False
+        if hold and not\
+            (isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box) or\
+             isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], EmptySpace)): 
+            return False
         new_x, new_y = self.cursor + self.action_map[action]
         if not self.inbound_check((new_x, new_y)): return False
         # don't allow the cursor to move to a wall cell.
-        if isinstance(self.grid[new_x][new_y], Wall): return False
+        # if isinstance(self.grid[new_x][new_y], Wall): return False
         # move box if we are holding it and the next cell is empty
         if hold and\
            isinstance(self.grid[self.cursor.pos[0]][self.cursor.pos[1]], Box) and\
@@ -230,8 +233,14 @@ class PuzznicGame(RetroGame):
             """######\n#34 c#\n#23  #\n#42 1#\n### 2#\n#24 3#\n#1# 4#\n######""",
             """########\n#      #\n# 1  3 #\n# 5  1 #\n# 1 c3 #\n#1#  #3#\n###1 ###\n## 42 ##\n#2 3425#\n##1235##\n########""",
             """########\n##67####\n###1####\n###8####\n###2####\n##c1 ###\n#  7  2#\n#7 #1 8#\n#676821#\n########""",
-            """#######\n### 2##\n##  12#\n#1c38##\n##282 #\n###31##\n#######"""
-
+            """#######\n### 2##\n##  12#\n#1c38##\n##282 #\n###31##\n#######""",
+            """########\n####c6##\n####7###\n##8 8  #\n##68#16#\n#67###1#\n########""",
+            """#########\n#8c8 ####\n#787 51 #\n##78 18 #\n# 81 87 #\n# 81 76 #\n# 87 65 #\n# ## ## #\n#       #\n#51 18 8#\n#78#6##5#\n#########""",
+            """##########\n##      ##\n#6   c6  #\n#787  73 #\n#816  361#\n#387 #182#\n#138##827#\n##########""",
+            """#######\n##1c###\n###  6#\n#6   7#\n#7  61#\n#8 87##\n#7 ####\n#######""",
+            """#########\n####c 87#\n####  ###\n####  18#\n#### 867#\n##   ####\n#17######\n#68######\#76######\n#########""",
+            """########\n#4#c 7 #\n#7#  5 #\n#6 8 65#\n###7 #7#\n####4#8#\n########""",
+            """######\n#65c #\n#43  #\n#21 ##\n##8 ##\n### ##\n## 8##\n#  31#\n#  54#\n#  62#\n######"""
         ]
     
     def __str__(self):
