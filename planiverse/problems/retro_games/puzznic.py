@@ -85,14 +85,16 @@ class PuzznicState:
     def __update__(self):
         # this function update the boolean predicates of the state.
         # the representation is simple for now,
-        
         self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
         
         for box in filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]):
             self.literals |= frozenset([f"at(box-{box.letter}, {box.pos[0]}, {box.pos[1]})"])
         
+        boxes_in_grid = set(map(lambda e:e.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])))
         for cleared_box in self.cleared_boxes:
             self.literals |= frozenset([f"cleared(box-{cleared_box.letter}, {cleared_box.pos[0]}, {cleared_box.pos[1]})"])
+            if not cleared_box.letter in boxes_in_grid:
+                self.literals |= frozenset([f"all-boxes-matched(box-{cleared_box.letter})"])
 
         if self.is_goal(): 
             self.literals |= frozenset(["goal-reached"])
