@@ -11,7 +11,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/dev/dev.py",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            "args": [
+                "--cfg", "hlg", "--global_seed", "111"
+            ]
         }
     ]
 }
