@@ -201,3 +201,5 @@ v-env/
 # dev.py
 ibm-diversescore/
 *.error
+
+cache/

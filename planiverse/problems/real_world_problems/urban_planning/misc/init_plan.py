@@ -5,7 +5,7 @@
 
 # In[1]:
 
-
+import os
 from shapely.geometry import Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, box
 import geopandas as gpd
 from geopandas import GeoSeries, GeoDataFrame
@@ -52,6 +52,9 @@ def aggregate(lines):
     return gdf
 
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+dump_dir = os.path.join(current_dir, '..', 'cfg')
+
 # ## synthetic
 
 # ### grid
@@ -95,7 +98,7 @@ gdf[gdf.geom_type!='Polygon'].plot()
 
 d = dict()
 d['gdf'] = gdf
-with open('../cfg/test_data/synthetic/init_plan_grid.pickle', 'wb') as f:
+with open(f'{dump_dir}/test_data/synthetic/init_plan_grid.pickle', 'wb') as f:
     pickle.dump(d, f)
 
 
@@ -298,7 +301,7 @@ gdf[gdf.geom_type=='Polygon'].plot('type')
 
 d = dict()
 d['gdf'] = gdf
-with open('../cfg/test_data/real/hlg/init_plan_hlg.pickle', 'wb') as f:
+with open(f'{dump_dir}/test_data/real/hlg/init_plan_hlg.pickle', 'wb') as f:
     pickle.dump(d, f)
 
 
@@ -422,7 +425,7 @@ north, south, east, west = 39.8558, 39.8305, 116.4173, 116.3939
 
 
 # create network from that bounding box
-G = ox.graph_from_bbox(north, south, east, west, network_type="drive")
+G = ox.graph_from_bbox((north, south, east, west), network_type="drive")
 G_projected = ox.project_graph(G)
 
 gdf = gdf.set_crs(ox.graph_to_gdfs(G_projected)[1].crs)
@@ -500,7 +503,7 @@ gdf[gdf.geom_type=='Polygon'].plot('type')
 
 d = dict()
 d['gdf'] = gdf
-with open('../../cfg/test_data/real/dhm/init_plan_dhm_v2.pickle', 'wb') as f:
+with open(f'{dump_dir}/test_data/real/dhm/init_plan_dhm_v2.pickle', 'wb') as f:
     pickle.dump(d, f)
 
 
