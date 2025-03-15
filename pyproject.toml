@@ -15,7 +15,7 @@ dependencies = [
     "PyYAML (>=6.0.2)",
     "geopandas (>=1.0.1)",
     "momepy (>=0.9.1)",
-    "mapclassify (>=2.8.1)".
+    "mapclassify (>=2.8.1)",
     "branca (>=0.8.1)",
     "folium (>=0.19.5)"
 ]
