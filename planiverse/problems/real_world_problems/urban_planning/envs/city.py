@@ -5,6 +5,10 @@ from pprint import pprint
 from typing import Tuple, Dict, List, Text, Callable
 from functools import partial
 
+import yaml
+import pickle
+import momepy
+
 import numpy as np
 from geopandas import GeoDataFrame
 from matplotlib.colors import ListedColormap
@@ -14,6 +18,177 @@ from planiverse.problems.real_world_problems.urban_planning.envs.plan_client imp
 from planiverse.problems.real_world_problems.urban_planning.envs.observation_extractor import ObservationExtractor
 from planiverse.problems.real_world_problems.urban_planning.envs import city_config
 from planiverse.problems.real_world_problems.urban_planning.utils.config import Config
+
+
+# Now we have a question? what is this plan client?
+
+from enum import Enum
+
+def set_land_use_array_from_dict(land_use_array: np.ndarray, land_use_dict: Dict, land_use_id_map: Dict) -> None:
+    """Fill the land_use_array with the values in the land_use_dict.
+
+    Args:
+      land_use_array: np.ndarray that holds the values of each land use.
+      land_use_dict: dict that holds the required values of each land use.
+      land_use_id_map: dict that maps the land use names to the land use ids.
+    """
+    for land_use, value in land_use_dict.items():
+        land_use_array[land_use_id_map[land_use]] = value
+
+PLAN_ORDER = np.array([city_config.HOSPITAL_L, city_config.SCHOOL, city_config.HOSPITAL_S, city_config.RECREATION, city_config.RESIDENTIAL, city_config.GREEN_L, city_config.OFFICE, city_config.BUSINESS, city_config.GREEN_S], dtype=np.int32)
+
+class StateStage(Enum):
+    LAND_USE = 1
+    ROAD = 2
+    DONE = 3
+
+class PlanGDF:
+    def __init__(self, gdf, objectives, required_plan_ratio):
+        self.objectives = objectives
+        self.required_plan_ratio = required_plan_ratio
+        self._init_gdf = gdf['gdf'][:]
+        self.gdf       = gdf['gdf'][:] # create a shollow copy.
+        self.concept   = self.gdf.get('concept', list())
+        self.rule_constraints = self.gdf.get('rule_constraints', False)
+        
+        self.cell_edge_length = objectives['community']['cell_edge_length']
+        self.cell_area        = self.cell_edge_length ** 2
+
+        self.rect = momepy.Rectangularity(self.gdf[self.gdf.geom_type == 'Polygon']).series
+        self.eqi  = momepy.EquivalentRectangularIndex(self.gdf[self.gdf.geom_type == 'Polygon']).series
+        self.sc   = momepy.SquareCompactness(self.gdf[self.gdf.geom_type == 'Polygon']).series
+
+        self.__init_stats__()
+
+        pass
+
+    def __init_stats__(self):
+        gdf = self.gdf[self.gdf['existence'] == True]
+        total_area = gdf.area.sum()*self.cell_area
+        outside_area = gdf[gdf['type'] == city_config.OUTSIDE].area.sum()*self.cell_area
+        self._community_area = total_area - outside_area
+
+        self._required_plan_area = self._community_area * self.required_plan_ratio
+        self._plan_area = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        self._plan_ratio = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        self._plan_count = np.zeros(city_config.NUM_TYPES, dtype=np.int32)
+        self.__compute_stats__()
+    
+    def __compute_stats__(self) -> None:
+        """Update statistics of the plan."""
+        gdf = self.gdf[self.gdf['existence'] == True]
+        for land_use in city_config.LAND_USE_ID:
+            area = gdf[gdf['type'] == land_use].area.sum() * self.cell_area
+            self._plan_area[land_use] = area
+            self._plan_ratio[land_use] = area / self._community_area
+            self._plan_count[land_use] = len(gdf[gdf['type'] == land_use])
+    
+    def __update_stats__(self, land_use_type: int, land_use_area: float) -> None:
+        """Update statistics of the plan given new land_use.
+
+        Args:
+            land_use_type: land use type of the new land use.
+            land_use_area: area of the new land use.
+        """
+        self._plan_count[land_use_type] += 1
+        self._plan_area[land_use_type] += land_use_area
+        self._plan_ratio[land_use_type] = self._plan_area[land_use_type]/self._community_area
+        self._plan_area[city_config.FEASIBLE] -= land_use_area
+        self._plan_ratio[city_config.FEASIBLE] = self._plan_area[city_config.FEASIBLE]/self._community_area
+
+class CityState:
+    # The state needs to provide the following information:
+    # 1. The current stage.
+    # 2. Threshold for land_use steps.
+    # 3. Threshold for road steps.
+    # 4. Reward function. ???? 
+    # 5. Plan client. # (To much work to refactor for now.)
+
+    def __init__(self, **kwargs):
+        if 'state' in kwargs:
+            self.__init_from_state__(kwargs['state'])
+        else:
+            self.current_stage = StateStage.LAND_USE
+            self.__init_objectives__(kwargs['cfg']['objectives'])
+            self.__init_constraints__(kwargs['cfg']['objectives']['constraints'])
+            self.plan_gdf = PlanGDF(kwargs['cfg']['init_plan'], kwargs['cfg']['objectives'], self._required_plan_ratio) # restore plans
+
+        pass
+
+    def __init_objectives__(self, objectives):
+        self._grid_cols = objectives['community']['grid_cols']
+        self._grid_rows = objectives['community']['grid_rows']
+        self._cell_edge_length = objectives['community']['cell_edge_length']
+        self._cell_area = self._cell_edge_length ** 2
+
+        land_use_types_to_plan = objectives['objectives']['land_use']
+        land_use_to_plan = np.array([city_config.LAND_USE_ID_MAP[land_use] for land_use in land_use_types_to_plan], dtype=np.int32)
+        
+        custom_planning_order = objectives['objectives'].get('custom_planning_order', False)
+        self._plan_order = land_use_to_plan if custom_planning_order else PLAN_ORDER[np.isin(PLAN_ORDER, land_use_to_plan)]
+        
+        self._required_plan_ratio = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        required_plan_ratio = objectives['objectives']['ratio']
+        set_land_use_array_from_dict(self._required_plan_ratio, required_plan_ratio, city_config.LAND_USE_ID_MAP)
+
+        self._required_plan_count = np.zeros(city_config.NUM_TYPES, dtype=np.int32)
+        required_plan_count = objectives['objectives']['count']
+        set_land_use_array_from_dict(self._required_plan_count, required_plan_count, city_config.LAND_USE_ID_MAP)
+    
+    def __init_constraints__(self, constraints):
+        
+        self._required_max_area = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        required_max_area = constraints['max_area']
+        set_land_use_array_from_dict(self._required_max_area, required_max_area, city_config.LAND_USE_ID_MAP)
+
+        self._required_min_area = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        required_min_area = constraints['min_area']
+        set_land_use_array_from_dict(self._required_min_area, required_min_area, city_config.LAND_USE_ID_MAP)
+
+        self._required_max_edge_length = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        required_max_edge_length = constraints['max_edge_length']
+        set_land_use_array_from_dict(self._required_max_edge_length, required_max_edge_length, city_config.LAND_USE_ID_MAP)
+
+        self._required_min_edge_length = np.zeros(city_config.NUM_TYPES, dtype=np.float32)
+        required_min_edge_length = constraints['min_edge_length']
+        set_land_use_array_from_dict(self._required_min_edge_length, required_min_edge_length, city_config.LAND_USE_ID_MAP)
+        
+        self._common_max_area = self._required_max_area[self._plan_order].max()
+        self._common_min_area = self._required_min_area[self._plan_order].min()
+        self._common_max_edge_length = self._required_max_edge_length[self._plan_order].max()
+        self._common_min_edge_length = self._required_min_edge_length[self._plan_order].min()
+        self._min_edge_grid = round(self._common_min_edge_length / self._cell_edge_length)
+        self._max_edge_grid = round(self._common_max_edge_length / self._cell_edge_length)
+
+
+    def __update__(self):
+
+        # We need to update the state based on 
+        pass
+    
+    def __use_land__(self, action):
+        pass
+
+    def __build_road__(self, action):
+        pass
+
+    def __done__(self):
+        pass
+
+    def __init_from_state__(self, _state):
+        pass
+
+    def apply_action(self, action):
+        match self.current_stage:
+            case StateStage.LAND_USE:
+                self.__use_land__(action)
+            case StateStage.ROAD:
+                self.__build_road__(action)
+            case StateStage.DONE:
+                self.__done__()
+        self.__update__()
+    
+
 
 class InfeasibleActionError(ValueError):
     """An infeasible action were passed to the env."""
@@ -123,10 +298,17 @@ class CityEnv:
                  reward_info_fn:
                  Callable[[PlanClient, Text, float, float, float, bool], Tuple[float, Dict]] = reward_info_function):
         self.cfg = cfg
-        self._is_eval = is_eval
         self._frozen = False
         self._action_history = []
-        self._plc = PlanClient(cfg.objectives_plan, cfg.init_plan)
+
+        # for development only.
+        obj_filepath = '/Users/mustafafaisal/Developer/Planiverse/planiverse/problems/real_world_problems/urban_planning/cfg/test_data/synthetic/objectives_grid.yaml'
+        objectives_plan = yaml.safe_load(open(obj_filepath, 'r'))
+
+        init_plan_filepath = '/Users/mustafafaisal/Developer/Planiverse/planiverse/problems/real_world_problems/urban_planning/cfg/test_data/synthetic/init_plan_grid.pickle'
+        init_plan = pickle.load(open(init_plan_filepath, 'rb'))
+
+        self._plc = PlanClient(objectives_plan, init_plan)
 
         self._reward_info_fn = partial(reward_info_fn,
                                        road_network_weight=cfg.reward_specs.get('road_network_weight', 1.0),
@@ -247,18 +429,6 @@ class CityEnv:
             'life_circle_info': land_use_info['life_circle_info']
         }
         return reward, info
-
-    def eval(self):
-        """
-        Set the environment to eval mode.
-        """
-        self._is_eval = True
-
-    def train(self):
-        """
-        Set the environment to training mode.
-        """
-        self._is_eval = False
 
     def get_numerical_feature_size(self):
         """
@@ -514,9 +684,6 @@ class CityEnv:
                 info['concept_info'] = self._cached_concept_info
             else:
                 self.build_all_road()
-            if self._is_eval:
-                info['gdf'] = self._plc.get_gdf()
-                info['land_use_gdf'] = self._cached_land_use_gdf
 
         return self._get_obs(), reward, self._done, info
 

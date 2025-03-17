@@ -36,17 +36,15 @@ class PlanClient(object):
     DEG_TOL = 1
     SNAP_EPSILON = 1
 
-    def __init__(self, objectives_plan_file: Text, init_plan_file: Text) -> None:
+    def __init__(self, objectives: object, init_plan: object) -> None:
         """Creates a PlanClient client object.
 
         Args:
             objectives_plan_file: Path to the file of community objectives.
             init_plan_file: Path to the file of initial plan.
         """
-        file_path = 'cfg/**/{}.yaml'.format(objectives_plan_file)
-        self.objectives = load_yaml(file_path)
-        file_path = 'cfg/**/{}.pickle'.format(init_plan_file)
-        self.init_plan = load_pickle(file_path)
+        self.objectives = objectives
+        self.init_plan  = init_plan
         self.init_objectives()
         self.init_constraints()
         self.restore_plan()
@@ -224,8 +222,7 @@ class PlanClient(object):
 
     def fill_leftover(self) -> None:
         """Fill leftover space."""
-        self._gdf.loc[(self._gdf['type'] == city_config.FEASIBLE) & (self._gdf['existence'] == True),
-                      'type'] = city_config.GREEN_S
+        self._gdf.loc[(self._gdf['type'] == city_config.FEASIBLE) & (self._gdf['existence'] == True), 'type'] = city_config.GREEN_S
 
     def snapshot(self):
         """Snapshot the gdf."""
@@ -234,8 +231,7 @@ class PlanClient(object):
 
     def build_all_road(self):
         """Build all road"""
-        self._gdf.loc[(self._gdf['type'] == city_config.BOUNDARY) & (self._gdf['existence'] == True),
-                      'type'] = city_config.ROAD
+        self._gdf.loc[(self._gdf['type'] == city_config.BOUNDARY) & (self._gdf['existence'] == True), 'type'] = city_config.ROAD
 
     def is_land_use_done(self) -> bool:
         """Check if the land_use planning is done."""
@@ -264,7 +260,9 @@ class PlanClient(object):
         return gdf, graph
 
     def _filter_block_by_rule(self,
-                              gdf: GeoDataFrame, feasible_blocks_id: np.ndarray, land_use_type: int) -> np.ndarray:
+                              gdf: GeoDataFrame, 
+                              feasible_blocks_id: np.ndarray, 
+                              land_use_type: int) -> np.ndarray:
         """Filter feasible blocks by rule.
 
         Args:
