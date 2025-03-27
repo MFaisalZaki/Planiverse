@@ -115,7 +115,7 @@ class NASimState(State):
         # Check which hosts are compromised.
         for addr in self.network.sensitive_addresses:
             if self.host_has_access(addr,AccessLevel.ROOT):
-                self.literals |= frozenset([f'compromised({self.host_num_map[addr]})'])
+                self.literals |= frozenset([f'compromised_host_{self.host_num_map[addr]}'])
 
 class EnvNASim(RealWorldProblem):
     def __init__(self, scenario_name=None, scenario_yaml=None):
