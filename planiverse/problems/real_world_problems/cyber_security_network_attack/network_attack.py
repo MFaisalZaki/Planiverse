@@ -6,10 +6,6 @@ from nasim.envs.state import State
 
 from planiverse.problems.real_world_problems.base import RealWorldProblem
 
-
-
-
-
 setattr(Exploit, "__hash__", lambda self: hash(str(self)))
 setattr(PrivilegeEscalation, "__hash__", lambda self: hash(str(self)))
 setattr(ServiceScan, "__hash__", lambda self: hash(str(self)))
@@ -21,12 +17,7 @@ setattr(NoOp, "__hash__", lambda self: hash(str(self)))
 class NASimState(State):
     def __init__(self, state):
         super().__init__(state.tensor, state.host_num_map)
-        self.literals = frozenset([])
-        self.__update__()
-
-    def __update__(self):
-        pass
-    
+        self.literals = frozenset([f'at({x},{y},{val})' for x, row in enumerate(self.tensor) for y, val in enumerate(row)])             
 
 class EnvNASim(RealWorldProblem):
     def __init__(self, scenario_name=None, scenario_yaml=None):
@@ -81,4 +72,11 @@ class EnvNASim(RealWorldProblem):
         return ret
     
     def is_terminal(self, state):
-        return False # there are no terminal states in this environment.
+        return False # there are stuck states in this environment.
+    
+    def simulate(self, plan):
+        state, _ = self.reset()
+        ret_states_trace = [state]
+        for action in plan:
+            ret_states_trace.append(NASimState(self.env.generative_step(ret_states_trace[-1], action)[0]))
+        return ret_states_trace
