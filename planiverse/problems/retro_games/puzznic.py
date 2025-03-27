@@ -1,4 +1,4 @@
-
+from itertools import chain
 from copy import deepcopy
 from collections import defaultdict
 from typing import Tuple, List
@@ -87,10 +87,12 @@ class PuzznicState:
         # the representation is simple for now,
         self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
         
-        for box in filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]):
+        # for box in filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]):
+        for box in filter(lambda o: isinstance(o, Box), chain.from_iterable(self.grid)):
             self.literals |= frozenset([f"at(box-{box.letter}, {box.pos[0]}, {box.pos[1]})"])
         
-        boxes_in_grid = set(map(lambda e:e.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])))
+        # boxes_in_grid = set(map(lambda e:e.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])))
+        boxes_in_grid = set(map(lambda e:e.letter, filter(lambda o: isinstance(o, Box), chain.from_iterable(self.grid))))
         for cleared_box in self.cleared_boxes:
             self.literals |= frozenset([f"cleared(box-{cleared_box.letter}, {cleared_box.pos[0]}, {cleared_box.pos[1]})"])
             if not cleared_box.letter in boxes_in_grid:
@@ -130,12 +132,14 @@ class PuzznicState:
 
     def is_goal(self):
         # check that we dont have any boxes left.
-        return not any([isinstance(item, Box) for sublist in self.grid for item in sublist])
+        # return not any([isinstance(item, Box) for sublist in self.grid for item in sublist])
+        return not any([isinstance(item, Box) for item in chain.from_iterable(self.grid)])
     
     def is_terminal(self):
         # check if there are no pairs of boxes left.
         letter_counter = defaultdict(int)
-        for letter in map(lambda o: o.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])):
+        # for letter in map(lambda o: o.letter, filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist])):
+        for letter in map(lambda o: o.letter, filter(lambda o: isinstance(o, Box), chain.from_iterable(self.grid))):
             letter_counter[letter] += 1
         return 1 in set(letter_counter.values())
 
@@ -291,8 +295,10 @@ class PuzznicGame(RetroGame):
         return matched_successor_state
 
     def _compute_score_(self, newgrid, oldgrid):
-        newgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in newgrid for item in sublist]))
-        oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in oldgrid for item in sublist]))
+        # newgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in newgrid for item in sublist]))
+        # oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in oldgrid for item in sublist]))
+        newgrid_boxes = set(filter(lambda o: isinstance(o, Box), chain.from_iterable(newgrid)))
+        oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), chain.from_iterable(oldgrid)))
         removed_boxes = (oldgrid_boxes - newgrid_boxes).union(newgrid_boxes - oldgrid_boxes)
 
         # scoring logic (assumed)
