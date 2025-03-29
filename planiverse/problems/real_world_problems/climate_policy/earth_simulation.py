@@ -46,6 +46,8 @@ Parameters (mainly Nitzbon et al. 2016 )
 import numpy as np
 from scipy.integrate import odeint
 
+from planiverse.problems.real_world_problems.base import RealWorldProblem
+
 default_simulation_parameters = dict(
     Sigma = 1.5 * 1e8,
     Cstar=5500,
@@ -130,7 +132,7 @@ class WorldAction:
         # [2]: 'NP'
         self.action = action
 
-class WorldSimulatorEnv:
+class WorldSimulatorEnv(RealWorldProblem):
     
     def __init__(self, simulation_parameters=default_simulation_parameters, initial_state_params=default_state_parameters, specs=[]):
         self.t                     = None
@@ -362,9 +364,9 @@ class WorldSimulatorEnv:
     
     def is_terminal(self, state):
         L,A,G,T,P,K,S = state.state
-        Leff=max(L-self.simulation_parameters['L0'], 0) if state.action[-1] else L
+        Leff=max(L-self.simulation_parameters['L0'], 0) if state.action.action[-1] else L
         W=self.direct_W(Leff, G, P, K, S)
-        return not (A > self.A_PB or W < self.W_PB or P<self.P_PB)
+        return (A > self.A_PB or W < self.W_PB or P<self.P_PB)
     
     def simulate(self, plan):
         state, _ = self.reset()
