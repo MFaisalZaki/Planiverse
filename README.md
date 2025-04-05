@@ -12,3 +12,5 @@ Crafting desirable climate trajectories with RL explored
 socio-environmental simulations
 
 pyDRLinWESM
+
+https://github.com/UNH-Research-Projects/rl_epidemic_control
