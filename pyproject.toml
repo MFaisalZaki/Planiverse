@@ -17,8 +17,7 @@ dependencies = [
     "python-nmap (>=0.7.1)",
     "chex (>=0.1.89)",
     "flax (>=0.10.4)",
-    "jaxmarl (>=0.0.7)",
-    "sustaingym @ git+https://github.com/chrisyeh96/sustaingym.git"
+    "jaxmarl (>=0.0.7)"
 ]
 
 
