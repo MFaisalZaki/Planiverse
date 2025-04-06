@@ -17,7 +17,9 @@ dependencies = [
     "python-nmap (>=0.7.1)",
     "chex (>=0.1.89)",
     "flax (>=0.10.4)",
-    "jaxmarl (>=0.0.7)"
+    "jaxmarl (>=0.0.7)",
+    "dill (>=0.3.9)",
+    "numba (>=0.61.0)"
 ]
 
 
