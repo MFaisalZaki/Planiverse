@@ -1,202 +1,127 @@
-import gym
-from gym import spaces
-import copy
+
+
+import os
+import json
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from itertools import chain
-
+from gym import spaces
+from planiverse.problems.real_world_problems.epidemic_control.epipolicy.core.epidemic import construct_epidemic
+from planiverse.problems.real_world_problems.epidemic_control.epipolicy.obj.act import construct_act, get_normalized_action
 from planiverse.problems.real_world_problems.base import RealWorldProblem
-from .create_players import CreatePlayers
 
-sns.set_style("whitegrid")
+PERIOD = 7
 
-class PandemicState:
-    def __init__(self, players_lattice, pandemic_length):
-        self.players_lattice = players_lattice
-        self.pandemic_length = pandemic_length
+class EpiState:
+    def __init__(self, state, depth):
+        self.state = state
+        self.depth = depth
         self.literals = frozenset([])
         self.__update__()
 
     def __update__(self):
-        self.literals = frozenset(chain.from_iterable([[f'at({x},{y},{val})' for y,val in enumerate(row)] for x, row in enumerate(self.players_lattice.build_matrix_strategy(self.pandemic_length))]))
-        pass
+        # Convert the np.array into at(x,y,val) literals.
+        self.literals = frozenset([])
 
 
-class PandemicEnv(RealWorldProblem):
-    """Custom environment for simulating a pandemic.
-
-    This environment follows the gym interface and allows the user to
-    control the spread of a pandemic by adjusting the contact rate.
-
-    Parameters:
-    m (int): The number of rows in the lattice.
-    n (int): The number of columns in the lattice.
-    weight_vac (float): The weight for the vaccine strategy.
-    weight_inf (float): The weight for the infection strategy.
-    weight_recov (float): The weight for the recovery strategy.
-    seed_strategy (int): The initial strategy for the seed player.
-    cost_vaccine (float): The cost of using the vaccine strategy.
-    cost_infection (float): The cost of using the infection strategy.
-    cost_recover (float): The cost of using the recovery strategy.
-    lockdown_cost (float): The cost of implementing a lockdown.
-
-    """
-
-    metadata = {"render.modes": ["human"]}
+class EpiEnv(RealWorldProblem):
+    """Custom Environment that follows gym interface"""
+    metadata = {'render.modes': ['human']}
 
     def __init__(self):
-        super().__init__("pandemic")
-        
-        # Define action and observation space
-        self.scenario          = None
-        self.action_space      = None
-        self.observation_space = None
-        self.players_lattice   = None
-        self.iteration         = 1
-        self.pandemic_length   = None
+        super().__init__("EpiEnv")
 
-        self.infected_num_list, self.vaccinated_num_list, self.recovered_num_list = (
-            [],
-            [],
-            [],
-        )
-        self.reward_list, self.actions_taken = [], []
-        self.avg_infected_epi, self.avg_vaccinated_epi, self.avg_recovered_epi = (
-            [],
-            [],
-            [],
-        )
-    
     def fix_index(self, index):
-        self.scenarios = {
-            0: {'m' : 50, 'n' : 50, 'weight_vac' : 0.05, 'weight_inf' : 0.1, 'weight_recov' : 0.5, 'seed_strategy': 4, 'cost_vaccine' : 10, 'cost_infection': 1000, 'cost_recover': 0.1, 'lockdown_cost': 10000, 'transmission_rate': 0.5, 'sensitivity': 3, 'reward_factor': 2}
-        }
-        assert index in self.scenarios, f"Scenario {index} not found."
-        self.scenario = self.scenarios[index]
+        #  list all json files in the directory
+        # read all scenarios from json files
+        index_scenario_map = {}
+        for idx, json_file in enumerate([os.path.join(os.path.dirname(__file__), 'jsons', f) for f in os.listdir(os.path.join(os.path.dirname(__file__),'jsons')) if f.endswith('.json')]):
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+            index_scenario_map[idx] = data
+        assert index in index_scenario_map, f"Scenario {index} not found in index_scenario_map"
+        self.scenario = index_scenario_map[index]
 
+    def __reset__(self, session, vac_starts):
+        self.epi = construct_epidemic(session)
+        total_population = np.sum(self.epi.static.default_state.obs.current_comp)
+        obs_count = self.epi.static.compartment_count * self.epi.static.locale_count * self.epi.static.group_count
+        action_count = 0
+        action_param_count =  0
+        for itv in self.epi.static.interventions:
+            if not itv.is_cost:
+                action_count += 1
+                action_param_count += len(itv.cp_list)
+        self.act_domain = np.zeros((action_param_count, 2), dtype=np.float32)
+        index = 0
+        for itv in self.epi.static.interventions:
+            if not itv.is_cost:
+                for cp in itv.cp_list:
+                    self.act_domain[index, 0] = cp.min_value
+                    self.act_domain[index, 1] = cp.max_value
+                    index += 1
+        # Define action and observation space
+        # They must be gym.spaces objects
+        # Example when using discrete actions:
+        self.action_space = spaces.Box(low=0, high=1, shape=(action_count,), dtype=np.float32)
+        # Example for using image as input:
+        self.observation_space = spaces.Box(low=0, high=total_population, shape=(obs_count,), dtype=np.float32)
+
+        self.time_passed = 0 # To keep track of how many days have passed 
+        self.vac_starts = vac_starts # number of days to prepare a vaccination / make it available 
+    
     def reset(self):
-        """Reset the environment and return the initial state.
-
-        Returns:
-        np.ndarray: An m x n array representing the initial state of the lattice.
-        """
-        self.pandemic_length   = 0
-        assert self.scenario is not None, "Scenario is not set."
-        self.action_space      = spaces.Discrete(2)
-        self.actionslist       = list(range(self.action_space.n))
-        self.observation_space = spaces.Box(low=0, high=3, shape=(self.scenario['m'], self.scenario['n']), dtype=np.int8)
-        
-        players_lattice        = CreatePlayers(**self.scenario)
-        players_lattice.get_strategy() # we need to have a fixed strategy for the players not random.
-        players_lattice.state_zero()
-
-        self.state             = PandemicState(players_lattice, 0)
-        self.pandemic_length = 0
-        return self.state, {}
+        self.__reset__(self.scenario, 10)
+        state = self.epi.reset()
+        return EpiState(state, 0), {}
 
     def is_goal(self, state):
-        return state.players_lattice.count_num_strategy(2) <= 0
-    
-    def is_terminal(self, state):
-        # I guess a terminal state would be all players are infected or all players are recovered.
-        return False # there are stuck states in this environment.
+        return state.depth >= self.epi.static.schedule.horizon
 
+    def is_terminal(self, state):
+        return False # there are stuck states in this environment.
+    
     def successors(self, state):
         ret = []
         for action in self.actionslist:
-            successor_state = self.generative_step(state, action)
+            successor_state = self.env.generative_step(state, action)[0]
             if successor_state == state: continue
-            ret.append((action, successor_state))
+            ret.append((action, NASimState(successor_state, self.env.network)))
         return ret
+    
 
-    def generative_step(self, state, action):
-        contact_rate = self.take_action(action)
-        successor_state = copy.copy(state)
-        successor_state.pandemic_length += self.iteration
-        successor_state.players_lattice.update_lattice(self.iteration, contact_rate, successor_state.pandemic_length)
-        return successor_state
 
     def step(self, action):
-        """Execute one time step within the environment.
+        if self.time_passed < self.vac_starts: 
+            action[0] = 0 
+        # print("================================================================")
+        # print("time elapsed: ", self.time_passed) 
+        # print("action: ", action) 
+        # print("================================================================")
 
-        Parameters:
-        action (int): The action to be taken.
-            0: Increase contact rate.
-            1: Decrease contact rate.
+        self.time_passed += PERIOD 
 
-        Returns:
-        tuple: A tuple containing the observation, reward, done flag, and metadata.
-        """
 
-        # iteration = 1
-        # contact_rate = self.take_action(action)
-        pandemic_time = self.pandemic_length
-        self.players_lattice.update_lattice(iteration, contact_rate, pandemic_time)
-        state = self.players_lattice.build_matrix_strategy(pandemic_time)
-        self.pandemic_length += iteration
+        expanded_action = np.zeros(len(self.act_domain), dtype=np.float32)
+        index = 0
+        for i in range(len(self.act_domain)):
+            if self.act_domain[i, 0] == self.act_domain[i, 1]:
+                expanded_action[i] = self.act_domain[i, 0]
+            else:
+                expanded_action[i] = action[index]
+                index += 1
 
-        # actions
-        self.actions_taken.append(action)
-        num_infected = self.players_lattice.count_num_strategy(2)
+        epi_action = []
+        index = 0
+        for itv_id, itv in enumerate(self.epi.static.interventions):
+            if not itv.is_cost:
+                epi_action.append(construct_act(itv_id, expanded_action[index:index+len(itv.cp_list)]))
+                index += len(itv.cp_list)
 
-        # print("Infections for step {}: {} ".format(self.pandemic_length, num_infected))
-        self.infected_num_list.append(num_infected)
-        self.vaccinated_num_list.append(self.players_lattice.count_num_strategy(1))
-        self.recovered_num_list.append(self.players_lattice.count_num_strategy(3))
+        total_r = 0
+        for i in range(PERIOD):
+            state, r, done = self.epi.step(epi_action)
+            total_r += r
+            if done:
+                self.time_passed = 0 
+                break
+        return state.obs.current_comp.flatten(), total_r, done, dict()
 
-        reward = self.players_lattice.calc_reward(
-            contact_rate, self.pandemic_length, self.reward_factor
-        )
-        self.reward_list.append(reward)
-
-        # if self.pandemic_length >= 100:
-        # if self.players_lattice.count_num_strategy(2) <= 0.01*(self.m*self.n):
-        if num_infected <= 0:
-            # # plot charts showing change in values as the episode runs
-            # if self.plot_title is not None:
-            #     self.players_lattice.plot_episode_changes(
-            #         self.plot_title,
-            #         self.pandemic_length,
-            #         self.infected_num_list,
-            #         self.vaccinated_num_list,
-            #         self.recovered_num_list,
-            #         self.reward_list,
-            #         self.actions_taken
-            #     )
-
-            # reset list values
-            (
-                self.infected_num_list,
-                self.vaccinated_num_list,
-                self.recovered_num_list,
-            ) = ([], [], [])
-            self.reward_list, self.actions_taken = [], []
-
-            done = True
-        else:
-            done = False
-        # obs = np.append(state)
-        # obs = np.append(state, axis=0)
-        obs = state
-
-        return obs, reward, done, {}
-
-    def take_action(self, action) -> float:
-        """Adjust the contact rate based on the given action.
-
-        Parameters:
-        action (int): The action to be taken.
-            0: Increase contact rate.
-            1: Decrease contact rate.
-
-        Returns:
-        float: The new contact rate.
-        """
-        return 1.0 if action == 0 else 0.5
-
-    def render(self, mode="human", close=False):
-        """
-        Render the current state of the lattice.
-        """
-        self.players_lattice.draw_matrix_strategy(-1)
