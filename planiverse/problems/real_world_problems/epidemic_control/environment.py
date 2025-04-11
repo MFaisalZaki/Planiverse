@@ -22,6 +22,9 @@ class EpiAction:
         self.max_value     = self.cpv_list[2]
         self.itv_details   = intervention_details
     
+    def __str__(self):
+        return f"{self.name} = {self.cpv_list[0]}"
+    
     def create_action(self, value):
         ret_action = EpiAction(self.index, self.itv_details)
         ret_action.cpv_list[0] = value
@@ -67,15 +70,16 @@ class EpiEnv(RealWorldProblem):
         self.interventionslist = [] #list(map(lambda i: EpiAction(i[0], i[1]), enumerate(filter(lambda itv: not itv.is_cost, self.epi.static.interventions))))
         self.costs             = [] #list(map(lambda i: EpiCost(i[0], i[1]), enumerate(filter(lambda itv: itv.is_cost, self.epi.static.interventions))))
         self.interventions     = [] #list(chain.from_iterable([[itv.create_action(i) for i in np.linspace(itv.min_value, itv.max_value, 3)] for itv in self.interventionslist]))
-        
+        interverntionnames     = set()
         for idx, itv in enumerate(self.epi.static.interventions):
             if itv.is_cost:
                 self.costs += [EpiCost(idx, itv)]
             else:
                 act = EpiAction(idx, itv)
-                self.interventions += [act.create_action(i) for i in np.linspace(act.min_value, act.max_value, 3)]
+                self.interventions.append([act.create_action(i) for i in np.linspace(act.min_value, act.max_value, 3)])
+                interverntionnames.add(act.name)
 
-        self.time_passed = 0 # To keep track of how many days have passed 
+        self.interventions = list(chain.from_iterable(map(lambda a: list(a), product(*self.interventions))) if len(interverntionnames) == 1 else map(lambda a: list(a), product(*self.interventions)))
         self.vac_starts = vac_starts # number of days to prepare a vaccination / make it available 
     
     def __perform_action__(self, state, action):
@@ -101,16 +105,18 @@ class EpiEnv(RealWorldProblem):
         self.scenario = index_scenario_map[index]
 
     def is_goal(self, state):
+        # I guess a goal state should be if there are no infected people.
         return state.depth >= self.epi.static.schedule.horizon
 
     def is_terminal(self, state):
+        # So if all ppls are infected then this is a terminal state.
         return False # there are stuck states in this environment.
     
     def successors(self, state):
         ret = []
         for action in self.interventions:
-            successor_state = self.__perform_action__(state, [action] + self.costs)
+            successor_state = self.__perform_action__(state, action + self.costs)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH
-            ret.append((action, successor_state))
+            ret.append((' ^ '.join(map(str, action)), successor_state))
         return ret
