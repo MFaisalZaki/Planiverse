@@ -65,6 +65,7 @@ class EpiEnv(RealWorldProblem):
         super().__init__("EpiEnv")
 
     def __reset__(self, session, vac_starts):
+        self.itv_split = 2
         self.epi = construct_epidemic(session)
         
         self.interventionslist = [] #list(map(lambda i: EpiAction(i[0], i[1]), enumerate(filter(lambda itv: not itv.is_cost, self.epi.static.interventions))))
@@ -76,7 +77,7 @@ class EpiEnv(RealWorldProblem):
                 self.costs += [EpiCost(idx, itv)]
             else:
                 act = EpiAction(idx, itv)
-                self.interventions.append([act.create_action(i) for i in np.linspace(act.min_value, act.max_value, 3)])
+                self.interventions.append([act.create_action(i) for i in np.linspace(act.min_value, act.max_value, self.itv_split)])
                 interverntionnames.add(act.name)
 
         self.interventions = list(chain.from_iterable(map(lambda a: list(a), product(*self.interventions))) if len(interverntionnames) == 1 else map(lambda a: list(a), product(*self.interventions)))
