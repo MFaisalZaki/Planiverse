@@ -16,7 +16,7 @@ class EpiAction:
         self.name          = intervention_details.name
         self.index         = index
         self.locale_regex  = '*' 
-        self.cpv_list      = np.array([i.default_value for i in intervention_details.cp_list], dtype=np.float32)
+        self.cpv_list      = np.array([round(i.default_value,2) for i in intervention_details.cp_list], dtype=np.float32)
         self.default_value = self.cpv_list[0]
         self.min_value     = self.cpv_list[1]
         self.max_value     = self.cpv_list[2]
@@ -36,7 +36,7 @@ class EpiCost:
         self.name          = intervention_details.name
         self.index         = index
         self.locale_regex  = '*' 
-        self.cpv_list      = np.array([i.default_value for i in intervention_details.cp_list], dtype=np.float32)
+        self.cpv_list      = np.array([round(i.default_value,2) for i in intervention_details.cp_list], dtype=np.float32)
         self.itv_details   = intervention_details
 
 class EpiState:
@@ -50,12 +50,16 @@ class EpiState:
     def __update__(self):
         self.literals = frozenset([f'depth({self.depth})'])
         current_comp = self.state.obs.current_comp
-        kpi_values = [(self.static.get_property_name('compartment', i), np.sum(current_comp[i])) for i in range(self.static.compartment_count)]
-        self.literals |= frozenset(map(lambda kv: f'{kv[0].lower()}({str(kv[1]).replace(".","_").replace("+","_plus_").replace("-","minus")})', kpi_values))
-        pass
+        kpi_values = [(self.static.get_property_name('compartment', i), str(int(np.sum(current_comp[i])))) for i in range(self.static.compartment_count)]
+        self.literals |= frozenset(map(lambda kv: f'{kv[0].lower()}({kv[1]})', kpi_values))
     
     def __eq__(self, other):
         return self.state == other.state and self.depth == other.depth
+    
+    def __repr__(self):
+        sir_model_value = {self.static.get_property_name('compartment', i): str(int(np.sum(self.state.obs.current_comp[i]))) for i in range(self.static.compartment_count)}
+        return f"EpiState(depth={self.depth}, {', '.join(map(lambda kv: f'{kv[0]}={kv[1]}', sir_model_value.items()))})"
+    
 
 class EpiEnv(RealWorldProblem):
     """Custom Environment that follows gym interface"""
@@ -77,7 +81,7 @@ class EpiEnv(RealWorldProblem):
                 self.costs += [EpiCost(idx, itv)]
             else:
                 act = EpiAction(idx, itv)
-                self.interventions.append([act.create_action(i) for i in np.linspace(act.min_value, act.max_value, self.itv_split)])
+                self.interventions.append([act.create_action(round(i,2)) for i in np.linspace(act.min_value, act.max_value, self.itv_split)])
                 interverntionnames.add(act.name)
 
         self.interventions = list(chain.from_iterable(map(lambda a: list(a), product(*self.interventions))) if len(interverntionnames) == 1 else map(lambda a: list(a), product(*self.interventions)))
@@ -91,8 +95,8 @@ class EpiEnv(RealWorldProblem):
 
     def reset(self):
         self.__reset__(self.scenario, 10)
-        state = self.epi.reset()
-        return EpiState(state, 0, self.epi.static), {}
+        self.init_state = EpiState(self.epi.reset(), 0, self.epi.static)
+        return self.init_state, {}
 
     def fix_index(self, index):
         #  list all json files in the directory
@@ -106,10 +110,14 @@ class EpiEnv(RealWorldProblem):
         self.scenario = index_scenario_map[index]
 
     def is_goal(self, state):
+        sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
         # I guess a goal state should be if there are no infected people.
-        return state.depth >= self.epi.static.schedule.horizon
+        return sir_model_value['I'] == 0.0
 
     def is_terminal(self, state):
+        # A better terminal state is the tree searched for 356 days.
+        return state.depth >= 356
+        sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
         # So if all ppls are infected then this is a terminal state.
         return False # there are stuck states in this environment.
     
