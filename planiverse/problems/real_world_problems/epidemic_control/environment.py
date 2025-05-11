@@ -44,6 +44,9 @@ class EpiCost:
         self.locale_regex  = '*' 
         self.cpv_list      = np.array([round(i.default_value,2) for i in intervention_details.cp_list], dtype=np.float32)
         self.itv_details   = intervention_details
+    def __str__(self):
+        return f"{self.name} = {self.cpv_list[0]}"
+
 
 class EpiState:
     def __init__(self, state, depth, static):
@@ -52,24 +55,37 @@ class EpiState:
         self.static = static
         self.literals = frozenset([])
         self.__update__()
+    
+    def __hash__(self):
+        # Combine the hash of literals and depth for uniqueness
+        return hash((self.literals, self.depth))
 
     def __vectorize__(self):
         return sorted([(self.static.get_property_name('compartment', i), str(int(np.sum(self.state.obs.current_comp[i])))) for i in range(self.static.compartment_count)], key=lambda x: x[0].lower())
 
     def __update__(self):
-        self.literals = frozenset([f'depth({self.depth})'])
+        # self.literals = frozenset([f'depth({self.depth})'])
         current_comp = self.state.obs.current_comp
         kpi_values = [(self.static.get_property_name('compartment', i), str(int(np.sum(current_comp[i])))) for i in range(self.static.compartment_count)]
-        self.literals |= frozenset(map(lambda kv: f'{kv[0].lower()}({kv[1]})', kpi_values))
+        # self.literals |= frozenset(map(lambda kv: f'{kv[0].lower()}({kv[1]})', kpi_values))
+        self.literals = frozenset([' ^ '.join(map(lambda kv: f'{kv[0].lower()}({kv[1]})', kpi_values + [('depth', str(self.depth)), 'hash', str(hash(self))]))])
+        pass
     
-    def __eq__(self, other):
+    def __compute_cosine_similarity__(self, other):
         s1 = np.array(list(map(lambda o:int(o[1]), self.__vectorize__())))
         s2 = np.array(list(map(lambda o:int(o[1]), other.__vectorize__())))
         norm1 = np.linalg.norm(s1)
         norm2 = np.linalg.norm(s2)
         if norm1 == 0 or norm2 == 0: return 0.0  # No similarity if one vector is all zeros
-        sim = np.dot(s1, s2) / (norm1 * norm2)
-        return max(0.0, min(1.0, sim)) >= 0.9
+        return np.dot(s1, s2) / (norm1 * norm2)
+
+    def __eq__(self, other):
+        # return False
+        return self.__compute_cosine_similarity__(other) >= 0.99999999999
+        # If states are not in the same depth then they are not equal.
+        if self.depth != other.depth: return False
+        
+        return max(0.0, min(1.0, self.__compute_cosine_similarity__(other))) >= 0.9
         return self.state == other.state and self.depth == other.depth
     
     def __repr__(self):
@@ -81,11 +97,13 @@ class EpiEnv(RealWorldProblem):
     """Custom Environment that follows gym interface"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self):
+    def __init__(self, delay_vaccination_time, horizon):
         super().__init__("EpiEnv")
+        self.vac_starts = delay_vaccination_time
+        self.horizon = horizon
 
-    def __reset__(self, session, vac_starts):
-        self.itv_split = 2
+    def __reset__(self, session):
+        self.itv_split = 3
 
         # the easiest way is to modify the interventions before creating the pandemic env.
         updated_optimze_interventions = list()
@@ -111,36 +129,55 @@ class EpiEnv(RealWorldProblem):
 
         self.epi = construct_epidemic(session)
                 
-        self.interventionslist = [] #list(map(lambda i: EpiAction(i[0], i[1]), enumerate(filter(lambda itv: not itv.is_cost, self.epi.static.interventions))))
+        # self.interventionslist = [] #list(map(lambda i: EpiAction(i[0], i[1]), enumerate(filter(lambda itv: not itv.is_cost, self.epi.static.interventions))))
         self.costs             = [] #list(map(lambda i: EpiCost(i[0], i[1]), enumerate(filter(lambda itv: itv.is_cost, self.epi.static.interventions))))
         self.interventions     = [] #list(chain.from_iterable([[itv.create_action(i) for i in np.linspace(itv.min_value, itv.max_value, 3)] for itv in self.interventionslist]))
 
         self.costs = list()
         self.costs = list(map(lambda i: EpiCost(i[0], i[1]), filter(lambda itv: itv[-1].is_cost, enumerate(self.epi.static.interventions))))
-        self.interventions = list(map(lambda i: EpiAction(i[0], i[1]), filter(lambda itv: not itv[-1].is_cost, enumerate(self.epi.static.interventions))))
+        self.basic_interventions = list(map(lambda i: EpiAction(i[0], i[1]), filter(lambda itv: not itv[-1].is_cost, enumerate(self.epi.static.interventions))))
+        
+        discretised_actions = [[act.create_action(i) for i in np.linspace(act.min_value, act.max_value, self.itv_split)] for act in self.basic_interventions]
 
-        self.interventions = list(map(list, product(*[[act.create_action(i) for i in np.linspace(act.min_value, act.max_value, self.itv_split)] for act in self.interventions])))
-        self.vac_starts = vac_starts # number of days to prepare a vaccination / make it available 
-    
-    def __disable_vaccination__(self, state, action):
-        if state.depth >= self.vac_starts: return action
+
+
+        # discretised_actions = list(map(list, product(*[[act.create_action(i) for i in np.linspace(act.min_value, act.max_value, self.itv_split)] for act in self.basic_interventions])))
+        # [combinations(self.basic_interventions, r) for r in range(1, len(self.basic_interventions)+1)]
+        pass
+        
+        self.interventions = list(product(*discretised_actions))
+        # for r in range(1, len(self.basic_interventions) + 1):  # r is the size of the combination
+        #     # now for every combination, we need to remove the intervention with zero values
+        #     self.interventions.extend(combinations(self.basic_interventions, r))
+        self.interventions = list(map(list, self.interventions))[1:]
+
+        self.action_str_map = {' ^ '.join(map(str, action)): action + self.costs for action in self.interventions + [self.__disable_vaccination__(0, a) for a in self.interventions][1:]}
+
+
+        # remove the intervention where all values are 0.0
+        # self.interventions = list(filter(lambda itv: not all([i == 0.0 for i in itv.cpv_list]), self.interventions))
+        pass
+        
+    def __disable_vaccination__(self, depth, action):
         vaccination_index = next((i for i in range(len(action)) if action[i].name == 'Vaccination'), None)
+        if depth >= self.vac_starts or vaccination_index is None: return action
         ret_action = action[:]
-        ret_action[vaccination_index].cpv_list[ret_action[vaccination_index].control_parameter_index].default_value = 0.0
+        # remove the vaccination action from the ret_action.
+        ret_action.pop(vaccination_index)
         return ret_action
 
     def __perform_action__(self, state, action):
         # TODO: avoid vaccination if the time did not pass.
-        # action = self.__disable_vaccination__(state, action)
+        # if len(action) == 0: return state
         # print(f"{' ^ '.join(map(str, action))}")
         next_state, delta_parameter = self.epi.get_next_state(state.state, action)
-        for i in range(PERIOD-1):
-            # action = self.__disable_vaccination__(next_state, action)
+        for i in range(1, PERIOD+1):
+            # if len(action) == 0: return EpiState(next_state, state.depth + i, self.epi.static)
             next_state, delta_parameter = self.epi.get_next_state(next_state, action)
         return EpiState(next_state, state.depth + PERIOD, self.epi.static)
 
     def reset(self):
-        self.__reset__(self.scenario, 10)
+        self.__reset__(self.scenario)
         self.init_state = EpiState(self.epi.reset(), 0, self.epi.static)
         return self.init_state, {}
 
@@ -156,26 +193,41 @@ class EpiEnv(RealWorldProblem):
         self.scenario = index_scenario_map[index]
 
     def is_goal(self, state):
-        if state.depth >= 356:
+        if state.depth >= self.horizon:
             pass # for development.
-        return state.depth >= 356
+        return state.depth >= self.horizon
         sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
         # I guess a goal state should be if there are no infected people.
         return sir_model_value['I'] == 0.0
 
     def is_terminal(self, state):
         # A better terminal state is the tree searched for 356 days.
-        return state.depth >= 356
+        return False
         sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
         # So if all ppls are infected then this is a terminal state.
         return False # there are stuck states in this environment.
     
     def successors(self, state):
         ret = []
+        performed_actions = set()
         for idx, action in enumerate(self.interventions):
             # print(f"idx: {idx}")
+            action = self.__disable_vaccination__(state.depth, action)
+            action_str = ' ^ '.join(map(str, action))
+            # check if the action is already performed.
+            if action_str in performed_actions: continue # when vaccination is not applied, then some actions will be repeated.
+            if not any([a.cpv_list[0] != 0.0 for a in action] ): continue # avoid actions with no interventions applied.
             successor_state = self.__perform_action__(state, action + self.costs)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH
-            ret.append((' ^ '.join(map(str, action)), successor_state))
+            ret.append((' ^ '.join(map(str, action + self.costs)), successor_state))
+            performed_actions.add(action_str)
         return ret
+    
+    def simulate(self, plan):
+        state, _ = self.reset()
+        ret_states_trace = [state]
+        for action in plan:
+            state = self.__perform_action__(state, self.action_str_map[' ^ '.join(filter(lambda a: not ('cost' in a.lower()), action.split(' ^ ')))])
+            ret_states_trace.append(state)
+        return ret_states_trace
