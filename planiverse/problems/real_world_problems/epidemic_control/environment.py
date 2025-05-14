@@ -61,7 +61,8 @@ class EpiState:
         return hash((self.literals, self.depth))
 
     def __vectorize__(self):
-        return sorted([(self.static.get_property_name('compartment', i), str(int(np.sum(self.state.obs.current_comp[i])))) for i in range(self.static.compartment_count)], key=lambda x: x[0].lower())
+        return sorted(filter(lambda c: c[0] in ['I', 'R'], [(self.static.get_property_name('compartment', i), int(np.sum(self.state.obs.current_comp[i]))) for i in range(self.static.compartment_count)]), key=lambda x: x[0].lower())
+        return sorted([(self.static.get_property_name('compartment', i), int(np.sum(self.state.obs.current_comp[i]))) for i in range(self.static.compartment_count)], key=lambda x: x[0].lower())
 
     def __update__(self):
         # self.literals = frozenset([f'depth({self.depth})'])
@@ -80,8 +81,19 @@ class EpiState:
         return np.dot(s1, s2) / (norm1 * norm2)
 
     def __eq__(self, other):
-        # return False
-        return self.__compute_cosine_similarity__(other) >= 0.99999999999
+        v1 = np.array(list(map(lambda o: int(o[1]), self.__vectorize__())))
+        v2 = np.array(list(map(lambda o: int(o[1]), other.__vectorize__())))
+
+        # print(f"v1: {v1}, v2: {v2}, diff: {np.linalg.norm(v1 - v2, ord=1) < 50}")
+
+        return np.linalg.norm(v1 - v2, ord=1) < 50
+        return np.linalg.norm(v1 - v2, ord=p)
+        
+        [(i[1]-j[1])**2 for i,j in zip(self.__vectorize__(), other.__vectorize__())]
+        
+        
+        return abs(sum(map(lambda c: c[1], self.__vectorize__())) - sum(map(lambda c: c[1], other.__vectorize__()))) < 10
+        return self.__compute_cosine_similarity__(other) >= 0.99
         # If states are not in the same depth then they are not equal.
         if self.depth != other.depth: return False
         
@@ -150,7 +162,9 @@ class EpiEnv(RealWorldProblem):
         #     # now for every combination, we need to remove the intervention with zero values
         #     self.interventions.extend(combinations(self.basic_interventions, r))
         self.interventions = list(map(list, self.interventions))[1:]
-
+        # make sure that at least 50% of the interventions are not zero.
+        self.interventions = list(filter(lambda i: [a.cpv_list[0] for a in i].count(0) >= len(self.basic_interventions)/2, self.interventions))
+        
         self.action_str_map = {' ^ '.join(map(str, action)): action + self.costs for action in self.interventions + [self.__disable_vaccination__(0, a) for a in self.interventions][1:]}
 
 
@@ -167,13 +181,12 @@ class EpiEnv(RealWorldProblem):
         return ret_action
 
     def __perform_action__(self, state, action):
-        # TODO: avoid vaccination if the time did not pass.
-        # if len(action) == 0: return state
-        # print(f"{' ^ '.join(map(str, action))}")
-        next_state, delta_parameter = self.epi.get_next_state(state.state, action)
+        _execute_action = list(filter(lambda a: isinstance(a, EpiCost) or a.cpv_list[0] > 0, action))
+        # remove the actions with zero values to save computation time.
+        next_state, delta_parameter = self.epi.get_next_state(state.state, _execute_action)
         for i in range(1, PERIOD+1):
             # if len(action) == 0: return EpiState(next_state, state.depth + i, self.epi.static)
-            next_state, delta_parameter = self.epi.get_next_state(next_state, action)
+            next_state, delta_parameter = self.epi.get_next_state(next_state, _execute_action)
         return EpiState(next_state, state.depth + PERIOD, self.epi.static)
 
     def reset(self):
@@ -216,7 +229,7 @@ class EpiEnv(RealWorldProblem):
             action_str = ' ^ '.join(map(str, action))
             # check if the action is already performed.
             if action_str in performed_actions: continue # when vaccination is not applied, then some actions will be repeated.
-            if not any([a.cpv_list[0] != 0.0 for a in action] ): continue # avoid actions with no interventions applied.
+            if not any([a.cpv_list[0] != 0.0 for a in filter(lambda o: isinstance(o, EpiAction), action)] ): continue # avoid actions with no interventions applied.
             successor_state = self.__perform_action__(state, action + self.costs)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH
