@@ -86,7 +86,17 @@ class EpiState:
 
         # print(f"v1: {v1}, v2: {v2}, diff: {np.linalg.norm(v1 - v2, ord=1) < 50}")
 
-        return np.linalg.norm(v1 - v2, ord=1) < 50
+        # I would say for every month let's increase the threshold by 10.
+        initial_threshold = 50
+        if self.depth > 20: initial_threshold += 10
+        if self.depth > 30: initial_threshold += 5
+        if self.depth > 60: initial_threshold += 10
+        if self.depth > 90: initial_threshold += 10
+        if self.depth > 120: initial_threshold += 10
+        if self.depth > 150: initial_threshold += 10
+        if self.depth > 180: initial_threshold += 10
+
+        return np.linalg.norm(v1 - v2, ord=1) < initial_threshold
         return np.linalg.norm(v1 - v2, ord=p)
         
         [(i[1]-j[1])**2 for i,j in zip(self.__vectorize__(), other.__vectorize__())]
@@ -115,7 +125,7 @@ class EpiEnv(RealWorldProblem):
         self.horizon = horizon
 
     def __reset__(self, session):
-        self.itv_split = 3
+        self.itv_split = 2
 
         # the easiest way is to modify the interventions before creating the pandemic env.
         updated_optimze_interventions = list()
