@@ -55,6 +55,9 @@ class EpiAppliedInterventions:
     @property
     def action(self):
         return self.itvs + self.costs
+    
+    def __str__(self):
+        return ' ^ '.join(map(str, self.itvs))
 
 class EpiState:
     def __init__(self, state, depth, static):
