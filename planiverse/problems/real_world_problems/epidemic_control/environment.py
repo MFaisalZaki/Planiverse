@@ -47,6 +47,14 @@ class EpiCost:
     def __str__(self):
         return f"{self.name} = {self.cpv_list[0]}"
 
+class EpiAppliedInterventions:
+    def __init__(self, itvs, costs):
+        self.itvs = itvs
+        self.costs = costs
+    
+    @property
+    def action(self):
+        return self.itvs + self.costs
 
 class EpiState:
     def __init__(self, state, depth, static):
@@ -125,7 +133,7 @@ class EpiEnv(RealWorldProblem):
         self.horizon = horizon
 
     def __reset__(self, session):
-        self.itv_split = 2
+        self.itv_split = 3
 
         # the easiest way is to modify the interventions before creating the pandemic env.
         updated_optimze_interventions = list()
@@ -243,7 +251,8 @@ class EpiEnv(RealWorldProblem):
             successor_state = self.__perform_action__(state, action + self.costs)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH
-            ret.append((' ^ '.join(map(str, action + self.costs)), successor_state))
+            ret.append((EpiAppliedInterventions(action, self.costs), successor_state))
+            # ret.append((' ^ '.join(map(str, action + self.costs)), successor_state))
             performed_actions.add(action_str)
         return ret
     
@@ -251,6 +260,6 @@ class EpiEnv(RealWorldProblem):
         state, _ = self.reset()
         ret_states_trace = [state]
         for action in plan:
-            state = self.__perform_action__(state, self.action_str_map[' ^ '.join(filter(lambda a: not ('cost' in a.lower()), action.split(' ^ ')))])
+            state = self.__perform_action__(state, action.action)
             ret_states_trace.append(state)
         return ret_states_trace
