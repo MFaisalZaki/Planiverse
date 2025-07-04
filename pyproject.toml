@@ -26,6 +26,8 @@ dependencies = [
     "folium (==0.20.0)",
     "haversine (==2.9.0)",
     "ipfn (==1.4.4)",
+    "pyarrow (==20.0.0)",
+    "gdal (>=3.11.1)",
     "climada (==6.0.1)"
 ]
 
