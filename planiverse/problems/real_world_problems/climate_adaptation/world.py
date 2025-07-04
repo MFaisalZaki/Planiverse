@@ -48,6 +48,8 @@ logging.getLogger('climada').setLevel(logging.ERROR)
 import gymnasium as gym
 from gymnasium import spaces
 
+from planiverse.problems.real_world_problems.base import RealWorldProblem
+
 # Custom imports
 from  . import transport_utils as transp
 
@@ -83,7 +85,7 @@ class HazardSampling(Enum):
     CUSTOM = "custom"
 
 
-class BasicEnvironment(gym.Env):
+class ClimateAdaptationEnv(gym.Env, RealWorldProblem):
     
     metadata = {
         "render_modes": ["human", "ansi"],
@@ -100,7 +102,7 @@ class BasicEnvironment(gym.Env):
             hazards_to_preload: list=[160],
             hazard_sampling_scheme: HazardSampling=HazardSampling.DETERMINISTIC,
             episode_time_steps: int=3,
-            city_zones: str="Copenhagen",
+            city_zones: str="IndreBy",
             available_actions: list=[1] # ["_ElevateRoad1m", "_ElevateRoad2m", "_Resist25%", "_Resist50%"]
         ):
         
@@ -250,6 +252,8 @@ class BasicEnvironment(gym.Env):
  
         # assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
+
+        pass
 
     # ==================================================================== #
     # ASSETS
@@ -457,8 +461,9 @@ class BasicEnvironment(gym.Env):
         ):
         """Get buildings assets."""
         # Get buildings as assets
-        buildings = gpd.read_file(os.path.join(DATA_LOCATION_O_DRIVE, "data", "assets", "bygninger.geojson")).to_crs(CRS_25832)
-        prices = pd.read_csv(os.path.join(DATA_LOCATION_O_DRIVE, "data", "assets", "kvm_pris.csv"), 
+        current_file = os.path.dirname(os.path.abspath(__file__))
+        buildings = gpd.read_file(os.path.join(current_file, DATA_LOCATION_O_DRIVE, "data", "assets", "bygninger.geojson")).to_crs(CRS_25832)
+        prices = pd.read_csv(os.path.join(current_file, DATA_LOCATION_O_DRIVE, "data", "assets", "kvm_pris.csv"), 
                              header=None, names=["komkode","municipality", "kvm_pris"])
 
         # compute value for buildings and add exposure needed variables
@@ -568,14 +573,16 @@ class BasicEnvironment(gym.Env):
         ):
         """Load hazard from file."""
 
+        current_file = os.path.dirname(os.path.abspath(__file__))
+
         if file_type == "pickle":
             # hazard_file = os.path.join(DATA_LOCATION_O_DRIVE, "data", "rain", "pickle", "Terrain_Buildings_København_V_Water_depth_Rain={}_mm.pkl".format(rain_event))
-            hazard_file = os.path.join(DATA_LOCATION_LOCAL, "rain", "pickle", "Terrain_Buildings_København_V_Water_depth_Rain={}_mm.pkl".format(rain_event))
+            hazard_file = os.path.join(current_file, DATA_LOCATION_LOCAL, "rain", "pickle", "Terrain_Buildings_København_V_Water_depth_Rain={}_mm.pkl".format(rain_event))
             hazard_event = pickle.load(open(hazard_file, 'rb'))
             hazard_event.intensity = hazard_event.intensity.tocsc()
         elif file_type == "hdf5":
             # hazard_file = os.path.join(DATA_LOCATION_O_DRIVE, "data", "rain", "hdf5", "{}mm.hdf5".format(rain_event))
-            hazard_file = os.path.join(DATA_LOCATION_LOCAL, "rain", "hdf5", "{}mm.hdf5".format(rain_event))
+            hazard_file = os.path.join(current_file, DATA_LOCATION_LOCAL, "rain", "hdf5", "{}mm.hdf5".format(rain_event))
             hazard_event = Hazard().from_hdf5(hazard_file)
             hazard_event.intensity = hazard_event.intensity.tocsc()
         
@@ -867,8 +874,9 @@ class BasicEnvironment(gym.Env):
         """Define area limits."""
 
         if area == "Copenhagen":
+            current_file = os.path.dirname(os.path.abspath(__file__))
             # Read data on the municipality limits
-            kommunes = gpd.read_file(os.path.join(DATA_LOCATION_LOCAL, "kommunes", "kommunes.shp")).to_crs('epsg:4326')
+            kommunes = gpd.read_file(os.path.join(current_file, DATA_LOCATION_LOCAL, "kommunes", "kommunes.shp")).to_crs('epsg:4326')
 
             area = shp.ops.unary_union([kommunes.iloc[0].geometry, # Copenhagen
                                         kommunes.iloc[1].geometry] # Frederiksberg
@@ -883,9 +891,9 @@ class BasicEnvironment(gym.Env):
             self: object,
             filter_taz=None):
         """Define Traffic Assignment Zones (TAZ)."""
-
+        current_file = os.path.dirname(os.path.abspath(__file__))
         # Read TAZ data
-        taz = pd.read_pickle(os.path.join("data", "taz", "taz.pkl"))
+        taz = pd.read_pickle(os.path.join(current_file, "data", "taz", "taz.pkl"))
 
         # Compute TAZ centroids
         taz['centroid'] = taz.apply(lambda row: (row['geometry'].centroid.x, row['geometry'].centroid.y), axis=1)
@@ -1068,9 +1076,11 @@ class BasicEnvironment(gym.Env):
             from_daily_to_annual: bool=True):
         """Define demand and supply for the transport model."""
 
+        current_file = os.path.dirname(os.path.abspath(__file__))
+
         # Compute demand and supply
-        supply_per_zone = pd.read_pickle(os.path.join(DATA_LOCATION_LOCAL, "trips", "supply_per_zone.pkl"))
-        demand_per_zone = pd.read_pickle(os.path.join(DATA_LOCATION_LOCAL, "trips", "demand_per_zone.pkl"))
+        supply_per_zone = pd.read_pickle(os.path.join(current_file, DATA_LOCATION_LOCAL, "trips", "supply_per_zone.pkl"))
+        demand_per_zone = pd.read_pickle(os.path.join(current_file, DATA_LOCATION_LOCAL, "trips", "demand_per_zone.pkl"))
         
         # Add them to our zones
         self.taz["supply"] = supply_per_zone
