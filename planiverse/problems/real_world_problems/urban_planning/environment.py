@@ -29,6 +29,21 @@ class LandUseType(Enum):
     FACILITIES  = 'f'
     EMPTY       = 'n'  # No land use, e.g., water bodies or undeveloped land
 
+landuse_map = {
+    -1.0 : LandUseType.EMPTY,
+    0.0 : LandUseType.RESIDENTIAL,
+    1.0 : LandUseType.OFFICE,
+    2.0 : LandUseType.GREEN_SPACE,
+    3.0 : LandUseType.COMMERCIAL,
+    4.0 : LandUseType.FACILITIES
+}
+
+landuse_map_reverse = {v: k for k, v in landuse_map.items()}
+
+def update_landuse(land, t):
+    land['landuse_type'] = landuse_map_reverse[t]
+    land['type'] = t
+
 class UrbanEnvState:
     
     def __init__(self, urban_graph, depth):
@@ -60,105 +75,89 @@ class UrbanPlanAction:
     def __str__(self):
         return self.actionstr
     
-    def __get_lands_to_convert__(self, g, landtype:LandUseType):
+    def __get_lands_of_type__(self, g, landtype:LandUseType):
         return list(filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes))
 
     def apply(self, state):
         # split half evenly empty space between r, o, g, c, f
         landuse = deepcopy(state.urban_graph)
-        to_convert_lands = self.__get_lands_to_convert__(landuse, LandUseType.EMPTY)
-        if len(to_convert_lands) > 0: self.convert(landuse, to_convert_lands)
+        for land, type in  self.__get_lands_to_convert__(landuse):
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], type))
+            update_landuse(landuse.nodes[land], type)
         return UrbanEnvState(landuse, state.depth+1)
     
-    def convert(self, landuse, to_convert_lands):
+    def __get_lands_to_convert__(self, landuse):
         assert False, "This method should be implemented in the subclass."
 
 class ConvertEmptyAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.EMPTY)
 
-    def convert(self, landuse, to_convert_lands):
+    def __get_lands_to_convert__(self, landuse):
         # Convert half of the empty spaces evenly between r, o, g, c, f
+        updated_list = []
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.EMPTY)
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
         for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
             for land in to_convert_lands:
-                self.converted_nodes.append((land, landuse.nodes[land]['type'], new_type))
-                landuse.nodes[land]['type'] = new_type
+                updated_list.append((land, new_type))
+        return updated_list
+                
 
 class ConvertOfficesAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.OFFICE)
 
-    def convert(self, landuse, to_convert_lands):
+    def __get_lands_to_convert__(self, landuse):
         # So half of the offices will be splited 20% to be g and 80% to be commercial
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.OFFICE)
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
-        
-        to_green_space = to_convert_lands[:int(len(to_convert_lands)*0.2)]
-        to_commercial = to_convert_lands[int(len(to_convert_lands)*0.2):]
-        
-        for land in to_green_space:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
-            landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
-        
-        for land in to_commercial:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.COMMERCIAL))
-            landuse.nodes[land]['type'] = LandUseType.COMMERCIAL
-
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
+        updated_lands += list((n, LandUseType.COMMERCIAL) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        return updated_lands
         
 class ConvertCommercialAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.COMMERCIAL)
 
-    def convert(self, landuse, to_convert_lands):
+    def __get_lands_to_convert__(self, landuse):
         # So half of the c will be spliited to 20% to be g and 80% to be f.
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.COMMERCIAL)
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
-        to_green_space = to_convert_lands[:int(len(to_convert_lands)*0.2)]
-        to_facilities = to_convert_lands[int(len(to_convert_lands)*0.2):]
-
-        for land in to_green_space:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
-            landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
-
-        for land in to_facilities:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.FACILITIES))
-            landuse.nodes[land]['type'] = LandUseType.FACILITIES
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
+        updated_lands += list((n, LandUseType.FACILITIES) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        return updated_lands
 
 class ConvertFacilitiesAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.FACILITIES)
 
-    def convert(self, landuse, to_convert_lands):
+    def __get_lands_to_convert__(self, landuse):
         # so 20% of the facilities will be converted to 20% green space and 80% to commercial.
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.FACILITIES)
         to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.2)]
-        to_green_space = to_convert_lands[:int(len(to_convert_lands)*0.2)]
-        to_commercial = to_convert_lands[int(len(to_convert_lands)*0.2):]
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
+        updated_lands += list((n, LandUseType.COMMERCIAL) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        return updated_lands
 
-        for land in to_green_space:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
-            landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
+class RemoveResidentialAction(UrbanPlanAction):
+    def __init__(self):
+        super().__init__(LandUseType.EMPTY)
 
-        for land in to_commercial:
-            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.COMMERCIAL))
-            landuse.nodes[land]['type'] = LandUseType.COMMERCIAL
+    def __get_lands_to_convert__(self, landuse):
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.RESIDENTIAL)
+        # convert 5% of the residential areas to empty
+        return list((n, LandUseType.EMPTY) for n in to_convert_lands[:int(len(to_convert_lands)*0.05)])
 
 class UrbanPlanningEnv(RealWorldProblem):
     def __init__(self, horizon: int):
         self.index   = None
         self.horizon = horizon
-        self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction]
+        self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction, RemoveResidentialAction]
 
 
     def reset(self):
         # This is an initial map until I figure it out.
-        landuse_map = {
-            -1.0 : LandUseType.EMPTY,
-             0.0 : LandUseType.RESIDENTIAL,
-             1.0 : LandUseType.OFFICE,
-             2.0 : LandUseType.GREEN_SPACE,
-             3.0 : LandUseType.COMMERCIAL,
-             4.0 : LandUseType.FACILITIES
-        }
-
         self.graph = nx.Graph()
         for _, row in self.node_info.iterrows():
             attributes = row.to_dict()
