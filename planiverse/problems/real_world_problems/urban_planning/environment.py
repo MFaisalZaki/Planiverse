@@ -59,7 +59,7 @@ class UrbanEnvState:
         green_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.GREEN_SPACE, self.urban_graph.nodes))
         commercial_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.COMMERCIAL, self.urban_graph.nodes))
         total_parcels = len(self.urban_graph.nodes)
-        return round((len(green_area_count) + len(commercial_area_count)) / total_parcels, 5)
+        return round((len(green_area_count) + len(commercial_area_count)) / total_parcels, 1)
 
     def __compute_diversity_score__(self):
         landuse_freq = {k:len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] == k, self.urban_graph.nodes))) for k in LandUseType}
@@ -70,15 +70,14 @@ class UrbanEnvState:
         return round(normalised_shannon_diversity, 1)
 
     def __update__(self):
-        self.literals |= frozenset(map(lambda e: f'land_{int(e)}_is_{self.urban_graph.nodes[e]["type"].value}' , self.urban_graph.nodes))
+        # self.literals |= frozenset(map(lambda e: f'land_{int(e)}_is_{self.urban_graph.nodes[e]["type"].value}' , self.urban_graph.nodes))
+        # A more abstract representation to speed up the search for iw by breaking symmetry
+        self.literals |= frozenset(map(lambda e: f'{e[0]}_{e[1]}', {k.value:len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] == k, self.urban_graph.nodes))) for k in LandUseType}.items()))
         self.sustainability_score = self.__compute_sustainability_score__()
         self.diversity_score      = self.__compute_diversity_score__()
     
     def __eq__(self, other):
         return other.literals == self.literals
-        if not isinstance(other, UrbanEnvState): return False
-        # Two states are the same if they have the same land usage.
-        return nx.utils.misc.graphs_equal(self.urban_graph, other.urban_graph)
 
 
 # Use land actions.
@@ -116,10 +115,10 @@ class ConvertEmptyAction(UrbanPlanAction):
         super().__init__(LandUseType.EMPTY)
 
     def __get_lands_to_convert__(self, landuse):
-        # Convert half of the empty spaces evenly between r, o, g, c, f
+        # Split all of the empty spaces evenly between r, o, g, c, f
         updated_list = []
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.EMPTY)
-        to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
+        # to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
         for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
             for land in to_convert_lands:
                 updated_list.append((land, new_type))
@@ -131,11 +130,11 @@ class ConvertOfficesAction(UrbanPlanAction):
         super().__init__(LandUseType.OFFICE)
 
     def __get_lands_to_convert__(self, landuse):
-        # So half of the offices will be splited 20% to be g and 80% to be commercial
+        # So half of the offices will be splited 80% to be g and 20% to be commercial
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.OFFICE)
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
-        updated_lands += list((n, LandUseType.COMMERCIAL) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
+        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*0.8):])
         return updated_lands
         
 class ConvertCommercialAction(UrbanPlanAction):
@@ -143,11 +142,11 @@ class ConvertCommercialAction(UrbanPlanAction):
         super().__init__(LandUseType.COMMERCIAL)
 
     def __get_lands_to_convert__(self, landuse):
-        # So half of the c will be spliited to 20% to be g and 80% to be f.
+        # So half of the c will be spliited to 80% to be green and 20% to be f.
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.COMMERCIAL)
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
-        updated_lands += list((n, LandUseType.FACILITIES) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
+        updated_lands += list((n, LandUseType.FACILITIES)  for n in to_convert_lands[int(len(to_convert_lands)*0.8):])
         return updated_lands
 
 class ConvertFacilitiesAction(UrbanPlanAction):
@@ -155,11 +154,11 @@ class ConvertFacilitiesAction(UrbanPlanAction):
         super().__init__(LandUseType.FACILITIES)
 
     def __get_lands_to_convert__(self, landuse):
-        # so 20% of the facilities will be converted to 20% green space and 80% to commercial.
+        # so 20% of the facilities will be converted to 80% green space and 20% to commercial.
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.FACILITIES)
         to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.2)]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
-        updated_lands += list((n, LandUseType.COMMERCIAL) for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
+        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*0.8):])
         return updated_lands
 
 class RemoveResidentialAction(UrbanPlanAction):
@@ -176,7 +175,6 @@ class UrbanPlanningEnv(RealWorldProblem):
         self.index   = None
         self.horizon = horizon
         self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction, RemoveResidentialAction]
-
 
     def reset(self):
         # This is an initial map until I figure it out.
