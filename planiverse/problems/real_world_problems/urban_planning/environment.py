@@ -19,6 +19,8 @@ import networkx as nx
 from enum import Enum
 from copy import deepcopy
 
+from planiverse.problems.real_world_problems.base import RealWorldProblem
+
 class LandUseType(Enum):
     RESIDENTIAL = 'r'
     OFFICE      = 'o'
@@ -52,7 +54,7 @@ class UrbanPlanAction:
     def __call__(self, state):
         self.converted_nodes = []
         new_state = self.apply(state)
-        self.actionstr = ', '.join(map(lambda a: f'{a[0]} -> {a[2].value}', self.converted_nodes))
+        self.actionstr = 'action_' + '__'.join(map(lambda a: f'{int(a[0])}_{a[2].value}', self.converted_nodes))
         return new_state
     
     def __str__(self):
@@ -139,19 +141,10 @@ class ConvertFacilitiesAction(UrbanPlanAction):
             self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.COMMERCIAL))
             landuse.nodes[land]['type'] = LandUseType.COMMERCIAL
 
-class UrbanPlanningEnv:
-    def __init__(self, urban_name:str, urban_info: str, horizon: int):
-        self.urban_name = urban_name
-        self.urban_info = urban_info
-        self.horizon    = horizon
-        
-        assert os.path.exists(urban_info), f"Urban info file {urban_info} does not exist."
-        assert os.path.exists(os.path.join(urban_info, 'node_info.csv')), f"node_info.csv file does not exist."
-        assert os.path.exists(os.path.join(urban_info, 'node_pairs_knn4.csv')), f"node_pairs_knn4.csv file does not exist."
-
-        self.node_info  = pd.read_csv(os.path.join(urban_info, 'node_info.csv'))
-        self.node_pairs = pd.read_csv(os.path.join(urban_info, 'node_pairs_knn4.csv'))
-
+class UrbanPlanningEnv(RealWorldProblem):
+    def __init__(self, horizon: int):
+        self.index   = None
+        self.horizon = horizon
         self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction]
 
 
@@ -184,7 +177,19 @@ class UrbanPlanningEnv:
         return UrbanEnvState(self.graph, 0), {}
     
     def fix_index(self, index):
-        pass
+        city_info_index_map = {
+            0: {
+                'name': 'Kendall Square',
+                'info': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cities', 'Kendall_Square_data')
+            }
+        }
+
+        assert index in city_info_index_map, f"Index {index} not found in city_info_index_map."
+        self.index = index
+        self.urban_name = city_info_index_map[index]['name']
+        urban_info = city_info_index_map[index]['info']
+        self.node_info  = pd.read_csv(os.path.join(urban_info, 'node_info.csv'))
+        self.node_pairs = pd.read_csv(os.path.join(urban_info, 'node_pairs_knn4.csv'))
 
     def is_goal(self, state):
         return state.depth >= self.horizon
@@ -208,7 +213,7 @@ class UrbanPlanningEnv:
         state, _ = self.reset()
         ret_states_trace = [state]
         for action in plan:
-            state = action.action.apply(state)
+            state = action.apply(state)
             ret_states_trace.append(state)
         return ret_states_trace
     
