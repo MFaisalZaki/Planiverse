@@ -32,6 +32,11 @@ class UrbanEnvState:
     def __init__(self, urban_graph, depth):
         self.urban_graph = urban_graph
         self.depth = depth
+        self.literals = frozenset([])
+        self.__update__()
+
+    def __update__(self):
+        self.literals |= frozenset(map(lambda e: f'land_{int(e)}_is_{self.urban_graph.nodes[e]["type"].value}' , self.urban_graph.nodes))
     
     def __eq__(self, other):
         if not isinstance(other, UrbanEnvState): return False
@@ -41,12 +46,17 @@ class UrbanEnvState:
 
 # Use land actions.
 class UrbanPlanAction:
-    def __init__(self, name, action_str):
-        self.name = name
-        self.action_str = action_str
+    def __init__(self, landusetype):
+        self.landusetype = landusetype
+    
+    def __call__(self, state):
+        self.converted_nodes = []
+        new_state = self.apply(state)
+        self.actionstr = ', '.join(map(lambda a: f'{a[0]} -> {a[2].value}', self.converted_nodes))
+        return new_state
     
     def __str__(self):
-        return self.action_str
+        return self.actionstr
     
     def __get_lands_to_convert__(self, g, landtype:LandUseType):
         return list(filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes))
@@ -63,19 +73,19 @@ class UrbanPlanAction:
 
 class ConvertEmptyAction(UrbanPlanAction):
     def __init__(self):
-        super().__init__("Convert Empty", "TBD")
+        super().__init__(LandUseType.EMPTY)
 
     def convert(self, landuse, to_convert_lands):
         # Convert half of the empty spaces evenly between r, o, g, c, f
         to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
-        for land in to_convert_lands:
-            for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
+        for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
+            for land in to_convert_lands:
+                self.converted_nodes.append((land, landuse.nodes[land]['type'], new_type))
                 landuse.nodes[land]['type'] = new_type
-        
 
 class ConvertOfficesAction(UrbanPlanAction):
     def __init__(self):
-        super().__init__("Convert Offices", "TBD")
+        super().__init__(LandUseType.OFFICE)
 
     def convert(self, landuse, to_convert_lands):
         # So half of the offices will be splited 20% to be g and 80% to be commercial
@@ -85,15 +95,17 @@ class ConvertOfficesAction(UrbanPlanAction):
         to_commercial = to_convert_lands[int(len(to_convert_lands)*0.2):]
         
         for land in to_green_space:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
             landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
         
         for land in to_commercial:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.COMMERCIAL))
             landuse.nodes[land]['type'] = LandUseType.COMMERCIAL
 
         
 class ConvertCommercialAction(UrbanPlanAction):
     def __init__(self):
-        super().__init__("Convert Commercial", "TBD")
+        super().__init__(LandUseType.COMMERCIAL)
 
     def convert(self, landuse, to_convert_lands):
         # So half of the c will be spliited to 20% to be g and 80% to be f.
@@ -102,14 +114,16 @@ class ConvertCommercialAction(UrbanPlanAction):
         to_facilities = to_convert_lands[int(len(to_convert_lands)*0.2):]
 
         for land in to_green_space:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
             landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
 
         for land in to_facilities:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.FACILITIES))
             landuse.nodes[land]['type'] = LandUseType.FACILITIES
 
-class ConvertFacilitesAction(UrbanPlanAction):
+class ConvertFacilitiesAction(UrbanPlanAction):
     def __init__(self):
-        super().__init__("Convert Facilities", "TBD")
+        super().__init__(LandUseType.FACILITIES)
 
     def convert(self, landuse, to_convert_lands):
         # so 20% of the facilities will be converted to 20% green space and 80% to commercial.
@@ -118,9 +132,11 @@ class ConvertFacilitesAction(UrbanPlanAction):
         to_commercial = to_convert_lands[int(len(to_convert_lands)*0.2):]
 
         for land in to_green_space:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.GREEN_SPACE))
             landuse.nodes[land]['type'] = LandUseType.GREEN_SPACE
 
         for land in to_commercial:
+            self.converted_nodes.append((land, landuse.nodes[land]['type'], LandUseType.COMMERCIAL))
             landuse.nodes[land]['type'] = LandUseType.COMMERCIAL
 
 class UrbanPlanningEnv:
@@ -136,7 +152,7 @@ class UrbanPlanningEnv:
         self.node_info  = pd.read_csv(os.path.join(urban_info, 'node_info.csv'))
         self.node_pairs = pd.read_csv(os.path.join(urban_info, 'node_pairs_knn4.csv'))
 
-        self.actions = [ConvertEmptyAction(), ConvertOfficesAction(), ConvertCommercialAction(), ConvertFacilitesAction()]
+        self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction]
 
 
     def reset(self):
@@ -180,8 +196,9 @@ class UrbanPlanningEnv:
     # Returns a list of [action, successor_state]
     def successors(self, state):
         ret = []
-        for idx, action in enumerate(self.actions):
-            successor_state = action.apply(state)
+        for idx, actiontype in enumerate(self.actions):
+            action = actiontype()
+            successor_state = action(state)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH
             ret.append((action, successor_state))
