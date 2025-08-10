@@ -16,8 +16,10 @@
 import os
 import pandas as pd
 import networkx as nx
+import numpy as np
 from enum import Enum
 from copy import deepcopy
+
 
 from planiverse.problems.real_world_problems.base import RealWorldProblem
 
@@ -30,12 +32,12 @@ class LandUseType(Enum):
     EMPTY       = 'n'  # No land use, e.g., water bodies or undeveloped land
 
 landuse_map = {
-    -1.0 : LandUseType.EMPTY,
-    0.0 : LandUseType.RESIDENTIAL,
-    1.0 : LandUseType.OFFICE,
-    2.0 : LandUseType.GREEN_SPACE,
-    3.0 : LandUseType.COMMERCIAL,
-    4.0 : LandUseType.FACILITIES
+    -1.0 : LandUseType.EMPTY,      # confirmed
+    0.0  : LandUseType.RESIDENTIAL,# confirmed
+    1.0  : LandUseType.OFFICE,     # confirmed
+    2.0  : LandUseType.COMMERCIAL, # confirmed
+    3.0  : LandUseType.FACILITIES, # confirmed
+    4.0  : LandUseType.GREEN_SPACE # confirmed
 }
 
 landuse_map_reverse = {v: k for k, v in landuse_map.items()}
@@ -52,10 +54,28 @@ class UrbanEnvState:
         self.literals = frozenset([])
         self.__update__()
 
+    def __compute_sustainability_score__(self):
+        # \text{Sustainability} \propto \frac{\#g + \#c}{\text{total parcels}}
+        green_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.GREEN_SPACE, self.urban_graph.nodes))
+        commercial_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.COMMERCIAL, self.urban_graph.nodes))
+        total_parcels = len(self.urban_graph.nodes)
+        return round((len(green_area_count) + len(commercial_area_count)) / total_parcels, 5)
+
+    def __compute_diversity_score__(self):
+        landuse_freq = {k:len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] == k, self.urban_graph.nodes))) for k in LandUseType}
+        landuse_freq.pop(LandUseType.EMPTY) # don't want this.
+        proportions = [v / sum(landuse_freq.values()) for v in landuse_freq.values()]
+        shannon_diversity = -sum(p * np.log(p) for p in proportions if p > 0)
+        normalised_shannon_diversity = shannon_diversity / np.log(len(landuse_freq)) if len(landuse_freq) > 1 else 0
+        return round(normalised_shannon_diversity, 1)
+
     def __update__(self):
         self.literals |= frozenset(map(lambda e: f'land_{int(e)}_is_{self.urban_graph.nodes[e]["type"].value}' , self.urban_graph.nodes))
+        self.sustainability_score = self.__compute_sustainability_score__()
+        self.diversity_score      = self.__compute_diversity_score__()
     
     def __eq__(self, other):
+        return other.literals == self.literals
         if not isinstance(other, UrbanEnvState): return False
         # Two states are the same if they have the same land usage.
         return nx.utils.misc.graphs_equal(self.urban_graph, other.urban_graph)
@@ -76,11 +96,13 @@ class UrbanPlanAction:
         return self.actionstr
     
     def __get_lands_of_type__(self, g, landtype:LandUseType):
+        # return filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes)
         return list(filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes))
 
     def apply(self, state):
         # split half evenly empty space between r, o, g, c, f
-        landuse = deepcopy(state.urban_graph)
+        # _landuse = deepcopy(state.urban_graph)
+        landuse = state.urban_graph.copy()
         for land, type in  self.__get_lands_to_convert__(landuse):
             self.converted_nodes.append((land, landuse.nodes[land]['type'], type))
             update_landuse(landuse.nodes[land], type)
@@ -194,7 +216,6 @@ class UrbanPlanningEnv(RealWorldProblem):
         return state.depth >= self.horizon
     
     def is_terminal(self, state):
-        # A better terminal state is the tree searched for 356 days.
         return False
     
     # Returns a list of [action, successor_state]
