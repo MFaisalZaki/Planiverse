@@ -200,6 +200,10 @@ class UrbanPlanningEnv(RealWorldProblem):
             0: {
                 'name': 'Kendall Square',
                 'info': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cities', 'Kendall_Square_data')
+            },
+            1 :{
+                'name': 'St Andrews',
+                'info': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cities', 'st_andrews_data')
             }
         }
 
