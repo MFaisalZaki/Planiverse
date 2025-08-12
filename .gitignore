@@ -197,6 +197,7 @@ sandbox*
 *.cProfile
 
 v-env/
+venv*/
 
 # dev.py
 ibm-diversescore/
