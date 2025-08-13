@@ -123,7 +123,20 @@ class ConvertEmptyAction(UrbanPlanAction):
             for land in to_convert_lands:
                 updated_list.append((land, new_type))
         return updated_list
-                
+
+class ConvertGreenSpaceAction(UrbanPlanAction):
+    def __init__(self):
+        super().__init__(LandUseType.GREEN_SPACE)
+
+    def __get_lands_to_convert__(self, landuse):
+        # Split all of the green spaces evenly between r, o, g, c, f
+        updated_list = []
+        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.GREEN_SPACE)
+        to_convert_lands = to_convert_lands[:len(to_convert_lands)//2]
+        for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
+            for land in to_convert_lands:
+                updated_list.append((land, new_type))
+        return updated_list
 
 class ConvertOfficesAction(UrbanPlanAction):
     def __init__(self):
@@ -174,7 +187,7 @@ class UrbanPlanningEnv(RealWorldProblem):
     def __init__(self, horizon: int):
         self.index   = None
         self.horizon = horizon
-        self.actions = [ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction, RemoveResidentialAction]
+        self.actions = [ConvertGreenSpaceAction, ConvertEmptyAction, ConvertOfficesAction, ConvertCommercialAction, ConvertFacilitiesAction, RemoveResidentialAction]
 
     def reset(self):
         # This is an initial map until I figure it out.
