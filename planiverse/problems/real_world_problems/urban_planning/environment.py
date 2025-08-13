@@ -73,6 +73,7 @@ class UrbanEnvState:
         # self.literals |= frozenset(map(lambda e: f'land_{int(e)}_is_{self.urban_graph.nodes[e]["type"].value}' , self.urban_graph.nodes))
         # A more abstract representation to speed up the search for iw by breaking symmetry
         self.literals |= frozenset(map(lambda e: f'{e[0]}_{e[1]}', {k.value:len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] == k, self.urban_graph.nodes))) for k in LandUseType}.items()))
+        self.literals |= frozenset([f'depth_{self.depth}'])
         self.sustainability_score = self.__compute_sustainability_score__()
         self.diversity_score      = self.__compute_diversity_score__()
     
