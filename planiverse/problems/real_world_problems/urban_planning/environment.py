@@ -79,7 +79,6 @@ class UrbanEnvState:
     def __eq__(self, other):
         return other.literals == self.literals
 
-
 # Use land actions.
 class UrbanPlanAction:
     def __init__(self, landusetype):
@@ -185,12 +184,15 @@ class UrbanPlanningEnv(RealWorldProblem):
             assert node_id is not None, "Node ID cannot be None."
             attributes['type'] = landuse_map[attributes['landuse_type']]
             self.graph.add_node(node_id, **attributes)
-        
+
         for _, row in self.node_pairs.iterrows():
             attributes = row.to_dict()
             from_node = attributes.pop('node', None)
             to_node = attributes.pop('node_adj', None)
             assert from_node is not None and to_node is not None, "Node IDs cannot be None."
+            # skip nodes that are not in the current graph
+            if from_node not in self.graph or to_node not in self.graph:
+                continue
             self.graph.add_edge(from_node, to_node, **attributes)
 
         return UrbanEnvState(self.graph, 0), {}
