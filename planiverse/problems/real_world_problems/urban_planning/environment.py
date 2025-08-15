@@ -58,8 +58,9 @@ class UrbanEnvState:
         # \text{Sustainability} \propto \frac{\#g + \#c}{\text{total parcels}}
         green_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.GREEN_SPACE, self.urban_graph.nodes))
         commercial_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.COMMERCIAL, self.urban_graph.nodes))
-        total_parcels = len(self.urban_graph.nodes)
-        return round((len(green_area_count) + len(commercial_area_count)) / total_parcels, 1)
+        facility_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.FACILITIES, self.urban_graph.nodes))
+        total_parcels = len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] != LandUseType.EMPTY, self.urban_graph.nodes)))
+        return round((len(green_area_count) + len(commercial_area_count) + len(facility_area_count)) / total_parcels, 1)
 
     def __compute_diversity_score__(self):
         landuse_freq = {k:len(list(filter(lambda e: self.urban_graph.nodes[e]['type'] == k, self.urban_graph.nodes))) for k in LandUseType}
@@ -118,7 +119,7 @@ class ConvertEmptyAction(UrbanPlanAction):
         # Split all of the empty spaces evenly between r, o, g, c, f
         updated_list = []
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.EMPTY)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.10)]
+        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.05)]
         for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
             for land in to_convert_lands:
                 updated_list.append((land, new_type))
@@ -130,12 +131,13 @@ class ConvertGreenSpaceAction(UrbanPlanAction):
 
     def __get_lands_to_convert__(self, landuse):
         # Split all of the green spaces evenly between r, o, g, c, f
+        change_ratio = 0.05  # 5% of the green spaces will be converted
         updated_list = []
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.GREEN_SPACE)
         # Get the top 5% of the list.
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.05)]
-        updated_lands  = list((n, LandUseType.FACILITIES) for n in to_convert_lands[:int(len(to_convert_lands)*0.05)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*0.05):])
+        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
+        updated_lands  = list((n, LandUseType.FACILITIES) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
+        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
         return updated_lands
 
 class ConvertOfficesAction(UrbanPlanAction):
@@ -144,10 +146,12 @@ class ConvertOfficesAction(UrbanPlanAction):
 
     def __get_lands_to_convert__(self, landuse):
         # So half of the offices will be splited 80% to be g and 20% to be commercial
+        updated_lands = []
+        change_ratio = 0.05  # 1% of the offices will be converted
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.OFFICE)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.1)]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
+        # updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
+        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
         return updated_lands
         
 class ConvertCommercialAction(UrbanPlanAction):
@@ -155,11 +159,13 @@ class ConvertCommercialAction(UrbanPlanAction):
         super().__init__(LandUseType.COMMERCIAL)
 
     def __get_lands_to_convert__(self, landuse):
+        updated_lands = []
         # So half of the c will be spliited to 80% to be green and 20% to be f.
+        change_ratio = 0.05  # 5% of the commercial areas will be converted
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.COMMERCIAL)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.1)]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
-        updated_lands += list((n, LandUseType.FACILITIES)  for n in to_convert_lands[int(len(to_convert_lands)*0.2):])
+        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
+        # updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
+        updated_lands += list((n, LandUseType.FACILITIES)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
         return updated_lands
 
 class ConvertFacilitiesAction(UrbanPlanAction):
@@ -167,11 +173,13 @@ class ConvertFacilitiesAction(UrbanPlanAction):
         super().__init__(LandUseType.FACILITIES)
 
     def __get_lands_to_convert__(self, landuse):
+        updated_lands = []
         # so 20% of the facilities will be converted to 80% green space and 20% to commercial.
+        change_ratio = 0.05
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.FACILITIES)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.1)]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.1)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*0.1):])
+        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
+        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
+        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
         return updated_lands
 
 class RemoveResidentialAction(UrbanPlanAction):
@@ -179,9 +187,11 @@ class RemoveResidentialAction(UrbanPlanAction):
         super().__init__(LandUseType.EMPTY)
 
     def __get_lands_to_convert__(self, landuse):
+        updated_lands = []
         to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.RESIDENTIAL)
         # convert 5% of the residential areas to empty
-        return list((n, LandUseType.EMPTY) for n in to_convert_lands[:int(len(to_convert_lands)*0.2)])
+        change_ratio = 0.05
+        return list((n, LandUseType.EMPTY) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
 
 class UrbanPlanningEnv(RealWorldProblem):
     def __init__(self, horizon: int):
@@ -191,16 +201,18 @@ class UrbanPlanningEnv(RealWorldProblem):
 
     def reset(self):
         # This is an initial map until I figure it out.
+        dummylist = []
         self.graph = nx.Graph()
         for _, row in self.node_info.iterrows():
-            attributes = row.to_dict()
+            attributes = row.to_dict().copy()
             node_id = attributes.pop('node_id', None)
             assert node_id is not None, "Node ID cannot be None."
-            attributes['type'] = landuse_map[attributes['landuse_type']]
-            self.graph.add_node(node_id, **attributes)
+            dummylist.append(attributes['landuse_type'])
+            attr = attributes | {'type': landuse_map[attributes['landuse_type']]}
+            self.graph.add_node(node_id, **attr)
 
         for _, row in self.node_pairs.iterrows():
-            attributes = row.to_dict()
+            attributes = row.to_dict().copy()
             from_node = attributes.pop('node', None)
             to_node = attributes.pop('node_adj', None)
             assert from_node is not None and to_node is not None, "Node IDs cannot be None."
@@ -209,6 +221,10 @@ class UrbanPlanningEnv(RealWorldProblem):
                 continue
             self.graph.add_edge(from_node, to_node, **attributes)
 
+        landuse_keys = set(map(lambda n: self.graph.nodes[n]['type'], self.graph.nodes))
+        self.statsitics = {
+            'landuse': {l: len(list(filter(lambda t: t == l, [self.graph.nodes[n]['type'] for n in self.graph.nodes]))) for l in landuse_keys}
+        }
         return UrbanEnvState(self.graph, 0), {}
     
     def fix_index(self, index):
