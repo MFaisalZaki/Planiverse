@@ -1,7 +1,21 @@
 
 import os
+
+# from pcg_benchmark.probs.smb.engine.core import MarioLevel
+# from planiverse.problems.retro_games.super_mario_bros_grid import SuperMarioBros
+# from planiverse.planners.super_mario_planner_tile import Agent
+
+# # MarioLevel(open('/Users/mustafafaisal/Developer/pcg_benchmark/pcg_benchmark/probs/smb/slices.txt').read())
+
+# smb = SuperMarioBros(0)
+# smb.run_game(Agent(None))
+# # i = smb.__render__layout__()
+# # i.save('/Users/mustafafaisal/Developer/Planiverse/dev/sandbox/dump-2/test.png')
+
+
+
 from planiverse.problems.retro_games.super_mario_bros_gb import SuperMario, SuperMarioAction
-from planiverse.planners.super_mario_planner import SuperMarioPlanner
+from planiverse.planners.super_mario_planner_gb import SuperMarioPlanner
 
 
 current_file_path = os.path.dirname(os.path.abspath(__file__))
@@ -12,8 +26,13 @@ env = SuperMario(sml_romfile)
 env.fix_index(0)
 init_state, _ = env.reset()
 
-# # # # plan = [SuperMarioAction('right')] * 0 + [SuperMarioAction('a')] * 0 + [SuperMarioAction('a+right')] * 4
-# plan = [SuperMarioAction('right+b')] * 30
+planner = SuperMarioPlanner(env)
+plan = planner.search(env)
+
+# So the maximum jump is
+
+# # # # # plan = [SuperMarioAction('right')] * 0 + [SuperMarioAction('a')] * 0 + [SuperMarioAction('a+right')] * 4
+# plan = [SuperMarioAction('right,3')] * 100
 # state_trace = env.simulate(plan)
 # for idx, (act, state) in enumerate(zip(plan, state_trace)):
 #     state.save(sml_romfile, os.path.join(dumpstates_images, f"0_t_{idx}_{str(act)}.png"))
@@ -40,8 +59,6 @@ pass
 #     for frameidx, image in enumerate(action.simulate(successor_state)):
 #         image.save(os.path.join(dumpstates_images, f"{idx}_{frameidx}.png"))
 
-planner = SuperMarioPlanner(env)
-plan = planner.search(env)
 
 pass
 
