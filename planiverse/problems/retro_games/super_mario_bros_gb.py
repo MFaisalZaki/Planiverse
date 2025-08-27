@@ -14,8 +14,10 @@ forward_ticks = 10
 image_resize_factor = 4
 position = namedtuple("Position", ["x", "y"])
 velocity = namedtuple("Velocity", ["x", "y"])
-action_list = list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right']] for t in [3, 5, 10]]))
-action_list += ['a,3', 'left,3', 'right,3', 'down,3', 'b+left,3', 'b+right,3']
+action_list  = list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right']] for t in [2, 10]])) # [3, 5, 10]
+action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['left', 'right']] for t in [3]])) #[2]
+
+#  'b+left', 'b+right', 'down', 'a'
 
 def create_pyboy(romfile, render):
     return PyBoy(romfile, sound_volume=0, window="SDL2" if render else "null")
@@ -95,7 +97,7 @@ class SuperMarioState:
         return self.literals == other.literals and abs(self.timeleft - other.timeleft) < 5
 
     def __repr__(self):
-        return f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position})>'
+        return f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position}, velocity={self.mario_velocity}, collision={self.collision})>'
     
     def mario_damage(self):
         return 1 if self.collision else 0

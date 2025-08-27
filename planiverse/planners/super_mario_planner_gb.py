@@ -92,12 +92,6 @@ class SuperMarioPlanner(TreeSearchPlanner):
 		# override the is_goal method in the env since this is an iterative replanning.
 		super().__init__()
 		
-		
-
-	# def is_goal(self, state) -> bool:
-	#     # So the goal state is moving mario for 175 on x-axis.
-	#     return state.mario_position.x >= self.initial_state.mario_position.x+175
-
 	def __is_goal__(self, state):
 		# We need to work on this I guess ?!
 		# print(f'Debug: Goal check: {state}')
@@ -105,22 +99,17 @@ class SuperMarioPlanner(TreeSearchPlanner):
 		return state.mario_position.x >= self.root.mario_position.x+175
 	
 	def __cost_fn__(self, state_trace, action_trace):
-		return 1.2*abs(state_trace[0].timeleft - state_trace[-1].timeleft) + state_trace[0].depth
+		combined_action = 2 if '+' in action_trace[-1].action else 1
+		return 1.0*abs(state_trace[0].timeleft - state_trace[-1].timeleft) + state_trace[0].depth + combined_action
 
 	def __hueristic_fn__(self, state):
 		# state.mario_damage() * 100000
 		# The hueristic if simple, we want mario to keep moving right.
 		# To do this calculate its position from the start node until the current node.
-		distance_delta = self.root.mario_position.x - state.mario_position.x
+		distance_delta = state.mario_position.x - self.root.mario_position.x
 		damage_penalty = state.mario_damage() * 100000
-
-		if distance_delta > 0:
-			pass
-		else:
-			pass
-
-		distance_delta = 1000/distance_delta if distance_delta > 0 else 1000
-		return 1.0*(distance_delta + damage_penalty)
+		if distance_delta <= 0 : return 100000 + damage_penalty
+		return 1.2*(-1 * distance_delta + damage_penalty)
 
 	def search(self, env):
 		# We need to have some termination condition here for the overall game.
