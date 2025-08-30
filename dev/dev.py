@@ -1,16 +1,17 @@
 
 import os
 
-# from pcg_benchmark.probs.smb.engine.core import MarioLevel
-# from planiverse.problems.retro_games.super_mario_bros_grid import SuperMarioBros
-# from planiverse.planners.super_mario_planner_tile import Agent
+from pcg_benchmark.probs.smb.engine.core import MarioLevel
+from planiverse.problems.retro_games.super_mario_bros_grid import SuperMarioBros
+from planiverse.planners.super_mario_planner_tile import Agent
 
 # # MarioLevel(open('/Users/mustafafaisal/Developer/pcg_benchmark/pcg_benchmark/probs/smb/slices.txt').read())
 
 # smb = SuperMarioBros(0)
 # smb.run_game(Agent(None))
-# # i = smb.__render__layout__()
-# # i.save('/Users/mustafafaisal/Developer/Planiverse/dev/sandbox/dump-2/test.png')
+
+# # # i = smb.__render__layout__()
+# # # i.save('/Users/mustafafaisal/Developer/Planiverse/dev/sandbox/dump-2/test.png')
 
 
 
