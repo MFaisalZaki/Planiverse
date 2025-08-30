@@ -16,7 +16,7 @@ position = namedtuple("Position", ["x", "y"])
 velocity = namedtuple("Velocity", ["x", "y"])
 action_list  = list()
 action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right', 'b+left', 'b+right']] for t in [5,10,15]])) # [3, 5, 10]
-action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['left', 'right', 'down']] for t in [3]])) #[2]
+action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['nop', 'left', 'right', 'down']] for t in [3]])) #[2]
 
 def create_pyboy(romfile, render):
     return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
@@ -129,7 +129,7 @@ class SuperMarioAction:
         # apply the action n times to speed up the search.
         ticks_values = set()
         for act, ticks in self.__parse_action__(self.action):
-            pyboy.button(act, ticks)
+            if act != 'nop': pyboy.button(act, ticks)
             ticks_values.add(ticks)
         pyboy.tick(max(ticks_values)+1, False)
         ret_state = SuperMarioState(pyboy, state.depth + 1)
