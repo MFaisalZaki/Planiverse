@@ -14,13 +14,12 @@ forward_ticks = 10
 image_resize_factor = 4
 position = namedtuple("Position", ["x", "y"])
 velocity = namedtuple("Velocity", ["x", "y"])
-action_list  = list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right']] for t in [2, 10]])) # [3, 5, 10]
-action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['left', 'right']] for t in [3]])) #[2]
-
-#  'b+left', 'b+right', 'down', 'a'
+action_list  = list()
+action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right', 'b+left', 'b+right']] for t in [5,10,15]])) # [3, 5, 10]
+action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['left', 'right', 'down']] for t in [3]])) #[2]
 
 def create_pyboy(romfile, render):
-    return PyBoy(romfile, sound_volume=0, window="SDL2" if render else "null")
+    return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
 
 def save_state(pyboy):
     with io.BytesIO() as f:
@@ -50,7 +49,7 @@ class SuperMarioState:
         self.mario_velocity = velocity(x=pyboy.memory[0xC20C], y=pyboy.memory[0xC20D])
         # self.collision = any(abs(a - self.mario_position.x) + abs(b - self.mario_position.y) <= 3 for a, b in [(pyboy.memory[a], pyboy.memory[a - 1]) for a in range(0xD103, 0xD194, 0x10)])
 
-        self.collision = pyboy.memory[0xC0AC] != 0 # Check the Mario dead jump timer.
+        self.collision = False #pyboy.memory[0xC0AC] != 0 # Check the Mario dead jump timer.
         
         # Do we need this ?! 
         self.max_mario_x_pos = self.mario_position.x + 175
@@ -63,9 +62,9 @@ class SuperMarioState:
         scx = pyboy.screen.tilemap_position_list[16][0]
         self.level_progress = level_block * 16 + (scx - 7) % 16 + mario_x
         blank = 300
-        self.coins = self._sum_number_on_screen(pyboy, 9, 1, 2, blank, -256)
+        self.coins = self.__sum_number_on_screen__(pyboy, 9, 1, 2, blank, -256)
         self.lives_left = bcd_to_dec(pyboy.memory[0xDA15])
-        self.score = self._sum_number_on_screen(pyboy, 0, 1, 6, blank, -256)
+        self.score = self.__sum_number_on_screen__(pyboy, 0, 1, 6, blank, -256)
         
         # So the state is constructed as the following:
         # (supermario XX YY)
@@ -77,14 +76,17 @@ class SuperMarioState:
         # predicates += list(map(lambda sprite: f'(sprite {sprite.tile_identifier} {sprite.x} {sprite.y})', filter(lambda s:s.on_screen, self.gamestate._sprites_on_screen())))
         # predicates += chain.from_iterable([[f'(tile {i}, {j}, {v})' for j, v in enumerate(line)] for i, line in enumerate(self.gamestate.game_area())])
         predicates += [
-            f'(supermario {self.mario_position.x} {self.mario_position.y})',
+            f'(supermario position {self.mario_position.x} {self.mario_position.y})',
+            f'(supermario velocity {int(self.mario_velocity.x)} {int(self.mario_velocity.y)})',
+            f'(progress {self.level_progress})',
+            f'(depth {self.depth})'
             # f'(coins {self.coins})',
             # f'(timeleft {self.timeleft})', # Ignore this one.
             # f'(livesleft {self.lives_left})',
         ]
         self.literals |= frozenset(predicates)
     
-    def _sum_number_on_screen(self, pyboy, x, y, length, blank_tile_identifier, tile_identifier_offset):
+    def __sum_number_on_screen__(self, pyboy, x, y, length, blank_tile_identifier, tile_identifier_offset):
         number = 0
         for i, x in enumerate(pyboy.tilemap_background[x : x + length, y]):
             if x != blank_tile_identifier: number += (x + tile_identifier_offset) * (10 ** (length - 1 - i))
@@ -111,11 +113,12 @@ class SuperMarioState:
 class SuperMarioAction:
     def __init__(self, action):
         self.action = action
-        self.forward_ticks = forward_ticks
+        self.actions_tick_list = self.__parse_action__(action)
+        self.cost_value = sum(a[1] for a in self.actions_tick_list)
 
     def __lt__(self, other):
-        s = self.__parse_action__(self.action)
-        o = self.__parse_action__(other.action)
+        s = self.actions_tick_list
+        o = other.actions_tick_list
         return max(x[1] for x in s) < max(x[1] for x in o)
 
     def __str__(self):
@@ -136,10 +139,13 @@ class SuperMarioAction:
         for act, ticks in self.__parse_action__(self.action):
             pyboy.button(act, ticks)
             ticks_values.add(ticks)
-        pyboy.tick(max(ticks_values), False)
+        pyboy.tick(max(ticks_values)+1, False)
         ret_state = SuperMarioState(pyboy, state.depth + 1)
         return ret_state
     
+    def cost(self):
+        return self.cost_value
+
 class SuperMario(RetroGame):
     def __init__(self, romfile, render=False):
         self.romfile = romfile
@@ -183,11 +189,9 @@ class SuperMario(RetroGame):
         return ret
     
     def simulate(self, plan):
-        # this needs to be reimplemented
         state, _ = self.reset()
         state_trace = [state]
         for idx, action in enumerate(plan):
-            state_trace.append(action.apply(self.pyboy, state_trace[-1]))
-            if self.is_terminal(state_trace[-1]):
-                break
+            new_state = action.apply(self.pyboy, state_trace[-1])
+            state_trace.append(new_state)
         return state_trace
