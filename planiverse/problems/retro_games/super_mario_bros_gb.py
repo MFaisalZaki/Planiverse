@@ -47,13 +47,7 @@ class SuperMarioState:
         # Do game updates.
         self.mario_position = position(x=pyboy.memory[0xC202], y=pyboy.memory[0xC201])
         self.mario_velocity = velocity(x=pyboy.memory[0xC20C], y=pyboy.memory[0xC20D])
-        # self.collision = any(abs(a - self.mario_position.x) + abs(b - self.mario_position.y) <= 3 for a, b in [(pyboy.memory[a], pyboy.memory[a - 1]) for a in range(0xD103, 0xD194, 0x10)])
-
         self.collision = False #pyboy.memory[0xC0AC] != 0 # Check the Mario dead jump timer.
-        
-        # Do we need this ?! 
-        self.max_mario_x_pos = self.mario_position.x + 175
-        
         
         timeleft = _bcd_to_dec(pyboy.memory[0xDA01 : 0xDA01 + 2])
         self.timeleft = timeleft[0] + timeleft[1] * 100
@@ -73,16 +67,14 @@ class SuperMarioState:
         # (timeleft ?) <- ignore
         # (livesleft ?) <- ignore
         predicates  = []
-        # predicates += list(map(lambda sprite: f'(sprite {sprite.tile_identifier} {sprite.x} {sprite.y})', filter(lambda s:s.on_screen, self.gamestate._sprites_on_screen())))
-        # predicates += chain.from_iterable([[f'(tile {i}, {j}, {v})' for j, v in enumerate(line)] for i, line in enumerate(self.gamestate.game_area())])
         predicates += [
             f'(supermario position {self.mario_position.x} {self.mario_position.y})',
             f'(supermario velocity {int(self.mario_velocity.x)} {int(self.mario_velocity.y)})',
             f'(progress {self.level_progress})',
             f'(depth {self.depth})'
-            # f'(coins {self.coins})',
+            f'(coins {self.coins})',
             # f'(timeleft {self.timeleft})', # Ignore this one.
-            # f'(livesleft {self.lives_left})',
+            f'(livesleft {self.lives_left})',
         ]
         self.literals |= frozenset(predicates)
     
@@ -122,7 +114,7 @@ class SuperMarioAction:
         return max(x[1] for x in s) < max(x[1] for x in o)
 
     def __str__(self):
-        return self.action
+        return self.action.replace(',', '_for_').replace('+', '_with_')
 
     def __repr__(self):
         return str(self)
@@ -146,7 +138,7 @@ class SuperMarioAction:
     def cost(self):
         return self.cost_value
 
-class SuperMario(RetroGame):
+class SuperMarioEnv(RetroGame):
     def __init__(self, romfile, render=False):
         self.romfile = romfile
         self.pyboy   = None
