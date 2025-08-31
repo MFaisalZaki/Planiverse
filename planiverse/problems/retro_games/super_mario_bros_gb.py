@@ -18,6 +18,16 @@ action_list  = list()
 action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right', 'b+left', 'b+right']] for t in [5,10,15]])) # [3, 5, 10]
 action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['nop', 'left', 'right', 'down']] for t in [3]])) #[2]
 
+action_cost_map = {
+    'a': 2,
+    'b': 2,
+    'left': 1,
+    'right': 1,
+    'down': 1,
+    'nop': 1
+}
+
+
 def create_pyboy(romfile, render):
     return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
 
@@ -106,7 +116,10 @@ class SuperMarioAction:
     def __init__(self, action):
         self.action = action
         self.actions_tick_list = self.__parse_action__(action)
-        self.cost_value = sum(a[1] for a in self.actions_tick_list)
+        # old action cost computation.
+        # self.cost_value = sum(a[1] for a in self.actions_tick_list)
+        self.cost_value = sum(action_cost_map[a[0]] for a in self.actions_tick_list) * self.actions_tick_list[-1][1]
+        pass
 
     def __lt__(self, other):
         s = self.actions_tick_list
