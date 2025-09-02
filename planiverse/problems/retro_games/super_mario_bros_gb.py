@@ -24,7 +24,7 @@ action_cost_map = {
     'left': 1,
     'right': 1,
     'down': 1,
-    'nop': 1
+    'nop': 0
 }
 
 
@@ -58,6 +58,13 @@ class SuperMarioState:
         self.mario_position = position(x=pyboy.memory[0xC202], y=pyboy.memory[0xC201])
         self.mario_velocity = velocity(x=pyboy.memory[0xC20C], y=pyboy.memory[0xC20D])
         self.collision = False #pyboy.memory[0xC0AC] != 0 # Check the Mario dead jump timer.
+        
+        # self.enemies_objects = set([pyboy.memory[0xD109 + i*16 + 0] for i in range(10)])
+        self.enemies_killed = 0
+        # TODO: We need to do more reverse engineering to identify all enemy tile IDs.
+        killed_enemies_identifiers = [145] # This should be a list of all enemy tile IDs that are killed.
+        for s in pyboy.get_sprite_by_tile_identifier(killed_enemies_identifiers):
+            if len(s) > 0: self.enemies_killed += 1
         
         timeleft = _bcd_to_dec(pyboy.memory[0xDA01 : 0xDA01 + 2])
         self.timeleft = timeleft[0] + timeleft[1] * 100
@@ -101,7 +108,7 @@ class SuperMarioState:
         return self.literals == other.literals and abs(self.timeleft - other.timeleft) < 5
 
     def __repr__(self):
-        return f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position}, velocity={self.mario_velocity}, collision={self.collision})>'
+        return f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position}, enemies_killed={self.enemies_killed})>'
     
     def mario_damage(self):
         return 1 if self.collision else 0
