@@ -27,7 +27,16 @@ class EpiAction:
         self.control_parameter_index = next((i for i in range(len(intervention_details.cp_list)) if intervention_details.cp_list[i].name in ["compliance", "degree", "percentage"]), None)
         self.min_value     = intervention_details.cp_list[self.control_parameter_index].min_value
         self.max_value     = intervention_details.cp_list[self.control_parameter_index].max_value
-    
+
+    @property
+    def value(self):
+        """!
+        This intervention's policy level: the value of its compliance/degree/percentage
+        control parameter. Read this rather than cpv_list[0], which is only the same
+        parameter when the scenario happens to list the control parameter first.
+        """
+        return self.cpv_list[self.control_parameter_index]
+
     def __str__(self):
         return f"{self.name} = {self.cpv_list[self.control_parameter_index]}"
     
@@ -184,7 +193,7 @@ class EpiEnv(RealWorldProblem):
         #     self.interventions.extend(combinations(self.basic_interventions, r))
         self.interventions = list(map(list, self.interventions))[1:]
         # make sure that at least 50% of the interventions are not zero.
-        self.interventions = list(filter(lambda i: [a.cpv_list[0] for a in i].count(0) >= len(self.basic_interventions)/2, self.interventions))
+        self.interventions = list(filter(lambda i: [a.value for a in i].count(0) >= len(self.basic_interventions)/2, self.interventions))
         
         self.action_str_map = {' ^ '.join(map(str, action)): action + self.costs for action in self.interventions + [self.__disable_vaccination__(0, a) for a in self.interventions][1:]}
 
@@ -202,11 +211,13 @@ class EpiEnv(RealWorldProblem):
         return ret_action
 
     def __perform_action__(self, state, action):
-        _execute_action = list(filter(lambda a: isinstance(a, EpiCost) or a.cpv_list[0] > 0, action))
         # remove the actions with zero values to save computation time.
-        next_state, delta_parameter = self.epi.get_next_state(state.state, _execute_action)
-        for i in range(1, PERIOD+1):
-            # if len(action) == 0: return EpiState(next_state, state.depth + i, self.epi.static)
+        _execute_action = list(filter(lambda a: isinstance(a, EpiCost) or a.value > 0, action))
+        # Advance exactly PERIOD days. The loop used to run one extra day on top of the first
+        # call, so simulated time drifted ahead of `depth` -- and `depth` is what the goal
+        # test and the vaccination delay read.
+        next_state = state.state
+        for _ in range(PERIOD):
             next_state, delta_parameter = self.epi.get_next_state(next_state, _execute_action)
         return EpiState(next_state, state.depth + PERIOD, self.epi.static)
 
@@ -250,7 +261,7 @@ class EpiEnv(RealWorldProblem):
             action_str = ' ^ '.join(map(str, action))
             # check if the action is already performed.
             if action_str in performed_actions: continue # when vaccination is not applied, then some actions will be repeated.
-            if not any([a.cpv_list[0] != 0.0 for a in filter(lambda o: isinstance(o, EpiAction), action)] ): continue # avoid actions with no interventions applied.
+            if not any([a.value != 0.0 for a in filter(lambda o: isinstance(o, EpiAction), action)] ): continue # avoid actions with no interventions applied.
             successor_state = self.__perform_action__(state, action + self.costs)
             if successor_state == state: continue
             # we need to stringify the action for _BFS_SEARCH

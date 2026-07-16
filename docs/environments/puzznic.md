@@ -104,25 +104,27 @@ Six actions, all cursor moves:
 | `left` / `right` / `up` / `down` | Move the cursor one cell |
 | `left-hold` / `right-hold` | Move the cursor one cell, dragging the block under it |
 
-A `-hold` action only moves a block when the cursor is actually on a `Box` and the destination cell is
-`EmptySpace`; otherwise the cursor moves alone. There is no `up-hold`/`down-hold` — you cannot lift a
-block, only slide it.
+A `-hold` with no block under the cursor is rejected outright — the cursor does not move either. When
+the cursor *is* on a block, the block slides only if the destination is `EmptySpace`. There is no
+`up-hold`/`down-hold`: you cannot lift a block, only slide it.
 
 ## Transition
 
-`_compute_successor_state_` runs a fixed pipeline per action:
+`_compute_successor_state_` runs a pipeline per action:
 
 1. **Move** — `apply_action` moves the cursor and, for a hold, the block.
-2. **Gravity** — `_apply_gravity_` sweeps rows top to bottom; each block with an empty cell below it
-   drops. Because the sweep proceeds downward and mutates rows in place, a block cascades all the way
-   to its resting place within the single pass.
-3. **Match and clear** — `_check_and_remove_matches_` marks every block orthogonally adjacent to a
-   same-colour block and clears them all at once.
-4. **Score** — `_compute_score_` diffs the grids and appends the points for the blocks removed.
+2. **Settle and clear, until stable** — gravity drops every block that has empty space below it, then
+   `_check_and_remove_matches_` clears every block orthogonally adjacent to a same-colour block. A
+   clear lets the blocks above fall, which can form a new match, so the two repeat until the grid
+   stops changing.
+3. **Score** — each clear appends its points to `state.score`.
 
 Goal and terminal states are absorbing: `_compute_successor_state_` returns a copy of the state
 unchanged rather than expanding them. `successors` additionally drops any successor equal to its
 parent, so a cursor move into a wall is not offered as an action.
+
+Note that a level holding a single block of some colour is *born* terminal, and therefore ignores
+every action — worth knowing when hand-writing a level to test against.
 
 ## Goal and terminal
 
@@ -133,19 +135,21 @@ parent, so a cursor move into a wall is not offered as an action.
 
 ## Scoring
 
-`state.score` is a *list* of per-step awards; use `sum(state.score)` for the total. Per the module's
-own comment the scoring rules are an assumed reconstruction, not the original arcade formula:
+`state.score` is a *list* with one entry per clear (not per action); use `sum(state.score)` for the
+total. Per the module's own comment the scoring rules are an assumed reconstruction, not the original
+arcade formula:
 
 - 10 points per cleared block;
 - if a single clear removes more than one distinct colour, the whole award is multiplied by
   `1.5 × (number of distinct colours)`;
 - +50 bonus per colour that had more than two blocks in the clear.
 
+`_compute_score_` takes the set of blocks a match actually cleared. It used to diff the grid before
+and after the step instead — and since blocks are identified by colour *and* position, a block that
+merely fell appeared on both sides of the diff and scored as though it had been cleared twice.
+
 ## Known quirks
 
-- **Gravity and matching are not iterated to a fixed point.** Each `step` applies gravity once and
-  then matches once. A clear that lets blocks fall into a *new* match doesn't cascade within the same
-  step — the follow-up match happens on the next action instead. Real Puzznic chains these.
 - **`_check_and_remove_matches_` asserts `len(to_remove) != 1`.** Reaching a state where exactly one
   block is marked for removal raises `AssertionError` rather than returning a state. Matches are
   found symmetrically, so this shouldn't trigger — but it is an assert on a hot path, not a guard.
@@ -155,6 +159,10 @@ own comment the scoring rules are an assumed reconstruction, not the original ar
   (`cleared_boxes[:]`) before use, so it is not corrupted — but it is a trap for future edits.
 - **`render()` de-duplicates consecutive identical states** before printing, so the printed step
   numbers do not line up with plan indices.
+- **The scoring formula is a guess.** The multiplier keys off the number of distinct colours in a
+  clear, while the comment describes a multiplier for *consecutive* cascading matches. Cascades now
+  score as separate entries in `state.score`, so implementing the described rule is straightforward
+  if the original arcade behaviour matters.
 
 ## Files
 

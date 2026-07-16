@@ -255,25 +255,34 @@ class PuzznicGame(RetroGame):
 
     def _apply_gravity_(self, state:PuzznicState):
         """!
-        This function applies gravity to the boxes in the level.
+        This function applies gravity to the boxes in the level, until they settle.
+
+        A single top-down pass is not enough: a box resting on another box is processed
+        before the one below it moves away, and would be left floating.
         """
         successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
-        for ridx, row in enumerate(successor_state.grid):
-            # skip all wall rows
-            if all(isinstance(cell, Wall) for cell in row): continue
-            if all(isinstance(cell, EmptySpace) for cell in row): continue
-            for yidx, cell in enumerate(row):
-                if not isinstance(cell, Box): continue
-                # We will move the boxes with empty spaces below them.
-                # check if the box has empty spaces below it.
-                if isinstance(successor_state.grid[ridx + 1][yidx], EmptySpace):
-                    successor_state.grid[ridx + 1][yidx] = Box(cell.letter, (ridx + 1, yidx))
-                    successor_state.grid[ridx][yidx]     = EmptySpace((ridx, yidx))
+        moved = True
+        while moved:
+            moved = False
+            for ridx, row in enumerate(successor_state.grid):
+                # skip all wall rows
+                if all(isinstance(cell, Wall) for cell in row): continue
+                if all(isinstance(cell, EmptySpace) for cell in row): continue
+                for yidx, cell in enumerate(row):
+                    if not isinstance(cell, Box): continue
+                    # We will move the boxes with empty spaces below them.
+                    # check if the box has empty spaces below it.
+                    if isinstance(successor_state.grid[ridx + 1][yidx], EmptySpace):
+                        successor_state.grid[ridx + 1][yidx] = Box(cell.letter, (ridx + 1, yidx))
+                        successor_state.grid[ridx][yidx]     = EmptySpace((ridx, yidx))
+                        moved = True
         return successor_state
 
     def _check_and_remove_matches_(self, state:PuzznicState):
         """!
         This function checks and removes all horizontal/vertical matches of 2+ blocks.
+
+        Returns the successor state and the set of boxes that were cleared.
         """
         matched_successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes) #deepcopy(state)
         to_remove = set()
@@ -292,21 +301,21 @@ class PuzznicGame(RetroGame):
         assert len(to_remove) != 1, "Invalid state, more than one box to remove."
         matched_successor_state.clear_boxes(to_remove)
 
-        return matched_successor_state
+        return matched_successor_state, to_remove
 
-    def _compute_score_(self, newgrid, oldgrid):
-        # newgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in newgrid for item in sublist]))
-        # oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), [item for sublist in oldgrid for item in sublist]))
-        newgrid_boxes = set(filter(lambda o: isinstance(o, Box), chain.from_iterable(newgrid)))
-        oldgrid_boxes = set(filter(lambda o: isinstance(o, Box), chain.from_iterable(oldgrid)))
-        removed_boxes = (oldgrid_boxes - newgrid_boxes).union(newgrid_boxes - oldgrid_boxes)
+    def _compute_score_(self, removed_boxes):
+        """!
+        Scores the boxes cleared by a single match.
 
+        Takes the cleared boxes rather than diffing two grids: boxes are identified by
+        letter *and* position, so diffing counted a box that merely fell as cleared twice.
+        """
         # scoring logic (assumed)
         # Each cleared block awards points (e.g., 10 points per block).
         # Consecutive matches caused by cascading blocks (due to gravity) increase a multiplier
         # Matching more than 2 blocks adds a bonus (e.g., +50 points per extra block).
 
-        each_block_score    = len(removed_boxes) * 10  
+        each_block_score    = len(removed_boxes) * 10
         cascaded_blocks     = set(map(lambda o:o.letter, removed_boxes))
         each_casecade_score = each_block_score * len(cascaded_blocks) * 1.5 if len(cascaded_blocks) > 1 else each_block_score
 
@@ -324,9 +333,17 @@ class PuzznicGame(RetroGame):
         successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
         if state.is_goal() or state.is_terminal(): return successor_state
         successor_state.apply_action(action)
-        successor_state = self._apply_gravity_(successor_state)
-        successor_state = self._check_and_remove_matches_(successor_state)
-        successor_state.score += self._compute_score_(successor_state.grid, state.grid)
+        # Gravity and matching cascade: clearing a match lets the boxes above fall, which can
+        # form a new match, which clears, and so on. Repeat until the grid settles.
+        while True:
+            settled_state = self._apply_gravity_(successor_state)
+            matched_state, removed_boxes = self._check_and_remove_matches_(settled_state)
+            if not removed_boxes:
+                # Nothing cleared, so nothing can fall: the grid has settled.
+                successor_state = settled_state
+                break
+            matched_state.score += self._compute_score_(removed_boxes)
+            successor_state = matched_state
         return successor_state
 
     def _levels_str_(self, index):

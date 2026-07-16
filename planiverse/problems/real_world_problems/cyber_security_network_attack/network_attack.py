@@ -153,7 +153,10 @@ class EnvNASim(RealWorldProblem):
     def reset(self):
         assert self.scenario_name is not None or self.scenario_yaml is not None, "Scenario name or yaml is not set."
         # Check if we want to load the scenario from the yaml or from a name.
-        self.env = nasim.make_benchmark(self.scenario_name)
+        if self.scenario_yaml is not None:
+            self.env = nasim.load(self.scenario_yaml)
+        else:
+            self.env = nasim.make_benchmark(self.scenario_name)
         _, _ = self.env.reset(seed=0)
         self.actionslist = self.env.action_space.actions
         return NASimState(self.env.current_state, self.env.network), {}

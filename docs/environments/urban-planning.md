@@ -11,12 +11,11 @@ Consensus-based Multi-Agent Reinforcement Learning"*.
 - **Import:** `from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv`
 - **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/urban_planning/environment.py)
 - **Instances:** 2 cities, indices `0`–`1`
-- **Dependencies:** `pandas`, `networkx`, `numpy` — ⚠️ **`pandas` and `networkx` are not declared in
-  `pyproject.toml`**; install them yourself (`pip install pandas networkx`).
+- **Dependencies:** `pandas`, `networkx`, `numpy`
 
-This environment is the least finished of the six. The action model has known bugs
-(see [Known quirks](#known-quirks)) that make several actions no-ops on the bundled cities. Read that
-section before using it as a benchmark.
+This is the least finished of the six environments, and the one whose action model involved the most
+guesswork to repair — see [Fixed](#fixed) for what changed and why it may not match what the original
+author intended.
 
 ## Quickstart
 
@@ -110,22 +109,25 @@ Each state also computes two scores (see [Objectives](#objectives)).
 
 ## Actions
 
-Six actions, each converting a fixed 5% slice of one land-use class:
+Six actions, each rezoning a 5% slice (`CHANGE_RATIO`) of one land-use class and dealing the selected
+parcels round-robin across the target types:
 
-| Action | Intent |
-|---|---|
-| `ConvertEmptyAction` | Develop empty land, split evenly across all five uses |
-| `ConvertGreenSpaceAction` | Green space → facilities / commercial |
-| `ConvertOfficesAction` | Offices → commercial |
-| `ConvertCommercialAction` | Commercial → facilities |
-| `ConvertFacilitiesAction` | Facilities → green space / commercial |
-| `RemoveResidentialAction` | Residential → empty |
+| Action | Converts | Into |
+|---|---|---|
+| `ConvertEmptyAction` | Empty land | residential / office / green / commercial / facilities |
+| `ConvertGreenSpaceAction` | Green space | facilities / commercial |
+| `ConvertOfficesAction` | Offices | commercial |
+| `ConvertCommercialAction` | Commercial | facilities |
+| `ConvertFacilitiesAction` | Facilities | green space / commercial |
+| `RemoveResidentialAction` | Residential | empty |
 
-The selected parcels are the **first** `int(count × 0.05)` of that type in graph insertion order (CSV
-order) — not sampled, not chosen by any criterion. Expansion is fully deterministic.
+The selected parcels are the **first** `ceil(count × 0.05)` of that type in graph insertion order (CSV
+order) — not sampled, not chosen by any criterion. Expansion is fully deterministic. Rounding up means
+a class with fewer than 20 parcels is still rezonable, one parcel at a time.
 
-`successors` instantiates all six action classes each call and returns
-`(action, successor_state)` pairs. Actions stringify as `action_<node>_<newtype>__...`.
+`successors` instantiates all six action classes each call and returns `(action, successor_state)`
+pairs, **skipping any action whose land-use class is absent** from the city. Actions stringify as
+`action_<node>_<newtype>__...`.
 
 ## Objectives
 
@@ -153,46 +155,68 @@ coarse signal and many actions won't move them at all.
   running out the clock; plan *quality* must come from the scores above.
 - **Terminal** (`is_terminal`) — always `False`.
 
+## Effective actions per city
+
+With `ceil(count × 0.05)` over the initial land use, and no-op actions filtered out:
+
+| Action | Kendall Square | St Andrews |
+|---|---|---|
+| `ConvertEmpty` | 3 parcels → 1 residential, 1 office, 1 green | *not offered* (no empty land) |
+| `ConvertGreenSpace` | 3 → 2 facilities, 1 commercial | 12 → 6 facilities, 6 commercial |
+| `ConvertOffices` | 3 → commercial | *not offered* (no offices) |
+| `ConvertCommercial` | *not offered* (no commercial) | 1 → facilities |
+| `ConvertFacilities` | 1 → green space | 1 → green space |
+| `RemoveResidential` | 29 → empty | 1 → empty |
+
+So the branching factor is 5 for Kendall Square and 4 for St Andrews.
+
 ## Known quirks
 
-These are real bugs, verified against the bundled data. Treat this environment as a work in progress.
-
-- **`ConvertEmptyAction` converts everything to facilities.** It builds its conversion list as *every
-  land × every type* and `apply` walks that list assigning each in turn — so the last assignment
-  wins, and all selected parcels end up `FACILITIES`. The intended "split empty land evenly between
-  r/o/g/c/f" does not happen.
-- **The 5%-of-5% slice is almost always empty.** `ConvertGreenSpaceAction` and
-  `ConvertFacilitiesAction` take 5% of a type, then split *that* slice with another 5% cut. On these
-  city sizes the inner cut rounds to zero, so their first branch never fires: green space converts
-  entirely to commercial, never facilities. `ConvertOfficesAction`/`ConvertCommercialAction` also
-  slice with `[int(len × 0.05):]`, which drops nothing but is clearly not what was meant.
-- **Several actions are silent no-ops.** With `int(count × 0.05)` and the counts above, at the
-  initial state:
-
-  | Action | Kendall Square | St Andrews |
-  |---|---|---|
-  | `ConvertEmpty` | 3 parcels → facilities | **0 — no-op** |
-  | `ConvertGreenSpace` | 2 → commercial | 11 → commercial |
-  | `ConvertOffices` | 2 → commercial | **0 — no-op** |
-  | `ConvertCommercial` | **0 — no-op** | **0 — no-op** (15 × 0.05 = 0) |
-  | `ConvertFacilities` | **0 — no-op** (15 × 0.05 = 0) | **0 — no-op** |
-  | `RemoveResidential` | 28 → empty | **0 — no-op** (19 × 0.05 = 0) |
-
-  Any type with fewer than 20 parcels can never be converted. St Andrews has exactly **one**
-  effective action at reset.
-- **No-op actions are still returned as successors.** `successors` filters with
-  `if successor_state == state: continue`, but literals include `depth_N` and every successor sits at
-  `depth + 1` — so a successor can *never* compare equal to its parent and the filter is dead code.
-  The branching factor is a constant 6, four or five of which may only advance the clock. This is the
-  one environment where the self-loop filter doesn't work.
-- **Actions are stateful and not reusable.** `converted_nodes` is initialised in `__call__`, not
-  `__init__`, and `apply` appends to it. So a freshly constructed action passed straight to
-  `apply`/`str` raises `AttributeError`, and `simulate` — which calls `action.apply(state)` directly
-  — accumulates into `converted_nodes` across calls and leaves `actionstr` stale. Only use actions
-  handed to you by `successors`, once.
 - **`UrbanPlanningEnv.__init__` doesn't call `super().__init__()`**, so `self.name` is unset;
   `self.statsitics` (sic) is the land-use summary built by `reset`.
 - **`fix_index` must precede `reset()`** — `reset` reads `self.node_info` / `self.node_pairs`.
+- **The goal ignores the scores.** Reaching the horizon is the only goal test; sustainability and
+  diversity are there for a planner's heuristic to optimise, not for the environment to check.
+- **Score rounding is coarse.** Both scores round to 1 decimal, so they step in units of 0.1 and many
+  single actions won't move them at all.
+
+## Fixed
+
+These were real bugs, verified against the bundled data. They changed how the environment behaves, so
+earlier results will not reproduce.
+
+- **`ConvertEmptyAction` converted everything to facilities.** It built its conversion list as *every
+  land × every type*, and `apply` walked that list assigning each in turn, so the last assignment
+  won. Its stated intent — "split all of the empty spaces evenly between r, o, g, c, f" — never
+  happened. It now deals parcels round-robin across the five uses.
+- **The 5%-of-5% slice was almost always empty.** `ConvertGreenSpaceAction` and
+  `ConvertFacilitiesAction` took 5% of a class and then split *that* slice with another 5% cut, which
+  rounded to zero on these city sizes — so green space only ever became commercial, never facilities.
+  The slice is now a single cut, split evenly across the target types.
+- **Classes under 20 parcels were frozen forever.** `int(15 × 0.05)` truncates to 0, so Kendall's 15
+  facilities and St Andrews' 19 residential parcels could never be rezoned, and St Andrews had
+  exactly **one** effective action. Selection now rounds up.
+- **No-op actions were offered as successors.** The filter was `if successor_state == state`, but
+  literals include `depth_N` and every successor sits at `depth + 1`, so a successor could never
+  compare equal to its parent and the filter was dead code. `successors` now drops actions that
+  rezoned nothing (`action.converted_nodes` is empty).
+
+  Note the fix keeps `depth_N` in the literals rather than removing it: the goal test is
+  `depth >= horizon`, so a planner keying its visited set on literals needs depth there — without it,
+  a state at depth 3 would prune a state with the same land-use counts at depth 99 and the horizon
+  could become unreachable.
+- **Actions were stateful and not reusable.** `converted_nodes` was created in `__call__`, so a fresh
+  action passed to `apply`/`str` raised `AttributeError` — which is exactly what `simulate` does —
+  and repeated `apply` calls accumulated into it while leaving `actionstr` stale. Both are now set up
+  in `__init__` and recomputed per `apply`.
+
+### A judgment call worth reviewing
+
+The **split proportions** were ambiguous in the original. Dead comments variously described "80% to
+be g and 20% to be commercial" and "split evenly", while the code did neither. Each action now splits
+its slice **evenly** across its target types, which is what the class comments say most often. If the
+paper this is based on specifies particular proportions, that belongs in `__split_evenly__`'s
+callers.
 
 ## Files
 
