@@ -23,44 +23,55 @@ Every environment answers the same four questions:
 | Manufacturing | `MfgEnv` | 7 demand/capacity instances | [docs](docs/environments/manufacturing.md) |
 | Urban planning | `UrbanPlanningEnv` | 2 cities (Kendall Square, St Andrews) | [docs](docs/environments/urban-planning.md) |
 | Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
-| Super Mario Land | `SuperMarioEnv` | 1 (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
+| Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
 see [The Simulator facade](#the-simulator-facade).
 
 ## Installation
 
-Requires Python ≥ 3.11.
+Requires Python **≥ 3.11, < 3.14** — numba and scipy have no 3.14 wheels yet, and building them from
+source needs a system OpenBLAS.
 
 ```bash
 git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
-poetry install
+poetry env use python3.12
+poetry install --extras dev      # --extras dev adds pytest
 ```
 
 Or, with pip:
 
 ```bash
-pip install -e .
-```
-
-Two things to know before you install:
-
-**`pandas` and `networkx` are missing from `pyproject.toml`.** The urban planning environment imports
-both. Until they are declared, install them yourself:
-
-```bash
-pip install pandas networkx
+pip install -e ".[dev]"
 ```
 
 **Dependencies are all-or-nothing.** `pyproject.toml` declares every environment's dependencies as
 required, so installing the package pulls in PyBoy, JAX/flax, numba, NASim, and a metasploit client
 even if you only want Puzznic. Puzznic needs nothing beyond the standard library; the manufacturing
-environment needs only numpy. If you want a light install, install those extras selectively rather
-than running `poetry install`.
+environment needs only numpy. If you want a light install, install those selectively rather than
+running `poetry install`. Splitting these into optional groups is on the [roadmap](#status).
 
 Super Mario Land additionally needs a `SuperMarioLand.gb` ROM, which is **not** and cannot be
 distributed with this repo. See its [docs](docs/environments/super-mario-land.md).
+
+## Tests
+
+```bash
+poetry run pytest                  # the whole suite
+poetry run pytest -m "not slow"    # skip the slow epidemic/search tests
+```
+
+Tests for an environment whose dependencies are missing skip rather than fail, so the suite is
+runnable from a partial install. The Super Mario Land emulator tests are opt-in — point
+`PLANIVERSE_SML_ROM` at a ROM to run them:
+
+```bash
+PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb poetry run pytest tests/test_super_mario.py
+```
+
+[`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
+environment; the other modules cover per-environment behaviour.
 
 ## Quickstart
 
@@ -127,17 +138,17 @@ Not every environment implements every method. What is actually there today:
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `MfgEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `UrbanPlanningEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
-| `PDDLGymEnv` | ✅ | — | ✅ | ✅ | ⚠️ | ✅ | — | ⚠️ | — |
+| `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
 detecting them is left to the planner. Puzznic and Super Mario Land are the two that really compute
-it. `PDDLGymEnv.validate` is defined as `is_terminal(last_state)`, which — since `is_terminal` is
-always `False` — always returns `False`; treat it as unimplemented rather than as a plan check.
+it.
 
 ### States and `literals`
 
-Every state object carries a `literals` attribute: a `frozenset` of strings, each a
-predicate-like fact about the state.
+Every state object carries a `literals` attribute: a `frozenset` of facts about the state. Native
+environments spell them as predicate-like strings; the PDDLGym wrapper passes pddlgym `Literal`
+objects straight through, so only "frozenset" is common to both.
 
 ```python
 sorted(state.literals)[:4]
@@ -177,7 +188,8 @@ PDDLGym environment without caring which:
 import pddlgym
 from planiverse.simulator.simulator import Simulator
 
-sim = Simulator(pddlgym.make("PDDLEnvSokoban-v0"))   # wrapped in PDDLGymEnv
+sim = Simulator(pddlgym.make("PDDLEnvBlocks-v0"))   # wrapped in PDDLGymEnv
+sim.simulator.fix_index(0)                          # pick one of the domain's problem files
 state, info = sim.reset()
 for action, successor in sim.successors(state):
     ...
@@ -186,6 +198,10 @@ for action, successor in sim.successors(state):
 It dispatches on type: a gym `OrderEnforcing` object is wrapped in
 [`PDDLGymEnv`](planiverse/simulator/wrappers/pddlgymenv.py), while a `RetroGame` or
 `RealWorldProblem` is used as-is. Anything else raises an assertion.
+
+A PDDL domain ships several problem files, and PDDLGym picks one *at random* on every reset. The
+wrapper pins problem `0` on construction so that `reset()` is repeatable like every other
+environment's; `fix_index(i)` selects a different one.
 
 Passing a native environment through `Simulator` adds nothing but delegation — and because it
 forwards `step`/`validate`/`get_actions` that most environments don't implement, calling those
@@ -283,13 +299,15 @@ is referenced as a planned addition but is not yet in the tree.
 
 ## Status
 
-- [x] README
-- [x] Super Mario Land via PyBoy — playable, but level selection is not wired into `reset` yet
+- [x] README and per-environment docs
+- [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
 - [x] NASim network attack
+- [x] Test suite (`poetry run pytest`)
 - [ ] Flood application
-- [ ] `pandas` / `networkx` missing from declared dependencies
 - [ ] Optional dependency groups, so one environment doesn't pull in all of them
-- [ ] Test suite
+- [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
+- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
+- [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
 
 ## License
 

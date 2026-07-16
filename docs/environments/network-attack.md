@@ -28,12 +28,18 @@ for action, successor in env.successors(state):
 trace = env.simulate([a for a, _ in env.successors(state)][:3])
 ```
 
-You can also name a scenario directly, skipping `fix_index`:
+You can also name a scenario directly, skipping `fix_index`, or load your own scenario file:
 
 ```python
 env = EnvNASim(scenario_name="small-honeypot")
 state, _ = env.reset()
+
+env = EnvNASim(scenario_yaml="/path/to/scenario.yaml")   # loaded via nasim.load
+state, _ = env.reset()
 ```
+
+`scenario_yaml` used to satisfy `reset()`'s assert and then be ignored, so passing only a YAML path
+called `make_benchmark(None)` and failed.
 
 ## Scenarios
 
@@ -125,10 +131,6 @@ branching factor manageable: only actions that actually accomplish something are
 
 ## Known quirks
 
-- **`scenario_yaml` is accepted but ignored.** `reset()` asserts that one of `scenario_name` or
-  `scenario_yaml` is set, then unconditionally calls `nasim.make_benchmark(self.scenario_name)`. If
-  you pass only a YAML path, the assert passes and `make_benchmark(None)` fails. Loading custom
-  scenarios from YAML is unimplemented.
 - **`reset()` rebuilds the environment every call**, re-running `make_benchmark`. It is not cheap;
   don't call it inside a loop.
 - **`successors` needs `reset()` first.** It reads `self.actionslist`, which is `None` until reset.

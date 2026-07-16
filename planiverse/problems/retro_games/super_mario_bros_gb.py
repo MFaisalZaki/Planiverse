@@ -1,7 +1,6 @@
 import os
 import io
 from enum import Enum
-from tkinter import Image
 import numpy as np
 from copy import deepcopy
 from itertools import product, chain
@@ -58,6 +57,13 @@ class SuperMarioState:
         self.mario_position = position(x=pyboy.memory[0xC202], y=pyboy.memory[0xC201])
         self.mario_velocity = velocity(x=pyboy.memory[0xC20C], y=pyboy.memory[0xC20D])
         self.collision = False #pyboy.memory[0xC0AC] != 0 # Check the Mario dead jump timer.
+
+        # Goal/terminal flags are sampled here, while the emulator still holds this state.
+        # Reading them later from live memory would describe whichever state was applied last.
+        self.level_complete = pyboy.memory[0xDFE8] == 0x01
+        # The death music track is requested when Mario dies.
+        # https://datacrystal.romhacking.net/wiki/Super_Mario_Land:RAM_map
+        self.game_over = pyboy.memory[0xC0A4] == 0x39
         
         # self.enemies_objects = set([pyboy.memory[0xD109 + i*16 + 0] for i in range(10)])
         self.enemies_killed = 0
@@ -88,7 +94,7 @@ class SuperMarioState:
             f'(supermario position {self.mario_position.x} {self.mario_position.y})',
             f'(supermario velocity {int(self.mario_velocity.x)} {int(self.mario_velocity.y)})',
             f'(progress {self.level_progress})',
-            f'(depth {self.depth})'
+            f'(depth {self.depth})',
             f'(coins {self.coins})',
             # f'(timeleft {self.timeleft})', # Ignore this one.
             f'(livesleft {self.lives_left})',
@@ -164,15 +170,17 @@ class SuperMarioEnv(RetroGame):
         self.pyboy   = None
         self.render  = render
         self.world_level = None
-        self.world_level_map = {k:v for k, v in enumerate(product([i for i in range(0,4)], repeat=2))}
+        # Super Mario Land has 4 worlds of 3 levels each, both 1-indexed.
+        self.world_level_map = {k:v for k, v in enumerate(product(range(1,5), range(1,4)))}
         self.actions = action_list
 
     def reset(self):
         self.pyboy = create_pyboy(self.romfile, self.render)
         self.game = self.pyboy.game_wrapper
         self.game.game_area_mapping(self.game.mapping_compressed, 0)
-        self.game.start_game()
-        self.game.set_lives_left(0) # to avoid replays 
+        # world_level is None until fix_index is called, which starts the game at its default level.
+        self.game.start_game(world_level=self.world_level)
+        self.game.set_lives_left(0) # to avoid replays
         self.pyboy.tick() # To render screen after `.start_game`
         self.game.post_tick()
         return SuperMarioState(self.pyboy, 0), {}
@@ -182,13 +190,11 @@ class SuperMarioEnv(RetroGame):
         self.world_level = self.world_level_map[index]
 
     def is_goal(self, state):
-        # TODO: We need to know what is special that we can use to know that we reached the goal
-        return self.pyboy.memory[0xDFE8] == 0x01
+        # TODO: 0xDFE8 is our best guess at the level-complete flag; it needs confirming.
+        return state.level_complete
 
     def is_terminal(self, state):
-        # know this information from the music track requested.
-        # according to: https://datacrystal.romhacking.net/wiki/Super_Mario_Land:RAM_map
-        return self.pyboy.memory[0xC0A4] == 0x39 or state.collision 
+        return state.game_over or state.collision
     
     # Returns a list of [action, successor_state]
     def successors(self, state):

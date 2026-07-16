@@ -41,6 +41,18 @@ class ConfigurationAction:
         return self.__str__()
 
 
+def total_produced(env_state):
+    """Units produced so far across every configuration.
+
+    Demand is satisfied by the whole shop floor, not by one configuration, so every
+    read of the remaining demand has to aggregate over all of them.
+    """
+    return int(sum(
+        np.sum(np.asarray(cfg["produced_counts"]).astype(int))
+        for cfg in env_state["configuration_costs"].values()
+    ))
+
+
 class MfgState:
     def __init__(self, state, static_state, DEMAND):
         self.DEMAND        = DEMAND
@@ -54,11 +66,13 @@ class MfgState:
 
     def __update__(self):
         # frozenset([' ^ ' .join([f'{k}({str(v)})' for k, v in self._state.items()])])
+        # '.' is escaped rather than stripped: stripping collapses distinct values onto the
+        # same literal (1.5 and 15 both became '15'), which silently merges distinct states.
         state_vars = []
         for cfg, values in self._state["configuration_costs"].items():
-            state_vars.extend([f'{k}(cfg{cfg} {v})'.replace('.','').lower() for k, v in values.items()])
-        state_vars.append(f'demand({self._state["demand"]})'.replace('.','').lower())
-        state_vars.append(f'demand_time({self._state["demand_time"]})'.replace('.','').lower())
+            state_vars.extend([f'{k}(cfg{cfg} {v})'.replace('.','_').lower() for k, v in values.items()])
+        state_vars.append(f'demand({self._state["demand"]})'.replace('.','_').lower())
+        state_vars.append(f'demand_time({self._state["demand_time"]})'.replace('.','_').lower())
 
         self.literals = frozenset(state_vars)
 
@@ -130,11 +144,11 @@ class MfgState:
         ret_state["configuration_costs"][cfg_id]["cfgs_status"] = np.clip(ret_state["configuration_costs"][cfg_id]["cfgs_status"] + updates * progress, a_min=0, a_max=1)
 
         # update observation
-        ret_state["demand"] = self.DEMAND - np.sum(ret_state["configuration_costs"][cfg_id]["produced_counts"].astype(int))
+        ret_state["demand"] = self.DEMAND - total_produced(ret_state)
         ret_state["demand_time"] -= 1
 
         return MfgState(ret_state, ret_static_state, self.DEMAND)
-    
+
     def batch_production(self, cfg_id, items):
         next_state = self.copy()
         for i in range(items):
@@ -160,9 +174,10 @@ class MfgState:
             progress = 1 / ret_state["configuration_costs"][cfg_id]["setup_times"] + 1e-9 if ret_state["configuration_costs"][cfg_id]["setup_times"] != 0 else 0
             ret_state["configuration_costs"][cfg_id]["cfgs_status"] = np.clip(ret_state["configuration_costs"][cfg_id]["cfgs_status"] + updates * progress, a_min=0, a_max=1)
 
-            # update observation
-            ret_state["demand"] = self.DEMAND - np.sum(ret_state["configuration_costs"][cfg_id]["produced_counts"].astype(int))
-            ret_state["demand_time"] -= 1
+        # Every configuration ran for the same single day, so the clock advances once here,
+        # not once per configuration.
+        ret_state["demand"] = self.DEMAND - total_produced(ret_state)
+        ret_state["demand_time"] -= 1
 
         return MfgState(ret_state, ret_static_state, self.DEMAND)
 
@@ -344,5 +359,7 @@ class MfgEnv(RealWorldProblem):
         ) * self.BUFFER_SIZE
 
     def _load_setup_datafiles(self):
+        # Sorted so that an index maps to the same instance on every machine:
+        # os.listdir order is filesystem-dependent.
         data_dir = os.path.join(os.path.dirname(__file__), "data")
-        self.data_index = {i:os.path.join(data_dir, f) for (i,f) in enumerate(map(lambda x: os.path.join(data_dir, x), os.listdir(data_dir)))}
+        self.data_index = {i: os.path.join(data_dir, f) for i, f in enumerate(sorted(os.listdir(data_dir)))}

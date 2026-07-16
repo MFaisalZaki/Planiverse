@@ -9,7 +9,8 @@ which is vendored under `epidemic_control/epipolicy/`.
 - **Import:** `from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv`
 - **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/epidemic_control/environment.py)
 - **Instances:** 7 scenarios, indices `0`–`6`
-- **Dependencies:** `numba`, `dill`, `numpy`, `gym` (EpiPolicy JIT-compiles its inner loop)
+- **Dependencies:** `numba`, `sympy`, `scipy`, `dill`, `numpy`, `gym` (EpiPolicy JIT-compiles its
+  inner loop and parses its model equations with sympy)
 
 This is the most heavily *abstracted* environment in the repo. A compartmental model is continuous
 and never revisits a state, so search over it doesn't terminate without help. Almost every design
@@ -98,18 +99,18 @@ successors that compare equal to the parent.
 
 Actions run for a **`PERIOD = 7` day** block: policy is set weekly, not daily, which shrinks the
 horizon from 364 decisions to 52. Interventions with a zero control value are dropped before
-execution (`cpv_list[0] > 0`) purely to save simulation time.
+execution (`action.value > 0`) purely to save simulation time.
 
 ```python
-next_state, _ = self.epi.get_next_state(state.state, _execute_action)
-for i in range(1, PERIOD+1):
-    next_state, _ = self.epi.get_next_state(next_state, _execute_action)
+next_state = state.state
+for _ in range(PERIOD):
+    next_state, delta_parameter = self.epi.get_next_state(next_state, _execute_action)
 return EpiState(next_state, state.depth + PERIOD, self.epi.static)
 ```
 
-Note the loop runs `PERIOD` times *after* the first call — **8 daily steps, while `depth` advances by
-7**. Simulated time therefore runs ~14% ahead of `depth`, and `depth` is what the goal test uses.
-This is a bug, not a modelling choice.
+This used to run one `get_next_state` before the loop and then `PERIOD` more — 8 simulated days per
+step while `depth` advanced by 7. Simulated time drifted ~14% ahead of `depth`, which is what both
+the goal test and the vaccination delay read.
 
 ## State abstraction (read this)
 
@@ -170,14 +171,6 @@ check) left from earlier iterations.
 
 ## Known quirks
 
-- **8 simulated days per 7-day step** — see [Transition](#transition).
-- **The filter reads `cpv_list[0]`, not the control parameter.** Both the sparsity filter and the
-  zero-skip in `successors`/`__perform_action__` index `cpv_list[0]` — the *first* control parameter
-  — while `EpiAction` carefully locates the real one and stores it at `control_parameter_index`. In
-  all 7 bundled scenarios the control parameter happens to be listed first (`degree` for
-  Vaccination, `compliance` for Masks, `percentage` for the closures), so the two agree and the code
-  works. A new scenario that lists, say, `cost_per_day` first would silently filter on a cost value
-  instead of the policy level. Use `control_parameter_index` if you touch this code.
 - **Dead code in `__reset__`.** The intervention-rewriting block (`updated_interventions`,
   `updated_optimze_interventions`) is computed then discarded — the lines that would apply it to the
   session are commented out. `session['schedules']` *is* cleared, which matters: any schedule baked
@@ -189,6 +182,19 @@ check) left from earlier iterations.
   bottleneck — start with SIR_A.
 - **`EpiEnv.__init__` never sets `self.scenario`.** It is created by `fix_index`, so calling
   `reset()` first raises `AttributeError`.
+
+## Fixed
+
+These changed the trajectories the environment produces, so earlier results will not reproduce:
+
+- **A step is exactly 7 simulated days**, matching the 7 that `depth` advances by — see
+  [Transition](#transition).
+- **The policy level is read via `control_parameter_index`, not `cpv_list[0]`.** The sparsity filter
+  and the zero-skips indexed `cpv_list[0]` — the *first* control parameter — while `EpiAction`
+  carefully located the real one. In all 7 bundled scenarios the control parameter happens to be
+  listed first (`degree` for Vaccination, `compliance` for Masks, `percentage` for the closures), so
+  the two agreed and the code worked by luck of parameter ordering; a scenario listing `cost_per_day`
+  first would have filtered on a cost value instead of the policy level. Read `action.value`.
 
 ## Files
 

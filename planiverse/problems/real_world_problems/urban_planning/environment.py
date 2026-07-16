@@ -14,6 +14,7 @@
 # TODO: We need to figure out the numbers of the land type.
 
 import os
+import math
 import pandas as pd
 import networkx as nx
 import numpy as np
@@ -22,6 +23,9 @@ from copy import deepcopy
 
 
 from planiverse.problems.real_world_problems.base import RealWorldProblem
+
+# Share of a land-use class rezoned by a single action.
+CHANGE_RATIO = 0.05
 
 class LandUseType(Enum):
     RESIDENTIAL = 'r'
@@ -55,7 +59,7 @@ class UrbanEnvState:
         self.__update__()
 
     def __compute_sustainability_score__(self):
-        # \text{Sustainability} \propto \frac{\#g + \#c}{\text{total parcels}}
+        # \text{Sustainability} \propto \frac{\#g + \#c + \#f}{\text{non-empty parcels}}
         green_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.GREEN_SPACE, self.urban_graph.nodes))
         commercial_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.COMMERCIAL, self.urban_graph.nodes))
         facility_area_count = list(filter(lambda e: self.urban_graph.nodes[e]['type'] == LandUseType.FACILITIES, self.urban_graph.nodes))
@@ -84,30 +88,46 @@ class UrbanEnvState:
 # Use land actions.
 class UrbanPlanAction:
     def __init__(self, landusetype):
-        self.landusetype = landusetype
-    
-    def __call__(self, state):
+        self.landusetype    = landusetype
         self.converted_nodes = []
-        new_state = self.apply(state)
-        self.actionstr = 'action_' + '__'.join(map(lambda a: f'{int(a[0])}_{a[2].value}', self.converted_nodes))
-        return new_state
-    
+        self.actionstr       = f'action_{landusetype.value}_noop'
+
+    def __call__(self, state):
+        return self.apply(state)
+
     def __str__(self):
         return self.actionstr
-    
+
     def __get_lands_of_type__(self, g, landtype:LandUseType):
         # return filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes)
         return list(filter(lambda n: g.nodes[n]['type'] == landtype, g.nodes))
 
+    def __select_lands__(self, lands):
+        """!
+        The share of lands a single action rezones, rounded up so that a class with fewer
+        than 1/CHANGE_RATIO parcels is still rezonable.
+        """
+        return lands[:math.ceil(len(lands) * CHANGE_RATIO)]
+
+    def __split_evenly__(self, lands, landtypes):
+        """!
+        Deals the selected lands round-robin across landtypes, so each target type gets an
+        even share. Returns a list of (land, new_type) pairs, one entry per land.
+        """
+        return [(land, landtypes[i % len(landtypes)]) for i, land in enumerate(lands)]
+
     def apply(self, state):
-        # split half evenly empty space between r, o, g, c, f
-        # _landuse = deepcopy(state.urban_graph)
+        # Conversions are recomputed on every call, so an action can be replayed against
+        # any state rather than only the one it was generated from.
+        self.converted_nodes = []
         landuse = state.urban_graph.copy()
         for land, type in  self.__get_lands_to_convert__(landuse):
             self.converted_nodes.append((land, landuse.nodes[land]['type'], type))
             update_landuse(landuse.nodes[land], type)
+        self.actionstr = 'action_' + '__'.join(map(lambda a: f'{int(a[0])}_{a[2].value}', self.converted_nodes)) \
+                         if self.converted_nodes else f'action_{self.landusetype.value}_noop'
         return UrbanEnvState(landuse, state.depth+1)
-    
+
     def __get_lands_to_convert__(self, landuse):
         assert False, "This method should be implemented in the subclass."
 
@@ -116,82 +136,56 @@ class ConvertEmptyAction(UrbanPlanAction):
         super().__init__(LandUseType.EMPTY)
 
     def __get_lands_to_convert__(self, landuse):
-        # Split all of the empty spaces evenly between r, o, g, c, f
-        updated_list = []
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.EMPTY)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*0.05)]
-        for new_type in [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES]:
-            for land in to_convert_lands:
-                updated_list.append((land, new_type))
-        return updated_list
+        # Split the developed empty spaces evenly between r, o, g, c, f.
+        # Every land used to be paired with every type, and apply() kept the last assignment,
+        # so all of them silently became facilities.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.EMPTY))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.RESIDENTIAL, LandUseType.OFFICE, LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL, LandUseType.FACILITIES])
 
 class ConvertGreenSpaceAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.GREEN_SPACE)
 
     def __get_lands_to_convert__(self, landuse):
-        # Split all of the green spaces evenly between r, o, g, c, f
-        change_ratio = 0.05  # 5% of the green spaces will be converted
-        updated_list = []
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.GREEN_SPACE)
-        # Get the top 5% of the list.
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
-        updated_lands  = list((n, LandUseType.FACILITIES) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
-        return updated_lands
+        # Split the converted green spaces evenly between facilities and commercial.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.GREEN_SPACE))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.FACILITIES, LandUseType.COMMERCIAL])
 
 class ConvertOfficesAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.OFFICE)
 
     def __get_lands_to_convert__(self, landuse):
-        # So half of the offices will be splited 80% to be g and 20% to be commercial
-        updated_lands = []
-        change_ratio = 0.05  # 1% of the offices will be converted
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.OFFICE)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
-        # updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
-        return updated_lands
-        
+        # Offices become commercial.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.OFFICE))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.COMMERCIAL])
+
 class ConvertCommercialAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.COMMERCIAL)
 
     def __get_lands_to_convert__(self, landuse):
-        updated_lands = []
-        # So half of the c will be spliited to 80% to be green and 20% to be f.
-        change_ratio = 0.05  # 5% of the commercial areas will be converted
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.COMMERCIAL)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
-        # updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*0.8)])
-        updated_lands += list((n, LandUseType.FACILITIES)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
-        return updated_lands
+        # Commercial areas become facilities.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.COMMERCIAL))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.FACILITIES])
 
 class ConvertFacilitiesAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.FACILITIES)
 
     def __get_lands_to_convert__(self, landuse):
-        updated_lands = []
-        # so 20% of the facilities will be converted to 80% green space and 20% to commercial.
-        change_ratio = 0.05
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.FACILITIES)
-        to_convert_lands = to_convert_lands[:int(len(to_convert_lands)*change_ratio)]
-        updated_lands  = list((n, LandUseType.GREEN_SPACE) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
-        updated_lands += list((n, LandUseType.COMMERCIAL)  for n in to_convert_lands[int(len(to_convert_lands)*change_ratio):])
-        return updated_lands
+        # Split the converted facilities evenly between green space and commercial.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.FACILITIES))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.GREEN_SPACE, LandUseType.COMMERCIAL])
 
 class RemoveResidentialAction(UrbanPlanAction):
     def __init__(self):
         super().__init__(LandUseType.EMPTY)
 
     def __get_lands_to_convert__(self, landuse):
-        updated_lands = []
-        to_convert_lands = self.__get_lands_of_type__(landuse, LandUseType.RESIDENTIAL)
-        # convert 5% of the residential areas to empty
-        change_ratio = 0.05
-        return list((n, LandUseType.EMPTY) for n in to_convert_lands[:int(len(to_convert_lands)*change_ratio)])
+        # Residential areas are cleared back to empty land.
+        to_convert_lands = self.__select_lands__(self.__get_lands_of_type__(landuse, LandUseType.RESIDENTIAL))
+        return self.__split_evenly__(to_convert_lands, [LandUseType.EMPTY])
 
 class UrbanPlanningEnv(RealWorldProblem):
     def __init__(self, horizon: int):
@@ -258,7 +252,10 @@ class UrbanPlanningEnv(RealWorldProblem):
         for idx, actiontype in enumerate(self.actions):
             action = actiontype()
             successor_state = action(state)
-            if successor_state == state: continue
+            # A state carries its depth in its literals, so a successor can never compare equal
+            # to its parent and `successor_state == state` would never fire. Drop the actions
+            # that rezoned nothing (their land-use class is absent) instead.
+            if not action.converted_nodes: continue
             # we need to stringify the action for _BFS_SEARCH
             ret.append((action, successor_state))
         return ret

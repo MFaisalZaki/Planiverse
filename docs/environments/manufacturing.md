@@ -21,12 +21,12 @@ env.fix_index(0)
 state, info = env.reset()
 
 print(env.DEMAND, env.DEMAND_TIME, env.NUM_CFGS, env.BUFFER_SIZE)
-# 2000 150 5 10
+# 1000 100 5 10
 
 for action, successor in env.successors(state):
     print(action, successor._state["demand"], successor._state["demand_time"])
-# buy_cfg_0 2000 150
-# buy_cfg_1 2000 150
+# buy_cfg_0 1000 100
+# buy_cfg_1 1000 100
 # ...
 
 sorted(state.literals)[:3]
@@ -37,25 +37,25 @@ Only buy actions are available initially — nothing can produce until something
 
 ## Instances
 
-⚠️ **Indices are filesystem-ordered, not sorted.** `_load_setup_datafiles` builds `data_index` from a
-bare `os.listdir(data_dir)`, so the index→file mapping depends on directory order and is **not
-guaranteed stable across machines**. On the machine where these docs were written:
+`fix_index(i)` selects the `i`-th data file, **sorted by filename**:
 
 | Index | File | Demand | Demand time | Configs | Buffer |
 |---|---|---|---|---|---|
-| 0 | `data1.json` | 2000 | 150 | 5 | 10 |
-| 1 | `data6.json` | 24 | 100 | 5 | 10 |
-| 2 | `data.json` | 1000 | 100 | 5 | 10 |
-| 3 | `data4.json` | 1000 | 48 | 5 | 10 |
-| 4 | `data5.json` | 400 | 24 | 5 | 10 |
-| 5 | `data2.json` | 2000 | 80 | 5 | 10 |
-| 6 | `data3.json` | 1000 | 100 | 5 | 10 |
-
-Always confirm with `print(env.data_index)` before quoting an index in results. Sorting that
-`os.listdir` would make indices reproducible and is worth doing.
+| 0 | `data.json` | 1000 | 100 | 5 | 10 |
+| 1 | `data1.json` | 2000 | 150 | 5 | 10 |
+| 2 | `data2.json` | 2000 | 80 | 5 | 10 |
+| 3 | `data3.json` | 1000 | 100 | 5 | 10 |
+| 4 | `data4.json` | 1000 | 48 | 5 | 10 |
+| 5 | `data5.json` | 400 | 24 | 5 | 10 |
+| 6 | `data6.json` | 24 | 100 | 5 | 10 |
 
 The instances span the difficulty range: `data6.json` (demand 24 in 100 days) is nearly free, while
 `data5.json` (400 units in 24 days) and `data2.json` (2000 in 80) are tight.
+
+The index used to come from a bare `os.listdir`, whose order is filesystem-dependent, so "index 0"
+named a different instance on different machines and results were not reproducible. If you have
+results recorded against the old numbering, they were collected against whatever order that machine
+returned — on the machine these docs were written on, index 0 was `data1.json`.
 
 ### Data format
 
@@ -109,12 +109,12 @@ computes `PENALTY_K` (worst-case cost bound), inherited from the RL formulation 
 | `produced_counts` | Units made by this configuration |
 | `market_*` | The market's advertised values (constant, pre-purchase) |
 
-Literals are stringified state variables with dots stripped and lowercased — `bought(cfg0 false)`,
-`production_rates(cfg1 15)`, `demand(1000)`, `demand_time(100)`. `__eq__` compares literals, so the
+Literals are stringified state variables, lowercased, with `.` escaped to `_` — `bought(cfg0 false)`,
+`production_rates(cfg1 1_5)`, `demand(1000)`, `demand_time(100)`. `__eq__` compares literals, so the
 literal set *is* the state identity here.
 
-Note the punctuation stripping is lossy: `production_rate` 1.5 and 15 both render as `15`. Distinct
-states can therefore collapse into one. It hasn't bitten the bundled data, but it is a sharp edge.
+The `.` used to be stripped rather than escaped, which was lossy: a production rate of `1.5` and one
+of `15` both rendered as `15`, silently merging two distinct states into one.
 
 ## Actions
 
@@ -164,16 +164,6 @@ early on goal or terminal.
 
 ## Known quirks
 
-- **`demand` doesn't aggregate across configurations.** `continue_production` computes
-  `demand = DEMAND - sum(produced_counts[cfg_id])` — the units made by *that one* configuration.
-  Producing on cfg 0 then cfg 1 leaves `demand` reflecting only cfg 1's output; `finish_production_all`
-  loops over configs and overwrites `demand` each time, so it ends up showing the last config's
-  contribution. Any goal test or heuristic reading `demand` is reading a per-config number, not
-  total production. Sum `produced_counts` across configs yourself.
-- **`demand_time` decrements per configuration too.** `finish_production_all` decrements
-  `demand_time` once per config inside its loop, so a single "day" of running 5 configs burns 5 days
-  of clock.
-- **Indices are `os.listdir`-ordered** — see [Instances](#instances).
 - **`MfgEnv.__init__` doesn't call `super().__init__()`**, so `self.name` (from `RealWorldProblem`)
   is never set. `Simulator`'s `isinstance` dispatch still works.
 - **`fix_index` must precede `reset()`** — `reset` reads `self.NUM_CFGS` etc., which `_setup_data`
@@ -184,6 +174,21 @@ early on goal or terminal.
 - **`buffer_size` is loaded but unmodelled.** The multi-machine buffer of the RL original is not
   implemented — each configuration is bought once, not stocked *n* times. It survives only in the
   feasibility assert and `PENALTY_K`.
+- **The goal ignores demand.** Running the clock out is a "solution" even if nothing was produced;
+  see [Goal and terminal](#goal-and-terminal).
+
+## Fixed
+
+Recorded because they changed how the environment behaves, so results collected before them will not
+reproduce:
+
+- **`demand` now aggregates across configurations.** It was computed from the produced count of
+  whichever configuration ran last (`DEMAND - sum(produced_counts[cfg_id])`), so output from every
+  other machine was invisible to it. Use `total_produced(state._state)` for the shop-floor total.
+- **`demand_time` advances one day per day.** `finish_production_all` decremented it once per
+  configuration inside its loop, so a single day of running five machines burned five days of clock.
+- **Indices are sorted** — see [Instances](#instances).
+- **Literals no longer collide** — see [State representation](#state-representation).
 
 ## Files
 

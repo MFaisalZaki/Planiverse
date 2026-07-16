@@ -41,16 +41,27 @@ for i, s in enumerate(trace):
     s.save("SuperMarioLand.gb", f"/tmp/frame_{i}.png")
 ```
 
-`reset()` boots the ROM through PyBoy's game wrapper, starts the game, and sets lives to 0 so a death
-ends the run instead of restarting it:
+`reset()` boots the ROM through PyBoy's game wrapper, starts the game at the selected level, and sets
+lives to 0 so a death ends the run instead of restarting it:
 
 ```python
 self.pyboy = create_pyboy(self.romfile, self.render)
 self.game  = self.pyboy.game_wrapper
 self.game.game_area_mapping(self.game.mapping_compressed, 0)
-self.game.start_game()
+self.game.start_game(world_level=self.world_level)
 self.game.set_lives_left(0)   # avoid replays
 ```
+
+## Levels
+
+`fix_index(i)` selects one of the 12 world/level pairs — Super Mario Land has 4 worlds of 3 levels,
+both 1-indexed — and `reset()` starts the game there:
+
+| Index | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| World, level | 1-1 | 1-2 | 1-3 | 2-1 | 2-2 | 2-3 | 3-1 | 3-2 | 3-3 | 4-1 | 4-2 | 4-3 |
+
+Without `fix_index`, `world_level` stays `None` and the game boots at its default 1-1.
 
 ## State representation
 
@@ -71,6 +82,8 @@ Facts are read from these addresses ([RAM map reference](https://datacrystal.rom
 | `coins` | summed from the background tilemap |
 | `score` | summed from the background tilemap |
 | `enemies_killed` | count of sprites with tile identifier `145` |
+| `level_complete` | `0xDFE8 == 0x01` — sampled here, read by `is_goal` |
+| `game_over` | `0xC0A4 == 0x39`, the death music track — read by `is_terminal` |
 
 Literals:
 
@@ -78,7 +91,8 @@ Literals:
 (supermario position X Y)
 (supermario velocity VX VY)
 (progress N)
-(depth N)(coins N)          # note: these two are concatenated — see quirks
+(depth N)
+(coins N)
 (livesleft N)
 ```
 
@@ -118,12 +132,13 @@ Jumping is charged double per frame, so a planner minimising cost prefers runnin
 
 ## Goal and terminal
 
-- **Goal** (`is_goal`) — `memory[0xDFE8] == 0x01`. The source flags this as a TODO; treat the
-  level-complete address as unconfirmed.
-- **Terminal** (`is_terminal`) — `memory[0xC0A4] == 0x39`, i.e. the death music track has been
-  requested, or `state.collision`.
+- **Goal** (`is_goal`) — `state.level_complete`, sampled from `0xDFE8` when the state was built. The
+  source flags this address as a TODO; treat it as unconfirmed.
+- **Terminal** (`is_terminal`) — `state.game_over` (the death music track was requested) or
+  `state.collision`.
 
-Both read the emulator's **current** memory rather than the passed `state`. See quirks.
+Both read flags captured on the passed `state`. They used to query the emulator's *current* memory,
+which described whichever state was applied last rather than the state being asked about.
 
 ## Planner
 
@@ -153,25 +168,29 @@ starting point, not a working agent.
 
 ## Known quirks
 
-- **`fix_index` does nothing.** It validates the index and sets `self.world_level` from a
-  `product(range(4), repeat=2)` map (16 world/level pairs), but `reset()` never reads
-  `world_level` — the game always boots at its default start. World/level selection is unwired.
-- **`is_goal`/`is_terminal` ignore their `state` argument.** They query live emulator memory, so
-  their answer describes whichever state was applied last, not the state you passed. Call them
-  immediately after generating the state, or they will lie.
 - **`collision` is hard-coded to `False`.** The Mario-dead-jump-timer read (`0xC0AC`) is commented
   out, so `mario_damage()` always returns 0 and the heuristic's damage penalty never fires. Deaths
   are only caught via the music-track check.
 - **Enemy detection is partial.** `enemies_killed` counts sprite tile identifier `145` only; the
   source notes that identifying the full set of enemy tile IDs needs more reverse engineering.
-- **`from tkinter import Image` is an unused import** at the top of the module. It is dead, but it
-  will raise `ImportError` on a Python build without tkinter.
-- **Literal string concatenation bug:** the `(depth N)` and `(coins N)` predicates are missing a
-  comma between them in the list, so they fuse into one literal `(depth N)(coins N)`. Harmless for
-  equality, confusing for anything parsing literals.
 - **`successors` shares one emulator.** All expansion runs on `self.pyboy`; correctness relies on
   each action reloading its parent's save-state first. Don't parallelise expansion over one env.
 - **`render=True` is for watching, not planning.** It opens an SDL2 window and slows expansion.
+- **The goal address is unconfirmed** — see [Goal and terminal](#goal-and-terminal).
+
+## Fixed
+
+- **`fix_index` now reaches `reset()`.** It validated the index and set `self.world_level`, but
+  `reset()` never read it, so the game always booted at its default start and level selection did
+  nothing. Its map was also `product(range(0,4), repeat=2)` — 16 pairs, 0-indexed — while Super Mario
+  Land has 12 levels and PyBoy expects them 1-indexed.
+- **`is_goal`/`is_terminal` read the state they are given** rather than live emulator memory — see
+  [Goal and terminal](#goal-and-terminal).
+- **`(depth N)` and `(coins N)` are separate literals.** A missing comma in the predicate list fused
+  them into a single `(depth N)(coins N)` string. Harmless for equality, confusing for anything
+  parsing literals.
+- **`from tkinter import Image` removed.** It was dead, and raised `ImportError` on a Python build
+  without tkinter.
 
 ## Files
 
