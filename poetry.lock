@@ -4,10 +4,9 @@
 name = "certifi"
 version = "2026.6.17"
 description = "Python package for providing Mozilla's CA Bundle."
-optional = true
+optional = false
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "certifi-2026.6.17-py3-none-any.whl", hash = "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db"},
     {file = "certifi-2026.6.17.tar.gz", hash = "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432"},
@@ -17,10 +16,9 @@ files = [
 name = "charset-normalizer"
 version = "3.4.9"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
-optional = true
+optional = false
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "charset_normalizer-3.4.9-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:cd6280cf040f233bd7d3407b743b4b4c74f70e8e1c4199cb112a62c941c0772a"},
     {file = "charset_normalizer-3.4.9-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:aa99adc8f081b475a12843953db36831eaf83ec33eb46a90629ca6a5de45a616"},
@@ -121,10 +119,9 @@ files = [
 name = "cloudpickle"
 version = "3.1.2"
 description = "Pickler class to extend the standard pickle.Pickler functionality"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\" or extra == \"epidemic\" or extra == \"network-attack\") or extra == \"network-attack\" or extra == \"all\" or extra == \"epidemic\" or extra == \"pddl\""
 files = [
     {file = "cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a"},
     {file = "cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414"},
@@ -147,10 +144,9 @@ files = [
 name = "contourpy"
 version = "1.3.3"
 description = "Python library for calculating contours of 2D quadrilateral grids"
-optional = true
+optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "contourpy-1.3.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:709a48ef9a690e1343202916450bc48b9e51c049b089c7f79a267b46cffcdaa1"},
     {file = "contourpy-1.3.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:23416f38bfd74d5d28ab8429cc4d63fa67d5068bd711a85edb1c3fb0c3e2f381"},
@@ -240,10 +236,9 @@ test-no-images = ["pytest", "pytest-cov", "pytest-rerunfailures", "pytest-xdist"
 name = "cycler"
 version = "0.12.1"
 description = "Composable style cycles"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
     {file = "cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c"},
@@ -257,10 +252,9 @@ tests = ["pytest", "pytest-cov", "pytest-xdist"]
 name = "decorator"
 version = "5.3.1"
 description = "Decorators for Humans"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "decorator-5.3.1-py3-none-any.whl", hash = "sha256:f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c"},
     {file = "decorator-5.3.1.tar.gz", hash = "sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82"},
@@ -270,10 +264,9 @@ files = [
 name = "farama-notifications"
 version = "0.0.6"
 description = "Notifications for all Farama Foundation maintained libraries."
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "farama_notifications-0.0.6-py3-none-any.whl", hash = "sha256:f84839188efa1ce5bb361c2a84881b2dc2c0d0d7fb661ff00421820170930935"},
     {file = "farama_notifications-0.0.6.tar.gz", hash = "sha256:b19acac4bb41d76e59e03394b5dd165f4761c86fa327f56307a35cbee3b60158"},
@@ -283,10 +276,9 @@ files = [
 name = "fonttools"
 version = "4.63.0"
 description = "Tools to manipulate font files"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "fonttools-4.63.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:e3297a6a4059b4acc3a1e9a8b04741f240a80044eef08ebd32e8b5bcdddce75b"},
     {file = "fonttools-4.63.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:b1cd75a03ad8cb5bc40c90bfde68c0c47de423aa19e5c0f362b43520645eea94"},
@@ -357,10 +349,9 @@ woff = ["brotli (>=1.0.1) ; platform_python_implementation == \"CPython\"", "bro
 name = "gym"
 version = "0.26.2"
 description = "Gym: A universal API for reinforcement learning environments"
-optional = true
+optional = false
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\" or extra == \"epidemic\") or extra == \"epidemic\" or extra == \"pddl\" or extra == \"all\""
 files = [
     {file = "gym-0.26.2.tar.gz", hash = "sha256:e0d882f4b54f0c65f203104c24ab8a38b039f1289986803c7d02cdbe214fbcc4"},
 ]
@@ -386,10 +377,9 @@ toy-text = ["pygame (==2.1.0)"]
 name = "gym-notices"
 version = "0.1.0"
 description = "Notices for gym"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\" or extra == \"epidemic\") or extra == \"epidemic\" or extra == \"pddl\" or extra == \"all\""
 files = [
     {file = "gym_notices-0.1.0-py3-none-any.whl", hash = "sha256:a943af4446cb619d04fd1e470b9272b4473e08a06d1c7cc9005755a4a0b8c905"},
     {file = "gym_notices-0.1.0.tar.gz", hash = "sha256:9f9477ef68a8c15e42625d4fa53631237e3e6ae947f325b5c149c081499adc1b"},
@@ -399,10 +389,9 @@ files = [
 name = "gymnasium"
 version = "1.3.0"
 description = "A standard API for reinforcement learning and a diverse set of reference environments (formerly Gym)."
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "gymnasium-1.3.0-py3-none-any.whl", hash = "sha256:6b8c159a8540dcbcb221722d7efda24d78ebbcbc3bd2ea1c2611aa2a34471fc2"},
     {file = "gymnasium-1.3.0.tar.gz", hash = "sha256:6939e86e835d6b71b6ba6bfd360487420876deafc79bfb7bacba83a7c446bcf3"},
@@ -431,10 +420,9 @@ toy-text = ["pygame-ce (>=2.1.3)", "pygame-ce (>=2.1.3)"]
 name = "idna"
 version = "3.18"
 description = "Internationalized Domain Names in Applications (IDNA)"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2"},
     {file = "idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"},
@@ -447,10 +435,10 @@ all = ["mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 name = "imageio"
 version = "2.37.3"
 description = "Read and write images and video across all major formats. Supports scientific and volumetric data."
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\")"
+markers = "python_version < \"3.13\""
 files = [
     {file = "imageio-2.37.3-py3-none-any.whl", hash = "sha256:46f5bb8522cd421c0f5ae104d8268f569d856b29eb1a13b92829d1970f32c9f0"},
     {file = "imageio-2.37.3.tar.gz", hash = "sha256:bbb37efbfc4c400fcd534b367b91fcd66d5da639aaa138034431a1c5e0a41451"},
@@ -495,10 +483,9 @@ files = [
 name = "kiwisolver"
 version = "1.5.0"
 description = "A fast implementation of the Cassowary constraint solver"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "kiwisolver-1.5.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:32cc0a5365239a6ea0c6ed461e8838d053b57e397443c0ca894dcc8e388d4374"},
     {file = "kiwisolver-1.5.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:cc0b66c1eec9021353a4b4483afb12dfd50e3669ffbb9152d6842eb34c7e29fd"},
@@ -623,10 +610,10 @@ files = [
 name = "lazy-loader"
 version = "0.5"
 description = "Makes it easy to load subpackages and functions on demand."
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\")"
+markers = "python_version < \"3.13\""
 files = [
     {file = "lazy_loader-0.5-py3-none-any.whl", hash = "sha256:ab0ea149e9c554d4ffeeb21105ac60bed7f3b4fd69b1d2360a4add51b170b005"},
     {file = "lazy_loader-0.5.tar.gz", hash = "sha256:717f9179a0dbed357012ddad50a5ad3d5e4d9a0b8712680d4e687f5e6e6ed9b3"},
@@ -644,10 +631,9 @@ test = ["coverage[toml] (>=7.2)", "pytest (>=8.0)", "pytest-cov (>=5.0)"]
 name = "llvmlite"
 version = "0.48.0"
 description = "lightweight wrapper around basic LLVM functionality"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "llvmlite-0.48.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:614aad57df707e3172efd5165f2aa7da6a0c6897e40dce590bf756396815ba76"},
     {file = "llvmlite-0.48.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:13532f248960ba888ad5ab8150494e2f3a3d20e5f59f264e63741ea5b0ba844c"},
@@ -680,10 +666,9 @@ files = [
 name = "matplotlib"
 version = "3.11.0"
 description = "Python plotting package"
-optional = true
+optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "matplotlib-3.11.0-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:f857524b442f0f36e641868ce2171aafa88cb0bc0644f4e1d8a5df9b32649fef"},
     {file = "matplotlib-3.11.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:57baa92fdc82948ed716eae6d2579d4d6f40965cd8d2f416755b4a72580a3233"},
@@ -748,10 +733,9 @@ python-dateutil = ">=2.7"
 name = "mpmath"
 version = "1.3.0"
 description = "Python library for arbitrary-precision floating-point arithmetic"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c"},
     {file = "mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f"},
@@ -767,10 +751,9 @@ tests = ["pytest (>=4.6)"]
 name = "msgpack"
 version = "1.2.1"
 description = "MessagePack serializer"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "msgpack-1.2.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:8c7b398c56ff125feae96c2737abfec5595f1fa0aa186df60c56040b8accb95c"},
     {file = "msgpack-1.2.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1548006a91aa93c5da81f3bdcebc1a0d10cea2d25969754fbe848da622b2b895"},
@@ -844,10 +827,9 @@ files = [
 name = "nasim"
 version = "0.12.0"
 description = "A simple and fast simulator for remote network pen-testing"
-optional = true
+optional = false
 python-versions = ">=3.11.0"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = []
 develop = false
 
@@ -875,10 +857,9 @@ resolved_reference = "0ad490e6b8b1961d67bd7e226ecd859785f62e61"
 name = "networkx"
 version = "3.6.1"
 description = "Python package for creating and manipulating graphs and networks"
-optional = true
+optional = false
 python-versions = "!=3.14.1,>=3.11"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"urban\" or extra == \"all\" or extra == \"network-attack\" or extra == \"pddl\") or extra == \"urban\" or extra == \"all\" or extra == \"network-attack\""
 files = [
     {file = "networkx-3.6.1-py3-none-any.whl", hash = "sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762"},
     {file = "networkx-3.6.1.tar.gz", hash = "sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509"},
@@ -899,10 +880,9 @@ test-extras = ["pytest-mpl", "pytest-randomly"]
 name = "numba"
 version = "0.66.0"
 description = "compiling Python code using LLVM"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "numba-0.66.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:27951c47e0def9bf8afe580eb961102902e2fd23cb77924b7d9d7cc0f8b444cb"},
     {file = "numba-0.66.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cc408c54b450f41582f4be1608f8981c1dcc44c7f40355cc150dd93015753407"},
@@ -939,10 +919,9 @@ numpy = ">=1.22,<2.5"
 name = "numpy"
 version = "1.26.4"
 description = "Fundamental package for array computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\" or extra == \"network-attack\" or extra == \"urban\" or extra == \"epidemic\" or extra == \"retro\" or extra == \"manufacturing\") or extra == \"urban\" or extra == \"epidemic\" or extra == \"all\" or extra == \"retro\" or extra == \"manufacturing\" or extra == \"network-attack\" or extra == \"pddl\""
 files = [
     {file = "numpy-1.26.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9ff0f4f29c51e2803569d7a51c2304de5554655a60c5d776e35b4a41413830d0"},
     {file = "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a"},
@@ -986,10 +965,9 @@ files = [
 name = "packaging"
 version = "26.2"
 description = "Core utilities for Python packages"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"dev\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\" or extra == \"dev\""
 files = [
     {file = "packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e"},
     {file = "packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"},
@@ -999,10 +977,9 @@ files = [
 name = "pandas"
 version = "3.0.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
-optional = true
+optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "extra == \"urban\" or extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "pandas-3.0.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:455f6f8139d4282188f526868dbc3c828470e88a3d9d59a891bd46a455f21b98"},
     {file = "pandas-3.0.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4e15135e2ee5df1063313e2425ceef8ac0f4ae775893815b0923651b806a5639"},
@@ -1089,10 +1066,10 @@ xml = ["lxml (>=5.3.0)"]
 name = "pddlgym"
 version = "0.0.7"
 description = ""
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\")"
+markers = "python_version < \"3.13\""
 files = [
     {file = "pddlgym-0.0.7-py3-none-any.whl", hash = "sha256:ff601704bef2d27008700e63252d753975a5766409e4e3ba1a9cbfb163252800"},
     {file = "pddlgym-0.0.7.tar.gz", hash = "sha256:f1771088eac905cabf0e03a29f263e0c11399336fe1aae5c4142a36f82b8d5b7"},
@@ -1110,10 +1087,9 @@ scikit-image = "*"
 name = "pillow"
 version = "9.5.0"
 description = "Python Imaging Library (Fork)"
-optional = true
+optional = false
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"retro\" or extra == \"all\" or extra == \"network-attack\" or extra == \"pddl\") or extra == \"retro\" or extra == \"all\" or extra == \"network-attack\""
 files = [
     {file = "Pillow-9.5.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:ace6ca218308447b9077c14ea4ef381ba0b67ee78d64046b3f19cf4e1139ad16"},
     {file = "Pillow-9.5.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d3d403753c9d5adc04d4694d35cf0391f0f3d57c8e0030aac09d7678fa8030aa"},
@@ -1208,10 +1184,9 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 name = "prettytable"
 version = "3.18.0"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "prettytable-3.18.0-py3-none-any.whl", hash = "sha256:b3346e0e6f79180833aebaac088ae926340586cf6d7d991b9eb125b65f72313a"},
     {file = "prettytable-3.18.0.tar.gz", hash = "sha256:439217116152244369caf3d9f1caf2f9fe29b03bd79e88d2928c8e718c95d680"},
@@ -1227,10 +1202,9 @@ tests = ["pytest (>=9)", "pytest-cov", "pytest-lazy-fixtures"]
 name = "psutil"
 version = "7.2.2"
 description = "Cross-platform lib for process and system monitoring."
-optional = true
+optional = false
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "psutil-7.2.2-cp313-cp313t-macosx_10_13_x86_64.whl", hash = "sha256:2edccc433cbfa046b980b0df0171cd25bcaeb3a68fe9022db0979e7aa74a826b"},
     {file = "psutil-7.2.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:e78c8603dcd9a04c7364f1a3e670cea95d51ee865e4efb3556a3a63adef958ea"},
@@ -1263,10 +1237,9 @@ test = ["psleak", "pytest", "pytest-instafail", "pytest-xdist", "pywin32 ; os_na
 name = "py"
 version = "1.11.0"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
@@ -1276,10 +1249,9 @@ files = [
 name = "pyboy"
 version = "2.7.0"
 description = "Game Boy emulator written in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"retro\" or extra == \"all\""
 files = [
     {file = "pyboy-2.7.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:6451e7ad2d1d3d9f8316f939b6b9963ede5d6a80fcd00ee5b9aef1497fe5ece6"},
     {file = "pyboy-2.7.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:40e263743b78451f1baebb3a798a5d549c41f7fd1c9b0be1b04c4bcbedf53f98"},
@@ -1342,10 +1314,9 @@ windows-terminal = ["colorama (>=0.4.6)"]
 name = "pymetasploit3"
 version = "1.0.6"
 description = "A full-fledged msfrpc library for Metasploit framework."
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "pymetasploit3-1.0.6.tar.gz", hash = "sha256:cb8601428eaf6befcd12e13e0967ae7a8d1a1081c49c465806bd561fdd2a1f14"},
 ]
@@ -1359,10 +1330,9 @@ retry = "*"
 name = "pyparsing"
 version = "3.3.2"
 description = "pyparsing - Classes and methods to define and execute parsing grammars"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"network-attack\" or extra == \"all\" or extra == \"pddl\") or extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"},
     {file = "pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc"},
@@ -1375,10 +1345,9 @@ diagrams = ["jinja2", "railroad-diagrams"]
 name = "pysdl2"
 version = "0.9.17"
 description = "Python SDL2 bindings"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"retro\" or extra == \"all\""
 files = [
     {file = "PySDL2-0.9.17-py3-none-any.whl", hash = "sha256:fe923dbf5c7b27bbc1eb2bf58abfa793f8f13fd7ae8b27b1bc2de49920bcbd41"},
     {file = "pysdl2-0.9.17.tar.gz", hash = "sha256:48c6ef01a4eb123db5f7e46e1a1b565675755b07e615f3fe20a623c94735b52b"},
@@ -1388,10 +1357,9 @@ files = [
 name = "pysdl2-dll"
 version = "2.32.10"
 description = "Pre-built SDL2 binaries for PySDL2"
-optional = true
+optional = false
 python-versions = ">=2.7"
 groups = ["main"]
-markers = "extra == \"retro\" or extra == \"all\""
 files = [
     {file = "pysdl2_dll-2.32.10-py2.py3-none-macosx_10_11_x86_64.whl", hash = "sha256:cab126a82c2bd2cd79b6cb8da906916884789c9f4f1ae4cf861f26438ce651a4"},
     {file = "pysdl2_dll-2.32.10-py2.py3-none-macosx_11_0_universal2.whl", hash = "sha256:5ccbd89cd2a032f4ac890606dfe5c33874c0e5e909b2e667438ad7d7fc7fcc5d"},
@@ -1431,10 +1399,9 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"urban\" or extra == \"epidemic\" or extra == \"all\" or extra == \"network-attack\" or extra == \"pddl\") or extra == \"urban\" or extra == \"epidemic\" or extra == \"all\" or extra == \"network-attack\""
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
     {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
@@ -1447,10 +1414,9 @@ six = ">=1.5"
 name = "python-nmap"
 version = "0.7.1"
 description = "This is a python class to use nmap and access scan results from python3"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "python-nmap-0.7.1.tar.gz", hash = "sha256:f75af6b91dd8e3b0c31f869db32163f62ada686945e5b7c25f84bc0f7fad3b64"},
 ]
@@ -1459,10 +1425,9 @@ files = [
 name = "pyyaml"
 version = "6.0.3"
 description = "YAML parser and emitter for Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -1543,10 +1508,9 @@ files = [
 name = "requests"
 version = "2.34.2"
 description = "Python HTTP for Humans."
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"},
     {file = "requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed"},
@@ -1566,10 +1530,9 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 name = "retry"
 version = "0.9.2"
 description = "Easy to use retry decorator."
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "retry-0.9.2-py2.py3-none-any.whl", hash = "sha256:ccddf89761fa2c726ab29391837d4327f819ea14d244c232a1d24c67a2f98606"},
     {file = "retry-0.9.2.tar.gz", hash = "sha256:f8bfa8b99b69c4506d6f5bd3b0aabf77f98cdb17f3c9fc3f5ca820033336fba4"},
@@ -1583,10 +1546,10 @@ py = ">=1.4.26,<2.0.0"
 name = "scikit-image"
 version = "0.24.0"
 description = "Image processing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\")"
+markers = "python_version < \"3.13\""
 files = [
     {file = "scikit_image-0.24.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:cb3bc0264b6ab30b43c4179ee6156bc18b4861e78bb329dd8d16537b7bbf827a"},
     {file = "scikit_image-0.24.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:9c7a52e20cdd760738da38564ba1fed7942b623c0317489af1a598a8dedf088b"},
@@ -1633,10 +1596,9 @@ test = ["asv", "numpydoc (>=1.7)", "pooch (>=1.6.0)", "pytest (>=7.0)", "pytest-
 name = "scipy"
 version = "1.12.0"
 description = "Fundamental algorithms for scientific computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\" or extra == \"epidemic\") or extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "scipy-1.12.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:78e4402e140879387187f7f25d91cc592b3501a2e51dfb320f48dfb73565f10b"},
     {file = "scipy-1.12.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:f5f00ebaf8de24d14b8449981a2842d404152774c1a1d880c901bf454cb8e2a1"},
@@ -1677,10 +1639,9 @@ test = ["asv", "gmpy2", "hypothesis", "mpmath", "pooch", "pytest", "pytest-cov",
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"urban\" or extra == \"epidemic\" or extra == \"all\" or extra == \"network-attack\" or extra == \"pddl\") or extra == \"urban\" or extra == \"epidemic\" or extra == \"all\" or extra == \"network-attack\""
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
@@ -1690,10 +1651,9 @@ files = [
 name = "sympy"
 version = "1.14.0"
 description = "Computer algebra system (CAS) in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"epidemic\" or extra == \"all\""
 files = [
     {file = "sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5"},
     {file = "sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517"},
@@ -1709,10 +1669,10 @@ dev = ["hypothesis (>=6.70.0)", "pytest (>=7.1.0)"]
 name = "tifffile"
 version = "2026.3.3"
 description = "Read and write TIFF files"
-optional = true
+optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "python_version < \"3.13\" and (extra == \"pddl\" or extra == \"all\")"
+markers = "python_version < \"3.13\""
 files = [
     {file = "tifffile-2026.3.3-py3-none-any.whl", hash = "sha256:e8be15c94273113d31ecb7aa3a39822189dd11c4967e3cc88c178f1ad2fd1170"},
     {file = "tifffile-2026.3.3.tar.gz", hash = "sha256:d9a1266bed6f2ee1dd0abde2018a38b4f8b2935cb843df381d70ac4eac5458b7"},
@@ -1733,10 +1693,9 @@ zarr = ["fsspec", "kerchunk", "zarr (>=3.1.5)"]
 name = "typing-extensions"
 version = "4.16.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
@@ -1746,10 +1705,10 @@ files = [
 name = "tzdata"
 version = "2026.3"
 description = "Provider of IANA time zone data"
-optional = true
+optional = false
 python-versions = ">=2"
 groups = ["main"]
-markers = "(sys_platform == \"win32\" or sys_platform == \"emscripten\") and (extra == \"urban\" or extra == \"epidemic\" or extra == \"all\")"
+markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\""
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},
@@ -1759,10 +1718,9 @@ files = [
 name = "urllib3"
 version = "2.7.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"},
     {file = "urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c"},
@@ -1778,26 +1736,18 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 name = "wcwidth"
 version = "0.8.2"
 description = "Measures the displayed width of unicode strings in a terminal"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"network-attack\" or extra == \"all\""
 files = [
     {file = "wcwidth-0.8.2-py3-none-any.whl", hash = "sha256:d63947694a0539a1d51e01eda7caf800c291020e6cdd7e28ad7b14dd33ad4f85"},
     {file = "wcwidth-0.8.2.tar.gz", hash = "sha256:91fbef97204b96a3d4d421609b80340b760cf33e26da123ff243d76b1fda8dda"},
 ]
 
 [extras]
-all = ["gym", "nasim", "networkx", "numba", "numpy", "pandas", "pddlgym", "pillow", "psutil", "pyboy", "pymetasploit3", "python-nmap", "scipy", "sympy"]
 dev = ["pytest"]
-epidemic = ["gym", "numba", "numpy", "pandas", "scipy", "sympy"]
-manufacturing = ["numpy"]
-network-attack = ["nasim", "psutil", "pymetasploit3", "python-nmap"]
-pddl = ["gym", "pddlgym"]
-retro = ["pillow", "pyboy"]
-urban = ["networkx", "numpy", "pandas"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "1dd921b2c6fd4a5ffc8f78042bbb271e4f51ef492fa4b7446d5dd9eede928306"
+content-hash = "06cfc255ec1e2f3eff95b86998879aeb3241b1ce19fd64362e70938240fc4b2f"

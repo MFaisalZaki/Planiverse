@@ -7,7 +7,6 @@ planning benchmark. 50 hand-written levels, no emulator, no dependencies beyond 
 - **Import:** `from planiverse.problems.retro_games.puzznic import PuzznicGame`
 - **Source:** [`planiverse/problems/retro_games/puzznic.py`](../../planiverse/problems/retro_games/puzznic.py)
 - **Instances:** 50 levels, indices `0`–`49`
-- **Install:** `pip install .` — no extra needed
 - **Dependencies:** none
 - **Sibling:** [`PuzznicGBEnv`](puzznic-gb.md) plays the real Game Boy cartridge in an emulator
 

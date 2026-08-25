@@ -37,37 +37,21 @@ source needs a system OpenBLAS.
 ```bash
 git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
-pip install -e ".[all,dev]"      # every environment, plus pytest
+pip install -e ".[dev]"      # --extras dev adds pytest
 ```
 
 Or, with poetry:
 
 ```bash
 poetry env use python3.12
-poetry install --extras "all dev"
+poetry install --extras dev
 ```
 
-**Each environment's dependencies are an extra.** A bare `pip install .` pulls in nothing: the
-environment interface and Puzznic need only the standard library. Install what you actually want:
+One install gets you every environment. `tests/test_packaging.py` checks that the declared list
+still covers everything the library imports, which is how `gym` — imported by the simulator facade
+and the epidemic environment, but declared nowhere — stopped being able to go missing.
 
-| Extra | Pulls in | For |
-|---|---|---|
-| *(none)* | — | `PuzznicGame`, the `Simulator` facade, writing a planner |
-| `retro` | pyboy, pillow | `SuperMarioEnv`, `PuzznicGBEnv` |
-| `manufacturing` | numpy | `MfgEnv` |
-| `urban` | numpy, pandas, networkx | `UrbanPlanningEnv` |
-| `epidemic` | numba, numpy, scipy, sympy, pandas, gym | `EpiEnv` |
-| `network-attack` | nasim, psutil, pymetasploit3, python-nmap | `EnvNASim` |
-| `pddl` | pddlgym, gym | the PDDLGym wrapper — **Python ≤ 3.12 only**, see below |
-| `all` | all of the above | |
-| `dev` | pytest | running the test suite |
-
-```bash
-pip install ".[retro]"                 # just the two Game Boy environments
-pip install ".[epidemic,urban,dev]"    # two environments and the tests
-```
-
-### The `pddl` extra needs Python 3.12 or older
+### The PDDLGym wrapper needs Python 3.12 or older
 
 `pddlgym 0.0.7` requires `pillow <10`, and Pillow published no wheels for Python 3.13. Building
 Pillow 9.5.0 from source on 3.13 fails inside its own `setup.py`, which reads the version by
@@ -79,15 +63,13 @@ File "<string>", line 26, in get_version
 KeyError: '__version__'
 ```
 
-The extra carries a `python_version < '3.13'` marker so that this cannot break an install: on 3.13
-`pip install ".[all]"` succeeds and simply leaves pddlgym out, and `Simulator` still wraps native
-environments — only the PDDLGym branch is unavailable. To use the wrapper, install on an older
-Python:
+pddlgym is therefore declared with a `python_version < '3.13'` marker. On 3.13 `pip install .`
+installs everything else and simply leaves it out, and `Simulator` still wraps native environments —
+only the PDDLGym branch is unavailable. On older Pythons nothing changes:
 
 - **3.11** — clean, Pillow 9.5.0 ships a cp311 wheel.
-- **3.12** — works, but Pillow 9.5.0 has no cp312 wheel and is compiled from source, so you need
-  libjpeg and zlib headers first (`brew install libjpeg zlib`, or `apt install libjpeg-dev
-  zlib1g-dev`).
+- **3.12** — Pillow 9.5.0 has no cp312 wheel and is compiled from source, so you need libjpeg and
+  zlib headers first (`brew install libjpeg zlib`, or `apt install libjpeg-dev zlib1g-dev`).
 
 ### ROMs
 
@@ -335,7 +317,8 @@ dependency — `pip install git+https://github.com/amidos2006/pcg_benchmark.git`
 future port — it does not implement the Planiverse interface yet.
 
 `chex`, `flax`, `jaxmarl` and `dill` were declared as required dependencies but are imported nowhere
-in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them.
+in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them. The
+`gym` they were sitting next to went the other way — it was imported and never declared.
 
 ## Attribution
 
@@ -358,8 +341,8 @@ is referenced as a planned addition but is not yet in the tree.
 - [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
 - [x] NASim network attack
 - [x] Test suite (`poetry run pytest`)
-- [x] Optional dependency groups, so one environment doesn't pull in all of them
 - [ ] Flood application
+- [ ] Optional dependency groups, so one environment doesn't pull in all of them
 - [ ] Replace `pddlgym` (unmaintained, pins `pillow <10`, caps the PDDL wrapper at Python 3.12)
 - [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
 - [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs

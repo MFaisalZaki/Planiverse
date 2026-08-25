@@ -11,7 +11,6 @@ Consensus-based Multi-Agent Reinforcement Learning"*.
 - **Import:** `from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv`
 - **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/urban_planning/environment.py)
 - **Instances:** 2 cities, indices `0`–`1`
-- **Install:** `pip install ".[urban]"`
 - **Dependencies:** `pandas`, `networkx`, `numpy`
 
 This is the least finished of the six environments, and the one whose action model involved the most

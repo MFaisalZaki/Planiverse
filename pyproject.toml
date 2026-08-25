@@ -10,70 +10,33 @@ readme = "README.md"
 # numba and scipy publish no wheels for 3.14 yet, and building them from source needs a
 # system OpenBLAS, so cap the range rather than fail deep inside the install.
 requires-python = ">=3.11,<3.14"
-# Empty on purpose. The environment interface and Puzznic need nothing but the standard
-# library, and each environment's dependencies are an extra you opt into. `planiverse[all]`
-# installs every environment, which is what a bare install used to do.
-dependencies = []
+# One install gets you every environment. `tests/test_packaging.py` checks that this list
+# still covers everything the library imports.
+dependencies = [
+    "pyboy (>=2.5.1,<3.0.0)",
+    "pillow (>=9)",                 # pyboy renders a screenshot through it
+    "numpy (>=1.26)",
+    "pandas (>=2.0)",
+    "networkx (>=3.0)",
+    "numba (>=0.61.0)",
+    "scipy (>=1.11)",
+    "sympy (>=1.12)",               # EpiPolicy's equation parser
+    "gym (>=0.26)",
+    "nasim @ git+https://github.com/MFaisalZaki/NetworkAttackSimulator.git",
+    "psutil (>=7.0.0)",
+    "pymetasploit3 (>=1.0.6)",
+    "python-nmap (>=0.7.1)",
+    # pddlgym 0.0.7 requires `pillow <10`, and Pillow published no wheels for Python 3.13.
+    # Building 9.5.0 from source there fails in its own setup.py: `get_version` reads the
+    # version by exec-ing a file and pulling it back out of `locals()`, which PEP 667
+    # stopped working in 3.13. Without this marker `pip install .` dies building Pillow on
+    # 3.13; with it, 3.13 installs everything else and only the PDDLGym wrapper is
+    # unavailable. Use Python 3.12 or older if you need it.
+    "pddlgym (>=0.0.7,<0.0.8) ; python_version < '3.13'",
+]
 
 [project.optional-dependencies]
-# The Game Boy environments. Pillow is what turns a save-state into a PNG.
-retro = [
-    "pyboy (>=2.5.1,<3.0.0)",
-    "pillow (>=9)",
-]
-manufacturing = [
-    "numpy (>=1.26)",
-]
-urban = [
-    "numpy (>=1.26)",
-    "pandas (>=2.0)",
-    "networkx (>=3.0)",
-]
-network-attack = [
-    "nasim @ git+https://github.com/MFaisalZaki/NetworkAttackSimulator.git",
-    "psutil (>=7.0.0)",
-    "pymetasploit3 (>=1.0.6)",
-    "python-nmap (>=0.7.1)",
-]
-epidemic = [
-    "numba (>=0.61.0)",
-    "numpy (>=1.26)",
-    "scipy (>=1.11)",
-    "sympy (>=1.12)",
-    "pandas (>=2.0)",
-    "gym (>=0.26)",
-]
-# pddlgym 0.0.7 requires `pillow <10`, and Pillow published no wheels for Python 3.13.
-# Building 9.5.0 from source there fails in its own setup.py: `get_version` reads the
-# version by exec-ing a file and pulling it back out of `locals()`, which PEP 667 stopped
-# working in 3.13. The marker keeps that out of the resolver on 3.13 rather than letting
-# `pip install` die building Pillow; use Python 3.12 or older for the PDDLGym wrapper.
-pddl = [
-    "pddlgym (>=0.0.7,<0.0.8) ; python_version < '3.13'",
-    # No marker on gym: it installs everywhere, and `Simulator` uses it to recognise a
-    # PDDLGym environment. Only pddlgym itself is held back.
-    "gym (>=0.26)",
-]
 dev = ["pytest (>=8.0)"]
-# Every environment at once, which is what a bare install used to do. Spelled out rather
-# than as `planiverse[retro,...]` because Poetry rejects a self-referencing extra, so it
-# has to be kept in step by hand — `tests/test_packaging.py` fails if it drifts.
-all = [
-    "pyboy (>=2.5.1,<3.0.0)",
-    "pillow (>=9)",
-    "numpy (>=1.26)",
-    "pandas (>=2.0)",
-    "networkx (>=3.0)",
-    "numba (>=0.61.0)",
-    "scipy (>=1.11)",
-    "sympy (>=1.12)",
-    "gym (>=0.26)",
-    "nasim @ git+https://github.com/MFaisalZaki/NetworkAttackSimulator.git",
-    "psutil (>=7.0.0)",
-    "pymetasploit3 (>=1.0.6)",
-    "python-nmap (>=0.7.1)",
-    "pddlgym (>=0.0.7,<0.0.8) ; python_version < '3.13'",
-]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

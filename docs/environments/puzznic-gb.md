@@ -16,8 +16,7 @@ verified against live RAM rather than read off a disassembly.
 - **Class:** `PuzznicGBEnv`
 - **Import:** `from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv, PuzznicGBAction`
 - **Source:** [`planiverse/problems/retro_games/puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py)
-- **Install:** `pip install ".[retro]"` + a `Puzznic (J).gb` ROM you supply
-- **Dependencies:** `pyboy`, `pillow` (screenshots only)
+- **Dependencies:** `pyboy` + a `Puzznic (J).gb` ROM you supply (`pillow` for screenshots)
 
 ## The ROM
 
