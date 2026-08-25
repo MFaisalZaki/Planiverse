@@ -1,6 +1,6 @@
-from pddlgym.structs import Literal, LiteralConjunction
-from pddlgym.prolog_interface import PrologInterface
-from pddlgym.core import get_successor_states
+from planiverse.simulator.wrappers.pddlgym.structs import Literal, LiteralConjunction
+from planiverse.simulator.wrappers.pddlgym.prolog_interface import PrologInterface
+from planiverse.simulator.wrappers.pddlgym.core import get_successor_states
 
 from planiverse.simulator.wrappers.base import SimulatorBase
 

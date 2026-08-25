@@ -83,15 +83,15 @@ def test_marker_base_classes():
 
 
 # --------------------------------------------------------------------------- pddlgym
-# The skip lives in the fixture, not at module scope: pddlgym ships in the `pddl` extra,
-# which needs Python <=3.12, and the facade tests above run happily without it.
+# PDDLGym is vendored, not installed -- see
+# planiverse/simulator/wrappers/pddlgym/VENDORING.md for why.
 
 
 @pytest.fixture
 def blocks_sim():
-    pddlgym = pytest.importorskip(
-        "pddlgym", reason="pddlgym is not installed (the `pddl` extra needs Python <=3.12)")
-    return Simulator(pddlgym.make("PDDLEnvBlocks-v0"))
+    from planiverse.simulator.wrappers.pddlgym import make
+
+    return Simulator(make("PDDLEnvBlocks-v0"))
 
 
 def test_pddlgym_env_is_wrapped(blocks_sim):
