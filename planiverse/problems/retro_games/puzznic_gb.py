@@ -22,7 +22,7 @@ import io
 import os
 import hashlib
 import warnings
-from collections import Counter, namedtuple
+from collections import Counter, deque, namedtuple
 
 from pyboy import PyBoy
 
@@ -71,11 +71,14 @@ PRESS_TICKS = 6                  # frames a button is held. A fallback only: `ca
                                  # measures the real window off the cartridge, because the
                                  # bound on it is the cursor's auto-repeat delay and that
                                  # is not something the memory map records.
-PROBE_MAX_HOLD = 40              # longest hold `calibrate` will try before giving up
+PROBE_MAX_HOLD = 60              # longest hold `calibrate` will try before giving up.
+                                 # `Puzznic (J)` repeats its cursor around frame 30.
 SETTLE_MAX_TICKS = 600           # give up waiting for the board after ten seconds
 SETTLE_STABLE_TICKS = 4          # frames the grid must hold still to count as settled
 BOOT_MAX_TICKS = 1800            # thirty seconds of title screens is more than enough
 BOOT_PRESS_EVERY = 12
+INTRO_MAX_TICKS = 900            # how long to keep waiting for a round to become playable
+INTRO_STEP_TICKS = 30            # granularity of that wait
 
 action_cost_map = {"a": 0, "left": 1, "right": 1, "up": 1, "down": 1, "nop": 0}
 
@@ -339,12 +342,21 @@ def _cells_moved(before, after, direction):
 
 
 def _probe_direction(pyboy, state, render, settle_kwargs, max_hold):
-    """A direction the cursor can actually travel in from here, or None."""
+    """A direction with room for the cursor to show a repeat, which needs two cells.
+
+    Picking the first direction that moves at all is not enough: with a wall one cell away
+    every hold looks identical, and the window comes back as wide as the probe, which is how
+    `Puzznic (J)` first reported `(1, 40)` for a cursor that in fact repeats around frame 30.
+    """
+    fallback = None
     for direction in DIRECTIONS:
-        _, cursor = _press(pyboy, state, [(direction, max_hold // 2)], render, **settle_kwargs)
-        if _cells_moved(state.cursor, cursor, direction) > 0:
+        _, cursor = _press(pyboy, state, [(direction, max_hold)], render, **settle_kwargs)
+        moved = _cells_moved(state.cursor, cursor, direction)
+        if moved >= 2:
             return direction
-    return None
+        if moved >= 1 and fallback is None:
+            fallback = direction
+    return fallback
 
 
 def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwargs):
@@ -384,7 +396,9 @@ def probe_push_scheme(pyboy, state, press_ticks, render=False, **settle_kwargs):
                 continue
             if state.grid[neighbour[0]][neighbour[1]] != CELL_EMPTY:
                 continue                      # nowhere to push it, so it proves nothing
-            walk = walk_presses(state.cursor, position(*block[:2]), press_ticks)
+            walk = walk_presses(state.grid, state.cursor, position(*block[:2]), press_ticks)
+            if walk is None:
+                continue                      # the cursor cannot get to this block
             for scheme, (prefix, combined) in PUSH_SCHEMES.items():
                 if prefix is None:
                     push = [(direction, press_ticks)]
@@ -398,14 +412,10 @@ def probe_push_scheme(pyboy, state, press_ticks, render=False, **settle_kwargs):
     return None, None
 
 
-def walk_presses(start, target, press_ticks):
-    """The presses that walk the cursor from `start` to `target`, rows first."""
-    presses = []
-    row_step = "down" if target.row > start.row else "up"
-    col_step = "right" if target.col > start.col else "left"
-    presses += [(row_step, press_ticks)] * abs(target.row - start.row)
-    presses += [(col_step, press_ticks)] * abs(target.col - start.col)
-    return presses
+def walk_presses(grid, start, target, press_ticks):
+    """The presses that walk the cursor from `start` to `target`, routed around walls."""
+    route = cursor_path(grid, start, target)
+    return None if route is None else [(direction, press_ticks) for direction in route]
 
 
 def _slide_distance(before, after, row, col, step, max_cells):
@@ -472,7 +482,10 @@ def measure_push_window(pyboy, state, press_ticks, scheme, prefix, render=False,
     _, combined = PUSH_SCHEMES[scheme]
     for block, direction in push_probe_candidates(state):
         step = DIRECTIONS[direction][1]
-        walk = walk_presses(state.cursor, position(block.row, block.col), press_ticks)
+        walk = walk_presses(state.grid, state.cursor, position(block.row, block.col),
+                            press_ticks)
+        if walk is None:
+            continue
         low = None
         for hold in range(1, max_hold + 1):
             if prefix is None:
@@ -512,12 +525,65 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
     # cost about 0.07 ms each, so there is nothing to win by shaving them.
     press_ticks = (low + high) // 2
     scheme, prefix = probe_push_scheme(pyboy, state, press_ticks, render, **settle_kwargs)
-    if scheme is None:
+    measured = scheme is not None
+    if not measured:
         scheme, prefix = "modifier", "a"
     push_window = measure_push_window(pyboy, state, press_ticks, scheme, prefix, render,
                                       max_hold, **settle_kwargs)
     push_ticks = None if push_window is None else (push_window[0] + push_window[1]) // 2
     return Calibration(press_ticks, window, scheme, prefix, push_ticks, push_window)
+
+
+def cursor_of(pyboy):
+    return position(row=pyboy.memory[CURSOR_ROW_ADDR], col=pyboy.memory[CURSOR_COL_ADDR])
+
+
+def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
+                           step=INTRO_STEP_TICKS, press_ticks=PRESS_TICKS):
+    """Advance past the round's intro, and report how many frames it took.
+
+    The stage loader fills work RAM before the round has finished announcing itself, so the
+    board is fully readable while every button is still ignored — about 200 frames on
+    `Puzznic (J)`. A state snapshotted in that window looks perfectly normal and answers no
+    action, which is the worst way for this to go wrong: search sees a stage with no legal
+    moves rather than an error.
+
+    Rather than hard-code the delay, this presses a direction from a snapshot at increasing
+    offsets until the cursor answers, then rewinds and replays only the waiting — so the
+    state handed back still has the cursor exactly where the loader put it. If the wait
+    alone never works it tries again having pressed START first, because START is the pause
+    button once a round is running and the boot sequence taps it.
+    """
+    start = save_state(pyboy)
+
+    def responds_after(waited, unpause):
+        for direction in ("right", "left", "down", "up"):
+            load_state(pyboy, start, render)
+            if unpause:
+                pyboy.button("start", press_ticks)
+                pyboy.tick(press_ticks + 2, render)
+            if waited:
+                pyboy.tick(waited, render)
+            before = cursor_of(pyboy)
+            pyboy.button(direction, press_ticks)
+            pyboy.tick(press_ticks + 12, render)
+            if cursor_of(pyboy) != before:
+                return True
+        return False
+
+    for unpause in (False, True):
+        for waited in range(0, max_ticks, step):
+            if not responds_after(waited, unpause):
+                continue
+            load_state(pyboy, start, render)
+            if unpause:
+                pyboy.button("start", press_ticks)
+                pyboy.tick(press_ticks + 2, render)
+            if waited:
+                pyboy.tick(waited, render)
+            return waited
+    load_state(pyboy, start, render)
+    return None
 
 
 def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS, press_every=BOOT_PRESS_EVERY):
@@ -729,7 +795,7 @@ class PuzznicGBPush:
         load_state(pyboy, state.gb_state, render)
         target = position(row=self.row, col=self.col)
         presses = walk_cursor(pyboy, target, self.calibration.press_ticks, render,
-                              **settle_kwargs)
+                              grid=state.grid, **settle_kwargs)
         if presses is None:
             # The cursor could not be walked onto the block. Hand back the parent so this
             # shows up as a self-loop and gets dropped, rather than a half-done move.
@@ -745,28 +811,66 @@ class PuzznicGBPush:
         return PuzznicGBState(pyboy, state.depth + 1, state.stage_types)
 
 
-def walk_cursor(pyboy, target, press_ticks, render=False, max_presses=None, **settle_kwargs):
+#: Cell values the cursor may sit on. Verified on `Puzznic (J)`: it walks onto blocks and
+#: over ledges, and refuses walls; `$03` is outside the playfield entirely.
+CURSOR_IMPASSABLE = (CELL_WALL, CELL_OUTSIDE)
+
+
+def cursor_path(grid, start, target):
+    """The shortest route the cursor can take from `start` to `target`, as directions.
+
+    Stages are not rectangles — Round 1's bottom row is two cells narrower than the row
+    above it — and the cursor cannot cross a wall, so stepping the rows and then the columns
+    walks into one. This is a breadth-first search over the cells the cursor may occupy.
+    Returns None when no route exists.
+    """
+    start, target = (start.row, start.col), (target.row, target.col)
+    if start == target:
+        return []
+    passable = lambda r, c: (0 <= r < GRID_ROWS and 0 <= c < GRID_COLS
+                             and grid[r][c] not in CURSOR_IMPASSABLE)
+    if not passable(*target):
+        return None
+    frontier, came_from = deque([start]), {start: None}
+    while frontier:
+        cell = frontier.popleft()
+        for direction, (row_step, col_step) in DIRECTIONS.items():
+            neighbour = (cell[0] + row_step, cell[1] + col_step)
+            if neighbour in came_from or not passable(*neighbour):
+                continue
+            came_from[neighbour] = (cell, direction)
+            if neighbour == target:
+                route = []
+                while neighbour != start:
+                    neighbour, direction = came_from[neighbour]
+                    route.append(direction)
+                return route[::-1]
+            frontier.append(neighbour)
+    return None
+
+
+def walk_cursor(pyboy, target, press_ticks, render=False, grid=None, **settle_kwargs):
     """Steer the cursor to `target`, returning how many presses it took, or None.
 
-    Presses one direction at a time and re-reads the cursor after each, so an action that
-    overshoots (auto-repeat) or is refused (an obstacle) is noticed rather than assumed.
-    Gives up as soon as a press makes no progress.
+    Follows a route found by `cursor_path`, re-reading `$D012`/`$D013` after every press so
+    that a move which overshoots (auto-repeat) or is refused is noticed rather than assumed,
+    and re-planning from wherever it actually ended up. Gives up when a press makes no
+    progress at all.
     """
-    max_presses = max_presses or (GRID_ROWS + GRID_COLS) * 2
+    grid = decode_grid(read_grid(pyboy)) if grid is None else grid
     presses = 0
-    for _ in range(max_presses):
-        row, col = pyboy.memory[CURSOR_ROW_ADDR], pyboy.memory[CURSOR_COL_ADDR]
-        if (row, col) == (target.row, target.col):
+    for _ in range((GRID_ROWS + GRID_COLS) * 2):
+        here = cursor_of(pyboy)
+        if (here.row, here.col) == (target.row, target.col):
             return presses
-        if row != target.row:
-            button = "down" if target.row > row else "up"
-        else:
-            button = "right" if target.col > col else "left"
-        pyboy.button(button, press_ticks)
+        route = cursor_path(grid, here, target)
+        if not route:
+            return None
+        pyboy.button(route[0], press_ticks)
         pyboy.tick(press_ticks + 1, render)
         settle(pyboy, render, **settle_kwargs)
         presses += 1
-        if (pyboy.memory[CURSOR_ROW_ADDR], pyboy.memory[CURSOR_COL_ADDR]) == (row, col):
+        if cursor_of(pyboy) == here:
             return None                      # the press changed nothing; we are stuck
     return None
 
@@ -787,9 +891,11 @@ def available_pushes(state, calibration=None):
             col = block.col + DIRECTIONS[direction][1]
             if not 0 <= col < GRID_COLS or state.grid[block.row][col] != CELL_EMPTY:
                 continue
-            walk = abs(state.cursor.row - block.row) + abs(state.cursor.col - block.col)
+            route = cursor_path(state.grid, state.cursor, position(block.row, block.col))
+            if route is None:
+                continue                      # unreachable, so not a move that can be made
             pushes.append(PuzznicGBPush(block.row, block.col, direction, calibration,
-                                        input_count=walk + push_inputs))
+                                        input_count=len(route) + push_inputs))
     return pushes
 
 
@@ -815,6 +921,7 @@ class PuzznicGBEnv(RetroGame):
         self.pyboy = None
         self.stage_index = None
         self.state = None
+        self.intro_ticks = None
         self.state_history = []
         self.action_model = actions
         self.should_calibrate = calibrate
@@ -859,6 +966,12 @@ class PuzznicGBEnv(RetroGame):
                 f"no stage was loaded within {self.boot_max_ticks} frames of booting "
                 f"{self.romfile}. Check the ROM is Puzznic (J).gb (MD5 {ROM_MD5}).")
         settle(self.pyboy, self.render_window, **self.settle_kwargs)
+        self.intro_ticks = wait_until_interactive(self.pyboy, self.render_window)
+        if self.intro_ticks is None:
+            raise RuntimeError(
+                f"{self.romfile} loaded a stage but never accepted a button press. The board "
+                "is readable during the round intro, so this usually means the intro is "
+                "longer than INTRO_MAX_TICKS, or the game is paused.")
         self.state = PuzznicGBState(self.pyboy, 0)
         if self.should_calibrate and self.calibration is None:
             # A property of the cartridge, not of the stage, so once is enough.
@@ -869,6 +982,7 @@ class PuzznicGBEnv(RetroGame):
         self.state_history = [self.state]
         return self.state, {"stage_index": self.pyboy.memory[STAGE_INDEX_ADDR],
                             "total_blocks": self.state.total_blocks,
+                            "intro_ticks": self.intro_ticks,
                             "calibration": self.calibration}
 
     def is_goal(self, state):

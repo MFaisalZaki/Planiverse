@@ -13,13 +13,15 @@ import pytest
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
 from planiverse.problems.retro_games.puzznic_gb import (  # noqa: E402
+    STAGE_LOADER_ENTRY, _force_stage, boot, create_pyboy, cursor_of, stage_is_loaded,
     BLOCK_MIN, CELL_CLEARING, CELL_EMPTY, CELL_LEDGE, CELL_OUTSIDE, CELL_WALL, Calibration,
     GRID_ADDR, GRID_BYTES, GRID_COLS, GRID_ROWS, PROBE_MAX_HOLD, PUSH_SCHEMES,
     PuzznicGBAction, PuzznicGBEnv, PuzznicGBPush, PuzznicGBState, ROM_MD5, action_cost_map,
     action_list, available_pushes, block_counts, bounding_box, button_actions, calibrate,
     cell_address, decode_blocks, decode_grid, decode_records, is_dead_end,
-    measure_hold_window, measure_push_window, probe_push_scheme, push_hold,
-    push_probe_candidates, render_grid, walk_cursor,
+    CURSOR_IMPASSABLE, cursor_path, measure_hold_window, measure_push_window,
+    probe_push_scheme, push_hold, push_probe_candidates, render_grid, walk_cursor,
+    wait_until_interactive,
 )
 
 from conftest import (  # noqa: E402
@@ -430,6 +432,109 @@ def test_search_solves_the_synthetic_stage(env):
             frontier.append((successor, actions + [action]))
     assert plan is not None, "the stage is solvable in four moves"
     assert env.validate(plan)
+
+
+# ---------------------------------------------------------------- the round intro
+# The stage loader fills work RAM before the round has finished announcing itself, so a
+# board can be entirely readable while every button is ignored. On `Puzznic (J)` that lasts
+# 210 frames; the synthetic cartridge waits 60. A state snapshotted in that window looks
+# perfectly normal and answers no action at all.
+
+def test_reset_waits_for_the_round_to_start_listening(env):
+    state, info = env.reset()
+    assert info["intro_ticks"] is not None, "reset must not hand back a board that is deaf"
+    assert info["intro_ticks"] >= 30, "the synthetic cartridge ignores input for 60 frames"
+
+    moved = PuzznicGBAction(f"left,{info['calibration'].press_ticks}").apply(env.pyboy, state)
+    assert moved.cursor != state.cursor, "the state reset returned has to accept input"
+
+
+def test_the_board_is_readable_before_it_is_playable(fake_rom):
+    """Which is exactly why the wait cannot be skipped: nothing about the RAM says 'not
+    yet'. Booting without the wait leaves a stage whose cursor will not move."""
+    game = PuzznicGBEnv(fake_rom, verify_rom=False, actions="button", calibrate=False)
+    game.fix_index(0)
+    try:
+        game.pyboy = create_pyboy(fake_rom, False)
+        game.pyboy.hook_register(0, STAGE_LOADER_ENTRY, _force_stage, (game.pyboy, 0))
+        assert boot(game.pyboy)
+        assert stage_is_loaded(game.pyboy), "the loader has filled the grid..."
+        deaf = PuzznicGBState(game.pyboy, 0)
+        game.pyboy.button("left", 8)
+        game.pyboy.tick(20, False)
+        assert cursor_of(game.pyboy) == deaf.cursor, "...but nothing is listening yet"
+
+        assert wait_until_interactive(game.pyboy) is not None
+        listening = cursor_of(game.pyboy)
+        game.pyboy.button("left", 8)
+        game.pyboy.tick(20, False)
+        assert cursor_of(game.pyboy) != listening
+    finally:
+        game.close()
+
+
+# --------------------------------------------------------------- cursor routing
+# Stages are not rectangles -- Round 1 of `Puzznic (J)` has a bottom row two cells narrower
+# than the one above -- and the cursor cannot cross a wall, so stepping rows then columns
+# walks into one.
+
+def test_cursor_path_routes_around_a_wall():
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in range(1, 6):
+        cells[4][col] = CELL_EMPTY
+        cells[6][col] = CELL_EMPTY
+    cells[5][1] = cells[5][5] = CELL_EMPTY     # only the two ends connect the rows
+    for col in range(2, 5):
+        cells[5][col] = CELL_WALL              # a wall straight between start and target
+    grid = decode_grid(raw_grid(cells))
+
+    route = cursor_path(grid, _cursor(4, 3), _cursor(6, 3))
+    assert route is not None, "there is a way round"
+    assert "down" in route and route.count("down") == 2
+    # Stepping the rows first would walk into the wall at (5, 3).
+    assert route[0] in ("left", "right")
+
+
+def test_cursor_path_walks_over_blocks_and_ledges():
+    """Verified on `Puzznic (J)`: the cursor sits on blocks and crosses ledges."""
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in range(1, 5):
+        cells[4][col] = CELL_EMPTY
+    cells[4][2] = 0x08                          # a block
+    cells[4][3] = CELL_LEDGE                    # and a ledge
+    grid = decode_grid(raw_grid(cells))
+    assert cursor_path(grid, _cursor(4, 1), _cursor(4, 4)) == ["right"] * 3
+
+
+def test_cursor_path_refuses_what_it_cannot_reach():
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    cells[4][1] = CELL_EMPTY
+    cells[4][2] = CELL_WALL
+    cells[4][3] = CELL_EMPTY
+    grid = decode_grid(raw_grid(cells))
+    assert cursor_path(grid, _cursor(4, 1), _cursor(4, 3)) is None
+    assert cursor_path(grid, _cursor(4, 1), _cursor(4, 2)) is None, "cannot stand on a wall"
+    assert cursor_path(grid, _cursor(4, 1), _cursor(4, 1)) == []
+
+
+def test_walls_and_the_outside_are_what_the_cursor_cannot_enter():
+    assert set(CURSOR_IMPASSABLE) == {CELL_WALL, CELL_OUTSIDE}
+
+
+def test_an_unreachable_block_is_not_offered_as_a_push():
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in (1, 2):
+        cells[4][col] = CELL_EMPTY
+        cells[5][col] = CELL_WALL
+    cells[4][4] = 0x08                          # walled off from the cursor entirely
+    cells[4][5] = CELL_EMPTY
+    cells[5][4] = cells[5][5] = CELL_WALL
+    state = _state_from_cells(cells, cursor=(4, 1))
+    assert available_pushes(state) == []
+
+
+def _cursor(row, col):
+    return type("C", (), {"row": row, "col": col})()
 
 
 # ------------------------------------------------------------------- calibration

@@ -259,9 +259,13 @@ So `reset()` measures them off the cartridge instead of trusting a constant:
 ```python
 state, info = env.reset()
 info["calibration"]
-# Calibration(press_ticks=8, hold_window=(1, 16), push_scheme='modifier',
-#             push_prefix='a', push_ticks=8, push_window=(1, 16))
+# Calibration(press_ticks=15, hold_window=(1, 30), push_scheme='modifier',
+#             push_prefix='a', push_ticks=None, push_window=None)
 ```
+
+Those are the real cartridge's numbers. **`Puzznic (J)` repeats on frame 31**, so any hold of
+30 frames or fewer moves one cell and `press_ticks` settles on 15. A hold of 60 — which looks
+like one press and reads like one action in a plan — moves two.
 
 or, without writing any code:
 
@@ -275,6 +279,24 @@ end is where presses start registering, the upper end is one frame short of auto
 `press_ticks` is the middle of that range, far enough from either edge to survive a frame of
 jitter in when the game samples input. The spare frames cost about 0.07 ms each, so there is
 nothing to win by shaving them.
+
+Measured across the first eight stages of `Puzznic (J)`:
+
+| Stage | Blocks | Cursor window | Push window |
+|---|---|---|---|
+| 0 | 6 | (1, 30) | not probeable |
+| 1 | 10 | (1, 30) | not probeable |
+| 2 | 8 | (1, 30) | not probeable |
+| 3 | 8 | (1, 30) | not probeable |
+| 4 | 9 | (1, 30) | **(1, 30)** |
+| 5 | 7 | (1, 30) | not probeable |
+| 6 | 15 | **(2, 31)** | not probeable |
+| 7 | 8 | (1, 30) | **(1, 30)** |
+
+Stage 6 is the one that shows why the middle of the window is the right choice rather than
+its lower edge: there a single-frame press is not sampled at all. And where the push window
+*could* be measured it matches the cursor's, so on this cartridge one repeat routine serves
+both — which is now a measurement rather than the assumption it used to be.
 
 ### The push has its own window
 
@@ -311,9 +333,38 @@ whichever actually moves the block is the one both action models then use. Until
 existed, `a+left` was an assumption; now it is a measurement, and a cartridge that works
 some other way is handled rather than silently mis-driven.
 
+On `Puzznic (J)` it comes out `modifier`, which is what the environment had always assumed —
+and probing by hand confirms the rest of the picture: `B` works as the modifier too, a
+direction on its own only walks the cursor off the block, and `A` followed by a direction
+does nothing, so there is no pick-up-and-carry mode to model.
+
 Calibration describes the game, not the stage, so it runs once per environment and is reused
 across resets. It costs about 0.15 s. `PuzznicGBEnv(rom, calibrate=False)` skips it and
 falls back to `PRESS_TICKS` and the `modifier` scheme.
+
+### The round has to start listening first
+
+The stage loader fills work RAM before the round has finished announcing itself. For **210
+frames** on `Puzznic (J)` the board is completely readable — grid, records, counters, cursor,
+all correct and cross-checking — and every button is ignored. Nothing in RAM says "not yet".
+
+A state snapshotted in that window is the worst kind of wrong: it looks perfectly normal and
+answers no action, so a planner sees a stage with no legal moves rather than an error. So
+`reset()` calls `wait_until_interactive`, which presses a direction from a snapshot at
+increasing offsets until the cursor answers, then rewinds and replays only the waiting — the
+state you get back still has the cursor exactly where the loader put it. `info["intro_ticks"]`
+reports how long it took.
+
+It retries having pressed START first, because **START is the pause button** once a round is
+running, and the boot sequence taps it while getting through the title screens.
+
+### Where the cursor may go
+
+The cursor sits on blocks and crosses ledges, and cannot enter a wall or the outside — all
+four verified on the cartridge. Stages are not rectangles (Round 1's bottom row is two cells
+narrower than the row above it), so walking the rows and then the columns steps into a wall.
+`cursor_path` is a breadth-first search over the cells the cursor may occupy, and
+`available_pushes` drops any block it cannot reach at all.
 
 ### Applying an action, and settling
 
@@ -416,6 +467,23 @@ needs, is the piece still worth writing.
 Note that `is_terminal` already prunes one whole class of dead end for free: a stage with a stranded
 colour cannot be won, and `successors` returns nothing from such a state.
 
+## Verified against the cartridge
+
+Everything below was checked by driving `Puzznic (J)` (MD5 `9a777d82cd7a8913ba1aed2cc854fa50`)
+through this environment, not read off a disassembly:
+
+- **Boot, stage selection and decoding.** The first eight stages all load, and on every one of
+  them the grid scan, the record array and `$D019` agree (`state.is_consistent()`).
+- **The loader hook.** `fix_index` really does select the stage, which is what the hook on
+  `0:0430` is for.
+- **Cell semantics.** Ledges, walls and the outside marker behave as the memory map says, and
+  the cursor's freedom of movement matches: on blocks and ledges, never into a wall.
+- **The push scheme and both hold windows** — see [Actions](#actions).
+- **Matching.** `a+right` on Round 1's block at row 8, column 3 slides it onto its own colour
+  and clears the pair: `$D019` drops from 6 to 4, records zeroed in place, slots uncompacted.
+- **Search.** Breadth-first over `push` actions solves Round 1 in **4 pushes from 10 states in
+  about a second**, and `validate` replays it to an empty board.
+
 ## Known quirks and gaps
 
 - **The stage count is unknown.** `fix_index` accepts the whole `0`–`255` byte because that is the
@@ -428,10 +496,17 @@ colour cannot be won, and `successors` returns nothing from such a state.
 - **No timer.** Puzznic gives you a time limit per stage and takes a life when it runs out. The timer
   address is not in the memory map, so a state that has run out of time is not terminal here. Long
   plans are the case to watch.
-- **Stage transitions were never observed** on the real cartridge. `$D018`/`$D019` should be
-  re-initialised on entering the next round; `settle` stops the moment `$D019` hits zero precisely so
-  that a cleared stage is observed before the next one loads over it, but this was not verified
-  against the ROM.
+- **Stage transitions are still unobserved.** `settle` stops the moment `$D019` hits zero precisely
+  so that a cleared stage is seen before the next round loads over it, and Round 1 does get cleared
+  and validated — but what the cartridge does *after* that, and whether `$D018`/`$D019` are
+  re-initialised the way the memory map expects, has not been watched.
+- **The push window is not measurable on every stage.** It needs a block that can be slid two cells
+  without falling or matching, and dense boards have none — six of the first eight stages, in fact.
+  There `push_ticks` is `None` and falls back to the cursor hold, which on this cartridge is the same
+  number anyway.
+- **Only the first eight stages have been driven.** Nothing suggests the rest differ, but the intro
+  length, the hold windows and the push scheme are all measured per-cartridge and not per-stage, so
+  a stage that behaved differently would not be noticed.
 - **`successors` shares one emulator.** All expansion runs on `self.pyboy`; correctness relies on
   each action reloading its parent's save-state first. Don't parallelise expansion over one env.
 - **`render=True` is for watching, not planning.** It opens an SDL2 window and slows expansion. The
@@ -451,9 +526,11 @@ at `$DF00`, records at `$DD00`, counters at `$D018`/`$D019`, a cursor at `$D012`
 
 It is **not** a Puzznic clone: no gravity, no timer, no score, no cascades. A push that leaves two
 same-typed blocks adjacent clears both after a three-frame `$01` transient, and that is the entire
-rule set. It does model **cursor auto-repeat** — a direction held for more than 16 frames moves the
-cursor again, and every 6 frames after that — because otherwise any hold length would look correct
-and there would be nothing for `measure_hold_window` to find. What it exercises is the interface between the environment and a Game Boy — booting,
+rule set. It does model the two things that make driving a Game Boy awkward, because otherwise the
+code for them would never run: **cursor auto-repeat** (a direction held more than 16 frames moves the
+cursor again, and every 6 frames after that), so `measure_hold_window` has a real bound to find; and
+a **round intro** of 60 frames during which the board is completely readable and every button is
+ignored, so `wait_until_interactive` has a real wait to discover. What it exercises is the interface between the environment and a Game Boy — booting,
 hooking the loader to force a stage, decoding the grid, waiting for a move to settle, spotting a
 cleared stage — which is the part that otherwise could only be checked by hand.
 

@@ -59,6 +59,11 @@ MARKS = 0xC100                 # 240 bytes, indexed exactly like the grid
 REPEAT_DELAY = 16
 REPEAT_RATE = 6
 
+# Frames the stage sits on screen ignoring every button, standing in for the round-intro
+# animation. `Puzznic (J)` takes 210 frames over this; the point is only that the board is
+# fully readable while nothing responds, which is the trap `wait_until_interactive` is for.
+INTRO_FRAMES = 60
+
 ROWS, COLS = 12, 10
 CELL_BYTES = 2
 
@@ -77,7 +82,7 @@ SYMBOLS = {
     "RECORDS": RECORDS, "GRID": GRID, "MARKS": MARKS,
     "PAD": PAD, "PREV_PAD": PREV_PAD, "NEW_PAD": NEW_PAD, "TMP": TMP, "SLOT": SLOT,
     "DIR": DIR, "ROW_COUNT": ROW_COUNT, "COL_COUNT": COL_COUNT, "CLEARED": CLEARED,
-    "HOLD": HOLD, "TRIG": TRIG,
+    "HOLD": HOLD, "TRIG": TRIG, "INTRO_FRAMES": INTRO_FRAMES,
     "REPEAT_DELAY": REPEAT_DELAY, "REPEAT_RATE": REPEAT_RATE,
     "REPEAT_RELOAD": REPEAT_DELAY - REPEAT_RATE,
     "LCDC": 0x40, "LY": 0x44, "JOYP": 0x00,
@@ -173,6 +178,8 @@ menu:
     jr menu
 .start:
     call load_stage
+    ld b, INTRO_FRAMES          ; the round announces itself before it will listen
+    call wait_frames
     jp main
 
 ; ---------------------------------------------------------------- main loop
