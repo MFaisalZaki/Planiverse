@@ -32,6 +32,7 @@ def puzznic_gb():
 
 
 def manufacturing():
+    pytest.importorskip("numpy", reason="numpy is not installed")
     from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
 
     env = MfgEnv()

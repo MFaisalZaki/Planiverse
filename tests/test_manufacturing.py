@@ -4,7 +4,9 @@ import os
 
 import pytest
 
-from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import (
+pytest.importorskip("numpy", reason="numpy is not installed")
+
+from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import (  # noqa: E402
     ActionType, ConfigurationAction, MfgEnv, MfgState, total_produced,
 )
 

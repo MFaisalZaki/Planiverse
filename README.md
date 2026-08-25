@@ -37,21 +37,59 @@ source needs a system OpenBLAS.
 ```bash
 git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
-poetry env use python3.12
-poetry install --extras dev      # --extras dev adds pytest
+pip install -e ".[all,dev]"      # every environment, plus pytest
 ```
 
-Or, with pip:
+Or, with poetry:
 
 ```bash
-pip install -e ".[dev]"
+poetry env use python3.12
+poetry install --extras "all dev"
 ```
 
-**Dependencies are all-or-nothing.** `pyproject.toml` declares every environment's dependencies as
-required, so installing the package pulls in PyBoy, JAX/flax, numba, NASim, and a metasploit client
-even if you only want Puzznic. Puzznic needs nothing beyond the standard library; the manufacturing
-environment needs only numpy. If you want a light install, install those selectively rather than
-running `poetry install`. Splitting these into optional groups is on the [roadmap](#status).
+**Each environment's dependencies are an extra.** A bare `pip install .` pulls in nothing: the
+environment interface and Puzznic need only the standard library. Install what you actually want:
+
+| Extra | Pulls in | For |
+|---|---|---|
+| *(none)* | — | `PuzznicGame`, the `Simulator` facade, writing a planner |
+| `retro` | pyboy, pillow | `SuperMarioEnv`, `PuzznicGBEnv` |
+| `manufacturing` | numpy | `MfgEnv` |
+| `urban` | numpy, pandas, networkx | `UrbanPlanningEnv` |
+| `epidemic` | numba, numpy, scipy, sympy, pandas, gym | `EpiEnv` |
+| `network-attack` | nasim, psutil, pymetasploit3, python-nmap | `EnvNASim` |
+| `pddl` | pddlgym, gym | the PDDLGym wrapper — **Python ≤ 3.12 only**, see below |
+| `all` | all of the above | |
+| `dev` | pytest | running the test suite |
+
+```bash
+pip install ".[retro]"                 # just the two Game Boy environments
+pip install ".[epidemic,urban,dev]"    # two environments and the tests
+```
+
+### The `pddl` extra needs Python 3.12 or older
+
+`pddlgym 0.0.7` requires `pillow <10`, and Pillow published no wheels for Python 3.13. Building
+Pillow 9.5.0 from source on 3.13 fails inside its own `setup.py`, which reads the version by
+`exec`-ing a file and pulling `__version__` back out of `locals()` — something
+[PEP 667](https://peps.python.org/pep-0667/) stopped working in 3.13:
+
+```
+File "<string>", line 26, in get_version
+KeyError: '__version__'
+```
+
+The extra carries a `python_version < '3.13'` marker so that this cannot break an install: on 3.13
+`pip install ".[all]"` succeeds and simply leaves pddlgym out, and `Simulator` still wraps native
+environments — only the PDDLGym branch is unavailable. To use the wrapper, install on an older
+Python:
+
+- **3.11** — clean, Pillow 9.5.0 ships a cp311 wheel.
+- **3.12** — works, but Pillow 9.5.0 has no cp312 wheel and is compiled from source, so you need
+  libjpeg and zlib headers first (`brew install libjpeg zlib`, or `apt install libjpeg-dev
+  zlib1g-dev`).
+
+### ROMs
 
 The two Game Boy environments additionally need a ROM each — `SuperMarioLand.gb` and
 `Puzznic (J).gb` — which are **not** and cannot be distributed with this repo. See their docs:
@@ -60,8 +98,8 @@ The two Game Boy environments additionally need a ROM each — `SuperMarioLand.g
 ## Tests
 
 ```bash
-poetry run pytest                  # the whole suite
-poetry run pytest -m "not slow"    # skip the slow epidemic/search tests
+pytest                  # the whole suite
+pytest -m "not slow"    # skip the slow epidemic/search tests
 ```
 
 Tests for an environment whose dependencies are missing skip rather than fail, so the suite is
@@ -69,8 +107,8 @@ runnable from a partial install. The tests that need a copyrighted ROM are opt-i
 matching environment variable at one to run them:
 
 ```bash
-PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb poetry run pytest tests/test_super_mario.py
-PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" poetry run pytest tests/test_puzznic_gb.py
+PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
+PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
 ```
 
 The Puzznic Game Boy environment is still covered without one: [`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py)
@@ -291,8 +329,13 @@ tests/
 
 `dev/` is a scratch area and is **not** an entry point. `dev/dev.py` is stale: it imports names that
 no longer exist (`SuperMario`, `super_mario_bros_grid`, `super_mario_planner_tile`) and will not run.
+It is also the only thing that ever imported `pcg_benchmark`, which is no longer a declared
+dependency — `pip install git+https://github.com/amidos2006/pcg_benchmark.git` if you revive it.
 `dev/earthmodel.py` is a vendored copy of the c:GLOBAL gym environment (© Felix Strnad), kept for a
 future port — it does not implement the Planiverse interface yet.
+
+`chex`, `flax`, `jaxmarl` and `dill` were declared as required dependencies but are imported nowhere
+in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them.
 
 ## Attribution
 
@@ -315,8 +358,9 @@ is referenced as a planned addition but is not yet in the tree.
 - [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
 - [x] NASim network attack
 - [x] Test suite (`poetry run pytest`)
+- [x] Optional dependency groups, so one environment doesn't pull in all of them
 - [ ] Flood application
-- [ ] Optional dependency groups, so one environment doesn't pull in all of them
+- [ ] Replace `pddlgym` (unmaintained, pins `pillow <10`, caps the PDDL wrapper at Python 3.12)
 - [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
 - [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
 - [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
