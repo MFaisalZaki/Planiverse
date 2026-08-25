@@ -31,6 +31,7 @@ pytestmark = pytest.mark.skipif(
 ENTRY_POINTS = [
     "planiverse.problems.retro_games.puzznic",
     "planiverse.problems.retro_games.puzznic_gb",
+    "planiverse.problems.retro_games.flipull_gb",
     "planiverse.problems.retro_games.super_mario_bros_gb",
     "planiverse.problems.real_world_problems.epidemic_control.environment",
     "planiverse.problems.real_world_problems.urban_planning.environment",

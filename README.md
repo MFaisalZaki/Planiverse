@@ -25,6 +25,7 @@ Every environment answers the same four questions:
 | Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
 | Puzznic (Game Boy) | `PuzznicGBEnv` | 128 rounds (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
 | Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
+| Flipull (Game Boy) | `FlipullGBEnv` | 1 stage (needs a ROM you supply) | [docs](docs/environments/flipull-gb.md) |
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
 see [The Simulator facade](#the-simulator-facade).
@@ -80,9 +81,10 @@ declared on its behalf.
 
 ### ROMs
 
-The two Game Boy environments additionally need a ROM each — `SuperMarioLand.gb` and
-`Puzznic (J).gb` — which are **not** and cannot be distributed with this repo. See their docs:
-[Super Mario Land](docs/environments/super-mario-land.md), [Puzznic (Game Boy)](docs/environments/puzznic-gb.md).
+The three Game Boy environments additionally need a ROM each — `SuperMarioLand.gb`,
+`Puzznic (J).gb` and `Flipull (USA).gb` — which are **not** and cannot be distributed with this repo.
+See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
+[Puzznic (Game Boy)](docs/environments/puzznic-gb.md), [Flipull (Game Boy)](docs/environments/flipull-gb.md).
 
 ## Tests
 
@@ -98,11 +100,14 @@ matching environment variable at one to run them:
 ```bash
 PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
 PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
+PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" pytest tests/test_flipull_gb.py
 ```
 
-The Puzznic Game Boy environment is still covered without one: [`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py)
-assembles a synthetic cartridge that reproduces the game's memory layout, so booting, stage
-selection, grid decoding and settling are all tested against a real emulator.
+The two Taito environments are still covered without one:
+[`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py) and
+[`tests/fake_flipull_rom.py`](tests/fake_flipull_rom.py) assemble synthetic cartridges that reproduce
+each game's memory layout, so booting, stage selection, field decoding, calibration and settling are
+all tested against a real emulator.
 
 [`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
 environment; the other modules cover per-environment behaviour.
@@ -168,6 +173,7 @@ Not every environment implements every method. What is actually there today:
 |---|---|---|---|---|---|---|---|---|---|
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `FlipullGBEnv` | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
@@ -177,7 +183,11 @@ Not every environment implements every method. What is actually there today:
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
 detecting them is left to the planner. The two Puzznics and Super Mario Land are the ones that really
-compute it.
+compute a positional dead end; `FlipullGBEnv` computes one, but only the clock running out.
+
+⚠️ `FlipullGBEnv.fix_index` accepts only `0`: no verified way to select a stage has been found, and
+it asserts rather than quietly loading the wrong one. See
+[its docs](docs/environments/flipull-gb.md#stages).
 
 ### States and `literals`
 
@@ -301,6 +311,7 @@ planiverse/
 │       ├── base.py                     # RetroGame marker base
 │       ├── puzznic.py                  # PuzznicGame
 │       ├── puzznic_gb.py               # PuzznicGBEnv (PyBoy)
+│       ├── flipull_gb.py               # FlipullGBEnv (PyBoy)
 │       └── super_mario_bros_gb.py      # SuperMarioEnv (PyBoy)
 ├── planners/
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
@@ -313,8 +324,9 @@ planiverse/
 dev/                                    # scratch scripts — not part of the library
 docs/environments/                      # per-environment documentation
 tests/
-├── sm83.py                             # minimal SM83 assembler, for the test cartridge
-└── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
+├── sm83.py                             # minimal SM83 assembler, for the test cartridges
+├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
+└── fake_flipull_rom.py                 # synthetic Game Boy ROM with Flipull's memory layout
 ```
 
 `dev/` is a scratch area and is **not** an entry point. `dev/dev.py` is stale: it imports names that
@@ -338,7 +350,7 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Network attack | [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator) (fork), [PenGym](https://github.com/cyb3rlab/PenGym) |
 | Manufacturing | [mfgrl](https://github.com/torayeff/mfgrl) |
 | Urban planning | *AI Agent as Urban Planner: Steering Stakeholder Dynamics in Urban Planning via Consensus-based Multi-Agent Reinforcement Learning* |
-| Super Mario Land | [PyBoy](https://github.com/Baekalfen/PyBoy) |
+| Super Mario Land, Puzznic (GB), Flipull (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
 
 The flood/transport environment ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl))
 is referenced as a planned addition but is not yet in the tree.
@@ -355,6 +367,9 @@ is referenced as a planned addition but is not yet in the tree.
 - [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
 - [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
 - [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
+- [ ] Run `FlipullGBEnv` against a real `Flipull (USA).gb` — it has only ever been driven against the
+      synthetic cartridge
+- [ ] Find a stage-selection route for Flipull, so `fix_index` accepts more than `0`
 
 ## License
 

@@ -40,6 +40,18 @@ def puzznic_rom_path():
     return None
 
 
+def flipull_rom_path():
+    """Path to a Flipull (USA) Game Boy ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_FLIPULL_ROM. The tests that
+    do not need it run against a synthetic cartridge built by `fake_flipull_rom.py`.
+    """
+    rom = os.environ.get("PLANIVERSE_FLIPULL_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
 def assert_state_contract(state):
     """Every Planiverse state exposes `literals` as a frozenset.
 
