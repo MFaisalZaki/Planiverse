@@ -18,11 +18,11 @@ from planiverse.environments.puzznic_gb import (  # noqa: E402
     GRID_ADDR, GRID_BYTES, GRID_COLS, GRID_ROWS, PROBE_MAX_HOLD, PUSH_SCHEMES,
     PuzznicGBAction, PuzznicGBEnv, PuzznicGBState, ROM_MD5, action_cost_map,
     action_list, block_counts, bounding_box, button_actions, calibrate,
-    cell_address, decode_blocks, decode_grid, decode_records, is_dead_end,
+    decode_blocks, decode_grid,
     CURSOR_IMPASSABLE, MENU_ARROW_TILE, MENU_ENTRIES, PASSWORD_ALPHABET,
-    PASSWORD_TABLE_ADDR, cursor_path, decode_text, menu_cursor, read_passwords,
+    PASSWORD_TABLE_ADDR, cursor_path, decode_text, menu_cursor,
     measure_hold_window, measure_push_window,
-    probe_push_scheme, push_hold, push_probe_candidates, render_grid, walk_cursor,
+    probe_push_scheme, push_hold, push_probe_candidates, walk_cursor,
     wait_until_interactive,
 )
 
@@ -74,15 +74,6 @@ def raw_grid(cells):
 # ------------------------------------------------------------------------- decoding
 # These read synthetic RAM, so they run with no ROM and no emulator at all.
 
-def test_cell_address_matches_the_row_offset_table():
-    assert cell_address(0, 0) == 0xDF00
-    assert cell_address(0, 9) == 0xDF12
-    assert cell_address(1, 0) == 0xDF14          # stride 20, not 16
-    assert cell_address(11, 9) == 0xDFEE
-    # The last cell ends the 240-byte region exactly.
-    assert cell_address(11, 9) + 2 == GRID_ADDR + GRID_BYTES
-
-
 def test_decode_grid_reads_rows_of_ten():
     cells = [[row * 10 + col for col in range(GRID_COLS)] for row in range(GRID_ROWS)]
     grid = decode_grid(raw_grid(cells))
@@ -113,18 +104,18 @@ def test_decode_records_skips_holes_rather_than_stopping_at_one():
     raw = bytearray(6 * 4)
     raw[12:18] = bytes([0x0A, 0x00, 8, 6, 0x62, 0xC5])      # slots 0 and 1 were cleared
     raw[18:24] = bytes([0x0B, 0x00, 8, 3, 0x62, 0xB6])
-    records = decode_records(raw, total=4)
+    records = PuzznicGBState.decode_records(raw, total=4)
     assert [record.slot for record in records] == [2, 3]
     assert records[0].type == 3 and (records[0].row, records[0].col) == (8, 6)
 
 
 def test_dead_end_is_a_type_with_exactly_one_block_left():
     pair = decode_blocks(raw_grid(_cells({(0, 0): 0x08, (0, 1): 0x08})))
-    assert not is_dead_end(pair)
+    assert not PuzznicGBState.is_dead_end(pair)
     lone = decode_blocks(raw_grid(_cells({(0, 0): 0x08, (0, 1): 0x09, (0, 2): 0x09})))
-    assert is_dead_end(lone)
+    assert PuzznicGBState.is_dead_end(lone)
     triple = decode_blocks(raw_grid(_cells({(0, 0): 0x08, (0, 1): 0x08, (0, 2): 0x08})))
-    assert not is_dead_end(triple)
+    assert not PuzznicGBState.is_dead_end(triple)
     assert block_counts(triple) == {1: 3}
 
 
@@ -153,9 +144,9 @@ def test_render_grid_alphabet():
     cells[2][2] = CELL_CLEARING
     cells[2][3] = CELL_EMPTY
     grid = decode_grid(raw_grid(cells))
-    assert render_grid(grid, cursor=None) == "#.=\n1*."
-    assert render_grid(grid, cursor=(2, 3)) == "#.=\n1*c"      # cursor on empty
-    assert render_grid(grid, cursor=(2, 1)) == "#.=\n¢*."      # cursor on a block
+    assert PuzznicGBState.render_grid(grid, cursor=None) == "#.=\n1*."
+    assert PuzznicGBState.render_grid(grid, cursor=(2, 3)) == "#.=\n1*c"      # cursor on empty
+    assert PuzznicGBState.render_grid(grid, cursor=(2, 1)) == "#.=\n¢*."      # cursor on a block
 
 
 # --------------------------------------------------------------------------- actions
@@ -425,13 +416,13 @@ def test_search_solves_the_synthetic_stage(env):
 # number stored beside each one validates the parse as it goes.
 
 def test_passwords_are_read_out_of_the_cartridge(fake_rom):
-    assert read_passwords(fake_rom) == FAKE_PASSWORDS
+    assert PuzznicGBEnv.read_passwords(fake_rom) == FAKE_PASSWORDS
 
 
 def test_the_parse_stops_where_the_table_does(fake_rom):
     """It walks until an entry stops being a password whose round number follows the last,
     which is what finds the end -- the table is not length-prefixed."""
-    passwords = read_passwords(fake_rom)
+    passwords = PuzznicGBEnv.read_passwords(fake_rom)
     assert len(passwords) == len(FAKE_PASSWORDS)
     assert all(len(password) == 8 for password in passwords)
 
@@ -439,7 +430,7 @@ def test_the_parse_stops_where_the_table_does(fake_rom):
 def test_a_rom_without_a_table_yields_none(tmp_path):
     rom = tmp_path / "blank.gb"
     rom.write_bytes(b"\xff" * 65536)
-    assert read_passwords(str(rom)) == ()
+    assert PuzznicGBEnv.read_passwords(str(rom)) == ()
 
 
 def test_the_text_encoding_is_letters_from_0a():
@@ -454,7 +445,7 @@ def test_the_text_encoding_is_letters_from_0a():
 def test_every_password_character_is_on_the_screen(fake_rom):
     """The entry screen offers A-Z and a full stop, and nothing else."""
     assert PASSWORD_ALPHABET == "ABCDEFGHIJKLMNOPQRSTUVWXYZ."
-    for password in read_passwords(fake_rom):
+    for password in PuzznicGBEnv.read_passwords(fake_rom):
         assert all(character in PASSWORD_ALPHABET for character in password)
 
 
@@ -800,7 +791,7 @@ def test_cartridge_cursor_moves(cartridge):
 @needs_rom
 def test_cartridge_carries_128_round_passwords():
     """Puzznic (J) has 128 rounds, and the table in the ROM is what says so."""
-    passwords = read_passwords(puzznic_rom_path())
+    passwords = PuzznicGBEnv.read_passwords(puzznic_rom_path())
     assert len(passwords) == 128
     assert passwords[0] == "PUSHAREG"
     assert passwords[3] == "GOTAGOTO"

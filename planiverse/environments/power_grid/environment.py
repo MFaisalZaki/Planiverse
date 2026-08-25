@@ -399,9 +399,6 @@ class PowerGridEnv(Environment):
         relief = before - self.state.max_rho
         return self.state, relief if relief == relief and abs(relief) != float("inf") else 0.0
 
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
-
     def get_actions(self):
         """Every topology action the case has, whatever state it is in."""
         return [PowerGridAction(action_id) for action_id in range(self.__converter__().n)]

@@ -394,9 +394,6 @@ class CropEnv(Environment):
         self.state_history.append(self.state)
         return self.state, self.state.biomass - before
 
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
-
     def get_actions(self):
         return [CropAction(amount) for amount in self.amounts]
 

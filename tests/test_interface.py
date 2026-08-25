@@ -328,16 +328,37 @@ def test_the_two_old_base_classes_now_name_the_same_thing():
 
 def test_the_capability_matrix_can_be_derived_from_the_code():
     """`Environment.capabilities()` exists so the README's matrix is checkable rather than
-    hand-maintained. This pins the rows that claim the full set."""
+    hand-maintained. These are the rows that claim the full set."""
     from planiverse.environments import get_spec
 
     full = {"step", "validate", "get_actions", "render", "close"}
-    for name in ("puzznic_gb", "flipull_gb", "water_network", "power_grid",
-                 "crop_management"):
+    for name in ("puzznic_gb", "flipull_gb", "super_mario_land", "water_network",
+                 "power_grid", "crop_management"):
         spec = get_spec(name)
         if not spec.available():
             continue
         assert spec.load().capabilities() >= full, f"{name} claims the full capability row"
+
+
+def test_validate_comes_from_the_base_and_still_counts_as_provided():
+    """`validate` is the same sentence in every environment, so it is written once in the
+    base — but it is a *working* default, unlike `step` and `get_actions` whose defaults
+    only explain their own absence.
+
+    So "does the class override it" is the wrong test for whether a capability is offered,
+    and `capabilities()` asks whether the method would do something instead.
+    """
+    from planiverse.environments import Environment
+
+    assert "validate" in Environment.capabilities(), "the default works"
+    assert "step" not in Environment.capabilities(), "this default only raises"
+    assert "get_actions" not in Environment.capabilities()
+
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from planiverse.environments.flipull_gb import FlipullGBEnv
+
+    assert FlipullGBEnv.validate is Environment.validate, "inherited, not rewritten"
+    assert "validate" in FlipullGBEnv.capabilities(), "and still offered"
 
 
 def test_specs_agree_with_the_environments_they_name():

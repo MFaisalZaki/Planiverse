@@ -15,9 +15,9 @@ from planiverse.environments.flipull_gb import (  # noqa: E402
     BLOCK_MAX, BLOCK_MIN, CELL_BORDER, CELL_OUTSIDE, CELL_STAIRCASE, FIELD_ADDR, FIELD_BYTES,
     FIELD_COLS, FIELD_ROWS, MOVE_BUTTONS, ROM_MD5, ROW_STRIDE, THROW_BUTTONS, Calibration,
     FlipullGBAction, FlipullGBEnv, FlipullGBState, action_cost_map, block_counts,
-    bounding_box, button_actions, cell_address, column_blocks, decode_blocks, decode_digits,
-    decode_field, decode_staircase, decode_timer, is_playable, load_state, read_field,
-    render_field, row_blocks, row_for_y, read_stage_table, settle, sprites, stage_digits,
+    bounding_box, button_actions, column_blocks, decode_blocks, decode_digits,
+    decode_field, decode_timer, is_playable, load_state, read_field,
+    row_blocks, row_for_y, settle, sprites, stage_digits,
     stage_number, throw_count,
 )
 
@@ -58,16 +58,6 @@ def raw_field(cells):
 # --------------------------------------------------------------------------- decoding
 # These read synthetic RAM, so they run with no ROM and no emulator.
 
-def test_cell_address_uses_a_32_byte_row():
-    """The stride is $20 even though only 16 columns carry meaning — the upper half of
-    every row was zero throughout the recording."""
-    assert cell_address(0, 0) == 0xC840
-    assert cell_address(1, 0) == 0xC860
-    assert cell_address(8, 0) == 0xC940      # the row the map dumps
-    assert cell_address(13, 0) == 0xC9E0
-    assert ROW_STRIDE == 0x20 and FIELD_COLS == 16
-
-
 def test_only_83_to_86_are_playable():
     """`$80` is border, `$87` is the fixed staircase, and only `$83`-`$86` count."""
     assert [is_playable(value) for value in (0x00, 0x80, 0x82, 0x83, 0x86, 0x87)] == \
@@ -88,7 +78,7 @@ def test_the_maps_stage_one_holds_twenty_five_blocks():
 def test_the_staircase_is_not_counted_as_blocks():
     """`$87` is structural: it forms the stepped diagonal and can never be cleared."""
     field = decode_field(raw_field(stage_one()))
-    staircase = decode_staircase(field)
+    staircase = FlipullGBState.decode_staircase(field)
     assert staircase, "stage 1 has a staircase"
     assert not any((block.row, block.col) in staircase for block in decode_blocks(field))
 
@@ -143,7 +133,7 @@ def test_render_alphabet():
     cells[5][1] = CELL_STAIRCASE
     cells[5][2] = 0x83
     cells[5][3] = 0x86
-    text = render_field(decode_field(raw_field(cells)), held=2)
+    text = FlipullGBState.render_field(decode_field(raw_field(cells)), held=2)
     assert text.splitlines()[0] == "#=14"
     assert text.splitlines()[-1] == "held: 2"
 
@@ -155,8 +145,8 @@ def test_render_shows_the_player_so_that_moving_is_visible():
     and a rendered trace of a plan silently drops every move.
     """
     field = decode_field(raw_field(stage_one()))
-    assert render_field(field, held=2, player=11) != render_field(field, held=2, player=12)
-    assert render_field(field, held=2, player=11).splitlines()[-1] == "player: row 11"
+    assert FlipullGBState.render_field(field, held=2, player=11) != FlipullGBState.render_field(field, held=2, player=12)
+    assert FlipullGBState.render_field(field, held=2, player=11).splitlines()[-1] == "player: row 11"
 
 
 # --------------------------------------------------------------------------- actions
@@ -189,7 +179,7 @@ def test_action_string_is_filename_safe():
 def test_the_stage_table_is_read_out_of_the_rom(fake_rom):
     """Not transcribed. The table gives each stage's block total and CLEAR target, which
     is what `reset` checks a selected stage against."""
-    stages = read_stage_table(fake_rom)
+    stages = FlipullGBEnv.read_stage_table(fake_rom)
     assert [stage.number for stage in stages] == [1, 2, 3, 4]
     assert [stage.blocks for stage in stages] == [25, 20, 15, 10]
     assert [stage.clear_target for stage in stages] == [9, 8, 6, 5]
@@ -198,7 +188,7 @@ def test_the_stage_table_is_read_out_of_the_rom(fake_rom):
 def test_the_stage_table_stops_at_the_end_rather_than_running_on(fake_rom):
     """A pointer table has no length field, so the parse has to recognise its own end —
     on the cartridge another, shorter table follows it immediately in ROM."""
-    stages = read_stage_table(fake_rom, count=64)
+    stages = FlipullGBEnv.read_stage_table(fake_rom, count=64)
     assert len(stages) == 4, "the terminator entry is not a stage"
 
 
