@@ -16,7 +16,8 @@ from planiverse.problems.retro_games.flipull_gb import (  # noqa: E402
     FIELD_COLS, FIELD_ROWS, MOVE_BUTTONS, ROM_MD5, ROW_STRIDE, THROW_BUTTONS, Calibration,
     FlipullGBAction, FlipullGBEnv, FlipullGBState, action_cost_map, block_counts,
     bounding_box, button_actions, cell_address, column_blocks, decode_blocks, decode_digits,
-    decode_field, decode_staircase, decode_timer, is_playable, render_field,
+    decode_field, decode_staircase, decode_timer, is_playable, load_state, read_field,
+    render_field, row_blocks, row_for_y, settle, sprites, throw_count,
 )
 
 from conftest import (  # noqa: E402
@@ -153,8 +154,8 @@ def test_render_shows_the_player_so_that_moving_is_visible():
     and a rendered trace of a plan silently drops every move.
     """
     field = decode_field(raw_field(stage_one()))
-    assert render_field(field, held=2, player=64) != render_field(field, held=2, player=72)
-    assert render_field(field, held=2, player=64).splitlines()[-1] == "player: 64"
+    assert render_field(field, held=2, player=11) != render_field(field, held=2, player=12)
+    assert render_field(field, held=2, player=11).splitlines()[-1] == "player: row 11"
 
 
 # --------------------------------------------------------------------------- actions
@@ -233,20 +234,42 @@ def test_calibration_finds_the_player_and_the_throw(env):
 
 
 def test_the_player_sprite_is_found_by_moving_not_assumed(env):
-    """It has to move up for up and down for down. A scratch byte that merely changes is
-    not enough — parking one inside the OAM buffer is exactly how this went wrong first."""
+    """A candidate must never move the *wrong* way, which is what rejects a scratch byte
+    parked in the OAM buffer — the way this went wrong first.
+
+    It must not have to move *both* ways, which is what rejects the player himself: the
+    cartridge starts him on the bottom row, where `down` is the floor.
+    """
     state, info = env.reset()
-    up = FlipullGBAction(f"up,{info['calibration'].press_ticks}").apply(env.pyboy, state)
-    down = FlipullGBAction(f"down,{info['calibration'].press_ticks}").apply(env.pyboy, state)
-    assert up.player_y < state.player_y < down.player_y
+    press = info["calibration"].press_ticks
+    up = FlipullGBAction(f"up,{press}").apply(env.pyboy, state)
+    down = FlipullGBAction(f"down,{press}").apply(env.pyboy, state)
+    assert up.player_y < state.player_y, "up moves him up"
+    assert down.player_y == state.player_y, "he starts on the floor, so down is a wall"
+    assert info["calibration"].move_button == "up", "so the hold window is measured with up"
+
+
+def test_the_player_and_the_block_in_his_hand_are_told_apart(env):
+    """Two sprites move together, so 'the one that moved' names two candidates. Only a
+    throw separates them: the block leaves, the player does not."""
+    calibration = env.reset()[1]["calibration"]
+    assert calibration.player_sprite is not None
+    assert calibration.held_sprite is not None
+    assert calibration.player_sprite != calibration.held_sprite
 
 
 def test_moving_is_a_real_state_change(env):
     """The player's row is part of the position: a throw from another row does something
-    else, so up and down must not collapse into self-loops."""
+    else, so a move must not collapse into a self-loop.
+
+    Only one direction is offered from the starting row, because the other is into the
+    floor and `successors` filters what does nothing — which is the correct answer, not a
+    missing action.
+    """
     state, _ = env.reset()
     offered = {str(action) for action, _ in env.successors(state)}
-    assert len(offered) == 3, "up, down and throw all do something"
+    assert "up_for_8" in offered and "a_for_8" in offered
+    assert "down_for_8" not in offered, "down is the floor from the starting row"
 
 
 def test_successors_contract(env):
@@ -266,35 +289,62 @@ def test_successors_are_deterministic_and_leave_the_parent_alone(env):
 def test_applying_an_action_rewinds_to_the_parent_first(env):
     state, info = env.reset()
     ticks = info["calibration"].press_ticks
-    first = FlipullGBAction(f"down,{ticks}").apply(env.pyboy, state)
-    FlipullGBAction(f"down,{ticks}").apply(env.pyboy, first)
-    second = FlipullGBAction(f"down,{ticks}").apply(env.pyboy, state)
+    first = FlipullGBAction(f"up,{ticks}").apply(env.pyboy, state)
+    FlipullGBAction(f"up,{ticks}").apply(env.pyboy, first)
+    second = FlipullGBAction(f"up,{ticks}").apply(env.pyboy, state)
     assert first == second
 
 
-def test_a_throw_at_a_different_type_swaps_the_held_block(env):
-    state, info = env.reset()
-    throw = FlipullGBAction(f"{info['calibration'].throw_button},{info['calibration'].throw_ticks}")
-    after = throw.apply(env.pyboy, state)
-    assert after.blocks_remaining == state.blocks_remaining, "a swap clears nothing"
-    assert after.held_block != state.held_block
+def test_a_throw_that_does_not_connect_is_a_self_loop(env):
+    """Some throws play the whole animation and change nothing.
 
-
-def test_a_throw_at_its_own_type_clears_a_block_and_drops_the_column(env):
-    """The whole mechanic, end to end — and the column collapse the map recorded."""
+    The environment does not try to predict which — see `successors` — but it must handle
+    one correctly when it happens: the position is untouched down to the cartridge's own
+    completed-throw counter, so it is a self-loop and gets filtered.
+    """
     state, info = env.reset()
     ticks = info["calibration"].press_ticks
-    down = FlipullGBAction(f"down,{ticks}")
+    up = FlipullGBAction(f"up,{ticks}")
     throw = FlipullGBAction(f"{info['calibration'].throw_button},{ticks}")
 
+    elsewhere = up.apply(env.pyboy, up.apply(env.pyboy, state))
+    after = throw.apply(env.pyboy, elsewhere)
+
+    assert after.field == elsewhere.field, "the field is untouched"
+    assert after.blocks_remaining == elsewhere.blocks_remaining
+    assert after.held_block == elsewhere.held_block, "and it is still the same block in hand"
+    assert not after.threw(elsewhere), "a throw that does nothing is not counted"
+    assert after == elsewhere, "so successors filters it"
+    assert throw not in {action for action, _ in env.successors(elsewhere)}
+
+
+def test_a_throw_that_connects_clears_a_block_and_drops_the_column(env):
+    """The whole mechanic, end to end — and the column collapse the map recorded."""
+    state, info = env.reset()
+    throw = FlipullGBAction(f"{info['calibration'].throw_button},"
+                            f"{info['calibration'].throw_ticks}")
+
     column_before = [state.field[row][5] for row in range(8, 13)]
-    for _ in range(4):                      # to the row whose right-hand block matches
-        state = down.apply(env.pyboy, state)
     after = throw.apply(env.pyboy, state)
 
+    assert after.threw(state), "the cartridge counted this one"
     assert after.blocks_remaining == 24, "one block gone"
     assert after.is_consistent(), "and the counter still agrees with the field"
     assert [after.field[row][5] for row in range(8, 13)] == [CELL_OUTSIDE] + column_before[:-1]
+
+
+def test_the_held_block_comes_off_the_sprite_not_off_ffd4(env):
+    """`$FFD4` holds the block *previously* in hand, so it lags a throw behind and reads
+    `$00` until the first one. The hand sprite's tile is the live value."""
+    state, info = env.reset()
+    throw = FlipullGBAction(f"{info['calibration'].throw_button},"
+                            f"{info['calibration'].throw_ticks}")
+    assert state.last_thrown == 0, "nothing has been thrown yet"
+    assert state.held_block is not None, "and yet the opening hand is known — it was probed"
+
+    after = throw.apply(env.pyboy, state)
+    assert after.last_thrown == state.held_block + BLOCK_MIN - 1, "$FFD4 is now the old hand"
+    assert after.held_block != state.held_block, "and the hand itself has moved on"
 
 
 def test_goal_is_the_clear_target_not_zero(env):
@@ -315,12 +365,12 @@ def test_a_fresh_stage_is_neither_won_nor_lost(env):
 def test_simulate_and_step(env):
     state, info = env.reset()
     ticks = info["calibration"].press_ticks
-    plan = [FlipullGBAction(f"down,{ticks}"), FlipullGBAction(f"down,{ticks}")]
+    plan = [FlipullGBAction(f"up,{ticks}"), FlipullGBAction(f"up,{ticks}")]
     trace = env.simulate(plan)
     assert len(trace) == 3 and [s.depth for s in trace] == [0, 1, 2]
 
     env.reset()
-    after, cleared = env.step(f"down,{ticks}")
+    after, cleared = env.step(f"up,{ticks}")
     assert cleared == 0, "moving clears nothing"
     assert len(env.render()) == 2
 
@@ -351,20 +401,140 @@ def test_cartridge_boots_into_a_stage(cartridge):
 
 @needs_rom
 def test_cartridge_stage_one_is_the_one_the_map_recorded(cartridge):
-    """25 blocks in columns 1-5, `CLEAR 09`, `TIME 2:59`."""
+    """25 blocks in columns 1-5, `CLEAR 09`, and a three-minute clock.
+
+    The map recorded `TIME 2:59`, which is that clock one second in — it was read a moment
+    after the stage began. `reset` snapshots at the first frame the stage will answer a
+    button, which on this cartridge is immediately, so it sees the full 3:00.
+    """
     state, info = cartridge.reset()
     assert state.blocks_remaining == 25
     assert info["clear_target"] == 9
-    assert state.timer_seconds == 179
+    assert state.timer_seconds == 180
 
 
 @needs_rom
 def test_cartridge_calibration(cartridge):
+    """Every number in here was measured off `Flipull (USA)`, and every one of them is
+    something the code used to assume wrongly."""
     _, info = cartridge.reset()
     calibration = info["calibration"]
-    assert calibration.player_sprite is not None
-    assert calibration.throw_button in THROW_BUTTONS
-    assert calibration.hold_window is not None
+    assert calibration.player_sprite == 0 and calibration.held_sprite == 1
+    assert calibration.throw_button == "a"
+    assert calibration.row_pitch == 8
+    assert calibration.row_span == (40, 128)
+    assert calibration.move_button == "up", "he starts on the floor"
+    assert calibration.hold_window == (1, 10), "auto-repeat fires on frame 11"
+    assert calibration.press_ticks == 5, "the middle of that window"
+
+
+@needs_rom
+def test_cartridge_repeat_really_fires_where_the_window_says(cartridge):
+    """The bound the window claims, checked directly: one row at the top of the window,
+    two rows one frame past it. A hold of 8 — the old hard-coded default — still moves one
+    row here, so this passing was never evidence the number was right."""
+    state, info = cartridge.reset()
+    low, high = info["calibration"].hold_window
+    one = FlipullGBAction(f"up,{high}").apply(cartridge.pyboy, state)
+    two = FlipullGBAction(f"up,{high + 1}").apply(cartridge.pyboy, state)
+    pitch = info["calibration"].row_pitch
+    assert state.player_y - one.player_y == pitch, "the top of the window moves one row"
+    assert state.player_y - two.player_y == 2 * pitch, "one frame later, two"
+
+
+@needs_rom
+def test_cartridge_the_player_starts_on_the_floor(cartridge):
+    """The case that defeated the first sprite probe: `down` does nothing from here, so a
+    probe demanding movement in both directions finds no player at all."""
+    state, info = cartridge.reset()
+    ticks = info["calibration"].press_ticks
+    assert state.player_row == 12
+    assert FlipullGBAction(f"down,{ticks}").apply(cartridge.pyboy, state) == state
+    assert FlipullGBAction(f"up,{ticks}").apply(cartridge.pyboy, state) != state
+
+
+@needs_rom
+def test_cartridge_a_throw_is_still_in_the_air_when_the_field_goes_quiet(cartridge):
+    """Why `settle` has to watch the sprites.
+
+    A thrown block is a sprite until it lands, so the field is byte-identical for the whole
+    flight. Settling on the field alone returns mid-throw and snapshots a position that has
+    not happened yet — and the throw count cannot rescue it, because that stays 0 until the
+    block lands too.
+    """
+    state, info = cartridge.reset()
+    pyboy = cartridge.pyboy
+    load_state(pyboy, state.gb_state)
+    field_before, throws_before = read_field(pyboy), throw_count(pyboy)
+    pyboy.button(info["calibration"].throw_button, info["calibration"].throw_ticks)
+
+    still = 0
+    for _ in range(25):                      # mid-flight, by which point a field-only
+        pyboy.tick(1, False)                 # settle would long since have given up
+        still += read_field(pyboy) == field_before
+    assert still == 25, "the field never moves while the block is crossing it"
+    assert throw_count(pyboy) == throws_before, "and the count has not gone up either"
+    assert sprites(pyboy) != state.sprites, "only the sprites say anything is happening"
+
+    settle(pyboy)
+    assert read_field(pyboy) != field_before, "and settling waits for the landing"
+    assert throw_count(pyboy) == throws_before + 1
+
+
+@needs_rom
+def test_cartridge_throws_stop_connecting_and_that_is_a_self_loop(cartridge):
+    """Some throws do nothing at all, and the cartridge says so itself.
+
+    Thrown repeatedly from the starting row, `Flipull (USA)` connects three times and then
+    stops: the animation still plays, and the field, counter, hand and throw count are all
+    unchanged. What decides this is not modelled — see `successors` — but it has to be
+    recognised, and the environment recognises it the only honest way, by comparing states.
+    """
+    state, info = cartridge.reset()
+    throw = FlipullGBAction(f"{info['calibration'].throw_button},"
+                            f"{info['calibration'].throw_ticks}")
+    node, connected = state, 0
+    for _ in range(5):
+        after = throw.apply(cartridge.pyboy, node)
+        if after == node:
+            break
+        assert after.threw(node), "a state that changed means the cartridge counted a throw"
+        connected += 1
+        node = after
+    else:
+        pytest.fail("expected the throws to stop connecting")
+    assert connected == 3
+    assert throw not in {action for action, _ in cartridge.successors(node)}
+
+
+@needs_rom
+def test_cartridge_row_for_y_names_the_row_a_throw_hits(cartridge):
+    """The Y-to-row mapping, checked against what a throw actually does.
+
+    A destroyed block collapses its column, so the field rows that change run from the top
+    of the wall down to the row that was hit. That bottom row is the one the player was
+    standing on.
+    """
+    state, info = cartridge.reset()
+    throw = FlipullGBAction(f"{info['calibration'].throw_button},"
+                            f"{info['calibration'].throw_ticks}")
+    after = throw.apply(cartridge.pyboy, state)
+    changed = {row for row in range(FIELD_ROWS) for col in range(FIELD_COLS)
+               if state.field[row][col] != after.field[row][col]}
+    assert max(changed) == state.player_row
+
+
+@needs_rom
+def test_cartridge_search_reduces_the_block_count(cartridge):
+    """The environment is usable as a planning problem, not merely readable."""
+    state, _ = cartridge.reset()
+    best = state
+    for _ in range(3):
+        successors = cartridge.successors(best)
+        assert successors, "a live stage always offers something"
+        best = min((child for _, child in successors), key=lambda s: s.blocks_remaining)
+    assert best.blocks_remaining < state.blocks_remaining
+    assert best.is_consistent()
 
 
 @needs_rom

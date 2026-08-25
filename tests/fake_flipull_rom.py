@@ -7,14 +7,24 @@ that puts the *same facts at the same addresses*:
     $C840  the 14-row block field, stride $20
     $FFC9/$FFCA  blocks remaining, as separate decimal digits, ones first
     $FFC0/$FFC1  the stage's starting total      $FFCF  the CLEAR target
-    $FFCB/$FFCC/$FFCE  the timer                 $FFD4  the held block
-    $FFD2/$FFD3  throw flags                     $C000  the player's sprite
+    $FFCB/$FFCC/$FFCE  the timer                 $FFD4  the previously held block
+    $FFD2/$FFD3  completed-throw count           $C000  the player and hand sprites
 
-It is **not** a Flipull clone. A throw destroys at most one block — the real game chains
-through every block of its own type — and there is no scoring and no upcoming-block queue.
+It is **not** a Flipull clone, and it does not try to guess the rule that decides what a
+throw hits — nobody has established that. What it reproduces is the *shape* of the game as
+the environment sees it, including the four things that made the environment wrong against
+the real cartridge until it was driven on one:
+
+    * the player starts on the bottom row, where `down` is a wall
+    * he and the block in his hand are two sprites that move together
+    * a thrown block is a sprite, so the field sits still for the whole flight
+    * `$FFD2`/`$FFD3` count completed throws — they stay 0 in flight, and a throw that
+      changes nothing never advances them
+
 What it exercises is the *interface* between the environment and a Game Boy: booting,
-decoding the field, reading digit-per-byte counters, waiting for a throw to finish, watching
-a column collapse, and finding the player's sprite.
+decoding the field, reading digit-per-byte counters, finding the player among the sprites,
+measuring a hold window, waiting for a throw to actually finish, and watching a column
+collapse.
 
 The stage it loads is the one the memory map records verbatim, so `decode_blocks` on it
 returns the 25 blocks the map saw as `BLOCK 25`.
@@ -46,16 +56,27 @@ H_INFLIGHT_Y, H_INFLIGHT_X = 0xDE, 0xDF
 # WRAM scratch. Kept well clear of $C000-$C09F: that is the OAM DMA buffer, and a variable
 # parked in it is read back as sprite data — which is exactly what happened the first time,
 # and what made `probe_player_sprite` refuse to name a player sprite.
-OAM = 0xC000                   # the player is sprite 0
+OAM = 0xC000                   # sprite 0 is the player, sprite 1 the block in his hand
 PLAYER_ROW = 0xC700
 PAD, PREV_PAD, NEW_PAD, TRIG, HOLD = 0xC701, 0xC702, 0xC703, 0xC704, 0xC705
 TMP, TMP2, COL = 0xC706, 0xC707, 0xC708
+HAND = 0xC709                  # the block actually in hand. `$FFD4` is the *previous* one.
+HAND_X = 0xC70A                # where the hand block is drawn: it leaves during a throw
+THREW = 0xC70B                 # has anything been thrown yet this stage?
+HIT = 0xC70C                   # did this throw connect?
+PREV_HAND = 0xC70D             # what was in hand before this throw, which is what $FFD4 keeps
 
 REPEAT_DELAY = 16              # frames a held direction waits before it repeats
 REPEAT_RATE = 6
 INTRO_FRAMES = 45              # the stage is readable this long before it will listen
-THROW_FRAMES = 12              # how long a thrown block spends crossing the field
+THROW_FRAMES = 12              # frames the block spends flying out, and again coming back
 TOP_ROW = 1                    # rows 1..12 are playable; 0 is the ceiling, 13 the floor
+BOTTOM_ROW = 12
+START_ROW = BOTTOM_ROW         # the cartridge starts him on the floor, where `down` is a
+                               # wall — the case that defeated the first sprite probe
+HAND_REST_X = 132              # the hand block sits here and flies left from it
+HAND_START_TILE = 0x82         # not a block value: the real cartridge shows this until the
+                               # first throw, which is why the opening hand has to be probed
 
 CLEAR_TARGET = 9
 START_MINUTES, START_SECONDS = 2, 59
@@ -68,7 +89,9 @@ NINTENDO_LOGO = bytes.fromhex(
 SYMBOLS = {
     "FIELD": FIELD, "OAM": OAM, "PLAYER_ROW": PLAYER_ROW,
     "PAD": PAD, "PREV_PAD": PREV_PAD, "NEW_PAD": NEW_PAD, "TRIG": TRIG, "HOLD": HOLD,
-    "TMP": TMP, "TMP2": TMP2, "COL": COL,
+    "TMP": TMP, "TMP2": TMP2, "COL": COL, "HAND": HAND, "HAND_X": HAND_X,
+    "THREW": THREW, "HIT": HIT, "PREV_HAND": PREV_HAND, "HAND_REST_X": HAND_REST_X,
+    "HAND_START_TILE": HAND_START_TILE, "BOTTOM_ROW": BOTTOM_ROW, "START_ROW": START_ROW,
     "H_INITIAL_ONES": H_INITIAL_ONES, "H_INITIAL_TENS": H_INITIAL_TENS, "H_STAGE": H_STAGE,
     "H_BLOCKS_ONES": H_BLOCKS_ONES, "H_BLOCKS_TENS": H_BLOCKS_TENS,
     "H_SEC_ONES": H_SEC_ONES, "H_SEC_TENS": H_SEC_TENS, "H_SUBSECOND": H_SUBSECOND,
@@ -180,22 +203,30 @@ load_stage:
     ldh (H_SEC_ONES), a
     xor a
     ldh (H_SUBSECOND), a
-    ldh (H_THROW_A), a
+    ldh (H_THROW_A), a          ; a count of completed throws, not a flag
     ldh (H_THROW_B), a
-    ld a, $83                   ; the block in hand to start with
-    ldh (H_HELD), a
-    ld a, 8                     ; the player starts level with the top row of blocks
+    ldh (H_HELD), a             ; $FFD4 is the *previously* held block: nothing yet
+    ld (THREW), a
+    ld a, $83                   ; the block actually in hand, which lives in WRAM
+    ld (HAND), a
+    ld a, HAND_REST_X
+    ld (HAND_X), a
+    ld a, START_ROW             ; on the floor, where `down` does nothing at all
     ld (PLAYER_ROW), a
     call draw_player
     ret
 
-; The player is sprite 0 in the OAM buffer: y = 40 + row*8, x = 140.
+; Two sprites, and they move together: sprite 0 is the player at x=140, sprite 1 the block
+; in his hand just to his left. Telling them apart needs a throw, because only the block
+; leaves. The hand's tile carries its block type -- except before the first throw, when the
+; cartridge shows a tile that is not a block value at all.
 draw_player:
     ld a, (PLAYER_ROW)
     add a, a
     add a, a
     add a, a
     add a, 40
+    ld (TMP2), a                ; both sprites share the row's y
     ld hl, OAM
     ld (hl+), a
     ld a, 140
@@ -203,7 +234,28 @@ draw_player:
     ld a, $01
     ld (hl+), a
     xor a
+    ld (hl+), a
+    ld a, (TMP2)                ; sprite 1: the block in hand
+    ld (hl+), a
+    ld a, (HAND_X)
+    ld (hl+), a
+    ld a, (THREW)
+    and a
+    jr nz, .typed
+    ld a, HAND_START_TILE
+    jr .tile
+.typed:
+    ld a, (HAND)
+.tile:
+    ld (hl+), a
+    xor a
     ld (hl), a
+    ret
+
+; The thrown block, drawn where it has flown to. Same sprite, moved.
+draw_hand_at:
+    ld (HAND_X), a
+    call draw_player
     ret
 
 ; ---------------------------------------------------------------- main loop
@@ -231,7 +283,7 @@ main:
     jr main
 .down:
     ld a, (PLAYER_ROW)
-    cp 12
+    cp BOTTOM_ROW
     jr z, main
     inc a
     ld (PLAYER_ROW), a
@@ -239,27 +291,44 @@ main:
     jr main
 
 ; ---------------------------------------------------------------- the throw
-; Scan the player's row from the right. The first playable block either matches what is in
-; hand -- destroy it, and its column falls -- or does not, and the two swap.
+; What the cartridge actually does, which is not what this used to do:
+;
+;   * The block flies out as a SPRITE. The field does not move for the whole flight, so
+;     anything waiting on the field alone thinks the game has settled mid-throw.
+;   * $FFD2/$FFD3 stay 0 for the flight and COUNT UP when the block lands. They are a
+;     completed-throw count, not an in-flight flag, and they do not move for a throw that
+;     changes nothing.
+;   * Some throws do NOTHING: the block flies out, comes back, and the position is
+;     untouched -- not even the throw count moves. The cartridge really does this, and
+;     the environment has to recognise it. The rule below (a different type in the first
+;     cell refuses the throw) is a STAND-IN chosen to produce that outcome, not Flipull's
+;     actual rule, which is not known: driven across all twelve rows of the real stage 1
+;     every row connects, empty ones included, so the block travels further than its own
+;     row. Nothing in the environment predicts which throws connect, so nothing here has
+;     to get that right -- only to produce both outcomes.
+;   * The block then arcs back to the hand, so the sprites keep moving well after the field
+;     has stopped.
 throw:
-    ld a, 1
-    ldh (H_THROW_A), a
-    ldh (H_THROW_B), a
-    ld a, 100
-    ldh (H_INFLIGHT_X), a
-    ld b, THROW_FRAMES          ; the block spends this long crossing the field
+    xor a
+    ld (HIT), a
+    ld a, (HAND)                ; remember it now: the swap below overwrites HAND, and
+    ld (PREV_HAND), a           ; $FFD4 is meant to keep what was in hand *before* the throw
+    ld b, THROW_FRAMES          ; --- out, as a sprite, with the field untouched
+    ld a, HAND_REST_X
 .fly:
-    ldh a, (H_INFLIGHT_X)
-    sub 7
-    ldh (H_INFLIGHT_X), a
+    sub 8
+    push af
     push bc
+    call draw_hand_at
     call wait_frame
+    call tick_timer
     pop bc
+    pop af
     dec b
     jr nz, .fly
 
-    ld a, (PLAYER_ROW)
-    call row_base               ; hl = FIELD + row*$20
+    ld a, (PLAYER_ROW)          ; --- resolve: scan the row from the right
+    call row_base
     ld bc, 15
     add hl, bc
     ld a, 15
@@ -270,33 +339,66 @@ throw:
     jr c, .next
     cp $87
     jr nc, .next
-    ld (TMP), a                 ; a playable block: same type as the one in hand?
-    ldh a, (H_HELD)
+    ld (TMP), a                 ; a playable block: does it match what is in hand?
+    ld a, (HAND)
     ld b, a
     ld a, (TMP)
     cp b
     jr z, .destroy
-    ldh a, (H_HELD)             ; different: swap it into the field and take that one
+    ld a, (HIT)                 ; a different type stops the throw. If nothing has been
+    and a                       ; destroyed yet the whole throw is a no-op...
+    jr z, .home
+    ld a, (HAND)                ; ...otherwise it swaps in and comes back in hand.
     ld (hl), a
     ld a, (TMP)
-    ldh (H_HELD), a
-    jr .done
+    ld (HAND), a
+    jr .landed
 .destroy:
+    ld a, 1
+    ld (HIT), a
+    push hl
     ld a, (PLAYER_ROW)
     ld e, a
     call collapse
     call decrement_blocks
-    jr .done
+    pop hl
 .next:
     dec hl
     ld a, (COL)
     dec a
     ld (COL), a
     jr nz, .scan
-.done:
-    xor a
+    ld a, (HIT)                 ; ran out of row: a throw that destroyed something still
+    and a                       ; counts, one that never connected does not
+    jr z, .home
+
+.landed:
+    ld a, 1
+    ld (THREW), a
+    ldh a, (H_THROW_A)          ; count the throw, in both bytes
+    inc a
     ldh (H_THROW_A), a
     ldh (H_THROW_B), a
+    ld a, (PREV_HAND)           ; $FFD4 lags one throw behind the hand
+    ldh (H_HELD), a
+
+.home:                          ; --- back to the hand, sprites moving all the way
+    ld b, THROW_FRAMES
+    ld a, HAND_REST_X
+    sub 96
+.back:
+    add a, 8
+    push af
+    push bc
+    call draw_hand_at
+    call wait_frame
+    call tick_timer
+    pop bc
+    pop af
+    dec b
+    jr nz, .back
+    ld a, HAND_REST_X
+    call draw_hand_at
     jp main
 
 ; hl = the destroyed cell, e = its row. Everything above it falls one row.

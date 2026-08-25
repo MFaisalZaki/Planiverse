@@ -4,6 +4,16 @@ Reverse-engineering reference for reading live game state: the block field,
 block types, and the on-screen counters. This is the source for every address the
 [`FlipullGBEnv`](flipull-gb.md) environment reads.
 
+> **Section 4 is wrong, and this document is kept as written anyway.** It was produced by
+> recording RAM in a purpose-written emulator across one stage and a handful of throws.
+> Driving the environment against the same dump afterwards showed that `$FFD2`/`$FFD3` are a
+> completed-throw *count* rather than in-flight flags — they stay `0` for the whole flight —
+> that `$FFD4` holds the *previously* held block, and that `$FFDF` is a free-running counter
+> rather than the in-flight X. The field geometry, the cell encoding, the digit-per-byte
+> counters and the column collapse in sections 2 and 3 all hold exactly as written.
+> [What the cartridge corrected](flipull-gb.md#what-the-cartridge-corrected) has the details
+> and what each byte really does.
+
 | | |
 |---|---|
 | File | `Flipull (USA).gb` |
@@ -137,9 +147,9 @@ seconds     = hram[0xFFCE] * 60 + hram[0xFFCC] * 10 + hram[0xFFCB]
 
 | Address | Field | Confidence |
 |---|---|---|
-| `$FFD4` | Held / in-flight block type — read `$83`, a valid block value | Moderate |
-| `$FFD2`, `$FFD3` | Throw state flags — both `00`→`01` on release | Moderate |
-| `$FFDF` | In-flight block X position — decreased steadily (`64 5E 57 4E 45 3F 39 32 29 20 1A 14 0C 03`) as the block travelled left, then reset | Moderate |
+| `$FFD4` | Held / in-flight block type — read `$83`, a valid block value | Moderate — **superseded:** it is the *previously* held block |
+| `$FFD2`, `$FFD3` | Throw state flags — both `00`→`01` on release | Moderate — **superseded:** a count of completed throws |
+| `$FFDF` | In-flight block X position — decreased steadily (`64 5E 57 4E 45 3F 39 32 29 20 1A 14 0C 03`) as the block travelled left, then reset | Moderate — **superseded:** a free-running counter, falling by 17 a frame whether or not anything is in flight |
 | `$FFDE` | In-flight Y position — drifted `56`→`58` | Low |
 | `$FFAF` | Free-running counter / RNG — advanced ~50/frame regardless of input | Moderate |
 
