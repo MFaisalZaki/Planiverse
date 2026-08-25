@@ -14,7 +14,7 @@ Every address this environment reads is catalogued in the
 verified against live RAM rather than read off a disassembly.
 
 - **Class:** `PuzznicGBEnv`
-- **Import:** `from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv, PuzznicGBPush`
+- **Import:** `from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv, PuzznicGBAction`
 - **Source:** [`planiverse/problems/retro_games/puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py)
 - **Dependencies:** `pyboy` + a `Puzznic (J).gb` ROM you supply (`pillow` for screenshots)
 
@@ -57,10 +57,12 @@ print(state)              # the playfield, trimmed to its bounding box:
 print(state.blocks_remaining, state.cursor)
 for action, successor in env.successors(state):
     print(action, action.cost(), successor.blocks_remaining)
-# push_5_3_right 3 2      <- walk two cells, then push: three button presses
-# push_5_6_left 2 2
+# left_for_15 1 6
+# right_for_15 1 6
+# ...
 
-trace = env.simulate([PuzznicGBPush(5, 3, "right"), PuzznicGBPush(5, 4, "right")])
+ticks = info["calibration"].press_ticks          # measured; do not hard-code it
+trace = env.simulate([PuzznicGBAction(f"left,{ticks}"), PuzznicGBAction(f"a+right,{ticks}")])
 print(env.is_goal(trace[-1]))
 ```
 
@@ -170,77 +172,43 @@ iterates all `$D018` slots and skips the dead ones.
 
 ## Actions
 
-There are two action models. `push` is the default and is the one to plan with; `button` is
-the raw button presses underneath it.
-
-```python
-env = PuzznicGBEnv(rom)                      # push  — one action per legal push
-env = PuzznicGBEnv(rom, actions="button")    # button — one action per button press
-```
-
-### Why the default is not the buttons
-
-Measured on the synthetic cartridge's stages, expanding with the primitive button actions:
-
-| Stage | Branching factor | Successors that move a block |
-|---|---|---|
-| 2 blocks | 4.33 | **5.9%** |
-| 4 blocks | 4.06 | **3.3%** |
-| 7 blocks | 4.16 | **5.6%** |
-
-Over 90% of every expansion is the cursor walking. That is not a decision the planner is
-making — walking to a block is the *overhead* of making one — but blind search pays for it
-at every node, and it multiplies: a plan that pushes eight times across a 6×8 room is forty
-or fifty button presses deep, at branching 4.
-
-`PuzznicGBPush` collapses the walk into the push. Same stages, same breadth-first search,
-25-second budget:
-
-| Stage | Model | Branching | Productive | Result |
-|---|---|---|---|---|
-| 2 blocks | button | 4.33 | 5.9% | solved, 12 expansions, 1.8 s |
-| | **push** | 2.50 | **100%** | **solved, 2 expansions, 0.1 s** |
-| 4 blocks | button | 4.06 | 3.3% | **not solved** |
-| | **push** | 6.03 | **100%** | **solved in 12 s**, 4 pushes |
-| 7 blocks | button | 4.16 | 5.6% | not solved |
-| | push | 11.28 | 100% | not solved — this one needs a heuristic |
-
-Branching *rises* with the push model on a crowded board, because it is one action per legal
-push and a crowded board has more of them. That is the right trade: every one of them
-changes the position.
-
-### `push` — the planning model
-
-`PuzznicGBPush(row, col, direction)` walks the cursor onto the block at `(row, col)` and
-pushes it one cell left or right. `direction` is only ever `left` or `right`: Puzznic slides
-blocks sideways, it does not lift them.
-
-`successors` offers one per **legal** push, worked out from the grid without running the
-emulator at all — a block only moves into an empty cell, since the movement check at
-`1:506E` rejects every non-zero cell value, so ledges and walls obstruct exactly as each
-other. Illegal pushes never cost a frame of emulation.
-
-The walk is adaptive, not a precomputed button sequence: it presses towards the target,
-re-reads `$D012`/`$D013`, and stops when it arrives or when a press makes no progress. A
-cartridge whose cursor cannot cross some cell therefore produces a no-op, which `successors`
-filters out, rather than a plan that quietly does something else.
-
-**Cost** is the number of button presses: the walk plus the push. A planner minimising it
-prefers the block nearest the cursor, which is what a person would do.
-
-### `button` — the raw presses
-
 `PuzznicGBAction` wraps a string of the form `"buttons,ticks"`, where buttons are `+`-joined
 and ticks is how many frames to hold them — the same spelling the
-[Super Mario Land](super-mario-land.md#actions) environment uses.
+[Super Mario Land](super-mario-land.md#actions) environment uses. That is the whole action
+set: what the console has, and nothing above it.
 
 | Action | Effect |
 |---|---|
 | `left` / `right` / `up` / `down` | Move the cursor one cell |
 | `a+left` / `a+right` | Push the block under the cursor one cell sideways |
 
-**Cost** is `1` for every action. `a` costs `0` in `action_cost_map` because it is a
-modifier that turns a direction into a push, not a move of its own.
+There is no `a+up`/`a+down`: Puzznic slides blocks sideways, it does not lift them. `B` works
+as the modifier as well as `A`, and a direction on its own only walks the cursor off the
+block — both checked on the cartridge.
+
+**Cost** is `1` for every action. `a` costs `0` in `action_cost_map` because it is a modifier
+that turns a direction into a push, not a move of its own.
+
+### The branching is mostly cursor walking
+
+Worth knowing before you point a planner at this. Measured over the synthetic cartridge's
+stages:
+
+| Stage | Branching factor | Successors that move a block |
+|---|---|---|
+| 2 blocks | 4.33 | 5.9% |
+| 4 blocks | 4.06 | 3.3% |
+| 7 blocks | 4.16 | 5.6% |
+
+Over 90% of every expansion is the cursor travelling, because walking to a block is not a
+decision — it is the overhead of making one. Breadth-first search over the buttons solves the
+2-block stage and does not close the 4-block one inside 25 seconds.
+
+That is a property of the game as the console presents it, and this environment leaves it
+alone: collapsing the walk into the push is a search technique, and search is the planner's
+side of the line. `cursor_path` is exported for a planner that wants to build such macros —
+it is the reachability the cursor really has, walls and all — but the actions this
+environment hands out are button presses.
 
 ### Ticks are measured, not chosen
 
@@ -309,7 +277,7 @@ it applied ever asked for.
 
 Probing it needs a block that can be slid two cells and still be *found* afterwards, so
 `push_probe_candidates` rejects any block that would fall down a hole on the way, or land
-next to its own colour and vanish. On a cramped stage there may be no such block, and then
+next to its own colour and vanish. (These are calibration machinery, not an action model.) On a cramped stage there may be no such block, and then
 `push_window` is `None` and `push_ticks` falls back to `press_ticks` — better than a number
 read off a board that cleared halfway through the measurement.
 
@@ -363,8 +331,8 @@ running, and the boot sequence taps it while getting through the title screens.
 The cursor sits on blocks and crosses ledges, and cannot enter a wall or the outside — all
 four verified on the cartridge. Stages are not rectangles (Round 1's bottom row is two cells
 narrower than the row above it), so walking the rows and then the columns steps into a wall.
-`cursor_path` is a breadth-first search over the cells the cursor may occupy, and
-`available_pushes` drops any block it cannot reach at all.
+`cursor_path` is a breadth-first search over the cells the cursor may occupy — exported
+because a planner reasoning about which blocks are even reachable needs it.
 
 ### Applying an action, and settling
 
@@ -457,8 +425,10 @@ env.validate(plan)
 `is_terminal` is worth checking during expansion: stranding a colour is a genuine dead end, and
 pruning those branches is most of what makes this a planning problem rather than a reflex one.
 
-The cursor-walking half of that problem is what the `push` action model fixes — see
-[Actions](#actions) for the measurements. What is left is the heuristic: Manhattan distance between
+The cursor walking is most of what makes this hard — see
+[Actions](#actions) for the measurements — and a planner that wants to collapse it into
+macro-actions can, using `cursor_path` for the reachability. The other half is the heuristic:
+Manhattan distance between
 same-typed blocks is a weak proxy, because it ignores whether the two can actually be brought
 together, and a seven-block stage still defeats plain best-first search. A heuristic that counts
 *pushes* rather than cells, and that recognises a block wedged where no push can reach the pair it
@@ -548,7 +518,7 @@ PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" poetry run pytest tests/test_pu
 
 | Path | What |
 |---|---|
-| [`puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBPush`, `PuzznicGBAction`, the calibration, and the RAM decoders |
+| [`puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBAction`, the calibration, and the RAM decoders |
 | [`tests/test_puzznic_gb.py`](../../tests/test_puzznic_gb.py) | Tests, against the synthetic cartridge and the real one |
 | [`tests/fake_puzznic_rom.py`](../../tests/fake_puzznic_rom.py) | The synthetic cartridge |
 | [`tests/sm83.py`](../../tests/sm83.py) | The assembler that builds it |

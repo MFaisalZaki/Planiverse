@@ -396,9 +396,6 @@ def probe_push_scheme(pyboy, state, press_ticks, render=False, **settle_kwargs):
                 continue
             if state.grid[neighbour[0]][neighbour[1]] != CELL_EMPTY:
                 continue                      # nowhere to push it, so it proves nothing
-            walk = walk_presses(state.grid, state.cursor, position(*block[:2]), press_ticks)
-            if walk is None:
-                continue                      # the cursor cannot get to this block
             for scheme, (prefix, combined) in PUSH_SCHEMES.items():
                 if prefix is None:
                     push = [(direction, press_ticks)]
@@ -406,16 +403,30 @@ def probe_push_scheme(pyboy, state, press_ticks, render=False, **settle_kwargs):
                     push = [(f"{prefix}+{direction}", press_ticks)]
                 else:
                     push = [(prefix, press_ticks), (direction, press_ticks)]
-                grid, _ = _press(pyboy, state, walk + push, render, **settle_kwargs)
+                grid = _walk_then_press(pyboy, state, position(*block[:2]), press_ticks, push,
+                                        render, **settle_kwargs)
+                if grid is None:
+                    break                     # the cursor cannot reach this block at all
                 if grid[block.row][block.col] != state.grid[block.row][block.col]:
                     return scheme, prefix
     return None, None
 
 
-def walk_presses(grid, start, target, press_ticks):
-    """The presses that walk the cursor from `start` to `target`, routed around walls."""
-    route = cursor_path(grid, start, target)
-    return None if route is None else [(direction, press_ticks) for direction in route]
+def _walk_then_press(pyboy, state, target, press_ticks, presses, render=False, **settle_kwargs):
+    """Rewind to `state`, walk the cursor to `target`, then deliver `presses`.
+
+    Returns the settled grid, or None when the cursor could not be walked there.
+    """
+    load_state(pyboy, state.gb_state, render)
+    if walk_cursor(pyboy, target, press_ticks, render, grid=state.grid, **settle_kwargs) is None:
+        return None
+    for buttons, hold in presses:
+        for button in buttons.split("+"):
+            if button != "nop":
+                pyboy.button(button, hold)
+        pyboy.tick(hold + 1, render)
+        settle(pyboy, render, **settle_kwargs)
+    return decode_grid(read_grid(pyboy))
 
 
 def _slide_distance(before, after, row, col, step, max_cells):
@@ -482,10 +493,6 @@ def measure_push_window(pyboy, state, press_ticks, scheme, prefix, render=False,
     _, combined = PUSH_SCHEMES[scheme]
     for block, direction in push_probe_candidates(state):
         step = DIRECTIONS[direction][1]
-        walk = walk_presses(state.grid, state.cursor, position(block.row, block.col),
-                            press_ticks)
-        if walk is None:
-            continue
         low = None
         for hold in range(1, max_hold + 1):
             if prefix is None:
@@ -494,7 +501,10 @@ def measure_push_window(pyboy, state, press_ticks, scheme, prefix, render=False,
                 push = [(f"{prefix}+{direction}", hold)]
             else:
                 push = [(prefix, press_ticks), (direction, hold)]
-            grid, _ = _press(pyboy, state, walk + push, render, **settle_kwargs)
+            grid = _walk_then_press(pyboy, state, position(block.row, block.col), press_ticks,
+                                    push, render, **settle_kwargs)
+            if grid is None:
+                break                         # the cursor cannot reach this block
             moved = _slide_distance(state.grid, grid, block.row, block.col, step, max_cells=4)
             if moved is None:
                 break                       # unreadable; try another block
@@ -737,80 +747,6 @@ class PuzznicGBAction:
         return PuzznicGBState(pyboy, state.depth + 1, state.stage_types)
 
 
-class PuzznicGBPush:
-    """Walk the cursor onto the block at `(row, col)` and push it one cell sideways.
-
-    The primitive action set spends over 90% of its expansions moving the cursor around:
-    walking to a block is not a decision, it is the overhead of making one. This collapses
-    that into a single action, so the branching factor is the number of pushes actually
-    available — at most two per block — rather than four directions from wherever the
-    cursor happens to be.
-
-    The walk is adaptive rather than a precomputed button sequence: it presses towards the
-    target, re-reads `$D012`/`$D013`, and stops when it arrives or stops making progress.
-    A cartridge whose cursor cannot cross some cell therefore yields a no-op, which
-    `successors` filters, instead of a plan that quietly does the wrong thing.
-    """
-
-    def __init__(self, row, col, direction, calibration=None, input_count=None):
-        if direction not in ("left", "right"):
-            raise ValueError("Puzznic slides blocks sideways; direction must be left or right")
-        self.row = row
-        self.col = col
-        self.direction = direction
-        self.calibration = calibration or Calibration(PRESS_TICKS, None, "modifier", "a")
-        self.input_count = input_count
-        self.action = f"push({row},{col},{direction})"
-
-    def __eq__(self, other):
-        return isinstance(other, PuzznicGBPush) and self.action == other.action
-
-    def __hash__(self):
-        return hash(self.action)
-
-    def __lt__(self, other):
-        return self.action < str(getattr(other, "action", other))
-
-    def __str__(self):
-        return f"push_{self.row}_{self.col}_{self.direction}"
-
-    def __repr__(self):
-        return str(self)
-
-    def cost(self):
-        """How many button presses this is, which is what a person would have to do."""
-        return self.input_count if self.input_count is not None else 1
-
-    def push_presses(self):
-        """The presses that push, once the cursor is on the block."""
-        ticks = push_hold(self.calibration)
-        prefix, combined = PUSH_SCHEMES[self.calibration.push_scheme]
-        if prefix is None:
-            return [(self.direction, ticks)]
-        if combined:
-            return [(f"{prefix}+{self.direction}", ticks)]
-        return [(prefix, ticks), (self.direction, ticks)]
-
-    def apply(self, pyboy, state, render=False, **settle_kwargs):
-        load_state(pyboy, state.gb_state, render)
-        target = position(row=self.row, col=self.col)
-        presses = walk_cursor(pyboy, target, self.calibration.press_ticks, render,
-                              grid=state.grid, **settle_kwargs)
-        if presses is None:
-            # The cursor could not be walked onto the block. Hand back the parent so this
-            # shows up as a self-loop and gets dropped, rather than a half-done move.
-            return PuzznicGBState(pyboy, state.depth, state.stage_types)
-        for buttons, hold in self.push_presses():
-            for button in buttons.split("+"):
-                pyboy.button(button, hold)
-            pyboy.tick(hold + 1, render)
-            settle(pyboy, render, **settle_kwargs)
-            presses += 1
-        if self.input_count is None:
-            self.input_count = presses
-        return PuzznicGBState(pyboy, state.depth + 1, state.stage_types)
-
-
 #: Cell values the cursor may sit on. Verified on `Puzznic (J)`: it walks onto blocks and
 #: over ledges, and refuses walls; `$03` is outside the playfield entirely.
 CURSOR_IMPASSABLE = (CELL_WALL, CELL_OUTSIDE)
@@ -875,30 +811,6 @@ def walk_cursor(pyboy, target, press_ticks, render=False, grid=None, **settle_kw
     return None
 
 
-def available_pushes(state, calibration=None):
-    """Every push the board allows, without touching the emulator.
-
-    A block only moves into an empty cell — the movement check at `1:506E` rejects every
-    non-zero cell value, so ledges and walls obstruct exactly as each other. Filtering here
-    means the emulator is never run for a push that cannot happen.
-    """
-    calibration = calibration or Calibration(PRESS_TICKS, None, "modifier", "a")
-    # "grab" needs A and then the direction; the other two schemes are a single press.
-    push_inputs = 2 if calibration.push_scheme == "grab" else 1
-    pushes = []
-    for block in state.blocks:
-        for direction in ("left", "right"):
-            col = block.col + DIRECTIONS[direction][1]
-            if not 0 <= col < GRID_COLS or state.grid[block.row][col] != CELL_EMPTY:
-                continue
-            route = cursor_path(state.grid, state.cursor, position(block.row, block.col))
-            if route is None:
-                continue                      # unreachable, so not a move that can be made
-            pushes.append(PuzznicGBPush(block.row, block.col, direction, calibration,
-                                        input_count=len(route) + push_inputs))
-    return pushes
-
-
 # ------------------------------------------------------------------------ environment
 
 class PuzznicGBEnv(RetroGame):
@@ -908,13 +820,9 @@ class PuzznicGBEnv(RetroGame):
     own dump. `fix_index` selects the stage the cartridge's loader will build.
     """
 
-    #: `"push"` expands one action per legal push; `"button"` expands one per button press.
-    ACTION_MODELS = ("push", "button")
-
-    def __init__(self, romfile, render=False, verify_rom=True, actions="push", calibrate=True,
+    def __init__(self, romfile, render=False, verify_rom=True, calibrate=True,
                  settle_max_ticks=SETTLE_MAX_TICKS, settle_stable_ticks=SETTLE_STABLE_TICKS,
                  boot_max_ticks=BOOT_MAX_TICKS):
-        assert actions in self.ACTION_MODELS, f"actions must be one of {self.ACTION_MODELS}"
         self.romfile = romfile
         # Not `self.render`: that name belongs to the method which prints the history.
         self.render_window = render
@@ -923,7 +831,6 @@ class PuzznicGBEnv(RetroGame):
         self.state = None
         self.intro_ticks = None
         self.state_history = []
-        self.action_model = actions
         self.should_calibrate = calibrate
         self.calibration = None
         self.actions = action_list
@@ -1005,16 +912,6 @@ class PuzznicGBEnv(RetroGame):
             action = PuzznicGBAction(action)
         return action.apply(self.pyboy, state, self.render_window, **self.settle_kwargs)
 
-    def available_actions(self, state):
-        """The actions worth trying from `state`, before any of them are applied.
-
-        In `push` mode this is the legal pushes, which is where the branching factor comes
-        from; in `button` mode it is the fixed list of button presses.
-        """
-        if self.action_model == "push":
-            return available_pushes(state, self.calibration)
-        return [PuzznicGBAction(actionstr) for actionstr in self.actions]
-
     def successors(self, state):
         """Every action applied to `state`, minus the ones that change nothing.
 
@@ -1022,7 +919,8 @@ class PuzznicGBEnv(RetroGame):
         self-loop filter drops it.
         """
         successors = []
-        for action in self.available_actions(state):
+        for actionstr in self.actions:
+            action = PuzznicGBAction(actionstr)
             successor = self.__advance__(state, action)
             if successor == state:
                 continue
@@ -1048,12 +946,6 @@ class PuzznicGBEnv(RetroGame):
         return self.is_goal(self.simulate(plan)[-1])
 
     def get_actions(self):
-        """The actions on offer. In `push` mode that depends on the board, so this needs a
-        state and reports the ones available from the current one."""
-        if self.action_model == "push":
-            if self.state is None:
-                raise ValueError("Game not initialized. Call reset() first.")
-            return available_pushes(self.state, self.calibration)
         return list(self.actions)
 
     def render(self):
