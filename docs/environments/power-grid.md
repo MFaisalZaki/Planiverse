@@ -1,0 +1,160 @@
+# Power grid (restoring security after a line trips)
+
+A transmission line goes out. The power it was carrying does not stop — it redistributes
+over every remaining line according to Kirchhoff's laws, and some of them now carry more
+than they are rated for. Left alone, an overloaded line trips too, which redistributes the
+flow again, which is how a regional blackout happens.
+
+The operator's move is to change the **topology**. At a substation the equipment is split
+across two busbars, and reassigning which side each line, generator and load sits on
+reroutes the power without switching anything off. That is a discrete action set — a few
+hundred distinct reconfigurations on the small case, sixty-six thousand on a competition
+one — sitting on a transition function that is a nonlinear solve.
+
+- **Class:** `PowerGridEnv`
+- **Import:** `from planiverse.problems.real_world_problems.power_grid.environment import PowerGridEnv`
+- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/power_grid/environment.py)
+- **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is
+  nothing to download.
+
+## Why this is not a PDDL domain
+
+The flow on every line is the solution of the AC power-flow equations, found by
+Newton–Raphson at each step. There is no way to write "the effect of moving this line to
+busbar 2 is that line 17 now carries 1.08 of its rating" — the only way to know is to solve
+the network. A local action has a global, numerical effect.
+
+And **doing nothing is not safe**. The demand time series keeps moving, so the problem is a
+moving target with a deadline: on chronic 1, tripping line 6 gives a worst loading of 1.078,
+which climbs to 1.96 and then blacks the grid out on the fourth step if the operator does
+nothing.
+
+## Quickstart
+
+```python
+from planiverse.problems.real_world_problems.power_grid.environment import PowerGridEnv
+
+env = PowerGridEnv()
+env.fix_index(4)                      # chronic 1, line 6 trips
+state, info = env.reset()
+
+print(state)
+# step 1, 0 actions
+# worst line loading: 1.078
+# overloaded: [17]
+
+for action, successor in env.successors(state):
+    print(action, successor.max_rho)
+# do_nothing 1.0716
+# topology_69 0.9207        <- secure
+# ...
+env.close()
+```
+
+## Scenarios
+
+`fix_index(i)` picks a time series and the line that trips. The set came from N-1 analysis:
+every line of every chronic was tripped in turn.
+
+| Index | Chronic | Line | Loading after trip | Blackout in | Solved at |
+|---|---|---|---|---|---|
+| 0 | 0 | 11 | 1.013 | 2 | 1 |
+| 1 | 0 | 8 | 1.188 | 2 | 1 |
+| 2 | 0 | 9 | 1.738 | 2 | 1 |
+| 3 | 1 | 16 | 1.044 | 4 | 1 |
+| 4 | 1 | 6 | 1.078 | 4 | 1 |
+| 5 | 1 | 15 | 1.224 | 2 | 1 |
+| 6 | 1 | 3 | 1.266 | 4 | 1 |
+| 7 | 1 | 17 | 1.914 | 2 | 1 |
+| 8 | 2 | 9 | 1.664 | 2 | 1 |
+
+### The filter that matters
+
+Every scenario here **blacks out if ignored**. That is not decoration — it is what makes
+them instances at all. Most overloads on this case *clear themselves* as demand moves:
+tripping line 1 on chronic 0 gives a loading of 1.019 that is back under the limit two steps
+later with no action whatsoever. An instance the null plan solves is not an instance, and 32
+of the 60 line/chronic combinations were dropped for that. Another 18 black the grid out on
+the trip itself, which is not a planning problem either.
+
+`rho_after_trip` and `blackout_in` are measurements, recorded so that a scenario which stops
+reproducing fails loudly rather than quietly becoming easy.
+
+## Be honest about the difficulty: it is width, not depth
+
+**Every scenario here is solved by a single reconfiguration.** That is a property of the
+domain as bundled, not a shortcoming of the setup, and it was checked rather than assumed:
+
+- Double contingencies (N-2) were tried across all pairs of the interesting lines on two
+  chronics. Every one either black-outs immediately or causes no overload at all — this
+  14-bus case has no survivable N-2.
+- The larger bundled cases were tried too. `l2rpn_neurips_2020_track1` (36 substations, 59
+  lines, **66,811** topology actions) and `rte_case118_example` (118 substations, 186 lines,
+  **72,144** actions) both still fix a single trip with one action.
+
+So the challenge this environment poses is not "find a long plan". It is:
+
+1. **A large action space** — 209 topology actions on the small case, 45–119 of them
+   relevant to any given overload, tens of thousands on the bigger ones.
+2. **An expensive successor function** — every child is an AC power-flow solve, about
+   50 ms; one expansion here takes 8–19 seconds.
+3. **A hard deadline** — two to four steps before the cascade.
+
+That is a real and under-served shape of planning problem: cheap to state, expensive to
+expand, needle-in-a-haystack. A heuristic that avoids simulating all 119 candidates is worth
+more here than any amount of lookahead. If you want depth instead, the water distribution
+environment has solution depths of 2 to 7.
+
+## Determinism
+
+Grid2op is deterministic once the stochastic parts are pinned, and this environment pins
+them: `env.seed(0)` and `set_id(chronic)` fix the time series, and the opponent is not
+enabled. Verified by replaying the same path twice and comparing every line's loading.
+
+That makes **the action path the state**. `__eq__` and `__hash__` are on the path, results
+are memoised on it, and `simulate` replaying from scratch is an independent check on
+`successors` rather than a restatement.
+
+States hold the path rather than a simulator snapshot because a grid2op environment copy is
+megabytes and a search holds thousands of states. Expanding replays the parent once and then
+copies per child, so a path is never walked twice.
+
+## State, actions, goal
+
+| Field | Meaning |
+|---|---|
+| `path` | the action ids taken — the whole state |
+| `max_rho` | worst line loading; `1.0` is exactly the thermal rating |
+| `rhos` | loading of every line |
+| `blackout` | the episode ended |
+| `step` | how far into the time series |
+
+Literals: `acted(i,id)`, `step(n)`, `max-loading(n)` bucketed into tenths,
+`overloaded(line-n)`, and `secure` or `blackout`. A blacked-out grid has no loadings to
+report — `max_rho` is infinite so it sorts last — so its numeric atoms are simply absent
+rather than fabricated.
+
+**Actions** are indices into grid2op's `IdToAct` enumeration of the topology space, so a
+plan is a list of integers and replays identically. `do_nothing` is action 0 and costs 0;
+every reconfiguration costs 1.
+
+`successors` offers reconfigurations at substations **touching an overloaded line**, plus
+doing nothing. Every topology action is legal from every state, but offering all 209 costs
+about thirty seconds a node, and the substations either end of the overloading line are what
+an operator would look at. `PowerGridEnv(restrict_to_overloads=False)` offers the lot.
+
+- **Goal** — every line back within its rating, grid still standing.
+- **Terminal** — blacked out, or past the horizon. A blackout is absorbing in the simulator
+  too, so there is genuinely nothing to plan from.
+
+## Attribution
+
+Built on [Grid2Op](https://github.com/Grid2Op/grid2op), the framework RTE — the French
+transmission system operator — uses for the L2RPN competitions.
+
+## Files
+
+| Path | What |
+|---|---|
+| [`environment.py`](../../planiverse/problems/real_world_problems/power_grid/environment.py) | `PowerGridEnv`, `PowerGridState`, `PowerGridAction` |
+| [`tests/test_power_grid.py`](../../tests/test_power_grid.py) | Tests; the expensive ones are marked `slow` |
