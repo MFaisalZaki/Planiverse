@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("grid2op", reason="grid2op is not installed")
 
-from planiverse.problems.real_world_problems.power_grid.environment import (  # noqa: E402
+from planiverse.environments.power_grid.environment import (  # noqa: E402
     SECURE_RHO, SCENARIOS, PowerGridAction, PowerGridEnv, PowerGridState, Scenario,
 )
 

@@ -1,7 +1,6 @@
 from gym.wrappers.order_enforcing import OrderEnforcing
 
-from planiverse.problems.retro_games.base import RetroGame
-from planiverse.problems.real_world_problems.base import RealWorldProblem
+from planiverse.environments.base import Environment, implements_contract
 
 # The idea of the simulator is to give it an env: ppdlgym, pyboy, ... etc. And it provides a
 # single interface for the planner to use.
@@ -14,7 +13,11 @@ class Simulator:
             # to do for a caller that only wants to wrap a Game Boy.
             from planiverse.simulator.wrappers.pddlgymenv import PDDLGymEnv
             self.simulator = PDDLGymEnv(f"{envobj.env.domain.domain_name}", envobj)
-        elif isinstance(envobj, RetroGame) or isinstance(envobj, RealWorldProblem):
+        elif isinstance(envobj, Environment) or implements_contract(envobj):
+            # Structural, not nominal. This used to be two isinstance checks against two
+            # base classes whose only difference was which directory the environment lived
+            # in, and which therefore did exactly the same thing. What matters is whether
+            # the object answers the six methods a planner calls.
             self.simulator = envobj
 
         assert self.simulator is not None, f"Unsupported environment type: {type(envobj)}"

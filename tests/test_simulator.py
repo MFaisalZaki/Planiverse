@@ -1,9 +1,8 @@
 """Tests for the Simulator facade and the PDDLGym wrapper."""
 import pytest
 
-from planiverse.problems.real_world_problems.base import RealWorldProblem
-from planiverse.problems.retro_games.base import RetroGame
-from planiverse.problems.retro_games.puzznic import PuzznicGame
+from planiverse.environments.base import Environment, implements_contract
+from planiverse.environments.puzznic import PuzznicGame
 from planiverse.simulator.simulator import Simulator
 from planiverse.simulator.wrappers.base import SimulatorBase
 
@@ -19,7 +18,7 @@ def test_wraps_a_retro_game_directly(puzznic_env):
 
 def test_wraps_a_real_world_problem_directly():
     pytest.importorskip("numpy", reason="numpy is not installed")
-    from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
+    from planiverse.environments.manufacturing.mfenv import MfgEnv
 
     env = MfgEnv()
     env.fix_index(0)
@@ -76,10 +75,22 @@ def test_simulator_base_is_an_unimplemented_interface():
             call()
 
 
-def test_marker_base_classes():
-    assert RetroGame("puzznic", 1989).name == "puzznic"
-    assert RealWorldProblem("epidemic").state is None
-    assert isinstance(PuzznicGame(), RetroGame)
+def test_one_base_class_and_a_structural_check():
+    """`RetroGame` and `RealWorldProblem` were merged into `Environment`.
+
+    The old pair recorded provenance, not capability, which is why the facade's dispatch
+    was two branches doing the same thing. What a planner needs to know is whether the
+    object answers the contract, and `implements_contract` asks exactly that — so an
+    environment brought from outside works without inheriting from anything.
+    """
+    assert isinstance(PuzznicGame(), Environment)
+    assert implements_contract(PuzznicGame())
+
+    class Outsider:
+        reset = fix_index = successors = is_goal = is_terminal = simulate = lambda *a: None
+
+    assert not isinstance(Outsider(), Environment)
+    assert implements_contract(Outsider()), "duck typing is enough for the facade"
 
 
 # --------------------------------------------------------------------------- pddlgym

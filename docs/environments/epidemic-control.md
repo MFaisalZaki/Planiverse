@@ -6,8 +6,8 @@ and live with what the epidemic does over the following year. The environment wr
 which is vendored under `epidemic_control/epipolicy/`.
 
 - **Class:** `EpiEnv`
-- **Import:** `from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv`
-- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/epidemic_control/environment.py)
+- **Import:** `from planiverse.environments.epidemic_control.environment import EpiEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/epidemic_control/environment.py)
 - **Instances:** 7 scenarios, indices `0`–`6`
 - **Dependencies:** `numba`, `sympy`, `scipy`, `numpy`, `pandas`, `gym` (EpiPolicy JIT-compiles its
   inner loop and parses its model equations with sympy)
@@ -21,7 +21,7 @@ trusting any result.
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv
+from planiverse.environments.epidemic_control.environment import EpiEnv
 
 env = EpiEnv(delay_vaccination_time=30, horizon=364)   # days
 env.fix_index(0)              # COVID_A
@@ -47,7 +47,7 @@ trace = env.simulate([action for action, _ in env.successors(state)][:1])
 
 ## Scenarios
 
-`fix_index(i)` loads the `i`-th `.json` in [`jsons/`](../../planiverse/problems/real_world_problems/epidemic_control/jsons),
+`fix_index(i)` loads the `i`-th `.json` in [`jsons/`](../../planiverse/environments/epidemic_control/jsons),
 **sorted by filename**:
 
 | Index | Scenario | Compartments | Locales | Interventions |
@@ -200,8 +200,8 @@ These changed the trajectories the environment produces, so earlier results will
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/problems/real_world_problems/epidemic_control/environment.py) | `EpiEnv`, `EpiState`, `EpiAction`, `EpiCost`, `EpiAppliedInterventions` |
-| [`jsons/`](../../planiverse/problems/real_world_problems/epidemic_control/jsons) | The 7 scenario definitions |
+| [`environment.py`](../../planiverse/environments/epidemic_control/environment.py) | `EpiEnv`, `EpiState`, `EpiAction`, `EpiCost`, `EpiAppliedInterventions` |
+| [`jsons/`](../../planiverse/environments/epidemic_control/jsons) | The 7 scenario definitions |
 | `epipolicy/` | Vendored EpiPolicy simulator (`core/`, `obj/`, `parser/`, `matrix/`, `optimizer/`, `utility/`) |
 
 Inside `epipolicy/`, the entry points this environment uses are `core.epidemic.construct_epidemic`

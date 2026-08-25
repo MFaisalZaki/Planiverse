@@ -7,8 +7,8 @@ weather: water applied on day 20 changes the leaf area, which changes how much l
 canopy intercepts for the next eighty days, which changes the tuber weight at harvest.
 
 - **Class:** `CropEnv`
-- **Import:** `from planiverse.problems.real_world_problems.crop_management.environment import CropEnv`
-- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/crop_management/environment.py)
+- **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached
   locally by PCSE itself, so a season runs offline.
 
@@ -35,7 +35,7 @@ it.
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.crop_management.environment import CropEnv, CropAction
+from planiverse.environments.crop_management.environment import CropEnv, CropAction
 
 env = CropEnv()
 env.fix_index(10)                     # the 1986 season
@@ -117,5 +117,5 @@ implementation of the WOFOST crop model, with the CABO weather files it ships (N
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/problems/real_world_problems/crop_management/environment.py) | `CropEnv`, `CropState`, `CropAction` |
+| [`environment.py`](../../planiverse/environments/crop_management/environment.py) | `CropEnv`, `CropState`, `CropAction` |
 | [`tests/test_crop_management.py`](../../tests/test_crop_management.py) | Tests, including the timing-response result above |

@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("numba", reason="numba is not installed")
 pytest.importorskip("sympy", reason="sympy is not installed")
 
-from planiverse.problems.real_world_problems.epidemic_control.environment import (  # noqa: E402
+from planiverse.environments.epidemic_control.environment import (  # noqa: E402
     PERIOD, EpiAction, EpiAppliedInterventions, EpiCost, EpiEnv, EpiState,
 )
 

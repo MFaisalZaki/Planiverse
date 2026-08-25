@@ -6,7 +6,7 @@ import pytest
 pytest.importorskip("pandas", reason="pandas is not installed")
 pytest.importorskip("networkx", reason="networkx is not installed")
 
-from planiverse.problems.real_world_problems.urban_planning.environment import (  # noqa: E402
+from planiverse.environments.urban_planning.environment import (  # noqa: E402
     CHANGE_RATIO, ConvertCommercialAction, ConvertEmptyAction, ConvertFacilitiesAction,
     ConvertGreenSpaceAction, ConvertOfficesAction, LandUseType, RemoveResidentialAction,
     UrbanPlanningEnv, landuse_map,

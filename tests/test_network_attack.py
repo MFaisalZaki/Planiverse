@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("nasim", reason="nasim is not installed")
 
-from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import (  # noqa: E402
+from planiverse.environments.network_attack.network_attack import (  # noqa: E402
     EnvNASim, NASimState,
 )
 

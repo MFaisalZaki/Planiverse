@@ -6,8 +6,8 @@ environment wraps [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator)
 **deterministic**, so a planner can reason about it instead of sampling it.
 
 - **Class:** `EnvNASim`
-- **Import:** `from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import EnvNASim`
-- **Source:** [`network_attack.py`](../../planiverse/problems/real_world_problems/cyber_security_network_attack/network_attack.py)
+- **Import:** `from planiverse.environments.network_attack.network_attack import EnvNASim`
+- **Source:** [`network_attack.py`](../../planiverse/environments/network_attack/network_attack.py)
 - **Instances:** 18 NASim benchmark scenarios, indices `0`–`17`
 - **Dependencies:** `nasim` (the `MFaisalZaki/NetworkAttackSimulator` fork pinned in `pyproject.toml`)
 
@@ -16,7 +16,7 @@ Related upstream work: [PenGym](https://github.com/cyb3rlab/PenGym).
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import EnvNASim
+from planiverse.environments.network_attack.network_attack import EnvNASim
 
 env = EnvNASim()
 env.fix_index(0)             # 'tiny'
@@ -143,4 +143,4 @@ branching factor manageable: only actions that actually accomplish something are
 
 | Path | What |
 |---|---|
-| [`network_attack.py`](../../planiverse/problems/real_world_problems/cyber_security_network_attack/network_attack.py) | `perform_action` patch, `NASimState`, `EnvNASim` |
+| [`network_attack.py`](../../planiverse/environments/network_attack/network_attack.py) | `perform_action` patch, `NASimState`, `EnvNASim` |

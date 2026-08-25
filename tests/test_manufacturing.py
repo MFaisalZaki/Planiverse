@@ -6,16 +6,16 @@ import pytest
 
 pytest.importorskip("numpy", reason="numpy is not installed")
 
-from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import (  # noqa: E402
+from planiverse.environments.manufacturing import mfenv
+from planiverse.environments.manufacturing.mfenv import (  # noqa: E402
     ActionType, ConfigurationAction, MfgEnv, MfgState, total_produced,
 )
 
 from conftest import assert_state_contract, assert_successors_contract
 
-DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "planiverse", "problems", "real_world_problems", "manufacturing_environment", "data",
-)
+# Derived from the module rather than spelled out, so moving the package cannot leave a
+# stale path behind — which is exactly what the flat `planiverse.environments` layout did.
+DATA_DIR = os.path.join(os.path.dirname(mfenv.__file__), "data")
 
 
 # --------------------------------------------------------------------------- instances

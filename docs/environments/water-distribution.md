@@ -10,8 +10,8 @@ tension is the problem: every closed pipe contains a little more and costs a lit
 service.
 
 - **Class:** `WaterNetworkEnv`
-- **Import:** `from planiverse.problems.real_world_problems.water_distribution.environment import WaterNetworkEnv`
-- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/water_distribution/environment.py)
+- **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
 - **Dependencies:** `wntr` — and nothing else. The benchmark networks ship inside it, so
   unlike the Game Boy environments there is nothing to supply.
 
@@ -35,7 +35,7 @@ nothing at all. Nothing structural distinguishes them — only the solve does.
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.water_distribution.environment import WaterNetworkEnv
+from planiverse.environments.water_network.environment import WaterNetworkEnv
 
 env = WaterNetworkEnv()
 env.fix_index(0)                      # Net1, contaminant at junction 23
@@ -199,5 +199,5 @@ Built on [WNTR](https://github.com/USEPA/WNTR), the US EPA's Python interface to
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/problems/real_world_problems/water_distribution/environment.py) | `WaterNetworkEnv`, `WaterNetworkState`, `WaterNetworkAction`, `rank_sources` |
+| [`environment.py`](../../planiverse/environments/water_network/environment.py) | `WaterNetworkEnv`, `WaterNetworkState`, `WaterNetworkAction`, `rank_sources` |
 | [`tests/test_water_distribution.py`](../../tests/test_water_distribution.py) | Tests, including the determinism guarantees |
