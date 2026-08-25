@@ -27,15 +27,13 @@ carry what the cartridge said instead.
     for action, successor in env.successors(state):
         ...
 """
-import io
 import os
-import hashlib
-import warnings
 from collections import Counter, namedtuple
 
-from pyboy import PyBoy
-
-from planiverse.problems.retro_games.base import RetroGame
+from planiverse.problems.retro_games.gb import (
+    GBAction, GBEnv, GBState, create_pyboy, load_state, save_state,
+    sprites as _oam_sprites,
+)
 
 #: The dump these addresses were read from. No mapper: the whole ROM is flat at $0000-$7FFF.
 ROM_MD5 = "4fcc13db8144687e6b28200387aed25c"
@@ -176,11 +174,6 @@ action_list = button_actions()
 # --------------------------------------------------------------------- pure decoding
 # Split out from the emulator so they can be tested against synthetic RAM.
 
-def cell_address(row, col):
-    """The address of a field cell. Row stride is $20 even though only 16 columns count."""
-    return FIELD_ADDR + ROW_STRIDE * row + col
-
-
 def decode_field(raw):
     """The bytes at `$C840` as a 14x16 field, dropping the unused half of each row."""
     return tuple(tuple(raw[ROW_STRIDE * row + col] for col in range(FIELD_COLS))
@@ -197,12 +190,6 @@ def decode_blocks(field):
     return tuple(Block(row, col, field[row][col] - BLOCK_MIN + 1)
                  for row in range(FIELD_ROWS) for col in range(FIELD_COLS)
                  if is_playable(field[row][col]))
-
-
-def decode_staircase(field):
-    """The fixed `$87` cells, which are structural and can never be cleared."""
-    return tuple((row, col) for row in range(FIELD_ROWS) for col in range(FIELD_COLS)
-                 if field[row][col] == CELL_STAIRCASE)
 
 
 def decode_digits(tens, ones):
@@ -237,38 +224,6 @@ def row_for_y(y, row_pitch, bottom_y):
 Stage = namedtuple("Stage", ["number", "clear_target", "blocks"])
 
 
-def read_stage_table(romfile, base=STAGE_TABLE_ADDR, count=STAGE_COUNT):
-    """The stage list, read out of the cartridge rather than transcribed.
-
-    `$3A0E` is a table of `count` little-endian pointers; each points at three bytes —
-    the CLEAR target, then the block total as ones and tens digits, the same
-    digit-per-byte spelling the HUD counters use. The loader at `0:2D55` indexes it with
-    `10*$FFC7 + $FFC6 - 1`.
-
-    Reading it means the stage list always matches the ROM in hand, and it gives `reset`
-    something independent to check a selected stage against: stage 8 has 36 blocks and a
-    target of 7, and if the cartridge says otherwise the selection did not take.
-    """
-    with open(romfile, "rb") as handle:
-        rom = handle.read()
-    stages = []
-    for index in range(count):
-        pointer = base + 2 * index
-        if pointer + 1 >= len(rom):
-            break
-        target = rom[pointer] | (rom[pointer + 1] << 8)
-        if target + STAGE_DESCRIPTOR_BYTES > len(rom):
-            break
-        clear, ones, tens = rom[target:target + STAGE_DESCRIPTOR_BYTES]
-        # The table is followed in ROM by a shorter second one, so the parse has to know
-        # where to stop rather than trust `count`. Digits that are not digits mean we have
-        # walked off the end of it.
-        if ones > 9 or tens > 9 or clear > 99 or not (tens * 10 + ones):
-            break
-        stages.append(Stage(index + 1, clear, tens * 10 + ones))
-    return tuple(stages)
-
-
 def row_blocks(field, row):
     """A row left to right, as `(col, type)` for the blocks in it.
 
@@ -301,52 +256,8 @@ def bounding_box(field):
     return (min(rows), max(rows)), (min(cols), max(cols))
 
 
-def render_field(field, held=None, player=None, trim=True):
-    """The field as ASCII: `#` border, `=` staircase, `.` empty, digits for block types.
-
-    `held` and `player` are appended as trailing lines rather than drawn into the grid: the
-    held block is not on the field, and the player's position is only known as a sprite Y
-    (the memory map has no row variable for him), which no row index here can honestly
-    stand in for.
-    """
-    (top, bottom), (left, right) = (bounding_box(field) if trim
-                                    else ((0, FIELD_ROWS - 1), (0, FIELD_COLS - 1)))
-    lines = []
-    for row in range(top, bottom + 1):
-        line = []
-        for col in range(left, right + 1):
-            value = field[row][col]
-            if is_playable(value):
-                line.append(str(value - BLOCK_MIN + 1))
-            else:
-                line.append(CELL_GLYPHS.get(value, "?"))
-        lines.append("".join(line))
-    text = "\n".join(lines)
-    if held is not None:
-        text += f"\nheld: {held}"
-    if player is not None:
-        text += f"\nplayer: row {player}"
-    return text
-
-
 # ------------------------------------------------------------------------- emulation
-
-def create_pyboy(romfile, render):
-    return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
-
-
-def save_state(pyboy):
-    with io.BytesIO() as handle:
-        pyboy.save_state(handle)
-        handle.seek(0)
-        return handle.getvalue()
-
-
-def load_state(pyboy, state_bytes, render=False):
-    with io.BytesIO(state_bytes) as handle:
-        pyboy.load_state(handle)
-        pyboy.tick(1, render)
-
+# `create_pyboy`, `save_state` and `load_state` come from the shared `gb` module.
 
 def read_field(pyboy):
     return pyboy.memory[FIELD_ADDR:FIELD_ADDR + FIELD_BYTES]
@@ -374,10 +285,12 @@ def throw_count(pyboy):
 
 
 def sprites(pyboy):
-    """The OAM DMA buffer, as `(y, x, tile)` for every visible sprite."""
-    buffer = pyboy.memory[OAM_BUFFER_ADDR:OAM_BUFFER_ADDR + OAM_BUFFER_BYTES]
-    return [(buffer[i], buffer[i + 1], buffer[i + 2])
-            for i in range(0, OAM_BUFFER_BYTES, 4)]
+    """The OAM DMA buffer, as `(y, x, tile)` for every sprite slot, parked ones included.
+
+    Unlike Puzznic's, this keeps all forty entries: `probe_sprites` identifies the player
+    by *index* into this list, so the indices must be stable across frames.
+    """
+    return _oam_sprites(pyboy, OAM_BUFFER_ADDR)
 
 
 def stage_is_loaded(pyboy):
@@ -491,20 +404,6 @@ def probe_sprites(pyboy, render=False, press_ticks=PRESS_TICKS, throw_button=Non
 def player_y(pyboy, sprite):
     """The player sprite's Y, or None when we never worked out which sprite he is."""
     return None if sprite is None else sprites(pyboy)[sprite][0]
-
-
-def held_block_type(pyboy, sprite):
-    """The type of the block in the player's hand, read off its sprite.
-
-    `$FFD4` looks like this and is not: driven across five throws it holds the block
-    *previously* in hand — the one just thrown — lagging the sprite by one throw and reading
-    `$00` until the first throw of a stage. The sprite's tile is the live value, and it uses
-    the same `$83`-`$86` encoding the field does.
-    """
-    if sprite is None:
-        return None
-    tile = sprites(pyboy)[sprite][2]
-    return tile - BLOCK_MIN + 1 if is_playable(tile) else None
 
 
 def measure_row_span(pyboy, state_bytes, sprite, render=False, press_ticks=PRESS_TICKS,
@@ -681,13 +580,11 @@ def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS, press_every=BOOT_PRESS_E
 
 # ----------------------------------------------------------------------------- state
 
-class FlipullGBState:
+class FlipullGBState(GBState):
     """A settled position: the emulator save-state plus the facts read out of RAM."""
 
     def __init__(self, pyboy, depth, calibration=None, stage_types=None, held_hint=None):
-        self.depth = depth
-        self.literals = frozenset()
-        self.gb_state = save_state(pyboy)
+        super().__init__(pyboy, depth)
         self.calibration = calibration
         self.__update__(pyboy, stage_types, held_hint)
 
@@ -695,7 +592,7 @@ class FlipullGBState:
         raw = read_field(pyboy)
         self.field = decode_field(raw)
         self.blocks = decode_blocks(self.field)
-        self.staircase = decode_staircase(self.field)
+        self.staircase = self.decode_staircase(self.field)
 
         self.blocks_remaining = read_blocks_remaining(pyboy)
         self.blocks_initial = decode_digits(pyboy.memory[INITIAL_TENS_ADDR],
@@ -707,7 +604,7 @@ class FlipullGBState:
 
         # Both read off sprites, because neither is in RAM: `$FFD4` lags a throw behind
         # what is in hand, and the player has no row variable at all.
-        self.held_block = (held_block_type(pyboy, self.calibration.held_sprite)
+        self.held_block = (self.held_block_type(pyboy, self.calibration.held_sprite)
                            if self.calibration else None)
         if self.held_block is None and held_hint is not None:
             # Only the stage's first state needs this: its hand sprite reads `$82`, which is
@@ -768,6 +665,58 @@ class FlipullGBState:
     def bounding_box(self):
         return bounding_box(self.field)
 
+    # --------------------------------------------------------------- pure derivation
+    # Static because they read synthetic RAM as happily as live memory; they live on the
+    # class because this state is their only production caller.
+
+    @staticmethod
+    def decode_staircase(field):
+        """The fixed `$87` cells, which are structural and can never be cleared."""
+        return tuple((row, col) for row in range(FIELD_ROWS) for col in range(FIELD_COLS)
+                     if field[row][col] == CELL_STAIRCASE)
+
+    @staticmethod
+    def held_block_type(pyboy, sprite):
+        """The type of the block in the player's hand, read off its sprite.
+
+        `$FFD4` looks like this and is not: driven across five throws it holds the block
+        *previously* in hand — the one just thrown — lagging the sprite by one throw and
+        reading `$00` until the first throw of a stage. The sprite's tile is the live
+        value, and it uses the same `$83`-`$86` encoding the field does.
+        """
+        if sprite is None:
+            return None
+        tile = sprites(pyboy)[sprite][2]
+        return tile - BLOCK_MIN + 1 if is_playable(tile) else None
+
+    @staticmethod
+    def render_field(field, held=None, player=None, trim=True):
+        """The field as ASCII: `#` border, `=` staircase, `.` empty, digits for block types.
+
+        `held` and `player` are appended as trailing lines rather than drawn into the
+        grid: the held block is not on the field, and the player's position is only known
+        as a sprite Y (the memory map has no row variable for him), which no row index
+        here can honestly stand in for.
+        """
+        (top, bottom), (left, right) = (bounding_box(field) if trim
+                                        else ((0, FIELD_ROWS - 1), (0, FIELD_COLS - 1)))
+        lines = []
+        for row in range(top, bottom + 1):
+            line = []
+            for col in range(left, right + 1):
+                value = field[row][col]
+                if is_playable(value):
+                    line.append(str(value - BLOCK_MIN + 1))
+                else:
+                    line.append(CELL_GLYPHS.get(value, "?"))
+            lines.append("".join(line))
+        text = "\n".join(lines)
+        if held is not None:
+            text += f"\nheld: {held}"
+        if player is not None:
+            text += f"\nplayer: row {player}"
+        return text
+
     def __eq__(self, other):
         # The position is the field, what is in hand, and which row the player is on — a
         # throw from a different row does something different, so it is not the same state.
@@ -786,34 +735,19 @@ class FlipullGBState:
         """
         return self.throws != parent.throws
 
-    def __lt__(self, other):
-        return self.depth < other.depth
-
     def __str__(self):
-        return render_field(self.field, self.held_block,
-                            self.player_row if self.player_row is not None
-                            else self.player_y)
+        return self.render_field(self.field, self.held_block,
+                                 self.player_row if self.player_row is not None
+                                 else self.player_y)
 
     def __repr__(self):
         return (f"<FlipullGBState(depth={self.depth}, remaining={self.blocks_remaining}"
                 f"/target {self.clear_target}, held={self.held_block})>")
 
-    def save(self, gamerom, file, scale=4):
-        """Write a PNG of this state by booting a throwaway emulator to it. Needs Pillow."""
-        dummy = create_pyboy(gamerom, False)
-        try:
-            load_state(dummy, self.gb_state)
-            image = dummy.screen.image
-            if image is None:
-                raise RuntimeError("PyBoy could not render the screen — is Pillow installed?")
-            image.resize((160 * scale, 144 * scale)).save(file)
-        finally:
-            dummy.stop(save=False)
-
 
 # ---------------------------------------------------------------------------- actions
 
-class FlipullGBAction:
+class FlipullGBAction(GBAction):
     """A button held for a number of frames, spelled `"button,ticks"`.
 
     The same spelling the Puzznic and Super Mario Land environments use. Flipull's whole
@@ -821,55 +755,73 @@ class FlipullGBAction:
     layered over it.
     """
 
-    def __init__(self, action):
-        self.action = action
-        self.actions_tick_list = self.__parse_action__(action)
-        self.cost_value = sum(action_cost_map[button] for button, _ in self.actions_tick_list)
+    cost_map = action_cost_map
 
-    def __parse_action__(self, act):
-        buttons, ticks = act.split(",")
-        return [(button, int(ticks)) for button in buttons.split("+")]
+    def __settle__(self, pyboy, render, **settle_kwargs):
+        return settle(pyboy, render, **settle_kwargs)
 
-    def __eq__(self, other):
-        return isinstance(other, FlipullGBAction) and self.action == other.action
-
-    def __hash__(self):
-        return hash(self.action)
-
-    def __lt__(self, other):
-        return self.action < other.action
-
-    def __str__(self):
-        return self.action.replace(",", "_for_").replace("+", "_with_")
-
-    def __repr__(self):
-        return str(self)
-
-    def cost(self):
-        return self.cost_value
-
-    def apply(self, pyboy, state, render=False, **settle_kwargs):
-        """Rewind the emulator to `state`, press the buttons, and snapshot once settled."""
-        load_state(pyboy, state.gb_state, render)
-        ticks = set()
-        for button, hold in self.actions_tick_list:
-            if button != "nop":
-                pyboy.button(button, hold)
-            ticks.add(hold)
-        pyboy.tick(max(ticks) + 1, render)
-        settle(pyboy, render, **settle_kwargs)
+    def __next_state__(self, pyboy, state):
         return FlipullGBState(pyboy, state.depth + 1, state.calibration, state.stage_types,
                               state.held_block)
 
 
 # ------------------------------------------------------------------------ environment
 
-class FlipullGBEnv(RetroGame):
+class FlipullGBEnv(GBEnv):
     """Flipull, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your own
     dump.
+
+    `successors` routinely filters two of the three actions, and both for real reasons: a
+    move into a wall (the player starts on the bottom row, so `down` does nothing until he
+    has gone up), and a throw that does not connect — some throws play the whole animation
+    and leave the position exactly as it was, down to the cartridge's own completed-throw
+    counter. What decides which throws connect is **not modelled here**, deliberately. The
+    obvious rule — that the block meets the rightmost block in the player's row and needs a
+    match — is wrong: driven across all twelve rows of stage 1, every row connects,
+    including rows with no blocks in them at all, so the block plainly travels further than
+    its own row. Rather than ship a guess, this environment does what it exists to do and
+    asks the cartridge. `row_blocks` is exported for a planner that wants to build its own
+    model.
     """
+
+    rom_md5 = ROM_MD5
+    rom_name = "Flipull (USA)"
+    action_class = FlipullGBAction
+
+    @staticmethod
+    def read_stage_table(romfile, base=STAGE_TABLE_ADDR, count=STAGE_COUNT):
+        """The stage list, read out of the cartridge rather than transcribed.
+
+        `$3A0E` is a table of `count` little-endian pointers; each points at three bytes —
+        the CLEAR target, then the block total as ones and tens digits, the same
+        digit-per-byte spelling the HUD counters use. The loader at `0:2D55` indexes it
+        with `10*$FFC7 + $FFC6 - 1`.
+
+        Reading it means the stage list always matches the ROM in hand, and it gives
+        `reset` something independent to check a selected stage against: stage 8 has 36
+        blocks and a target of 7, and if the cartridge says otherwise the selection did
+        not take.
+        """
+        with open(romfile, "rb") as handle:
+            rom = handle.read()
+        stages = []
+        for index in range(count):
+            pointer = base + 2 * index
+            if pointer + 1 >= len(rom):
+                break
+            target = rom[pointer] | (rom[pointer + 1] << 8)
+            if target + STAGE_DESCRIPTOR_BYTES > len(rom):
+                break
+            clear, ones, tens = rom[target:target + STAGE_DESCRIPTOR_BYTES]
+            # The table is followed in ROM by a shorter second one, so the parse has to
+            # know where to stop rather than trust `count`. Digits that are not digits
+            # mean we have walked off the end of it.
+            if ones > 9 or tens > 9 or clear > 99 or not (tens * 10 + ones):
+                break
+            stages.append(Stage(index + 1, clear, tens * 10 + ones))
+        return tuple(stages)
 
     def __init__(self, romfile, render=False, verify_rom=True, calibrate=True,
                  settle_max_ticks=SETTLE_MAX_TICKS, settle_stable_ticks=SETTLE_STABLE_TICKS,
@@ -887,7 +839,7 @@ class FlipullGBEnv(RetroGame):
         self.actions = action_list
         self.settle_kwargs = {"max_ticks": settle_max_ticks, "stable_ticks": settle_stable_ticks}
         self.boot_max_ticks = boot_max_ticks
-        self.stages = read_stage_table(romfile) if os.path.isfile(romfile) else ()
+        self.stages = self.read_stage_table(romfile) if os.path.isfile(romfile) else ()
         self.forcing_stage = None
         if verify_rom:
             self.__verify_rom__()
@@ -895,18 +847,6 @@ class FlipullGBEnv(RetroGame):
     def stage_for(self, index):
         """What the cartridge says stage `index` (0-based) holds, before loading it."""
         return self.stages[index]
-
-    def __verify_rom__(self):
-        """Warn when the dump is not the revision these addresses were read from."""
-        if not os.path.isfile(self.romfile):
-            return
-        with open(self.romfile, "rb") as handle:
-            digest = hashlib.md5(handle.read()).hexdigest()
-        if digest != ROM_MD5:
-            warnings.warn(
-                f"{self.romfile} has MD5 {digest}, not {ROM_MD5} (Flipull (USA)). The "
-                "addresses this environment reads are revision-specific and may not hold.",
-                UserWarning, stacklevel=3)
 
     def fix_index(self, index):
         """Select the stage, zero-based: `fix_index(7)` is stage 8.
@@ -935,9 +875,7 @@ class FlipullGBEnv(RetroGame):
         self.stage_index = index
 
     def reset(self):
-        if self.pyboy is not None:
-            self.pyboy.stop(save=False)
-        self.pyboy = create_pyboy(self.romfile, self.render_window)
+        self.__restart_emulator__()
         self.__force_stage__()
         if not boot(self.pyboy, self.render_window, self.boot_max_ticks):
             raise RuntimeError(
@@ -1026,80 +964,8 @@ class FlipullGBEnv(RetroGame):
         """
         return state.out_of_time
 
-    def __advance__(self, state, action):
-        """Apply one action, treating won and lost stages as absorbing."""
-        if self.is_goal(state) or self.is_terminal(state):
-            return state
-        if isinstance(action, str):
-            action = FlipullGBAction(action)
-        return action.apply(self.pyboy, state, self.render_window, **self.settle_kwargs)
-
-    def successors(self, state):
-        """Every action applied to `state`, minus the ones that change nothing.
-
-        Two of the three actions are routinely filtered here, and both for real reasons:
-
-        * **A move into a wall.** The player starts on the bottom row, so `down` does
-          nothing until he has gone up.
-        * **A throw that does not connect.** Some throws play the whole animation — the
-          block flies the width of the field and arcs back — and leave the position exactly
-          as it was, down to the cartridge's own completed-throw counter.
-
-        What decides which throws connect is **not modelled here**, deliberately. The
-        obvious rule — that the block meets the rightmost block in the player's row and
-        needs a match — is wrong: driven across all twelve rows of stage 1, every row
-        connects, including rows with no blocks in them at all, so the block plainly travels
-        further than its own row. Rather than ship a guess, this environment does what it
-        exists to do and asks the cartridge, which is what `apply` is for. `row_blocks` is
-        exported for a planner that wants to build its own model.
-        """
-        successors = []
-        for actionstr in self.actions:
-            action = FlipullGBAction(actionstr)
-            successor = self.__advance__(state, action)
-            if successor == state:
-                continue
-            successors.append((action, successor))
-        return successors
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        """Stateful play, as opposed to expansion. Returns the new state and its score."""
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.blocks_initial - self.state.blocks_remaining
-
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
-
-    def get_actions(self):
-        return list(self.actions)
-
-    def render(self):
-        """Print the de-duplicated history of `step` calls, and return it as strings."""
-        rendered = []
-        for state in self.state_history:
-            if rendered and rendered[-1] == str(state):
-                continue
-            rendered.append(str(state))
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
-
-    def close(self):
-        if self.pyboy is not None:
-            self.pyboy.stop(save=False)
-            self.pyboy = None
+    def __score__(self, state):
+        return state.blocks_initial - state.blocks_remaining
 
 
 # --------------------------------------------------------------------------- reporting

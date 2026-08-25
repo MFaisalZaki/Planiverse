@@ -5,6 +5,7 @@ things a planner is entitled to assume no matter which environment it is handed.
 """
 import pytest
 
+from planiverse.problems.base import Environment
 from planiverse.problems.real_world_problems.base import RealWorldProblem
 from planiverse.problems.retro_games.base import RetroGame
 
@@ -110,8 +111,10 @@ def test_implements_the_core_interface(factory):
 
 @pytest.mark.parametrize("factory", environment_params())
 def test_is_a_recognised_environment_type(factory):
-    """Simulator dispatches on these base classes."""
+    """Simulator dispatches on the Environment contract; RetroGame and RealWorldProblem
+    are the two families of it."""
     env = factory()
+    assert isinstance(env, Environment)
     assert isinstance(env, (RetroGame, RealWorldProblem))
 
 

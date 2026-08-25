@@ -18,15 +18,13 @@ garbage, which is why `PuzznicGBEnv` checks the ROM's MD5 and warns when it diff
     for action, successor in env.successors(state):
         ...
 """
-import io
 import os
-import hashlib
-import warnings
 from collections import Counter, deque, namedtuple
 
-from pyboy import PyBoy
-
-from planiverse.problems.retro_games.base import RetroGame
+from planiverse.problems.retro_games.gb import (
+    GBAction, GBEnv, GBState, create_pyboy, load_state, save_state,
+    sprites as _oam_sprites,
+)
 
 # --------------------------------------------------------------------------- the ROM
 
@@ -109,31 +107,9 @@ def decode_text(byte):
     return None
 
 
-def read_passwords(romfile):
-    """The round passwords, read out of the cartridge.
-
-    Walks the table until an entry stops being a password whose round-number byte follows
-    the last one, which both finds the end and checks the parse. Returns them round-ordered,
-    so index 0 is round 1.
-    """
-    with open(romfile, "rb") as handle:
-        rom = handle.read()
-    passwords, offset, expected = [], PASSWORD_TABLE_ADDR, 1
-    while offset + PASSWORD_STRIDE <= len(rom):
-        entry = rom[offset:offset + PASSWORD_STRIDE]
-        text = [decode_text(byte) for byte in entry[:PASSWORD_LENGTH]]
-        if entry[PASSWORD_LENGTH] != expected & 0xFF or any(c is None for c in text):
-            break
-        passwords.append("".join(text))
-        offset, expected = offset + PASSWORD_STRIDE, expected + 1
-    return tuple(passwords)
-
-
 def sprites(pyboy):
     """The OAM DMA buffer at `$C000`, as `(y, x, tile)` for every visible sprite."""
-    buffer = pyboy.memory[OAM_BUFFER_ADDR:OAM_BUFFER_ADDR + OAM_BUFFER_BYTES]
-    return [(buffer[i], buffer[i + 1], buffer[i + 2])
-            for i in range(0, OAM_BUFFER_BYTES, 4) if buffer[i]]
+    return _oam_sprites(pyboy, OAM_BUFFER_ADDR, visible_only=True)
 
 
 def menu_cursor(pyboy):
@@ -307,11 +283,6 @@ PUSH_SCHEMES = {
 # --------------------------------------------------------------------- pure decoding
 # Split out from the emulator so they can be tested against synthetic RAM.
 
-def cell_address(row, col):
-    """The address of a cell, per the row-offset table at ROM `$29E8`."""
-    return GRID_ADDR + ROW_STRIDE * row + CELL_STRIDE * col
-
-
 def decode_grid(raw):
     """The 240 bytes at `$DF00` as a 12x10 grid of cell type codes."""
     return tuple(tuple(raw[ROW_STRIDE * row + CELL_STRIDE * col] for col in range(GRID_COLS))
@@ -328,35 +299,9 @@ def decode_blocks(raw):
     )
 
 
-def decode_records(raw, total):
-    """The live entries of the record array at `$DD00`.
-
-    Cleared records are zeroed in place and the slots are never compacted, so walking to
-    the first `$00` type byte would stop at the first hole and report almost nothing.
-    Iterate all `total` slots and skip the dead ones instead.
-    """
-    records = []
-    for slot in range(total):
-        base = slot * RECORD_BYTES
-        fields = raw[base:base + RECORD_BYTES]
-        if len(fields) < RECORD_BYTES or fields[0] == 0x00:
-            continue
-        records.append(Record(slot, fields[0] - BLOCK_TYPE_OFFSET, fields[1], fields[2], fields[3]))
-    return tuple(records)
-
-
 def block_counts(blocks):
     """How many blocks of each type are on the grid."""
     return Counter(block.type for block in blocks)
-
-
-def is_dead_end(blocks):
-    """True when some type has exactly one block left.
-
-    Matching is pairwise, so a lone block can never be removed and the stage can no longer
-    be cleared. This is a property of the position, not something the cartridge flags.
-    """
-    return 1 in set(block_counts(blocks).values())
 
 
 def bounding_box(grid):
@@ -375,44 +320,8 @@ def bounding_box(grid):
     return (min(rows), max(rows)), (min(cols), max(cols))
 
 
-def render_grid(grid, cursor=None, trim=True):
-    """The grid as ASCII: `#` wall, `=` ledge, `.` empty, `*` clearing, digits for blocks.
-
-    The cursor is drawn as `c` on an empty cell and `¢` on top of anything else, which is
-    the alphabet `puzznic.py` renders with.
-    """
-    (top, bottom), (left, right) = bounding_box(grid) if trim else ((0, GRID_ROWS - 1), (0, GRID_COLS - 1))
-    lines = []
-    for row in range(top, bottom + 1):
-        line = []
-        for col in range(left, right + 1):
-            value = grid[row][col]
-            glyph = CELL_GLYPHS.get(value, str(value - BLOCK_TYPE_OFFSET) if value >= BLOCK_MIN else "?")
-            if cursor is not None and (row, col) == tuple(cursor):
-                glyph = "c" if value == CELL_EMPTY else "¢"
-            line.append(glyph)
-        lines.append("".join(line))
-    return "\n".join(lines)
-
-
 # ------------------------------------------------------------------------- emulation
-
-def create_pyboy(romfile, render):
-    return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
-
-
-def save_state(pyboy):
-    with io.BytesIO() as handle:
-        pyboy.save_state(handle)
-        handle.seek(0)
-        return handle.getvalue()
-
-
-def load_state(pyboy, state_bytes, render=False):
-    with io.BytesIO(state_bytes) as handle:
-        pyboy.load_state(handle)
-        pyboy.tick(1, render)
-
+# `create_pyboy`, `save_state` and `load_state` come from the shared `gb` module.
 
 def read_grid(pyboy):
     return pyboy.memory[GRID_ADDR:GRID_ADDR + GRID_BYTES]
@@ -802,13 +711,11 @@ def boot(pyboy, password=None, render=False, max_ticks=BOOT_MAX_TICKS,
 
 # ----------------------------------------------------------------------------- state
 
-class PuzznicGBState:
+class PuzznicGBState(GBState):
     """A settled position: the emulator save-state plus the facts read out of WRAM."""
 
     def __init__(self, pyboy, depth, stage_types=None):
-        self.depth = depth
-        self.literals = frozenset()
-        self.gb_state = save_state(pyboy)
+        super().__init__(pyboy, depth)
         self.__update__(pyboy, stage_types)
 
     def __update__(self, pyboy, stage_types):
@@ -820,7 +727,7 @@ class PuzznicGBState:
         self.total_blocks = pyboy.memory[TOTAL_BLOCKS_ADDR]
         self.blocks_remaining = pyboy.memory[BLOCKS_REMAINING_ADDR]
         self.blocks_cleared = self.total_blocks - self.blocks_remaining
-        self.records = decode_records(
+        self.records = self.decode_records(
             pyboy.memory[RECORDS_ADDR:RECORDS_ADDR + RECORD_BYTES * self.total_blocks],
             self.total_blocks,
         )
@@ -834,7 +741,7 @@ class PuzznicGBState:
         # Sampled here, while the emulator still holds this state. Read later from live
         # memory they would describe whichever state was applied last.
         self.stage_cleared = self.total_blocks > 0 and self.blocks_remaining == 0 and not self.blocks
-        self.dead_end = is_dead_end(self.blocks)
+        self.dead_end = self.is_dead_end(self.blocks)
 
         predicates = [f"at(cursor, {self.cursor.row}, {self.cursor.col})",
                       f"remaining({self.blocks_remaining})"]
@@ -862,6 +769,60 @@ class PuzznicGBState:
     def bounding_box(self):
         return bounding_box(self.grid)
 
+    # --------------------------------------------------------------- pure derivation
+    # Static because they read synthetic RAM as happily as live memory; they live on the
+    # class because this state is their only production caller.
+
+    @staticmethod
+    def decode_records(raw, total):
+        """The live entries of the record array at `$DD00`.
+
+        Cleared records are zeroed in place and the slots are never compacted, so walking
+        to the first `$00` type byte would stop at the first hole and report almost
+        nothing. Iterate all `total` slots and skip the dead ones instead.
+        """
+        records = []
+        for slot in range(total):
+            base = slot * RECORD_BYTES
+            fields = raw[base:base + RECORD_BYTES]
+            if len(fields) < RECORD_BYTES or fields[0] == 0x00:
+                continue
+            records.append(Record(slot, fields[0] - BLOCK_TYPE_OFFSET, fields[1],
+                                  fields[2], fields[3]))
+        return tuple(records)
+
+    @staticmethod
+    def is_dead_end(blocks):
+        """True when some type has exactly one block left.
+
+        Matching is pairwise, so a lone block can never be removed and the stage can no
+        longer be cleared. This is a property of the position, not something the cartridge
+        flags.
+        """
+        return 1 in set(block_counts(blocks).values())
+
+    @staticmethod
+    def render_grid(grid, cursor=None, trim=True):
+        """The grid as ASCII: `#` wall, `=` ledge, `.` empty, `*` clearing, digits for blocks.
+
+        The cursor is drawn as `c` on an empty cell and `¢` on top of anything else, which
+        is the alphabet `puzznic.py` renders with.
+        """
+        (top, bottom), (left, right) = (bounding_box(grid) if trim
+                                        else ((0, GRID_ROWS - 1), (0, GRID_COLS - 1)))
+        lines = []
+        for row in range(top, bottom + 1):
+            line = []
+            for col in range(left, right + 1):
+                value = grid[row][col]
+                glyph = CELL_GLYPHS.get(value, str(value - BLOCK_TYPE_OFFSET)
+                                        if value >= BLOCK_MIN else "?")
+                if cursor is not None and (row, col) == tuple(cursor):
+                    glyph = "c" if value == CELL_EMPTY else "¢"
+                line.append(glyph)
+            lines.append("".join(line))
+        return "\n".join(lines)
+
     def __eq__(self, other):
         # The position is the grid and the cursor; depth, score and history are not part
         # of it, so a state reached two ways compares equal and search can close.
@@ -871,73 +832,27 @@ class PuzznicGBState:
     def __hash__(self):
         return hash((self.grid, self.cursor))
 
-    def __lt__(self, other):
-        return self.depth < other.depth
-
     def __str__(self):
-        return render_grid(self.grid, self.cursor)
+        return self.render_grid(self.grid, self.cursor)
 
     def __repr__(self):
         return (f"<PuzznicGBState(depth={self.depth}, remaining={self.blocks_remaining}"
                 f"/{self.total_blocks}, cursor=({self.cursor.row}, {self.cursor.col}))>")
 
-    def save(self, gamerom, file, scale=4):
-        """Write a PNG of this state by booting a throwaway emulator to it. Needs Pillow."""
-        dummy = create_pyboy(gamerom, False)
-        try:
-            load_state(dummy, self.gb_state)
-            image = dummy.screen.image
-            if image is None:
-                raise RuntimeError("PyBoy could not render the screen — is Pillow installed?")
-            image.resize((160 * scale, 144 * scale)).save(file)
-        finally:
-            dummy.stop(save=False)
-
 
 # ---------------------------------------------------------------------------- actions
 
-class PuzznicGBAction:
+class PuzznicGBAction(GBAction):
     """A button combination held for a number of frames, spelled `"buttons,ticks"`."""
 
-    def __init__(self, action):
-        self.action = action
-        self.actions_tick_list = self.__parse_action__(action)
-        # One input is one unit of plan, whether or not A was held: A is a modifier that
-        # turns a direction into a push, not a move of its own.
-        self.cost_value = sum(action_cost_map[button] for button, _ in self.actions_tick_list)
+    # One input is one unit of plan, whether or not A was held: A is a modifier that
+    # turns a direction into a push, not a move of its own.
+    cost_map = action_cost_map
 
-    def __parse_action__(self, act):
-        buttons, ticks = act.split(",")
-        return [(button, int(ticks)) for button in buttons.split("+")]
+    def __settle__(self, pyboy, render, **settle_kwargs):
+        return settle(pyboy, render, **settle_kwargs)
 
-    def __eq__(self, other):
-        return isinstance(other, PuzznicGBAction) and self.action == other.action
-
-    def __hash__(self):
-        return hash(self.action)
-
-    def __lt__(self, other):
-        return self.action < other.action
-
-    def __str__(self):
-        return self.action.replace(",", "_for_").replace("+", "_with_")
-
-    def __repr__(self):
-        return str(self)
-
-    def cost(self):
-        return self.cost_value
-
-    def apply(self, pyboy, state, render=False, **settle_kwargs):
-        """Rewind the emulator to `state`, press the buttons, and snapshot once settled."""
-        load_state(pyboy, state.gb_state, render)
-        ticks = set()
-        for button, hold in self.actions_tick_list:
-            if button != "nop":
-                pyboy.button(button, hold)
-            ticks.add(hold)
-        pyboy.tick(max(ticks) + 1, render)
-        settle(pyboy, render, **settle_kwargs)
+    def __next_state__(self, pyboy, state):
         return PuzznicGBState(pyboy, state.depth + 1, state.stage_types)
 
 
@@ -1007,19 +922,43 @@ def walk_cursor(pyboy, target, press_ticks, render=False, grid=None, **settle_kw
 
 # ------------------------------------------------------------------------ environment
 
-class PuzznicGBEnv(RetroGame):
+class PuzznicGBEnv(GBEnv):
     """Puzznic, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your
     own dump. `fix_index` selects the stage the cartridge's loader will build.
     """
 
+    rom_md5 = ROM_MD5
+    rom_name = "Puzznic (J).gb"
+    action_class = PuzznicGBAction
+
+    @staticmethod
+    def read_passwords(romfile):
+        """The round passwords, read out of the cartridge.
+
+        Walks the table until an entry stops being a password whose round-number byte
+        follows the last one, which both finds the end and checks the parse. Returns them
+        round-ordered, so index 0 is round 1.
+        """
+        with open(romfile, "rb") as handle:
+            rom = handle.read()
+        passwords, offset, expected = [], PASSWORD_TABLE_ADDR, 1
+        while offset + PASSWORD_STRIDE <= len(rom):
+            entry = rom[offset:offset + PASSWORD_STRIDE]
+            text = [decode_text(byte) for byte in entry[:PASSWORD_LENGTH]]
+            if entry[PASSWORD_LENGTH] != expected & 0xFF or any(c is None for c in text):
+                break
+            passwords.append("".join(text))
+            offset, expected = offset + PASSWORD_STRIDE, expected + 1
+        return tuple(passwords)
+
     def __init__(self, romfile, render=False, verify_rom=True, calibrate=True,
                  settle_max_ticks=SETTLE_MAX_TICKS, settle_stable_ticks=SETTLE_STABLE_TICKS,
                  boot_max_ticks=BOOT_MAX_TICKS):
         self.romfile = romfile
         # Read from the cartridge, so they always match the ROM in hand.
-        self.passwords = read_passwords(romfile) if os.path.isfile(romfile) else ()
+        self.passwords = self.read_passwords(romfile) if os.path.isfile(romfile) else ()
         # Not `self.render`: that name belongs to the method which prints the history.
         self.render_window = render
         self.pyboy = None
@@ -1035,17 +974,6 @@ class PuzznicGBEnv(RetroGame):
         self.boot_max_ticks = boot_max_ticks
         if verify_rom:
             self.__verify_rom__()
-
-    def __verify_rom__(self):
-        """Warn when the dump is not the revision these addresses were read from."""
-        if not os.path.isfile(self.romfile):
-            return
-        digest = hashlib.md5(open(self.romfile, "rb").read()).hexdigest()
-        if digest != ROM_MD5:
-            warnings.warn(
-                f"{self.romfile} has MD5 {digest}, not {ROM_MD5} (Puzznic (J).gb). The "
-                "addresses this environment reads are revision-specific and may not hold.",
-                UserWarning, stacklevel=3)
 
     def fix_index(self, index):
         """Select the round, zero-based: `fix_index(3)` is round 4.
@@ -1064,9 +992,7 @@ class PuzznicGBEnv(RetroGame):
         return self.passwords[index] if index < len(self.passwords) else None
 
     def reset(self):
-        if self.pyboy is not None:
-            self.pyboy.stop(save=False)
-        self.pyboy = create_pyboy(self.romfile, self.render_window)
+        self.__restart_emulator__()
         # Whether the cartridge offers a title menu decides how a round is selected, and it
         # has to be settled before anything is pressed: the fallback pokes the stage loader,
         # and the hook that does it must be in place before the loader first runs.
@@ -1110,75 +1036,18 @@ class PuzznicGBEnv(RetroGame):
         return state.stage_cleared
 
     def is_terminal(self, state):
+        """A dead end: some type has exactly one block left, so the stage cannot clear.
+
+        Absorbing for the same reason the pure-Python environment makes it so — there is
+        nothing left to plan for. The win side of `__advance__`'s absorbing rule matters
+        here too: clearing the last block ends the stage and the cartridge loads the next
+        round straight over the top of it, so pressing on past a goal state would silently
+        hand back a position from a different stage.
+        """
         return state.dead_end
 
-    def __advance__(self, state, action):
-        """Apply one action, treating won and lost stages as absorbing.
-
-        Clearing the last block ends the stage and the cartridge loads the next round
-        straight over the top of it, so pressing on past a goal state would silently hand
-        back a position from a different stage. A dead end is absorbing for the same reason
-        the pure-Python environment makes it so: there is nothing left to plan for.
-        """
-        if self.is_goal(state) or self.is_terminal(state):
-            return state
-        if isinstance(action, str):
-            action = PuzznicGBAction(action)
-        return action.apply(self.pyboy, state, self.render_window, **self.settle_kwargs)
-
-    def successors(self, state):
-        """Every action applied to `state`, minus the ones that change nothing.
-
-        Absorbing states expand to nothing: every action returns the state itself, and the
-        self-loop filter drops it.
-        """
-        successors = []
-        for actionstr in self.actions:
-            action = PuzznicGBAction(actionstr)
-            successor = self.__advance__(state, action)
-            if successor == state:
-                continue
-            successors.append((action, successor))
-        return successors
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        """Stateful play, as opposed to expansion. Returns the new state and its score."""
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.blocks_cleared
-
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
-
-    def get_actions(self):
-        return list(self.actions)
-
-    def render(self):
-        """Print the de-duplicated history of `step` calls, and return it as strings."""
-        rendered = []
-        for state in self.state_history:
-            if rendered and rendered[-1] == str(state):
-                continue
-            rendered.append(str(state))
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
-
-    def close(self):
-        if self.pyboy is not None:
-            self.pyboy.stop(save=False)
-            self.pyboy = None
+    def __score__(self, state):
+        return state.blocks_cleared
 
 
 def _report(romfile, stage=None, render=False):
