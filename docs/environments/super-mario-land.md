@@ -7,7 +7,8 @@ console's RAM. States are emulator save-states, so search can branch by rewindin
 - **Class:** `SuperMarioEnv`
 - **Import:** `from planiverse.problems.retro_games.super_mario_bros_gb import SuperMarioEnv, SuperMarioAction`
 - **Source:** [`planiverse/problems/retro_games/super_mario_bros_gb.py`](../../planiverse/problems/retro_games/super_mario_bros_gb.py)
-- **Dependencies:** `pyboy` + a `SuperMarioLand.gb` ROM you supply
+- **Install:** `pip install ".[retro]"` + a `SuperMarioLand.gb` ROM you supply
+- **Dependencies:** `pyboy`, `pillow` (screenshots only)
 - **Planner:** [`planiverse/planners/super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py)
 
 ## The ROM

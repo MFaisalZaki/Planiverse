@@ -9,6 +9,7 @@ paying for them. Adapted from [mfgrl](https://github.com/torayeff/mfgrl).
 - **Import:** `from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv, ConfigurationAction, ActionType`
 - **Source:** [`mfenv.py`](../../planiverse/problems/real_world_problems/manufacturing_environment/mfenv.py)
 - **Instances:** 7 data files, indices `0`–`6`
+- **Install:** `pip install ".[manufacturing]"`
 - **Dependencies:** `numpy` only
 
 ## Quickstart

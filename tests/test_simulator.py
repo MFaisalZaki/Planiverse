@@ -18,6 +18,7 @@ def test_wraps_a_retro_game_directly(puzznic_env):
 
 
 def test_wraps_a_real_world_problem_directly():
+    pytest.importorskip("numpy", reason="numpy is not installed")
     from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
 
     env = MfgEnv()
@@ -82,12 +83,14 @@ def test_marker_base_classes():
 
 
 # --------------------------------------------------------------------------- pddlgym
-
-pddlgym = pytest.importorskip("pddlgym", reason="pddlgym is not installed")
+# The skip lives in the fixture, not at module scope: pddlgym ships in the `pddl` extra,
+# which needs Python <=3.12, and the facade tests above run happily without it.
 
 
 @pytest.fixture
 def blocks_sim():
+    pddlgym = pytest.importorskip(
+        "pddlgym", reason="pddlgym is not installed (the `pddl` extra needs Python <=3.12)")
     return Simulator(pddlgym.make("PDDLEnvBlocks-v0"))
 
 

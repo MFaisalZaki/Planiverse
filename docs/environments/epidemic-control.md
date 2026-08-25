@@ -9,7 +9,8 @@ which is vendored under `epidemic_control/epipolicy/`.
 - **Import:** `from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv`
 - **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/epidemic_control/environment.py)
 - **Instances:** 7 scenarios, indices `0`–`6`
-- **Dependencies:** `numba`, `sympy`, `scipy`, `dill`, `numpy`, `gym` (EpiPolicy JIT-compiles its
+- **Install:** `pip install ".[epidemic]"`
+- **Dependencies:** `numba`, `sympy`, `scipy`, `numpy`, `pandas`, `gym` (EpiPolicy JIT-compiles its
   inner loop and parses its model equations with sympy)
 
 This is the most heavily *abstracted* environment in the repo. A compartmental model is continuous

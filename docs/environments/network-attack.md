@@ -9,6 +9,7 @@ environment wraps [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator)
 - **Import:** `from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import EnvNASim`
 - **Source:** [`network_attack.py`](../../planiverse/problems/real_world_problems/cyber_security_network_attack/network_attack.py)
 - **Instances:** 18 NASim benchmark scenarios, indices `0`–`17`
+- **Install:** `pip install ".[network-attack]"`
 - **Dependencies:** `nasim` (the `MFaisalZaki/NetworkAttackSimulator` fork pinned in `pyproject.toml`)
 
 Related upstream work: [PenGym](https://github.com/cyb3rlab/PenGym).
