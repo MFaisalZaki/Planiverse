@@ -31,6 +31,18 @@ def puzznic_gb():
     return env
 
 
+def flipull_gb():
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from fake_flipull_rom import synthetic_rom
+    from planiverse.problems.retro_games.flipull_gb import FlipullGBEnv
+
+    # Flipull is copyrighted too, so the contract is checked against the synthetic
+    # cartridge in `fake_flipull_rom.py`.
+    env = FlipullGBEnv(synthetic_rom(), verify_rom=False)
+    env.fix_index(0)
+    return env
+
+
 def manufacturing():
     pytest.importorskip("numpy", reason="numpy is not installed")
     from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
@@ -72,6 +84,7 @@ def epidemic():
 ENVIRONMENTS = {
     "puzznic": puzznic,
     "puzznic_gb": puzznic_gb,
+    "flipull_gb": flipull_gb,
     "manufacturing": manufacturing,
     "urban_planning": urban_planning,
     "network_attack": network_attack,
