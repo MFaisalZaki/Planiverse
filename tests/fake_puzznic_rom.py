@@ -70,6 +70,13 @@ CELL_BYTES = 2
 # Cell type codes (memory map §4).
 OUTSIDE, WALL, EMPTY, LEDGE = 0x03, 0x06, 0x00, 0x02
 
+# Where the real cartridge keeps its password table, and the encoding it uses.
+PASSWORD_TABLE = 0x47FA
+PASSWORD_STRIDE = 10
+TEXT_LETTER_BASE = 0x0A
+TEXT_PERIOD = 0x24
+FAKE_PASSWORDS = ("FIRSTPWD", "SECONDPW", "THIRD.PW", "FOURTHPW")
+
 # The 48-byte logo a real cartridge carries at $0104.
 NINTENDO_LOGO = bytes.fromhex(
     "CEED6666CC0D000B03730083000C000D0008111F8889000E"
@@ -687,6 +694,15 @@ def build_rom(title=b"PUZZNICFAKE"):
 
     asm.org(0x0700)
     asm.asm(PROGRAM)
+
+    # A password table where the cartridge keeps one, so `read_passwords` has something to
+    # parse. This ROM has no password *screen* -- building one in assembly would dwarf the
+    # rest of it -- so these are data only, and booting falls back to tapping START.
+    asm.org(PASSWORD_TABLE)
+    for index, password in enumerate(FAKE_PASSWORDS, start=1):
+        asm.db([TEXT_LETTER_BASE + ord(c) - ord("A") if c != "." else TEXT_PERIOD
+                for c in password] + [index, 0x00])
+    asm.db([0xFF] * PASSWORD_STRIDE)          # a terminator the parser will stop on
 
     layouts = stage_layouts()
     asm.org(0x2000)

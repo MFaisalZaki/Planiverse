@@ -74,27 +74,66 @@ the board to settle, and snapshots it.
 
 ## Stages
 
-`fix_index(i)` selects the stage. The index is the raw value the cartridge's loader indexes its
-pointer table with (`$D003`, one byte), so the accepted range is `0`–`255`. **How many of those
-entries are real stages was never established** — an index past the end of the table will build
-whatever bytes follow it. Index `0` is the first entry, which is Round 1 on a normal boot.
-
-Without `fix_index`, `stage_index` stays `None` and the game boots wherever it normally would.
-
-### How stage selection works
-
-Naively you would write the index into `$D003` between frames. That does not work: a title screen can
-reset the index and call the loader within the same frame, and the loader's read wins. Instead the
-environment registers a PyBoy hook on the loader's entry point:
+`Puzznic (J)` has **128 rounds**, and `fix_index(i)` selects one of them zero-based —
+`fix_index(3)` is round 4. `reset()` reaches it the way a player would: it picks `PASSWORD`
+on the title menu and types the round's password.
 
 ```python
-self.pyboy.hook_register(0, STAGE_LOADER_ENTRY, _force_stage, (self.pyboy, self.stage_index))
+env.fix_index(49)
+env.password_for(49)        # 'PASSWORD' — round 50's password really is that
+state, info = env.reset()
+info["boot_route"], info["stage_index"]
+# ('password', 49)
 ```
 
-`STAGE_LOADER_ENTRY` is `0:0430`. The hook fires the instant the loader is entered — after whatever
-the menu wrote, before the loader reads `$D003` at `$045A` — so the write always lands in the
-window that matters. The hook stays registered, so every subsequent stage load gets the same index
-too, which keeps a cleared stage from rolling on into the next round.
+### The passwords come out of the cartridge
+
+They are not transcribed from a guide. The table is in the ROM at `$47FA`: 128 ten-byte
+entries, eight bytes of password in the game's own text encoding, then the round number,
+then a check byte. `read_passwords(romfile)` walks it until an entry stops being a password
+whose round number follows the last one — which is both how the end is found and how the
+parse checks itself.
+
+Reading it rather than hard-coding it means the passwords always match the ROM in hand, and
+it is what settles the round count: the table is 128 long, and round 128's password is
+`SAISHUU.` — 最終, "final".
+
+The text encoding is letters from `$0A`, so `A` is `$0A` and `Z` is `$23`, leaving `$00`–`$09`
+for the digits. `.` is `$24` in the ROM and `$8B` on screen.
+
+### How entry works
+
+The title menu is `1PLAYER / 2PLAYERS / PASSWORD`, and the password screen is a 9×3 grid of
+`A`–`Z` and `.` over a row of `NEXT / BACK / END`, with eight slots along the top. Selecting a
+character fills the next slot and advances; `END` confirms and starts the round.
+
+Everything on both screens that matters is a **sprite**, which is what makes this reliable
+rather than hopeful:
+
+| What | Where |
+|---|---|
+| Title-menu cursor | arrow sprite (tile `$AC`) at y = 88 / 104 / 120 |
+| Entry cursor | the same arrow; cell = `(y - 80) / 16`, `(x - 16) / 16` |
+| The eight slots | sprites at y = 48, x = 24, 40, 56, 72, 96, 112, 128, 144 |
+| An empty slot | tile `$8C` |
+
+So `entry_cursor` reads where the cursor actually is and `entered_password` reads what has
+actually been typed. Every cursor move is checked, and every character is checked against the
+slot it was meant to fill and retried if it did not land — the screen does drop a press now
+and again, and a password one character short is not an error, it is silently the wrong
+round.
+
+### Why not just poke the loader
+
+`$D003` is the stage index, and writing it through a hook on the loader at `0:0430` does
+change the layout — the two routes agree, and `fix_index(3)` produces the same board either
+way. But it swaps the layout underneath a game that still believes it is on round 1, so
+everything the cartridge derives from the round is wrong, and the hook has to keep firing for
+every later load. Typing the password puts the game on the round properly.
+
+The poke is kept for one case: a cartridge with no title menu. The synthetic test ROM has a
+password *table* but no password *screen*, so it takes that route, and `info["boot_route"]`
+says which of `password`, `1player` or `tapped` was used.
 
 ## State representation
 
@@ -444,8 +483,8 @@ through this environment, not read off a disassembly:
 
 - **Boot, stage selection and decoding.** The first eight stages all load, and on every one of
   them the grid scan, the record array and `$D019` agree (`state.is_consistent()`).
-- **The loader hook.** `fix_index` really does select the stage, which is what the hook on
-  `0:0430` is for.
+- **Round selection, both ways.** The password table parses to 128 rounds; typing rounds 1, 4,
+  16, 50, 100 and 128 puts `$D003` on each one, and poking the loader agrees with it.
 - **Cell semantics.** Ledges, walls and the outside marker behave as the memory map says, and
   the cursor's freedom of movement matches: on blocks and ledges, never into a wall.
 - **The push scheme and both hold windows** — see [Actions](#actions).
@@ -456,9 +495,6 @@ through this environment, not read off a disassembly:
 
 ## Known quirks and gaps
 
-- **The stage count is unknown.** `fix_index` accepts the whole `0`–`255` byte because that is the
-  range the loader can be pointed at, not because there are 256 stages. Out-of-range indices read
-  past the pointer table.
 - **No score.** The Game Boy's score lives in the status-panel tilemap shadow at `$D800`, and the
   digit layout in there was never worked out, so nothing reads it. `step` returns `blocks_cleared` in
   the reward slot instead. The pure-Python environment's `score` is its own invented formula, so the
@@ -474,7 +510,8 @@ through this environment, not read off a disassembly:
   without falling or matching, and dense boards have none — six of the first eight stages, in fact.
   There `push_ticks` is `None` and falls back to the cursor hold, which on this cartridge is the same
   number anyway.
-- **Only the first eight stages have been driven.** Nothing suggests the rest differ, but the intro
+- **Only a handful of rounds have been driven.** Rounds 1, 4, 16, 50, 100 and 128 were selected by
+  password and decoded correctly, and the first eight by poking the loader. Nothing suggests the rest differ, but the intro
   length, the hold windows and the push scheme are all measured per-cartridge and not per-stage, so
   a stage that behaved differently would not be noticed.
 - **`successors` shares one emulator.** All expansion runs on `self.pyboy`; correctness relies on

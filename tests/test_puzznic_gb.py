@@ -19,7 +19,9 @@ from planiverse.problems.retro_games.puzznic_gb import (  # noqa: E402
     PuzznicGBAction, PuzznicGBEnv, PuzznicGBState, ROM_MD5, action_cost_map,
     action_list, block_counts, bounding_box, button_actions, calibrate,
     cell_address, decode_blocks, decode_grid, decode_records, is_dead_end,
-    CURSOR_IMPASSABLE, cursor_path, measure_hold_window, measure_push_window,
+    CURSOR_IMPASSABLE, MENU_ARROW_TILE, MENU_ENTRIES, PASSWORD_ALPHABET,
+    PASSWORD_TABLE_ADDR, cursor_path, decode_text, menu_cursor, read_passwords,
+    measure_hold_window, measure_push_window,
     probe_push_scheme, push_hold, push_probe_candidates, render_grid, walk_cursor,
     wait_until_interactive,
 )
@@ -28,7 +30,7 @@ from conftest import (  # noqa: E402
     assert_state_contract, assert_string_literals, assert_successors_contract,
     puzznic_rom_path,
 )
-from fake_puzznic_rom import stage_layouts, synthetic_rom  # noqa: E402
+from fake_puzznic_rom import FAKE_PASSWORDS, stage_layouts, synthetic_rom  # noqa: E402
 
 needs_rom = pytest.mark.skipif(
     puzznic_rom_path() is None,
@@ -417,6 +419,72 @@ def test_search_solves_the_synthetic_stage(env):
     assert env.validate(plan)
 
 
+# ------------------------------------------------------------------- passwords
+# Every round has a password and the cartridge carries the table, so it is read from the ROM
+# rather than transcribed: the passwords then always match the ROM in hand, and the round
+# number stored beside each one validates the parse as it goes.
+
+def test_passwords_are_read_out_of_the_cartridge(fake_rom):
+    assert read_passwords(fake_rom) == FAKE_PASSWORDS
+
+
+def test_the_parse_stops_where_the_table_does(fake_rom):
+    """It walks until an entry stops being a password whose round number follows the last,
+    which is what finds the end -- the table is not length-prefixed."""
+    passwords = read_passwords(fake_rom)
+    assert len(passwords) == len(FAKE_PASSWORDS)
+    assert all(len(password) == 8 for password in passwords)
+
+
+def test_a_rom_without_a_table_yields_none(tmp_path):
+    rom = tmp_path / "blank.gb"
+    rom.write_bytes(b"\xff" * 65536)
+    assert read_passwords(str(rom)) == ()
+
+
+def test_the_text_encoding_is_letters_from_0a():
+    """`A` is `$0A`, which leaves `$00`-`$09` for the digits."""
+    assert decode_text(0x0A) == "A"
+    assert decode_text(0x23) == "Z"
+    assert decode_text(0x00) == "0"
+    assert decode_text(0x24) == "." and decode_text(0x8B) == "."
+    assert decode_text(0xAD) is None, "blank is not a character"
+
+
+def test_every_password_character_is_on_the_screen(fake_rom):
+    """The entry screen offers A-Z and a full stop, and nothing else."""
+    assert PASSWORD_ALPHABET == "ABCDEFGHIJKLMNOPQRSTUVWXYZ."
+    for password in read_passwords(fake_rom):
+        assert all(character in PASSWORD_ALPHABET for character in password)
+
+
+def test_fix_index_is_bounded_by_the_table(fake_rom):
+    game = PuzznicGBEnv(fake_rom, verify_rom=False)
+    try:
+        game.fix_index(len(FAKE_PASSWORDS) - 1)
+        assert game.password_for(0) == FAKE_PASSWORDS[0]
+        with pytest.raises(AssertionError, match="rounds"):
+            game.fix_index(len(FAKE_PASSWORDS))
+    finally:
+        game.close()
+
+
+def test_a_cartridge_with_no_title_menu_falls_back_to_poking_the_loader(env):
+    """The synthetic ROM has a password *table* but no password *screen*, so selection has
+    to go through the stage loader -- and the boot reports which route it took."""
+    state, info = env.reset()
+    assert info["boot_route"] == "tapped"
+    assert info["password"] is None
+    assert menu_cursor(env.pyboy) is None
+    assert state.total_blocks > 0
+
+
+def test_the_password_table_address_is_the_documented_one():
+    assert PASSWORD_TABLE_ADDR == 0x47FA
+    assert set(MENU_ENTRIES) == {"1player", "2players", "password"}
+    assert MENU_ARROW_TILE == 0xAC
+
+
 # ---------------------------------------------------------------- the round intro
 # The stage loader fills work RAM before the round has finished announcing itself, so a
 # board can be entirely readable while every button is ignored. On `Puzznic (J)` that lasts
@@ -727,6 +795,39 @@ def test_cartridge_cursor_moves(cartridge):
     moved = [successor.cursor for _, successor in cartridge.successors(state)]
     assert moved, "no action moved the cursor"
     assert any(cursor != state.cursor for cursor in moved)
+
+
+@needs_rom
+def test_cartridge_carries_128_round_passwords():
+    """Puzznic (J) has 128 rounds, and the table in the ROM is what says so."""
+    passwords = read_passwords(puzznic_rom_path())
+    assert len(passwords) == 128
+    assert passwords[0] == "PUSHAREG"
+    assert passwords[3] == "GOTAGOTO"
+    assert passwords[127] == "SAISHUU."
+
+
+@needs_rom
+@pytest.mark.parametrize("index", [0, 3, 49, 127])
+def test_cartridge_reaches_a_round_by_typing_its_password(index):
+    """The route a player would take, rather than poking the loader: the game sets itself up
+    for that round instead of having a different layout swapped in underneath it."""
+    game = PuzznicGBEnv(puzznic_rom_path())
+    game.fix_index(index)
+    try:
+        state, info = game.reset()
+        assert info["boot_route"] == "password"
+        assert info["password"] == game.passwords[index]
+        assert info["stage_index"] == index, "the round the password names"
+        assert state.total_blocks > 0 and state.is_consistent()
+    finally:
+        game.close()
+
+
+@needs_rom
+def test_cartridge_rejects_a_round_it_has_no_password_for(cartridge):
+    with pytest.raises(AssertionError, match="128 rounds"):
+        cartridge.fix_index(128)
 
 
 @needs_rom

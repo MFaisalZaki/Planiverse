@@ -40,6 +40,9 @@ CURSOR_ROW_ADDR = 0xD013
 TOTAL_BLOCKS_ADDR = 0xD018       # blocks this stage loaded with; never decremented
 BLOCKS_REMAINING_ADDR = 0xD019   # decremented once per block removed
 
+OAM_BUFFER_ADDR = 0xC000         # OAM DMA source: 40 sprites of 4 bytes
+OAM_BUFFER_BYTES = 160
+
 RECORDS_ADDR = 0xDD00            # 6-byte block records, one per slot
 RECORD_BYTES = 6
 
@@ -64,6 +67,169 @@ BLOCK_TYPE_OFFSET = 7
 CELL_GLYPHS = {
     CELL_EMPTY: ".", CELL_CLEARING: "*", CELL_LEDGE: "=", CELL_OUTSIDE: " ", CELL_WALL: "#",
 }
+
+# ------------------------------------------------------------------ passwords
+# Every round has a password, and the table is in the cartridge: 128 ten-byte entries at
+# `$47FA`. Eight are the password itself in the game's own text encoding (`A` is `$0A`, so
+# `$00`-`$09` are the digits), the ninth is the round number, and the tenth is a check byte.
+# Reading it from the ROM rather than hard-coding a transcription means the passwords always
+# match the cartridge in hand, and the round numbers validate the parse as it goes.
+
+PASSWORD_TABLE_ADDR = 0x47FA
+PASSWORD_LENGTH = 8
+PASSWORD_STRIDE = 10
+TEXT_LETTER_BASE = 0x0A          # 'A' in the game's text encoding
+TEXT_PERIOD = 0x24               # '.' as the ROM stores it
+TILE_PERIOD = 0x8B               # '.' as the screen shows it
+PASSWORD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ."
+
+# The password screen. Its cursor, its eight slots and the title menu's cursor are all
+# sprites, so the entered password can be read back and every keystroke checked.
+MENU_ARROW_TILE = 0xAC
+MENU_ENTRIES = {"1player": 88, "2players": 104, "password": 120}
+SLOT_Y = 48
+SLOT_X = (24, 40, 56, 72, 96, 112, 128, 144)
+EMPTY_SLOT_TILE = 0x8C
+ENTRY_ORIGIN = (80, 16)          # where the arrow sits for the cell holding 'A'
+ENTRY_PITCH = 16
+END_CELL = (3, 6)                # the bottom row is NEXT (3,0), BACK (3,3), END (3,6)
+TITLE_MAX_TICKS = 900
+MENU_PRESS_TICKS = 8
+MENU_GAP_TICKS = 26
+
+
+def decode_text(byte):
+    """One byte of the game's text encoding, as a character."""
+    if TEXT_LETTER_BASE <= byte < TEXT_LETTER_BASE + 26:
+        return chr(ord("A") + byte - TEXT_LETTER_BASE)
+    if byte < 0x0A:
+        return str(byte)
+    if byte in (TEXT_PERIOD, TILE_PERIOD):
+        return "."
+    return None
+
+
+def read_passwords(romfile):
+    """The round passwords, read out of the cartridge.
+
+    Walks the table until an entry stops being a password whose round-number byte follows
+    the last one, which both finds the end and checks the parse. Returns them round-ordered,
+    so index 0 is round 1.
+    """
+    with open(romfile, "rb") as handle:
+        rom = handle.read()
+    passwords, offset, expected = [], PASSWORD_TABLE_ADDR, 1
+    while offset + PASSWORD_STRIDE <= len(rom):
+        entry = rom[offset:offset + PASSWORD_STRIDE]
+        text = [decode_text(byte) for byte in entry[:PASSWORD_LENGTH]]
+        if entry[PASSWORD_LENGTH] != expected & 0xFF or any(c is None for c in text):
+            break
+        passwords.append("".join(text))
+        offset, expected = offset + PASSWORD_STRIDE, expected + 1
+    return tuple(passwords)
+
+
+def sprites(pyboy):
+    """The OAM DMA buffer at `$C000`, as `(y, x, tile)` for every visible sprite."""
+    buffer = pyboy.memory[OAM_BUFFER_ADDR:OAM_BUFFER_ADDR + OAM_BUFFER_BYTES]
+    return [(buffer[i], buffer[i + 1], buffer[i + 2])
+            for i in range(0, OAM_BUFFER_BYTES, 4) if buffer[i]]
+
+
+def menu_cursor(pyboy):
+    """Which title-menu entry is selected, or None when the menu is not up."""
+    for y, _, tile in sprites(pyboy):
+        if tile == MENU_ARROW_TILE:
+            for name, row in MENU_ENTRIES.items():
+                if y == row:
+                    return name
+    return None
+
+
+def entry_cursor(pyboy):
+    """Which character cell the password screen's cursor is on, as `(row, col)`."""
+    for y, x, tile in sprites(pyboy):
+        if tile == MENU_ARROW_TILE:
+            return ((y - ENTRY_ORIGIN[0]) // ENTRY_PITCH,
+                    (x - ENTRY_ORIGIN[1]) // ENTRY_PITCH)
+    return None
+
+
+def entered_password(pyboy):
+    """What the password screen currently shows, with `-` for an empty slot."""
+    filled = {x: tile for y, x, tile in sprites(pyboy) if y == SLOT_Y}
+    return "".join("-" if filled.get(x, EMPTY_SLOT_TILE) == EMPTY_SLOT_TILE
+                   else decode_text(filled[x]) or "?" for x in SLOT_X)
+
+
+def _tap(pyboy, button, render=False, hold=MENU_PRESS_TICKS, gap=MENU_GAP_TICKS):
+    pyboy.button(button, hold)
+    pyboy.tick(gap, render)
+
+
+def wait_for_title(pyboy, render=False, max_ticks=TITLE_MAX_TICKS):
+    """Tick until the title menu is up. True if it appeared."""
+    for _ in range(0, max_ticks, 30):
+        if menu_cursor(pyboy) is not None:
+            return True
+        pyboy.tick(30, render)
+    return menu_cursor(pyboy) is not None
+
+
+def select_menu_entry(pyboy, entry, render=False):
+    """Move the title-menu cursor onto `entry` and press START."""
+    order = list(MENU_ENTRIES)
+    for _ in range(len(order) * 3):
+        here = menu_cursor(pyboy)
+        if here is None:
+            return False
+        if here == entry:
+            _tap(pyboy, "start", render)
+            return True
+        _tap(pyboy, "down", render)
+    return False
+
+
+def steer_entry_cursor(pyboy, target, render=False, budget=32):
+    """Walk the password screen's cursor onto `target`, checking it after every press."""
+    for _ in range(budget):
+        here = entry_cursor(pyboy)
+        if here is None:
+            return False
+        if here == target:
+            return True
+        if here[0] != target[0]:
+            _tap(pyboy, "down" if target[0] > here[0] else "up", render)
+        else:
+            _tap(pyboy, "right" if target[1] > here[1] else "left", render)
+        if entry_cursor(pyboy) == here:
+            return False                  # the press did nothing; the screen is not listening
+    return False
+
+
+def enter_password(pyboy, password, render=False, attempts=3):
+    """Type `password` on the password screen and confirm it with END.
+
+    Every keystroke is checked against the slot it was meant to fill and retried if it did
+    not land — the screen drops a press now and again, and a password that is one character
+    short is silently the wrong round rather than an error.
+    """
+    cells = {ch: (i // 9, i % 9) for i, ch in enumerate(PASSWORD_ALPHABET)}
+    for index, character in enumerate(password):
+        if character not in cells:
+            raise ValueError(f"{character!r} is not on the password screen")
+        for _ in range(attempts):
+            if not steer_entry_cursor(pyboy, cells[character], render):
+                return False
+            _tap(pyboy, "a", render)
+            if entered_password(pyboy)[index] == character:
+                break
+        else:
+            return False
+    if entered_password(pyboy) != password:
+        return False
+    return steer_entry_cursor(pyboy, END_CELL, render) and (_tap(pyboy, "a", render) or True)
+
 
 # --------------------------------------------------------------------------- driving
 
@@ -596,14 +762,42 @@ def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
     return None
 
 
-def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS, press_every=BOOT_PRESS_EVERY):
-    """Tap through the boot ROM and title screens until a stage is on the playfield."""
+def boot(pyboy, password=None, render=False, max_ticks=BOOT_MAX_TICKS,
+         press_every=BOOT_PRESS_EVERY, title_seen=None):
+    """Get from power-on to a loaded stage, and report how it did it.
+
+    Returns `"password"`, `"1player"` or `"tapped"`, or None if no stage ever loaded.
+
+    The cartridge's own title menu is the route worth taking: `PASSWORD` puts the game on
+    the round the password belongs to with all of its own state set up the way it expects,
+    where poking `$D003` merely swaps the layout under a game that still thinks it is on
+    round one. `"tapped"` is the fallback for a cartridge with no such menu — the test ROM
+    is one — and is what `stage_index` needs the loader hook for.
+    """
+    if title_seen if title_seen is not None else wait_for_title(pyboy, render):
+        if password is not None:
+            if not select_menu_entry(pyboy, "password", render):
+                return None
+            pyboy.tick(90, render)
+            if not enter_password(pyboy, password, render):
+                return None
+            route = "password"
+        else:
+            if not select_menu_entry(pyboy, "1player", render):
+                return None
+            route = "1player"
+        for _ in range(0, max_ticks, press_every):
+            pyboy.tick(press_every, render)
+            if stage_is_loaded(pyboy):
+                return route
+        return None
+
     for frame in range(0, max_ticks, press_every):
         pyboy.button("start" if (frame // press_every) % 2 == 0 else "a", 4)
         pyboy.tick(press_every, render)
         if stage_is_loaded(pyboy):
-            return True
-    return False
+            return "tapped"
+    return None
 
 
 # ----------------------------------------------------------------------------- state
@@ -824,11 +1018,14 @@ class PuzznicGBEnv(RetroGame):
                  settle_max_ticks=SETTLE_MAX_TICKS, settle_stable_ticks=SETTLE_STABLE_TICKS,
                  boot_max_ticks=BOOT_MAX_TICKS):
         self.romfile = romfile
+        # Read from the cartridge, so they always match the ROM in hand.
+        self.passwords = read_passwords(romfile) if os.path.isfile(romfile) else ()
         # Not `self.render`: that name belongs to the method which prints the history.
         self.render_window = render
         self.pyboy = None
         self.stage_index = None
         self.state = None
+        self.boot_route = None
         self.intro_ticks = None
         self.state_history = []
         self.should_calibrate = calibrate
@@ -851,27 +1048,42 @@ class PuzznicGBEnv(RetroGame):
                 UserWarning, stacklevel=3)
 
     def fix_index(self, index):
-        """Select the stage. The index is the raw `$D003` value the loader indexes with.
+        """Select the round, zero-based: `fix_index(3)` is round 4.
 
-        `$D003` is one byte, so that is the whole range the loader can be pointed at; how
-        many of those entries are real stages was never established, and an index past the
-        end of the pointer table will build whatever follows it in ROM.
+        `reset()` reaches it the way a player would, by typing the round's password on the
+        title screen's PASSWORD entry. The cartridge carries 128 of them, so that is the
+        range; `self.passwords[index]` is the one this will type.
         """
-        assert 0 <= index <= 0xFF, "Invalid index: the stage index is a single byte"
+        limit = len(self.passwords) or 0x100
+        assert 0 <= index < limit, \
+            f"Invalid index: this cartridge has {limit} rounds, so 0..{limit - 1}"
         self.stage_index = index
+
+    def password_for(self, index):
+        """The password `fix_index(index)` would type."""
+        return self.passwords[index] if index < len(self.passwords) else None
 
     def reset(self):
         if self.pyboy is not None:
             self.pyboy.stop(save=False)
         self.pyboy = create_pyboy(self.romfile, self.render_window)
-        if self.stage_index is not None:
-            # Registered before anything runs, so the very first stage load is ours too.
+        # Whether the cartridge offers a title menu decides how a round is selected, and it
+        # has to be settled before anything is pressed: the fallback pokes the stage loader,
+        # and the hook that does it must be in place before the loader first runs.
+        title = wait_for_title(self.pyboy, self.render_window)
+        password = (self.password_for(self.stage_index)
+                    if title and self.stage_index is not None else None)
+        if self.stage_index is not None and password is None:
             self.pyboy.hook_register(0, STAGE_LOADER_ENTRY, _force_stage,
                                      (self.pyboy, self.stage_index))
-        if not boot(self.pyboy, self.render_window, self.boot_max_ticks):
+        self.boot_route = boot(self.pyboy, password, self.render_window, self.boot_max_ticks,
+                               title_seen=title)
+        if self.boot_route is None:
             raise RuntimeError(
                 f"no stage was loaded within {self.boot_max_ticks} frames of booting "
-                f"{self.romfile}. Check the ROM is Puzznic (J).gb (MD5 {ROM_MD5}).")
+                f"{self.romfile}"
+                + (f" and typing the password {password!r}" if password else "")
+                + f". Check the ROM is Puzznic (J).gb (MD5 {ROM_MD5}).")
         settle(self.pyboy, self.render_window, **self.settle_kwargs)
         self.intro_ticks = wait_until_interactive(self.pyboy, self.render_window)
         if self.intro_ticks is None:
@@ -889,6 +1101,8 @@ class PuzznicGBEnv(RetroGame):
         self.state_history = [self.state]
         return self.state, {"stage_index": self.pyboy.memory[STAGE_INDEX_ADDR],
                             "total_blocks": self.state.total_blocks,
+                            "boot_route": self.boot_route,
+                            "password": password,
                             "intro_ticks": self.intro_ticks,
                             "calibration": self.calibration}
 

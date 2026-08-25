@@ -23,7 +23,7 @@ Every environment answers the same four questions:
 | Manufacturing | `MfgEnv` | 7 demand/capacity instances | [docs](docs/environments/manufacturing.md) |
 | Urban planning | `UrbanPlanningEnv` | 2 cities (Kendall Square, St Andrews) | [docs](docs/environments/urban-planning.md) |
 | Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
-| Puzznic (Game Boy) | `PuzznicGBEnv` | the cartridge's stages (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
+| Puzznic (Game Boy) | `PuzznicGBEnv` | 128 rounds (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
 | Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
