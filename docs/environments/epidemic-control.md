@@ -9,7 +9,6 @@ which is vendored under `epidemic_control/epipolicy/`.
 - **Import:** `from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv`
 - **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/epidemic_control/environment.py)
 - **Instances:** 7 scenarios, indices `0`–`6`
-- **Install:** `pip install ".[epidemic]"`
 - **Dependencies:** `numba`, `sympy`, `scipy`, `numpy`, `pandas`, `gym` (EpiPolicy JIT-compiles its
   inner loop and parses its model equations with sympy)
 
