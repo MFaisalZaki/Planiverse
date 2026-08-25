@@ -93,20 +93,18 @@ class SuperMarioPlanner(TreeSearchPlanner):
 		super().__init__()
 		
 	def __is_goal__(self, state):
-		# We need to work on this I guess ?!
-		# print(f'Debug: Goal check: {state}')
-		# if state.mario_position.x >= self.root.mario_position.x+175:
-		return state.mario_position.x >= self.root.mario_position.x+175
+		# Against level_progress, not mario_position.x. Mario's X is a *screen* coordinate
+		# that stops at $51 (81) once the camera takes over, and he starts around $32 (50),
+		# so a window of 175 on it could never be reached and this search never terminated.
+		return state.level_progress >= self.root.level_progress + 175
 	
 	def __cost_fn__(self, state_trace, action_trace):
 		combined_action = 2 if '+' in action_trace[-1].action else 1
 		return 1.0*abs(state_trace[0].timeleft - state_trace[-1].timeleft) + state_trace[0].depth + combined_action
 
 	def __hueristic_fn__(self, state):
-		# state.mario_damage() * 100000
-		# The hueristic if simple, we want mario to keep moving right.
-		# To do this calculate its position from the start node until the current node.
-		distance_delta = state.mario_position.x - self.root.mario_position.x
+		# Same reason as __is_goal__: mario_position.x saturates, level_progress does not.
+		distance_delta = state.level_progress - self.root.level_progress
 		damage_penalty = state.mario_damage() * 100000
 		if distance_delta <= 0 : return 100000 + damage_penalty
 		return 1.2*(-1 * distance_delta + damage_penalty)

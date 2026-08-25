@@ -29,7 +29,7 @@ env = SuperMarioEnv("SuperMarioLand.gb", render=False)   # render=True opens an 
 state, info = env.reset()
 
 print(state)
-# <SuperMarioState(depth=0, mario_position=Position(x=..., y=...), enemies_killed=0)>
+# <SuperMarioState(depth=0, mario_position=Position(x=..., y=...), progress=..., enemies=0)>
 
 for action, successor in env.successors(state):
     print(action, action.cost(), successor.level_progress)
@@ -70,30 +70,99 @@ Without `fix_index`, `world_level` stays `None` and the game boots at its defaul
 possible: applying an action loads the parent's bytes back into the emulator first, so siblings are
 expanded from an identical machine.
 
-Facts are read from these addresses ([RAM map reference](https://datacrystal.romhacking.net/wiki/Super_Mario_Land:RAM_map)):
+## The memory map
 
-| Field | Source |
-|---|---|
-| `mario_position` | `0xC202` (x), `0xC201` (y) |
-| `mario_velocity` | `0xC20C` (x), `0xC20D` (y) |
-| `timeleft` | BCD at `0xDA01`–`0xDA02` |
-| `level_progress` | `0xC0AB` (level block) × 16 + scroll offset + mario x |
-| `lives_left` | BCD at `0xDA15` |
-| `coins` | summed from the background tilemap |
-| `score` | summed from the background tilemap |
-| `enemies_killed` | count of sprites with tile identifier `145` |
-| `level_complete` | `0xDFE8 == 0x01` — sampled here, read by `is_goal` |
-| `game_over` | `0xC0A4 == 0x39`, the death music track — read by `is_terminal` |
+Every address comes from a reverse-engineering pass over
+`Super Mario Land (World) (Rev 1).gb` (MD5 `b259feb41811c7e4e1dc200167985c84`), and the
+constructor hashes the file and warns when it is a different dump. Pass `verify_rom=False`
+to silence it.
+
+That map was derived **behaviourally** — recording all 8 KiB of work RAM once per frame
+while driving scripted input, then correlating against the input phases — rather than from a
+disassembly. Static tracing reached only ~2,000 instructions, because the game dispatches
+through jump tables. So the confidence varies field by field, and the table says which is
+which rather than presenting them all as equal.
+
+### Mario — `$C200`
+
+| Field | Address | Confidence |
+|---|---|---|
+| `mario_position.y` | `$C201` | **verified** |
+| `mario_position.x` | `$C202` | **verified** |
+| `animation_frame` | `$C203` | good |
+| `mario_facing` | `$C205` — `$20` is left | **verified** |
+| `jump_phase` | `$C207` | good |
+| `on_ground` / `airborne` | `$C20A` — `$01` grounded | **verified** |
+| `mario_speed` | `$C20C` — a magnitude | good |
+| `mario_direction` | `$C20D` — `$00` still, `$10` right, `$20` left | **verified** |
+| `moving` | `$C20F` | good |
+
+**`$C201`/`$C202` are screen coordinates.** X stops at `$51` once Mario reaches the scroll
+trigger and the camera takes over, so it says where he is on the display and never how far
+through the level he is. Use `level_progress`.
+
+**There is no velocity vector.** `$C20C` is a speed magnitude and `$C20D` a direction *code*;
+the map found no vertical velocity byte at all — `jump_phase` and `on_ground` are what
+describe vertical motion. These two used to be read as the x and y of a `velocity`
+namedtuple, which made the `(supermario velocity X Y)` literal describe nothing: a "y
+velocity" of 16 meant "travelling right".
+
+### Objects — `$D100`
+
+Ten slots of `$10` bytes; `$FF` in byte +0 means empty. A slot goes live when an object
+scrolls into range and reverts when it leaves or dies, so `state.enemies` is what is on
+screen, not everything in the level.
+
+| Field | Offset | Confidence |
+|---|---|---|
+| status (`$FF` empty) | +0 | **verified** |
+| `type` | +1 | moderate |
+| `y` | +2 | **verified** |
+| `x` | +3 | **verified** |
+| `animation` | +4 | moderate |
+
+**Caveat carried straight from the map:** only slot 0 was ever occupied during the recording,
+by one ground-walking enemy in 1-1. The base, stride, empty marker and X/Y are solid;
+everything from +4 on is a single sample and will not generalise to flying, shelled or boss
+objects.
+
+`state.touching_enemy` overlaps Mario's box with each object's — a proximity test, not a flag
+the game sets, because the map found no damage byte.
+
+### HUD and camera
+
+| Field | Address | Confidence |
+|---|---|---|
+| `timeleft` | BCD at `$DA02`(high digit)/`$DA01`(low two) | **verified** |
+| `lives_left` | `$DA15` | moderate — matched the screen, never seen change |
+| `world` | `$DA16` | **unverified** — no level transition was observed |
+| `camera_x` / `camera_y` | hardware `SCX` `$FF43` / `SCY` `$FF42` | **verified** |
+
+The camera has **no WRAM mirror**: the map searched every byte for one and found nothing, so
+the register is the only place to read it.
+
+### Two things the map does not cover
+
+- **`level_progress`** is PyBoy's own wrapper formula — `$C0AB` × 16 + scroll + Mario's X.
+  The map looked for a 16-bit level X across all of WRAM and found none, so this is the only
+  number that keeps rising across screens. Note it takes SCX at **scanline 16** rather than
+  from `$FF43`: the HUD splits the screen, and the register holds whatever the split left
+  behind, while scanline 16 is below it and so is the playfield's scroll.
+- **`level_complete` (`$DFE8`) and `game_over` (`$C0A4`)** are inherited guesses. `$C000–$C09F`
+  is the OAM shadow, so both sit just past it in territory the map does not cover, and
+  neither was ever watched changing. Treat `is_goal` as unconfirmed.
 
 Literals:
 
 ```
 (supermario position X Y)
-(supermario velocity VX VY)
+(supermario motion SPEED DIRECTION)
+(supermario grounded 0|1)
 (progress N)
 (depth N)
 (coins N)
 (livesleft N)
+(enemy TYPE X Y)        # one per live object slot
 ```
 
 Two states are equal when their literals match **and** their `timeleft` differs by less than 5. The
@@ -148,10 +217,10 @@ overrides the environment's goal test with a sliding window and supplies its own
 
 ```python
 def __is_goal__(self, state):
-    return state.mario_position.x >= self.root.mario_position.x + 175
+    return state.level_progress >= self.root.level_progress + 175
 
 def __hueristic_fn__(self, state):
-    distance_delta = state.mario_position.x - self.root.mario_position.x
+    distance_delta = state.level_progress - self.root.level_progress
     damage_penalty = state.mario_damage() * 100000
     if distance_delta <= 0: return 100000 + damage_penalty
     return 1.2 * (-1 * distance_delta + damage_penalty)
@@ -168,11 +237,12 @@ starting point, not a working agent.
 
 ## Known quirks
 
-- **`collision` is hard-coded to `False`.** The Mario-dead-jump-timer read (`0xC0AC`) is commented
-  out, so `mario_damage()` always returns 0 and the heuristic's damage penalty never fires. Deaths
-  are only caught via the music-track check.
-- **Enemy detection is partial.** `enemies_killed` counts sprite tile identifier `145` only; the
-  source notes that identifying the full set of enemy tile IDs needs more reverse engineering.
+- **Contact is not death.** `touching_enemy` overlaps boxes from the object array; whether contact
+  kills depends on power-up state, and the map could not confirm that byte (`$C210` never changed —
+  Mario stayed small for the whole recording). So `is_terminal` is the death music alone, and
+  `mario_damage()` is offered as a heuristic penalty rather than a prune.
+- **The object array is one sample deep.** See the caveat above: the fields past +3 came from a
+  single walker in 1-1.
 - **`successors` shares one emulator.** All expansion runs on `self.pyboy`; correctness relies on
   each action reloading its parent's save-state first. Don't parallelise expansion over one env.
 - **`render=True` is for watching, not planning.** It opens an SDL2 window and slows expansion.
@@ -180,6 +250,20 @@ starting point, not a working agent.
 
 ## Fixed
 
+- **`$C20C`/`$C20D` were being read as a velocity vector.** They are a speed *magnitude* and a
+  direction *code*; there is no vertical velocity byte in the map at all. The literal
+  `(supermario velocity 6 16)` was reporting "y velocity 16" for Mario walking right on flat
+  ground. It is now `(supermario motion 6 right)`, and `jump_phase`/`on_ground` cover vertical
+  motion.
+- **The planner's goal window could never be reached.** `__is_goal__` asked for
+  `mario_position.x >= root.x + 175`, but that X is a screen coordinate which saturates at `$51`
+  (81) while Mario starts near `$32` (50) — so it needed 225 from a byte that stops at 81, and the
+  search could only ever run out. Both it and the heuristic now measure `level_progress`.
+- **Enemies come from the object array at `$D100`** rather than counting sprites whose tile id is
+  `145`, which recognised exactly one kind of thing. `state.enemies` carries slot, type and
+  position for every live object.
+- **The timer is decoded by the map's formula.** It agreed with the old `_bcd_to_dec` reading, but
+  is now explicit about `$DA02` holding one digit and `$DA01` two.
 - **`fix_index` now reaches `reset()`.** It validated the index and set `self.world_level`, but
   `reset()` never read it, so the game always booted at its default start and level selection did
   nothing. Its map was also `product(range(0,4), repeat=2)` — 16 pairs, 0-indexed — while Super Mario

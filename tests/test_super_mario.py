@@ -12,7 +12,9 @@ import pytest
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
 from planiverse.problems.retro_games.super_mario_bros_gb import (  # noqa: E402
-    SuperMarioAction, SuperMarioEnv, action_cost_map, action_list,
+    DIRECTIONS, FACING_LEFT, MARIO_X_SATURATES_AT, OBJECT_EMPTY, OBJECT_SLOTS, OBJECT_STRIDE,
+    ROM_MD5, SuperMarioAction, SuperMarioEnv, action_cost_map, action_list, decode_objects,
+    decode_timer, position, touching,
 )
 
 from conftest import assert_state_contract, assert_successors_contract, sml_rom_path  # noqa: E402
@@ -63,11 +65,90 @@ def test_actions_order_by_tick_count():
     assert SuperMarioAction("a+right,5") < SuperMarioAction("a+right,15")
 
 
+# ----------------------------------------------------------------- reading RAM
+# These decode synthetic bytes, so they run without a ROM. Every address they cover is
+# graded "verified" in the memory map: observed changing correctly under controlled input.
+
+def test_timer_is_two_bcd_bytes():
+    """$DA02 holds the high digit and $DA01 the low two, so 03/97 reads 397 — the map's
+    own worked example, checked against the on-screen value."""
+    assert decode_timer(0x03, 0x97) == 397
+    assert decode_timer(0x00, 0x00) == 0
+    assert decode_timer(0x09, 0x99) == 999
+    # Only the low nibble of the high byte is a digit.
+    assert decode_timer(0xF3, 0x97) == 397
+
+
+def test_object_array_is_ten_slots_of_sixteen():
+    assert (OBJECT_SLOTS, OBJECT_STRIDE, OBJECT_EMPTY) == (10, 0x10, 0xFF)
+
+
+def test_objects_read_type_and_position():
+    """+0 is the status byte, +1 the type, +2 Y and +3 X — the four fields the map marks
+    verified, from watching a slot go live and its X fall as the enemy walked left."""
+    raw = bytearray([OBJECT_EMPTY] * (OBJECT_SLOTS * OBJECT_STRIDE))
+    raw[0:5] = bytes([0x00, 0x01, 0x88, 0x40, 0x05])
+    enemies = decode_objects(raw)
+    assert len(enemies) == 1
+    assert (enemies[0].slot, enemies[0].type) == (0, 0x01)
+    assert (enemies[0].y, enemies[0].x) == (0x88, 0x40)
+
+
+def test_an_empty_slot_is_ff_and_is_skipped():
+    raw = bytearray([OBJECT_EMPTY] * (OBJECT_SLOTS * OBJECT_STRIDE))
+    assert decode_objects(raw) == ()
+    # A slot goes live in place, so its index has to survive.
+    raw[3 * OBJECT_STRIDE] = 0x00
+    assert [enemy.slot for enemy in decode_objects(raw)] == [3]
+
+
+def test_objects_stop_at_the_tenth_slot():
+    """The array is $D100-$D19F; $D1A0 onwards was zero throughout and is not part of it."""
+    raw = bytearray([0x00] * (OBJECT_SLOTS * OBJECT_STRIDE + 64))
+    assert len(decode_objects(raw)) == OBJECT_SLOTS
+
+
+def test_touching_compares_screen_coordinates():
+    """Mario's position and an object's are both screen coordinates read on the same frame,
+    which is what makes them comparable at all."""
+    mario = position(x=0x40, y=0x88)
+    close = decode_objects(bytes([0x00, 0x01, 0x88, 0x42]) + b"\xff" * 156)[0]
+    far = decode_objects(bytes([0x00, 0x01, 0x88, 0x70]) + b"\xff" * 156)[0]
+    assert touching(mario, close)
+    assert not touching(mario, far)
+
+
+def test_direction_is_a_code_not_a_velocity():
+    """$C20D reads $00 / $10 / $20 for still / right / left. It used to be read as the y of
+    a velocity, which made `(supermario velocity X Y)` describe nothing."""
+    assert DIRECTIONS == {0x00: "still", 0x10: "right", 0x20: "left"}
+    assert FACING_LEFT == 0x20
+
+
+def test_mario_x_is_a_screen_coordinate():
+    """It stops at $51 when the camera takes over, so it cannot measure progress through a
+    level — which is why the planner's goal window is on `level_progress`."""
+    assert MARIO_X_SATURATES_AT == 0x51
+
+
+def test_a_foreign_rom_warns_because_the_addresses_are_revision_specific(tmp_path):
+    rom = tmp_path / "not-mario.gb"
+    rom.write_bytes(b"\x00" * 32768)
+    with pytest.warns(UserWarning, match=ROM_MD5):
+        SuperMarioEnv(str(rom))
+
+
+def test_verification_can_be_turned_off(tmp_path):
+    rom = tmp_path / "not-mario.gb"
+    rom.write_bytes(b"\x00" * 32768)
+    SuperMarioEnv(str(rom), verify_rom=False)
+
+
 # --------------------------------------------------------------------------- levels
 
 def test_world_level_map_is_four_worlds_of_three_levels():
     """Super Mario Land has worlds 1-4 with 3 levels each, both 1-indexed."""
-    env = SuperMarioEnv("unused.gb")
+    env = SuperMarioEnv("unused.gb", verify_rom=False)
     assert len(env.world_level_map) == 12
     assert env.world_level_map[0] == (1, 1)
     assert env.world_level_map[11] == (4, 3)
@@ -78,14 +159,14 @@ def test_world_level_map_is_four_worlds_of_three_levels():
 def test_fix_index_selects_the_world_and_level():
     """fix_index used to set world_level and reset() never read it, so the level
     selection silently did nothing."""
-    env = SuperMarioEnv("unused.gb")
+    env = SuperMarioEnv("unused.gb", verify_rom=False)
     assert env.world_level is None
     env.fix_index(4)
     assert env.world_level == (2, 2)
 
 
 def test_fix_index_rejects_unknown_index():
-    env = SuperMarioEnv("unused.gb")
+    env = SuperMarioEnv("unused.gb", verify_rom=False)
     with pytest.raises(AssertionError, match="Invalid index"):
         env.fix_index(12)
 
@@ -113,6 +194,64 @@ def test_state_reads_mario_out_of_ram(env):
     assert state.mario_position.x > 0
     assert state.lives_left == 0          # reset sets lives to 0 to avoid replays
     assert state.timeleft > 0
+
+
+@needs_rom
+def test_facing_and_direction_follow_the_input(env):
+    """$C205 is $20 facing left, $C20D is $10 right / $20 left — both graded verified."""
+    state, _ = env.reset()
+    left = SuperMarioAction("left,10").apply(env.pyboy, state)
+    right = SuperMarioAction("right,10").apply(env.pyboy, state)
+    assert left.mario_facing == "left"
+    assert right.mario_facing == "right"
+    assert {left.mario_direction, right.mario_direction} <= {"still", "left", "right"}
+
+
+@needs_rom
+def test_the_ground_flag_clears_for_a_jump(env):
+    """$C20A: $01 grounded, $00 airborne."""
+    state, _ = env.reset()
+    assert state.on_ground, "Mario starts standing"
+    airborne = SuperMarioAction("a+right,5").apply(env.pyboy, state)
+    assert airborne.airborne is not airborne.on_ground
+
+
+@needs_rom
+def test_speed_is_a_magnitude(env):
+    """$C20C is a magnitude, so it never goes negative however Mario is moving."""
+    state, _ = env.reset()
+    for action in ("left,10", "right,10", "a+right,10"):
+        assert SuperMarioAction(action).apply(env.pyboy, state).mario_speed >= 0
+
+
+@needs_rom
+def test_enemies_come_from_the_object_array(env):
+    """Not from counting sprites by tile id, which only ever knew one identifier."""
+    state, _ = env.reset()
+    assert isinstance(state.enemies, tuple)
+    assert state.enemies_on_screen == len(state.enemies)
+    for enemy in state.enemies:
+        assert 0 <= enemy.slot < OBJECT_SLOTS
+        assert enemy.type != OBJECT_EMPTY
+
+
+@needs_rom
+def test_the_camera_is_read_from_the_register(env):
+    """There is no WRAM mirror of the scroll value — the map searched for one and found
+    none — so SCX comes from $FF43."""
+    state, _ = env.reset()
+    assert 0 <= state.camera_x <= 255
+    assert state.camera_y == 0, "the flat opening of 1-1 never scrolls vertically"
+
+
+@needs_rom
+def test_mario_x_saturates_but_progress_does_not(env):
+    """The distinction the planner's goal window depends on."""
+    state = env.reset()[0]
+    for _ in range(12):
+        state = SuperMarioAction("right,15").apply(env.pyboy, state)
+    assert state.mario_position.x <= MARIO_X_SATURATES_AT
+    assert state.level_progress > env.reset()[0].level_progress
 
 
 @needs_rom
