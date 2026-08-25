@@ -438,7 +438,6 @@ description = "Read and write images and video across all major formats. Support
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "python_version < \"3.13\""
 files = [
     {file = "imageio-2.37.3-py3-none-any.whl", hash = "sha256:46f5bb8522cd421c0f5ae104d8268f569d856b29eb1a13b92829d1970f32c9f0"},
     {file = "imageio-2.37.3.tar.gz", hash = "sha256:bbb37efbfc4c400fcd534b367b91fcd66d5da639aaa138034431a1c5e0a41451"},
@@ -613,7 +612,6 @@ description = "Makes it easy to load subpackages and functions on demand."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\""
 files = [
     {file = "lazy_loader-0.5-py3-none-any.whl", hash = "sha256:ab0ea149e9c554d4ffeeb21105ac60bed7f3b4fd69b1d2360a4add51b170b005"},
     {file = "lazy_loader-0.5.tar.gz", hash = "sha256:717f9179a0dbed357012ddad50a5ad3d5e4d9a0b8712680d4e687f5e6e6ed9b3"},
@@ -1061,27 +1059,6 @@ sql-other = ["SQLAlchemy (>=2.0.36)", "adbc-driver-postgresql (>=1.2.0)", "adbc-
 test = ["hypothesis (>=6.116.0)", "pytest (>=8.3.4)", "pytest-xdist (>=3.6.1)"]
 timezone = ["pytz (>=2020.1)"]
 xml = ["lxml (>=5.3.0)"]
-
-[[package]]
-name = "pddlgym"
-version = "0.0.7"
-description = ""
-optional = false
-python-versions = "*"
-groups = ["main"]
-markers = "python_version < \"3.13\""
-files = [
-    {file = "pddlgym-0.0.7-py3-none-any.whl", hash = "sha256:ff601704bef2d27008700e63252d753975a5766409e4e3ba1a9cbfb163252800"},
-    {file = "pddlgym-0.0.7.tar.gz", hash = "sha256:f1771088eac905cabf0e03a29f263e0c11399336fe1aae5c4142a36f82b8d5b7"},
-]
-
-[package.dependencies]
-gym = ">=0.24.0"
-imageio = "*"
-matplotlib = "*"
-networkx = "*"
-pillow = ">=8,<10"
-scikit-image = "*"
 
 [[package]]
 name = "pillow"
@@ -1549,7 +1526,6 @@ description = "Image processing in Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\""
 files = [
     {file = "scikit_image-0.24.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:cb3bc0264b6ab30b43c4179ee6156bc18b4861e78bb329dd8d16537b7bbf827a"},
     {file = "scikit_image-0.24.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:9c7a52e20cdd760738da38564ba1fed7942b623c0317489af1a598a8dedf088b"},
@@ -1672,7 +1648,6 @@ description = "Read and write TIFF files"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "python_version < \"3.13\""
 files = [
     {file = "tifffile-2026.3.3-py3-none-any.whl", hash = "sha256:e8be15c94273113d31ecb7aa3a39822189dd11c4967e3cc88c178f1ad2fd1170"},
     {file = "tifffile-2026.3.3.tar.gz", hash = "sha256:d9a1266bed6f2ee1dd0abde2018a38b4f8b2935cb843df381d70ac4eac5458b7"},
@@ -1750,4 +1725,4 @@ dev = ["pytest"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "06cfc255ec1e2f3eff95b86998879aeb3241b1ce19fd64362e70938240fc4b2f"
+content-hash = "f84aabc535ab75a9f1255e103123b2b574578bba74048f520ff216788aaafc62"

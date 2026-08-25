@@ -14,7 +14,7 @@ requires-python = ">=3.11,<3.14"
 # still covers everything the library imports.
 dependencies = [
     "pyboy (>=2.5.1,<3.0.0)",
-    "pillow (>=9)",                 # pyboy renders a screenshot through it
+    "pillow (>=9.1)",               # >=9.1 for Image.Resampling, used by vendored PDDLGym
     "numpy (>=1.26)",
     "pandas (>=2.0)",
     "networkx (>=3.0)",
@@ -26,13 +26,13 @@ dependencies = [
     "psutil (>=7.0.0)",
     "pymetasploit3 (>=1.0.6)",
     "python-nmap (>=0.7.1)",
-    # pddlgym 0.0.7 requires `pillow <10`, and Pillow published no wheels for Python 3.13.
-    # Building 9.5.0 from source there fails in its own setup.py: `get_version` reads the
-    # version by exec-ing a file and pulling it back out of `locals()`, which PEP 667
-    # stopped working in 3.13. Without this marker `pip install .` dies building Pillow on
-    # 3.13; with it, 3.13 installs everything else and only the PDDLGym wrapper is
-    # unavailable. Use Python 3.12 or older if you need it.
-    "pddlgym (>=0.0.7,<0.0.8) ; python_version < '3.13'",
+    # PDDLGym is vendored under planiverse/simulator/wrappers/pddlgym/ rather than
+    # installed, because the published package pins `pillow <10`, which has no Python 3.13
+    # wheels and whose sdist cannot build there. These are its own dependencies; see
+    # planiverse/simulator/wrappers/pddlgym/VENDORING.md.
+    "matplotlib (>=3.5)",
+    "imageio (>=2.0)",
+    "scikit-image (>=0.20)",
 ]
 
 [project.optional-dependencies]

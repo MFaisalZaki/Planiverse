@@ -5,7 +5,8 @@ the epidemic environment but never declared, so it only ever worked because pddl
 to pull it in. And `pddlgym 0.0.7` requires `pillow <10`, which has no Python 3.13 wheels and
 whose 9.5.0 sdist cannot build there — Pillow's `setup.py` reads its own version out of
 `locals()` after an `exec`, which PEP 667 stopped working in 3.13 — so `pip install .` died
-on 3.13 for everyone, whether or not they wanted PDDL support.
+on 3.13 for everyone, whether or not they wanted PDDL support. PDDLGym is now vendored, and
+the tests at the bottom hold the two edits that vendoring depends on in place.
 """
 import ast
 import pathlib
@@ -16,6 +17,11 @@ import pytest
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 PYPROJECT = REPO / "pyproject.toml"
+VENDORED_PDDLGYM = REPO / "planiverse" / "simulator" / "wrappers" / "pddlgym"
+
+# Import roots whose distribution goes by another name.
+DISTRIBUTION_OF = {"pil": "pillow", "skimage": "scikit-image", "yaml": "pyyaml",
+                   "sklearn": "scikit-learn", "cv2": "opencv-python"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -111,8 +117,11 @@ def test_the_import_closure_is_fully_declared(declared):
     `gym` was missing from it for a long time and only worked because pddlgym happened to
     depend on it, which broke the moment pddlgym stopped being installed.
     """
-    undeclared = {root: importer for root, importer in import_closure().items()
-                  if root.lower().replace("_", "-") not in declared}
+    undeclared = {}
+    for root, importer in import_closure().items():
+        name = root.lower().replace("_", "-")
+        if DISTRIBUTION_OF.get(name, name) not in declared:
+            undeclared[root] = importer
     assert not undeclared, "imported but not declared in pyproject.toml: " + ", ".join(
         f"{root} (from {importer})" for root, importer in sorted(undeclared.items()))
 
@@ -123,36 +132,55 @@ def test_an_install_covers_every_environment(declared):
         assert requirement in declared
 
 
-def test_pddlgym_is_declared_only_below_python_313(project):
-    """Without the marker, `pip install .` dies building Pillow 9.5.0 on 3.13."""
-    declared = [line for line in project["dependencies"] if line.startswith("pddlgym")]
-    assert declared, "pddlgym is no longer declared"
-    for line in declared:
-        assert "python_version < '3.13'" in line, \
-            f"{line!r} would be resolved on 3.13, where pddlgym cannot install"
+def test_pddlgym_is_not_a_declared_dependency(declared):
+    """It is vendored instead -- the published package cannot install on Python 3.13."""
+    assert "pddlgym" not in declared
+    assert VENDORED_PDDLGYM.is_dir(), "the vendored copy is missing"
 
 
-def test_nothing_else_carries_that_marker(project):
-    """Only pddlgym is held back; everything else installs on every supported Python."""
+def test_nothing_carries_a_python_version_marker(project):
+    """The 3.13 marker on pddlgym was a workaround; vendoring replaced it."""
     for line in project["dependencies"]:
-        if "python_version" in line:
-            assert line.startswith("pddlgym"), f"unexpected version marker: {line!r}"
+        assert "python_version" not in line, f"unexpected version marker: {line!r}"
 
 
-def test_pddlgym_is_absent_exactly_where_it_cannot_be_installed():
-    """The marker's whole point: on 3.13 the wrapper is unavailable, not broken."""
-    try:
-        import pddlgym  # noqa: F401
-        available = True
-    except ImportError:
-        available = False
-    if sys.version_info >= (3, 13):
-        assert not available, "pddlgym should not be installable on 3.13"
+def test_the_vendored_copy_never_imports_the_installed_pddlgym():
+    """Its absolute self-imports were retargeted; one left behind would silently pick up a
+    pip-installed pddlgym, or fail outright where none is installed."""
+    offenders = []
+    for path in VENDORED_PDDLGYM.rglob("*.py"):
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            if re.match(r"(import|from)\s+pddlgym(\.|\s|$)", stripped):
+                offenders.append(f"{path.relative_to(REPO)}:{number}: {stripped}")
+    assert not offenders, "vendored files still import the top-level name:\n  " + \
+        "\n  ".join(offenders)
 
 
-def test_the_simulator_facade_imports_without_pddlgym():
-    """Wrapping a native environment needs no solver, so a missing pddlgym must not stop the
-    module importing — it only rules out the PDDLGym branch."""
+def test_the_vendored_copy_registers_itself_under_its_real_path():
+    """gym resolves `entry_point` by module string, so those had to be retargeted too."""
+    init = (VENDORED_PDDLGYM / "__init__.py").read_text()
+    assert "entry_point" in init
+    for line in init.splitlines():
+        if "entry_point" in line:
+            assert "planiverse.simulator.wrappers.pddlgym." in line, line.strip()
+
+
+def test_the_pillow_10_fix_is_still_applied():
+    """`Image.ANTIALIAS` went away in Pillow 10 and is the only reason upstream pinned
+    `pillow <10`, which is what made the package uninstallable on 3.13."""
+    sources = "\n".join(path.read_text() for path in VENDORED_PDDLGYM.rglob("*.py"))
+    assert "ANTIALIAS" not in sources.replace("# Vendored change: was `Image.ANTIALIAS`", "")
+    assert "Image.Resampling.LANCZOS" in (VENDORED_PDDLGYM / "rendering" / "utils.py").read_text()
+
+
+def test_the_vendoring_is_documented():
+    assert (VENDORED_PDDLGYM / "VENDORING.md").is_file()
+    assert (VENDORED_PDDLGYM / "LICENSE.md").is_file(), "PDDLGym is MIT; keep its licence"
+
+
+def test_the_simulator_facade_wraps_a_native_environment():
+    """Wrapping a native environment must not drag in the PDDL machinery."""
     from planiverse.problems.retro_games.puzznic import PuzznicGame
     from planiverse.simulator.simulator import Simulator
 

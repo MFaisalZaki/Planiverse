@@ -47,29 +47,36 @@ poetry env use python3.12
 poetry install --extras dev
 ```
 
-One install gets you every environment. `tests/test_packaging.py` checks that the declared list
-still covers everything the library imports, which is how `gym` — imported by the simulator facade
-and the epidemic environment, but declared nowhere — stopped being able to go missing.
+One install gets you every environment, on every supported Python.
 
-### The PDDLGym wrapper needs Python 3.12 or older
+`tests/test_packaging.py` walks the import graph from each environment's entry point and fails if
+anything it reaches is undeclared. That is how `gym` — imported by the simulator facade and the
+epidemic environment, but declared nowhere, working only because pddlgym happened to pull it in —
+stopped being able to go missing.
 
-`pddlgym 0.0.7` requires `pillow <10`, and Pillow published no wheels for Python 3.13. Building
-Pillow 9.5.0 from source on 3.13 fails inside its own `setup.py`, which reads the version by
-`exec`-ing a file and pulling `__version__` back out of `locals()` — something
-[PEP 667](https://peps.python.org/pep-0667/) stopped working in 3.13:
+### PDDLGym is vendored
+
+`pddlgym 0.0.7` — the last release — requires `pillow <10`, and Pillow published no wheels
+for Python 3.13. Building Pillow 9.5.0 from source there fails inside its own `setup.py`,
+which reads the version by `exec`-ing a file and pulling `__version__` back out of
+`locals()` — something [PEP 667](https://peps.python.org/pep-0667/) stopped working in 3.13:
 
 ```
 File "<string>", line 26, in get_version
 KeyError: '__version__'
 ```
 
-pddlgym is therefore declared with a `python_version < '3.13'` marker. On 3.13 `pip install .`
-installs everything else and simply leaves it out, and `Simulator` still wraps native environments —
-only the PDDLGym branch is unavailable. On older Pythons nothing changes:
+That took the whole install down on 3.13, PDDL support or not, and pip has no way to override
+another package's requirements (`--constraint` can only narrow a range, never widen one). So
+PDDLGym is vendored under
+[`planiverse/simulator/wrappers/pddlgym/`](planiverse/simulator/wrappers/pddlgym/), the same
+way EpiPolicy is, with the one-line fix its own `TODO` asked for — `Image.ANTIALIAS` (removed
+in Pillow 10) becomes `Image.Resampling.LANCZOS`. The pin is then unnecessary, and every
+supported Python gets the full wrapper.
 
-- **3.11** — clean, Pillow 9.5.0 ships a cp311 wheel.
-- **3.12** — Pillow 9.5.0 has no cp312 wheel and is compiled from source, so you need libjpeg and
-  zlib headers first (`brew install libjpeg zlib`, or `apt install libjpeg-dev zlib1g-dev`).
+[`VENDORING.md`](planiverse/simulator/wrappers/pddlgym/VENDORING.md) records the source
+version, every edit, and how to re-sync. `matplotlib`, `imageio` and `scikit-image` are
+declared on its behalf.
 
 ### ROMs
 
@@ -301,7 +308,8 @@ planiverse/
     ├── simulator.py                    # Simulator facade
     └── wrappers/
         ├── base.py                     # SimulatorBase interface
-        └── pddlgymenv.py               # PDDLGym adapter
+        ├── pddlgymenv.py               # PDDLGym adapter
+        └── pddlgym/                    # vendored PDDLGym 0.0.7 — see its VENDORING.md
 dev/                                    # scratch scripts — not part of the library
 docs/environments/                      # per-environment documentation
 tests/
