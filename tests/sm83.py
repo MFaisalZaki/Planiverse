@@ -61,6 +61,14 @@ class Assembler:
         for value in values:
             self.byte(value)
 
+    def dw(self, *values):
+        """Little-endian words, for the pointer tables a Game Boy indexes stages with."""
+        for value in values:
+            if not 0 <= value <= 0xFFFF:
+                raise AsmError(f"word out of range: {value}")
+            self.byte(value & 0xFF)
+            self.byte(value >> 8)
+
     def label(self, name):
         if name in self.labels:
             raise AsmError(f"duplicate label: {name}")
