@@ -82,10 +82,19 @@ action_cost_map = {"a": 0, "left": 1, "right": 1, "up": 1, "down": 1, "nop": 0}
 # The cursor moves in four directions; A turns left/right into a push. There is no
 # `a+up`/`a+down` because Puzznic only slides blocks sideways — you cannot lift one.
 def button_actions(calibration=None):
-    """The primitive button actions, held for however long calibration settled on."""
-    ticks = (calibration or Calibration(PRESS_TICKS, None, "modifier", "a")).press_ticks
-    return [f"{buttons},{ticks}"
-            for buttons in ("left", "right", "up", "down", "a+left", "a+right")]
+    """The primitive button actions, each held for however long calibration settled on.
+
+    Cursor moves and pushes get their own hold: the cartridge repeats a held block on its
+    own schedule, and one number for both is one of them being wrong.
+    """
+    calibration = calibration or Calibration(PRESS_TICKS, None, "modifier", "a")
+    moves = [f"{buttons},{calibration.press_ticks}"
+             for buttons in ("left", "right", "up", "down")]
+    prefix, combined = PUSH_SCHEMES[calibration.push_scheme]
+    pushes = [f"{prefix}+{buttons},{push_hold(calibration)}" if prefix and combined
+              else f"{buttons},{push_hold(calibration)}"
+              for buttons in ("left", "right")]
+    return moves + pushes
 
 
 action_list = [f"{buttons},{PRESS_TICKS}"
@@ -97,12 +106,22 @@ Record = namedtuple("Record", ["slot", "type", "state", "row", "col"])
 
 #: What `calibrate` learned from the cartridge.
 #:
-#: `press_ticks` is the hold an action should use; `hold_window` is the closed range of
-#: holds that move the cursor exactly one cell, whose upper end is one frame short of
-#: auto-repeat. `push_scheme` names how a block is pushed, and `push_prefix` is the button
-#: to press before the direction when the scheme needs one.
+#: `press_ticks` is the hold a cursor move should use, and `hold_window` the closed range of
+#: holds that move the cursor exactly one cell — its upper end one frame short of the
+#: cursor's auto-repeat. `push_ticks` and `push_window` are the same two things for a *push*,
+#: measured separately because a held block need not repeat on the same schedule as the
+#: cursor; `push_ticks` of None means nothing was measured, so fall back to `press_ticks`.
+#: `push_scheme` names how a block is pushed and `push_prefix` is the button to press before
+#: the direction when the scheme needs one.
 Calibration = namedtuple(
-    "Calibration", ["press_ticks", "hold_window", "push_scheme", "push_prefix"])
+    "Calibration",
+    ["press_ticks", "hold_window", "push_scheme", "push_prefix", "push_ticks", "push_window"],
+    defaults=(None, None))
+
+
+def push_hold(calibration):
+    """How long to hold a push. Falls back to the cursor hold when none was measured."""
+    return calibration.push_ticks or calibration.press_ticks
 
 # How a block gets pushed. Which one a cartridge uses is not in the memory map, so
 # `calibrate` finds out by trying each on a real block.
@@ -389,6 +408,92 @@ def walk_presses(start, target, press_ticks):
     return presses
 
 
+def _slide_distance(before, after, row, col, step, max_cells):
+    """How far the block that was at `(row, col)` travelled, or None if it is not there.
+
+    None means the probe destroyed its own evidence — the block fell, or met a same-typed
+    neighbour and cleared — so the hold it was testing cannot be read off this board.
+    """
+    if after[row][col] == before[row][col]:
+        return 0
+    for cells in range(1, max_cells + 1):
+        target = col + cells * step
+        if not 0 <= target < GRID_COLS:
+            break
+        if after[row][target] == before[row][col]:
+            return cells
+        if after[row][target] != CELL_EMPTY:
+            break
+    return None
+
+
+def push_probe_candidates(state, cells=2):
+    """Blocks that can be slid `cells` cells without falling, matching, or hitting anything.
+
+    A probe has to be readable afterwards. A block that drops down a hole, or lands next to
+    its own colour and vanishes, tells you nothing about how far the push went — so those
+    are filtered out here rather than discovered halfway through a measurement.
+    """
+    for block in state.blocks:
+        kind = state.grid[block.row][block.col]
+        for direction in ("left", "right"):
+            step = DIRECTIONS[direction][1]
+            path = [block.col + n * step for n in range(1, cells + 1)]
+            if any(not 0 <= col < GRID_COLS for col in path):
+                continue
+            if any(state.grid[block.row][col] != CELL_EMPTY for col in path):
+                continue
+            # Something solid underneath every cell it passes over, or it falls.
+            if block.row + 1 < GRID_ROWS and any(
+                    state.grid[block.row + 1][col] == CELL_EMPTY for col in path):
+                continue
+            # And no same-coloured neighbour anywhere along it, or it clears mid-probe.
+            touching = [(block.row + dr, col)
+                        for col in path + [block.col + (cells + 1) * step]
+                        for dr in (-1, 0, 1)
+                        if 0 <= block.row + dr < GRID_ROWS and 0 <= col < GRID_COLS]
+            if any(state.grid[r][c] == kind and (r, c) != (block.row, block.col)
+                   for r, c in touching):
+                continue
+            yield block, direction
+
+
+def measure_push_window(pyboy, state, press_ticks, scheme, prefix, render=False,
+                        max_hold=PROBE_MAX_HOLD, **settle_kwargs):
+    """The closed range of holds that push a block exactly one cell.
+
+    Measured separately from the cursor's window because the two need not agree: a cartridge
+    is free to repeat a held block on its own schedule, and holding past that point slides
+    the block two cells, which can match and clear it. The state the planner is handed then
+    describes something its action never asked for.
+
+    Returns `(low, high)`, or None if no block on this board could be probed safely.
+    """
+    _, combined = PUSH_SCHEMES[scheme]
+    for block, direction in push_probe_candidates(state):
+        step = DIRECTIONS[direction][1]
+        walk = walk_presses(state.cursor, position(block.row, block.col), press_ticks)
+        low = None
+        for hold in range(1, max_hold + 1):
+            if prefix is None:
+                push = [(direction, hold)]
+            elif combined:
+                push = [(f"{prefix}+{direction}", hold)]
+            else:
+                push = [(prefix, press_ticks), (direction, hold)]
+            grid, _ = _press(pyboy, state, walk + push, render, **settle_kwargs)
+            moved = _slide_distance(state.grid, grid, block.row, block.col, step, max_cells=4)
+            if moved is None:
+                break                       # unreadable; try another block
+            if moved == 1 and low is None:
+                low = hold
+            elif moved > 1 and low is not None:
+                return (low, hold - 1)
+        if low is not None:
+            return (low, max_hold)
+    return None
+
+
 def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwargs):
     """Measure how this cartridge wants to be driven.
 
@@ -409,7 +514,10 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
     scheme, prefix = probe_push_scheme(pyboy, state, press_ticks, render, **settle_kwargs)
     if scheme is None:
         scheme, prefix = "modifier", "a"
-    return Calibration(press_ticks, window, scheme, prefix)
+    push_window = measure_push_window(pyboy, state, press_ticks, scheme, prefix, render,
+                                      max_hold, **settle_kwargs)
+    push_ticks = None if push_window is None else (push_window[0] + push_window[1]) // 2
+    return Calibration(press_ticks, window, scheme, prefix, push_ticks, push_window)
 
 
 def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS, press_every=BOOT_PRESS_EVERY):
@@ -609,7 +717,7 @@ class PuzznicGBPush:
 
     def push_presses(self):
         """The presses that push, once the cursor is on the block."""
-        ticks = self.calibration.press_ticks
+        ticks = push_hold(self.calibration)
         prefix, combined = PUSH_SCHEMES[self.calibration.push_scheme]
         if prefix is None:
             return [(self.direction, ticks)]
@@ -851,3 +959,42 @@ class PuzznicGBEnv(RetroGame):
         if self.pyboy is not None:
             self.pyboy.stop(save=False)
             self.pyboy = None
+
+
+def _report(romfile, stage=None, render=False):
+    """Print what this cartridge wants, for every stage asked about."""
+    env = PuzznicGBEnv(romfile, render=render)
+    try:
+        for index in ([stage] if stage is not None else [None]):
+            if index is not None:
+                env.fix_index(index)
+            state, info = env.reset()
+            calibration = info["calibration"]
+            print(f"stage {info['stage_index']}: {state.total_blocks} blocks\n")
+            print(state, "\n")
+            print(f"  cursor hold  {calibration.hold_window}  -> press_ticks "
+                  f"{calibration.press_ticks}")
+            if calibration.push_window is None:
+                print("  push hold    not measurable on this stage — no block could be slid "
+                      "two cells without falling or matching")
+            else:
+                print(f"  push hold    {calibration.push_window}  -> push_ticks "
+                      f"{push_hold(calibration)}")
+            print(f"  push scheme  {calibration.push_scheme}"
+                  f" ({'A + direction' if calibration.push_scheme == 'modifier' else calibration.push_scheme})")
+            print(f"\n  button actions: {button_actions(calibration)}")
+    finally:
+        env.close()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Measure how a Puzznic cartridge wants to be driven: how long a button "
+                    "must be held to move the cursor, or a held block, exactly one cell.")
+    parser.add_argument("rom", help="path to Puzznic (J).gb")
+    parser.add_argument("--stage", type=int, default=None, help="stage index to load")
+    parser.add_argument("--render", action="store_true", help="open an SDL2 window")
+    args = parser.parse_args()
+    _report(args.rom, args.stage, args.render)

@@ -18,7 +18,8 @@ from planiverse.problems.retro_games.puzznic_gb import (  # noqa: E402
     PuzznicGBAction, PuzznicGBEnv, PuzznicGBPush, PuzznicGBState, ROM_MD5, action_cost_map,
     action_list, available_pushes, block_counts, bounding_box, button_actions, calibrate,
     cell_address, decode_blocks, decode_grid, decode_records, is_dead_end,
-    measure_hold_window, probe_push_scheme, render_grid, walk_cursor,
+    measure_hold_window, measure_push_window, probe_push_scheme, push_hold,
+    push_probe_candidates, render_grid, walk_cursor,
 )
 
 from conftest import (  # noqa: E402
@@ -44,6 +45,15 @@ def env(fake_rom):
     """The button action model, which is what most of these tests drive directly."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False, actions="button")
     game.fix_index(0)
+    yield game
+    game.close()
+
+
+@pytest.fixture
+def roomy_env(fake_rom):
+    """Stage 3: an 8x10 room, which is the one with space to probe a push in."""
+    game = PuzznicGBEnv(fake_rom, verify_rom=False, actions="button")
+    game.fix_index(3)
     yield game
     game.close()
 
@@ -484,6 +494,98 @@ def test_calibration_can_be_turned_off(fake_rom):
         assert game.actions == action_list
     finally:
         game.close()
+
+
+# The push has its own window. A held block need not repeat on the cursor's schedule, and
+# holding past it slides the block two cells — which can match it away, so the state handed
+# back describes something the action never asked for.
+
+def test_a_long_hold_clears_blocks_it_was_never_asked_to(env):
+    """The bug this measurement exists for: held past the repeat, one action slides the
+    block twice, straight into its own colour, and the stage is two blocks lighter."""
+    state, info = env.reset()
+    for _ in range(2):
+        state = PuzznicGBAction(f"left,{info['calibration'].press_ticks}").apply(env.pyboy, state)
+    assert state.grid[5][3] >= BLOCK_MIN and state.cursor == (5, 3)
+
+    once = PuzznicGBAction(f"a+right,{push_hold(info['calibration'])}").apply(env.pyboy, state)
+    assert once.grid[5][3] == CELL_EMPTY and once.grid[5][4] >= BLOCK_MIN, "exactly one cell"
+    assert once.blocks_remaining == state.blocks_remaining, "and nothing cleared"
+
+    held = PuzznicGBAction("a+right,60").apply(env.pyboy, state)
+    assert held.blocks_remaining < state.blocks_remaining, \
+        "held past the repeat, the block slid on and matched away"
+
+
+def test_push_window_is_measured(roomy_env):
+    state, info = roomy_env.reset()
+    window = measure_push_window(roomy_env.pyboy, state, info["calibration"].press_ticks,
+                                 "modifier", "a")
+    assert window == (1, 16), "the synthetic cartridge repeats a held block after 16 frames"
+
+
+def test_calibration_reports_both_windows(roomy_env):
+    _, info = roomy_env.reset()
+    calibration = info["calibration"]
+    assert calibration.hold_window and calibration.push_window
+    low, high = calibration.push_window
+    assert low < push_hold(calibration) < high
+
+
+def test_a_cramped_stage_cannot_be_probed_and_says_so(env):
+    """Stage 0 is two same-coloured blocks four cells apart: any slide long enough to
+    measure matches them. Reporting None beats reporting a number that came from a board
+    which cleared halfway through the probe."""
+    _, info = env.reset()
+    assert info["calibration"].push_window is None
+    assert info["calibration"].push_ticks is None
+    assert push_hold(info["calibration"]) == info["calibration"].press_ticks
+
+
+def test_button_actions_hold_moves_and_pushes_for_their_own_windows():
+    calibration = Calibration(8, (1, 16), "modifier", "a", 5, (1, 10))
+    assert button_actions(calibration) == [
+        "left,8", "right,8", "up,8", "down,8", "a+left,5", "a+right,5"]
+
+
+def test_push_hold_falls_back_to_the_cursor_hold():
+    """An unmeasurable push window must not leave the push with no hold at all."""
+    assert push_hold(Calibration(7, (1, 16), "modifier", "a")) == 7
+
+
+def test_probe_candidates_skip_a_block_that_would_match_itself_away():
+    """A block that clears mid-probe measures nothing, so it is never chosen."""
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in range(1, 8):
+        cells[6][col] = CELL_EMPTY
+        cells[7][col] = CELL_WALL          # solid floor, so nothing falls
+    cells[6][1] = 0x08
+    cells[6][4] = 0x08                     # same type two cells past the slide
+    state = _state_from_cells(cells, cursor=(6, 1))
+    assert [d for b, d in push_probe_candidates(state) if b.col == 1] == []
+
+
+def test_probe_candidates_skip_a_block_that_would_fall():
+    """Gravity would carry it off the row being measured."""
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in range(1, 8):
+        cells[6][col] = CELL_EMPTY
+    cells[7][1] = cells[7][2] = CELL_WALL  # floor runs out after column 2...
+    for col in range(3, 8):
+        cells[7][col] = CELL_EMPTY         # ...and past it there is nothing to rest on
+    cells[6][1] = 0x08
+    state = _state_from_cells(cells, cursor=(6, 1))
+    assert [d for b, d in push_probe_candidates(state) if b.col == 1] == []
+
+
+def test_probe_candidates_accept_a_clear_run():
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    for col in range(1, 8):
+        cells[6][col] = CELL_EMPTY
+        cells[7][col] = CELL_WALL
+    cells[6][1] = 0x08
+    state = _state_from_cells(cells, cursor=(6, 1))
+    assert [d for b, d in push_probe_candidates(state) if b.col == 1] == ["right"]
 
 
 # ------------------------------------------------------------------- push actions

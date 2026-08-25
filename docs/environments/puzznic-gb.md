@@ -247,15 +247,26 @@ modifier that turns a direction into a push, not a move of its own.
 How long to hold a button has two bounds, and neither is in the memory map:
 
 - **Too short** and the press is never sampled.
-- **Too long** and the cursor's auto-repeat fires, so one action moves the cursor two cells
-  and the state the planner gets back is not the one its action described.
+- **Too long** and auto-repeat fires, so one action moves the cursor — or the block it is
+  holding — two cells, and the state the planner gets back is not the one its action
+  described.
+
+The failure is quiet. `PuzznicGBAction("a+right,60")` looks like one push and reads like one
+action in a plan, but it slides the block until the button comes up.
 
 So `reset()` measures them off the cartridge instead of trusting a constant:
 
 ```python
 state, info = env.reset()
 info["calibration"]
-# Calibration(press_ticks=8, hold_window=(1, 16), push_scheme='modifier', push_prefix='a')
+# Calibration(press_ticks=8, hold_window=(1, 16), push_scheme='modifier',
+#             push_prefix='a', push_ticks=8, push_window=(1, 16))
+```
+
+or, without writing any code:
+
+```bash
+python -m planiverse.problems.retro_games.puzznic_gb "Puzznic (J).gb" --stage 0
 ```
 
 `measure_hold_window` presses a direction for 1, 2, 3… frames and watches `$D012`/`$D013`,
@@ -264,6 +275,27 @@ end is where presses start registering, the upper end is one frame short of auto
 `press_ticks` is the middle of that range, far enough from either edge to survive a frame of
 jitter in when the game samples input. The spare frames cost about 0.07 ms each, so there is
 nothing to win by shaving them.
+
+### The push has its own window
+
+`measure_push_window` does the same for a **held block**, and it is a separate measurement
+because the two need not agree — a cartridge is free to repeat a held block on its own
+schedule. Getting this wrong is worse than getting the cursor wrong: held past the repeat, a
+single `a+right` slides the block two cells, and if the second cell puts it next to its own
+colour the pair clears. The planner is then handed a board two blocks lighter than the action
+it applied ever asked for.
+
+Probing it needs a block that can be slid two cells and still be *found* afterwards, so
+`push_probe_candidates` rejects any block that would fall down a hole on the way, or land
+next to its own colour and vanish. On a cramped stage there may be no such block, and then
+`push_window` is `None` and `push_ticks` falls back to `press_ticks` — better than a number
+read off a board that cleared halfway through the measurement.
+
+`button_actions` holds each action for its own window:
+
+```python
+['left,8', 'right,8', 'up,8', 'down,8', 'a+left,5', 'a+right,5']
+```
 
 `probe_push_scheme` then answers a question the memory map does not: **how this cartridge
 moves a block.** It walks the cursor onto a real block with somewhere to go and tries each
