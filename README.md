@@ -367,9 +367,11 @@ is referenced as a planned addition but is not yet in the tree.
 - [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
 - [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
 - [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
-- [ ] Run `FlipullGBEnv` against a real `Flipull (USA).gb` — it has only ever been driven against the
-      synthetic cartridge
+- [x] Run `FlipullGBEnv` against a real `Flipull (USA).gb`, and correct what the memory map had
+      wrong about the throw
 - [ ] Find a stage-selection route for Flipull, so `fix_index` accepts more than `0`
+- [ ] Work out what a Flipull throw actually hits — every row connects, so it is not simply the
+      first block in the player's row
 
 ## License
 
