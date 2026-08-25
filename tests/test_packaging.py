@@ -29,14 +29,17 @@ pytestmark = pytest.mark.skipif(
 # One module per environment, plus the facade and the planner: whatever these reach is what
 # an install has to provide.
 ENTRY_POINTS = [
-    "planiverse.problems.retro_games.puzznic",
-    "planiverse.problems.retro_games.puzznic_gb",
-    "planiverse.problems.retro_games.flipull_gb",
-    "planiverse.problems.retro_games.super_mario_bros_gb",
-    "planiverse.problems.real_world_problems.epidemic_control.environment",
-    "planiverse.problems.real_world_problems.urban_planning.environment",
-    "planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack",
-    "planiverse.problems.real_world_problems.manufacturing_environment.mfenv",
+    "planiverse.environments.puzznic",
+    "planiverse.environments.puzznic_gb",
+    "planiverse.environments.flipull_gb",
+    "planiverse.environments.water_network.environment",
+    "planiverse.environments.power_grid.environment",
+    "planiverse.environments.crop_management.environment",
+    "planiverse.environments.super_mario_land",
+    "planiverse.environments.epidemic_control.environment",
+    "planiverse.environments.urban_planning.environment",
+    "planiverse.environments.network_attack.network_attack",
+    "planiverse.environments.manufacturing.mfenv",
     "planiverse.simulator.simulator",
     "planiverse.planners.super_mario_planner_gb",
 ]
@@ -182,7 +185,7 @@ def test_the_vendoring_is_documented():
 
 def test_the_simulator_facade_wraps_a_native_environment():
     """Wrapping a native environment must not drag in the PDDL machinery."""
-    from planiverse.problems.retro_games.puzznic import PuzznicGame
+    from planiverse.environments.puzznic import PuzznicGame
     from planiverse.simulator.simulator import Simulator
 
     env = PuzznicGame()

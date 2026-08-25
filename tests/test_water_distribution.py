@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("wntr", reason="wntr is not installed")
 
-from planiverse.problems.real_world_problems.water_distribution.environment import (  # noqa: E402
+from planiverse.environments.water_network.environment import (  # noqa: E402
     CONTAMINATION_GOAL, SCENARIOS, SERVICE_FLOOR, SERVICE_GOAL, Scenario, WaterNetworkAction,
     WaterNetworkEnv, WaterNetworkState, network_library, rank_sources,
 )

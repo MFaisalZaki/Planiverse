@@ -8,8 +8,8 @@ Based on *"AI Agent as Urban Planner: Steering Stakeholder Dynamics in Urban Pla
 Consensus-based Multi-Agent Reinforcement Learning"*.
 
 - **Class:** `UrbanPlanningEnv`
-- **Import:** `from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv`
-- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/urban_planning/environment.py)
+- **Import:** `from planiverse.environments.urban_planning.environment import UrbanPlanningEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/urban_planning/environment.py)
 - **Instances:** 2 cities, indices `0`–`1`
 - **Dependencies:** `pandas`, `networkx`, `numpy`
 
@@ -20,7 +20,7 @@ author intended.
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv
+from planiverse.environments.urban_planning.environment import UrbanPlanningEnv
 
 env = UrbanPlanningEnv(horizon=100)      # horizon = number of rezoning steps
 env.fix_index(0)                          # Kendall Square
@@ -37,7 +37,7 @@ for action, successor in env.successors(state):
 
 ## Cities
 
-`fix_index(i)` loads a city from [`cities/`](../../planiverse/problems/real_world_problems/urban_planning/cities):
+`fix_index(i)` loads a city from [`cities/`](../../planiverse/environments/urban_planning/cities):
 
 | Index | City | Parcels | Initial land use |
 |---|---|---|---|
@@ -222,6 +222,6 @@ callers.
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/problems/real_world_problems/urban_planning/environment.py) | `UrbanPlanningEnv`, `UrbanEnvState`, the action classes, `LandUseType` |
-| [`cities/Kendall_Square_data/`](../../planiverse/problems/real_world_problems/urban_planning/cities/Kendall_Square_data) | Kendall Square parcels and adjacency |
-| [`cities/st_andrews_data/`](../../planiverse/problems/real_world_problems/urban_planning/cities/st_andrews_data) | St Andrews parcels and adjacency |
+| [`environment.py`](../../planiverse/environments/urban_planning/environment.py) | `UrbanPlanningEnv`, `UrbanEnvState`, the action classes, `LandUseType` |
+| [`cities/Kendall_Square_data/`](../../planiverse/environments/urban_planning/cities/Kendall_Square_data) | Kendall Square parcels and adjacency |
+| [`cities/st_andrews_data/`](../../planiverse/environments/urban_planning/cities/st_andrews_data) | St Andrews parcels and adjacency |

@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
-from planiverse.problems.retro_games.flipull_gb import (  # noqa: E402
+from planiverse.environments.flipull_gb import (  # noqa: E402
     BLOCK_MAX, BLOCK_MIN, CELL_BORDER, CELL_OUTSIDE, CELL_STAIRCASE, FIELD_ADDR, FIELD_BYTES,
     FIELD_COLS, FIELD_ROWS, MOVE_BUTTONS, ROM_MD5, ROW_STRIDE, THROW_BUTTONS, Calibration,
     FlipullGBAction, FlipullGBEnv, FlipullGBState, action_cost_map, block_counts,

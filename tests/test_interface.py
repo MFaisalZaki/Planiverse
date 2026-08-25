@@ -5,14 +5,13 @@ things a planner is entitled to assume no matter which environment it is handed.
 """
 import pytest
 
-from planiverse.problems.real_world_problems.base import RealWorldProblem
-from planiverse.problems.retro_games.base import RetroGame
+from planiverse.environments import Environment, implements_contract, list_environments
 
 from conftest import assert_string_literals, assert_successors_contract
 
 
 def puzznic():
-    from planiverse.problems.retro_games.puzznic import PuzznicGame
+    from planiverse.environments.puzznic import PuzznicGame
 
     env = PuzznicGame()
     env.fix_index(0)
@@ -22,7 +21,7 @@ def puzznic():
 def puzznic_gb():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from fake_puzznic_rom import synthetic_rom
-    from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv
+    from planiverse.environments.puzznic_gb import PuzznicGBEnv
 
     # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
     # in `fake_puzznic_rom.py` rather than the real one.
@@ -34,7 +33,7 @@ def puzznic_gb():
 def flipull_gb():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from fake_flipull_rom import synthetic_rom
-    from planiverse.problems.retro_games.flipull_gb import FlipullGBEnv
+    from planiverse.environments.flipull_gb import FlipullGBEnv
 
     # Flipull is copyrighted too, so the contract is checked against the synthetic
     # cartridge in `fake_flipull_rom.py`.
@@ -43,9 +42,36 @@ def flipull_gb():
     return env
 
 
+def water_network():
+    pytest.importorskip("wntr", reason="wntr is not installed")
+    from planiverse.environments.water_network.environment import WaterNetworkEnv
+
+    env = WaterNetworkEnv()
+    env.fix_index(0)
+    return env
+
+
+def power_grid():
+    pytest.importorskip("grid2op", reason="grid2op is not installed")
+    from planiverse.environments.power_grid.environment import PowerGridEnv
+
+    env = PowerGridEnv()
+    env.fix_index(4)
+    return env
+
+
+def crop_management():
+    pytest.importorskip("pcse", reason="pcse is not installed")
+    from planiverse.environments.crop_management.environment import CropEnv
+
+    env = CropEnv()
+    env.fix_index(10)
+    return env
+
+
 def manufacturing():
     pytest.importorskip("numpy", reason="numpy is not installed")
-    from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
+    from planiverse.environments.manufacturing.mfenv import MfgEnv
 
     env = MfgEnv()
     env.fix_index(0)
@@ -55,7 +81,7 @@ def manufacturing():
 def urban_planning():
     pytest.importorskip("pandas", reason="pandas is not installed")
     pytest.importorskip("networkx", reason="networkx is not installed")
-    from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv
+    from planiverse.environments.urban_planning.environment import UrbanPlanningEnv
 
     env = UrbanPlanningEnv(horizon=100)
     env.fix_index(0)
@@ -64,7 +90,7 @@ def urban_planning():
 
 def network_attack():
     pytest.importorskip("nasim", reason="nasim is not installed")
-    from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import EnvNASim
+    from planiverse.environments.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
     env.fix_index(0)
@@ -74,7 +100,7 @@ def network_attack():
 def epidemic():
     pytest.importorskip("numba", reason="numba is not installed")
     pytest.importorskip("sympy", reason="sympy is not installed")
-    from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv
+    from planiverse.environments.epidemic_control.environment import EpiEnv
 
     env = EpiEnv(delay_vaccination_time=30, horizon=364)
     env.fix_index(5)          # SIR_A, the cheapest scenario
@@ -85,6 +111,9 @@ ENVIRONMENTS = {
     "puzznic": puzznic,
     "puzznic_gb": puzznic_gb,
     "flipull_gb": flipull_gb,
+    "water_network": water_network,
+    "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
+    "crop_management": crop_management,
     "manufacturing": manufacturing,
     "urban_planning": urban_planning,
     "network_attack": network_attack,
@@ -110,9 +139,34 @@ def test_implements_the_core_interface(factory):
 
 @pytest.mark.parametrize("factory", environment_params())
 def test_is_a_recognised_environment_type(factory):
-    """Simulator dispatches on these base classes."""
+    """One base class now, and Simulator dispatches structurally as well.
+
+    There used to be two — `RetroGame` and `RealWorldProblem` — and the split described
+    where an environment came from rather than what a planner could do with it, so the
+    facade ended up with two isinstance branches doing identical work.
+    """
     env = factory()
-    assert isinstance(env, (RetroGame, RealWorldProblem))
+    assert isinstance(env, Environment)
+    assert implements_contract(env), "and it answers the contract structurally too"
+
+
+def test_every_registered_environment_is_in_the_catalogue():
+    """The registry is the catalogue, so it cannot drift from what exists."""
+    registered = {spec.name for spec in list_environments()}
+    assert {"puzznic", "puzznic_gb", "flipull_gb", "super_mario_land", "epidemic",
+            "network_attack", "manufacturing", "urban_planning", "water_network",
+            "power_grid", "crop_management"} == registered
+
+
+def test_a_spec_can_be_loaded_without_importing_the_rest():
+    """Listing the catalogue must not import pyboy, grid2op, numba and the rest — half of
+    them would not be installed."""
+    for spec in list_environments():
+        assert ":" in spec.factory
+        assert spec.deterministic, "every environment here is deterministic"
+        assert spec.state_identity in ("value", "path", "snapshot")
+        if spec.available():
+            assert issubclass(spec.load(), Environment)
 
 
 @pytest.mark.parametrize("factory", environment_params())
@@ -215,3 +269,82 @@ def test_simulate_agrees_with_successors(factory):
     action, expected = env.successors(state)[0]
     trace = env.simulate([action])
     assert trace[-1].literals == expected.literals
+
+
+# ------------------------------------------------------- the old import paths still work
+
+@pytest.mark.parametrize("old,new", [
+    ("planiverse.problems.retro_games.puzznic", "planiverse.environments.puzznic"),
+    ("planiverse.problems.retro_games.puzznic_gb", "planiverse.environments.puzznic_gb"),
+    ("planiverse.problems.retro_games.flipull_gb", "planiverse.environments.flipull_gb"),
+    ("planiverse.problems.retro_games.super_mario_bros_gb",
+     "planiverse.environments.super_mario_land"),
+    ("planiverse.problems.real_world_problems.water_distribution.environment",
+     "planiverse.environments.water_network.environment"),
+    ("planiverse.problems.real_world_problems.power_grid.environment",
+     "planiverse.environments.power_grid.environment"),
+    ("planiverse.problems.real_world_problems.crop_management.environment",
+     "planiverse.environments.crop_management.environment"),
+])
+def test_the_old_import_path_still_works_and_warns(old, new):
+    """Moving the package must not break anyone's notebook.
+
+    The shims re-export from the new home and raise `DeprecationWarning` so the move is
+    visible rather than silent.
+    """
+    import importlib
+    import warnings
+
+    try:
+        moved = importlib.import_module(new)
+    except ImportError:
+        pytest.skip(f"{new} needs a dependency that is not installed")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        shim = importlib.import_module(old)
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught), \
+        "the old path has to say it is deprecated"
+
+    shared = [name for name in dir(moved)
+              if not name.startswith("_") and isinstance(getattr(moved, name), type)]
+    assert shared, "the module should export something"
+    for name in shared:
+        assert getattr(shim, name) is getattr(moved, name), \
+            f"{name} must be the same object through either path"
+
+
+def test_the_two_old_base_classes_now_name_the_same_thing():
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        from planiverse.problems.retro_games.base import RetroGame
+        from planiverse.problems.real_world_problems.base import RealWorldProblem
+    from planiverse.environments.base import Environment
+
+    assert RetroGame is Environment and RealWorldProblem is Environment
+
+
+def test_the_capability_matrix_can_be_derived_from_the_code():
+    """`Environment.capabilities()` exists so the README's matrix is checkable rather than
+    hand-maintained. This pins the rows that claim the full set."""
+    from planiverse.environments import get_spec
+
+    full = {"step", "validate", "get_actions", "render", "close"}
+    for name in ("puzznic_gb", "flipull_gb", "water_network", "power_grid",
+                 "crop_management"):
+        spec = get_spec(name)
+        if not spec.available():
+            continue
+        assert spec.load().capabilities() >= full, f"{name} claims the full capability row"
+
+
+def test_specs_agree_with_the_environments_they_name():
+    """A spec that has drifted from its class is worse than no spec."""
+    from planiverse.environments import Environment, list_environments
+
+    for spec in list_environments(available_only=True):
+        cls = spec.load()
+        assert issubclass(cls, Environment), f"{spec.name} must be an Environment"
+        assert spec.docs, f"{spec.name} should point at its documentation"

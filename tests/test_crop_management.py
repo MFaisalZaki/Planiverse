@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("pcse", reason="pcse is not installed")
 
-from planiverse.problems.real_world_problems.crop_management.environment import (  # noqa: E402
+from planiverse.environments.crop_management.environment import (  # noqa: E402
     DECISION_COUNT, IRRIGATION_AMOUNTS, SCENARIOS, CropAction, CropEnv, CropState, Scenario,
     decision_days,
 )

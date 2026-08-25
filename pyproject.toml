@@ -33,6 +33,12 @@ dependencies = [
     "matplotlib (>=3.5)",
     "imageio (>=2.0)",
     "scikit-image (>=0.20)",
+    # The three simulator-backed environments. Each ships its own benchmark data, so none
+    # of them downloads anything at run time.
+    "wntr (>=1.2)",                 # EPANET, for the water distribution network
+    "grid2op (>=1.10)",             # RTE's power system framework, for the grid
+    "pcse (>=6.0)",                 # Wageningen's WOFOST crop model
+    "pyyaml (>=6.0)",               # PCSE agromanagement is written as YAML
 ]
 
 [project.optional-dependencies]

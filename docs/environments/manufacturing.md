@@ -6,15 +6,15 @@ cost, throughput, and setup time — so the plan is a bet about which machines t
 paying for them. Adapted from [mfgrl](https://github.com/torayeff/mfgrl).
 
 - **Class:** `MfgEnv`
-- **Import:** `from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv, ConfigurationAction, ActionType`
-- **Source:** [`mfenv.py`](../../planiverse/problems/real_world_problems/manufacturing_environment/mfenv.py)
+- **Import:** `from planiverse.environments.manufacturing.mfenv import MfgEnv, ConfigurationAction, ActionType`
+- **Source:** [`mfenv.py`](../../planiverse/environments/manufacturing/mfenv.py)
 - **Instances:** 7 data files, indices `0`–`6`
 - **Dependencies:** `numpy` only
 
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
+from planiverse.environments.manufacturing.mfenv import MfgEnv
 
 env = MfgEnv()
 env.fix_index(0)
@@ -194,5 +194,5 @@ reproduce:
 
 | Path | What |
 |---|---|
-| [`mfenv.py`](../../planiverse/problems/real_world_problems/manufacturing_environment/mfenv.py) | `MfgEnv`, `MfgState`, `ConfigurationAction`, `ActionType` |
-| [`data/`](../../planiverse/problems/real_world_problems/manufacturing_environment/data) | The 7 instance files |
+| [`mfenv.py`](../../planiverse/environments/manufacturing/mfenv.py) | `MfgEnv`, `MfgState`, `ConfigurationAction`, `ActionType` |
+| [`data/`](../../planiverse/environments/manufacturing/data) | The 7 instance files |

@@ -5,8 +5,8 @@ the [PyBoy](https://github.com/Baekalfen/PyBoy) emulator, and reads game facts s
 console's RAM. States are emulator save-states, so search can branch by rewinding the machine.
 
 - **Class:** `SuperMarioEnv`
-- **Import:** `from planiverse.problems.retro_games.super_mario_bros_gb import SuperMarioEnv, SuperMarioAction`
-- **Source:** [`planiverse/problems/retro_games/super_mario_bros_gb.py`](../../planiverse/problems/retro_games/super_mario_bros_gb.py)
+- **Import:** `from planiverse.environments.super_mario_land import SuperMarioEnv, SuperMarioAction`
+- **Source:** [`planiverse/environments/super_mario_land.py`](../../planiverse/environments/super_mario_land.py)
 - **Dependencies:** `pyboy` + a `SuperMarioLand.gb` ROM you supply (`pillow` for screenshots)
 - **Planner:** [`planiverse/planners/super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py)
 
@@ -23,7 +23,7 @@ env = SuperMarioEnv("/path/to/SuperMarioLand.gb")
 
 ```python
 import os
-from planiverse.problems.retro_games.super_mario_bros_gb import SuperMarioEnv, SuperMarioAction
+from planiverse.environments.super_mario_land import SuperMarioEnv, SuperMarioAction
 
 env = SuperMarioEnv("SuperMarioLand.gb", render=False)   # render=True opens an SDL2 window
 state, info = env.reset()
@@ -280,5 +280,5 @@ starting point, not a working agent.
 
 | Path | What |
 |---|---|
-| [`super_mario_bros_gb.py`](../../planiverse/problems/retro_games/super_mario_bros_gb.py) | `SuperMarioEnv`, `SuperMarioState`, `SuperMarioAction` |
+| [`super_mario_bros_gb.py`](../../planiverse/environments/super_mario_land.py) | `SuperMarioEnv`, `SuperMarioState`, `SuperMarioAction` |
 | [`super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py) | `TreeSearchPlanner`, `SuperMarioPlanner` |

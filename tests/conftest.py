@@ -84,7 +84,7 @@ def assert_successors_contract(successors):
 
 @pytest.fixture
 def puzznic_env():
-    from planiverse.problems.retro_games.puzznic import PuzznicGame
+    from planiverse.environments.puzznic import PuzznicGame
 
     env = PuzznicGame()
     env.fix_index(0)
@@ -94,7 +94,7 @@ def puzznic_env():
 @pytest.fixture
 def mfg_env():
     pytest.importorskip("numpy", reason="numpy is not installed")
-    from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
+    from planiverse.environments.manufacturing.mfenv import MfgEnv
 
     env = MfgEnv()
     env.fix_index(0)

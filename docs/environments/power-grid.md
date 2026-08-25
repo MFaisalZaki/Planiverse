@@ -12,8 +12,8 @@ hundred distinct reconfigurations on the small case, sixty-six thousand on a com
 one — sitting on a transition function that is a nonlinear solve.
 
 - **Class:** `PowerGridEnv`
-- **Import:** `from planiverse.problems.real_world_problems.power_grid.environment import PowerGridEnv`
-- **Source:** [`environment.py`](../../planiverse/problems/real_world_problems/power_grid/environment.py)
+- **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/power_grid/environment.py)
 - **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is
   nothing to download.
 
@@ -32,7 +32,7 @@ nothing.
 ## Quickstart
 
 ```python
-from planiverse.problems.real_world_problems.power_grid.environment import PowerGridEnv
+from planiverse.environments.power_grid.environment import PowerGridEnv
 
 env = PowerGridEnv()
 env.fix_index(4)                      # chronic 1, line 6 trips
@@ -156,5 +156,5 @@ transmission system operator — uses for the L2RPN competitions.
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/problems/real_world_problems/power_grid/environment.py) | `PowerGridEnv`, `PowerGridState`, `PowerGridAction` |
+| [`environment.py`](../../planiverse/environments/power_grid/environment.py) | `PowerGridEnv`, `PowerGridState`, `PowerGridAction` |
 | [`tests/test_power_grid.py`](../../tests/test_power_grid.py) | Tests; the expensive ones are marked `slow` |

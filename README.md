@@ -16,16 +16,34 @@ Every environment answers the same four questions:
 
 ## Environment catalog
 
-| Environment | Class | Instances | Docs |
-|---|---|---|---|
-| Epidemic control | `EpiEnv` | 7 scenarios (SIR / SIRV / COVID) | [docs](docs/environments/epidemic-control.md) |
-| Network attack | `EnvNASim` | 18 NASim benchmarks | [docs](docs/environments/network-attack.md) |
-| Manufacturing | `MfgEnv` | 7 demand/capacity instances | [docs](docs/environments/manufacturing.md) |
-| Urban planning | `UrbanPlanningEnv` | 2 cities (Kendall Square, St Andrews) | [docs](docs/environments/urban-planning.md) |
-| Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
-| Puzznic (Game Boy) | `PuzznicGBEnv` | 128 rounds (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
-| Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
-| Flipull (Game Boy) | `FlipullGBEnv` | 32 stages (needs a ROM you supply) | [docs](docs/environments/flipull-gb.md) |
+| Environment | `make()` name | Instances | Tags | Docs |
+|---|---|---|---|---|
+| Water distribution | `water_network` | 9 contamination scenarios | infrastructure | [docs](docs/environments/water-distribution.md) |
+| Power grid | `power_grid` | 9 contingencies | infrastructure | [docs](docs/environments/power-grid.md) |
+| Crop management | `crop_management` | 22 growing seasons | agriculture | [docs](docs/environments/crop-management.md) |
+| Epidemic control | `epidemic` | 7 scenarios (SIR / SIRV / COVID) | health, policy | [docs](docs/environments/epidemic-control.md) |
+| Network attack | `network_attack` | 18 NASim benchmarks | security | [docs](docs/environments/network-attack.md) |
+| Manufacturing | `manufacturing` | 7 demand/capacity instances | operations | [docs](docs/environments/manufacturing.md) |
+| Urban planning | `urban_planning` | 2 cities (Kendall Square, St Andrews) | policy | [docs](docs/environments/urban-planning.md) |
+| Puzznic | `puzznic` | 50 levels | game | [docs](docs/environments/puzznic.md) |
+| Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
+| Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |
+| Super Mario Land | `super_mario_land` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land.md) |
+
+```python
+from planiverse.environments import list_environments, make
+
+[spec.name for spec in list_environments(tag="infrastructure")]
+# ['power_grid', 'water_network']
+
+env = make("water_network", index=8)
+state, info = env.reset()
+```
+
+Every environment lives in one flat `planiverse.environments` package behind one base class.
+What used to be two package trees — `real_world_problems` and `retro_games` — is now a `tags`
+field on a registry entry, because that split recorded where an environment came from rather
+than what a planner could do with it. See [Architecture](#architecture).
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
 see [The Simulator facade](#the-simulator-facade).
@@ -81,6 +99,10 @@ declared on its behalf.
 
 ### ROMs
 
+Only the Game Boy environments need anything extra. The water, power grid and crop
+environments ship their benchmark data inside their dependencies, so they run offline with
+nothing to supply.
+
 The three Game Boy environments additionally need a ROM each — `SuperMarioLand.gb`,
 `Puzznic (J).gb` and `Flipull (USA).gb` — which are **not** and cannot be distributed with this repo.
 See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
@@ -117,7 +139,7 @@ environment; the other modules cover per-environment behaviour.
 Puzznic is the dependency-free environment, so it's the fastest way to see the interface:
 
 ```python
-from planiverse.problems.retro_games.puzznic import PuzznicGame
+from planiverse.environments.puzznic import PuzznicGame
 
 env = PuzznicGame()
 env.fix_index(0)              # choose the instance *before* reset
@@ -174,6 +196,9 @@ Not every environment implements every method. What is actually there today:
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
@@ -184,6 +209,11 @@ Not every environment implements every method. What is actually there today:
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
 detecting them is left to the planner. The two Puzznics and Super Mario Land are the ones that really
 compute a positional dead end; `FlipullGBEnv` computes one, but only the clock running out.
+The three simulator-backed environments compute real ones too: a water network whose service has
+collapsed, a blacked-out grid, and a growing season whose water budget is spent.
+
+`Environment.capabilities()` reports this per class, so the table above can be checked against the
+code rather than trusted.
 
 ### States and `literals`
 
@@ -279,10 +309,54 @@ A* Mario agent), and is discussed in the [Super Mario Land docs](docs/environmen
 Note that `PriorityQueue` pushes `(priority, item)` tuples, so ties compare the items themselves —
 which is why state and action classes define `__lt__`.
 
+## Architecture
+
+One flat package, one base class, and a registry.
+
+```
+planiverse/environments/
+├── base.py          # Environment — the six-method contract, and nothing else
+├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
+└── <one module or subpackage per environment>
+```
+
+**Why it changed.** There used to be two base classes in two package trees,
+`RealWorldProblem` and `RetroGame`. That split recorded an environment's *provenance*, not
+its *capabilities*, so nothing could usefully dispatch on it — the `Simulator` facade ended
+up asking `isinstance(env, RetroGame) or isinstance(env, RealWorldProblem)`, two branches
+doing identical work. Meanwhile the distinctions a planner actually cares about were written
+down nowhere.
+
+So the taxonomy became data. `EnvironmentSpec` carries what you might select on:
+
+| Field | What it tells a planner |
+|---|---|
+| `deterministic` | whether expanding a state twice gives the same children |
+| `state_identity` | `value`, `path` or `snapshot` — **how branching is possible at all** |
+| `requires` | third-party modules, so listing the catalogue imports none of them |
+| `needs_rom` | needs a copyrighted file the user supplies |
+| `tags` | `game`, `infrastructure`, `continuous-dynamics`, … — the old split, as one field among several |
+
+`state_identity` is the one worth understanding. A `value` state carries its own contents and
+expanding is pure. A `snapshot` state carries a serialised simulator image — a Game Boy
+save-state. A `path` state *is* the decision sequence, replayed on demand, which is sound
+only because the simulator is deterministic. Most simulators are step-only and cannot be
+rewound; that is the property that decides whether something can be a Planiverse environment
+at all, and it now has a name.
+
+`Simulator` dispatches structurally (`implements_contract`), so an environment brought from
+outside works without inheriting from anything.
+
+**Old import paths still work**, via shims that raise `DeprecationWarning`:
+
+```python
+from planiverse.problems.retro_games.puzznic import PuzznicGame   # works, warns
+from planiverse.environments.puzznic import PuzznicGame           # the new home
+```
+
 ## Adding an environment
 
-1. Subclass `RealWorldProblem` (`planiverse/problems/real_world_problems/base.py`) or `RetroGame`
-   (`planiverse/problems/retro_games/base.py`).
+1. Subclass `Environment` (`planiverse/environments/base.py`) and implement the six methods.
 2. Define a state class exposing `literals`, `__eq__`, and — if search will hash it — `__hash__`.
    Decide deliberately how coarse `literals` should be; that decision is your state space.
 3. Implement `reset`, `fix_index`, `successors`, `is_goal`, `is_terminal`, and `simulate`.
@@ -290,25 +364,29 @@ which is why state and action classes define `__lt__`.
    environment does this, and planners rely on it. Check that it can actually fire: if `literals`
    include a step counter, no successor ever equals its parent and the filter is dead code (this is
    what happens in [urban planning](docs/environments/urban-planning.md#known-quirks)).
-5. Add a doc under `docs/environments/` and a row to the catalog above.
+5. Add an `EnvironmentSpec` to `planiverse/environments/registry.py` — that is what puts it
+   in the catalogue and in `make()`.
+6. Add a doc under `docs/environments/` and a row to the catalog above.
 
 ## Repository layout
 
 ```
 planiverse/
-├── problems/
-│   ├── real_world_problems/
-│   │   ├── base.py                     # RealWorldProblem marker base
-│   │   ├── epidemic_control/           # EpiEnv + vendored EpiPolicy + jsons/
-│   │   ├── cyber_security_network_attack/  # EnvNASim (wraps NASim)
-│   │   ├── manufacturing_environment/  # MfgEnv + data/
-│   │   └── urban_planning/             # UrbanPlanningEnv + cities/
-│   └── retro_games/
-│       ├── base.py                     # RetroGame marker base
-│       ├── puzznic.py                  # PuzznicGame
-│       ├── puzznic_gb.py               # PuzznicGBEnv (PyBoy)
-│       ├── flipull_gb.py               # FlipullGBEnv (PyBoy)
-│       └── super_mario_bros_gb.py      # SuperMarioEnv (PyBoy)
+├── environments/
+│   ├── base.py                         # Environment — the one base class
+│   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
+│   ├── puzznic.py                      # PuzznicGame
+│   ├── puzznic_gb.py                   # PuzznicGBEnv (PyBoy)
+│   ├── flipull_gb.py                   # FlipullGBEnv (PyBoy)
+│   ├── super_mario_land.py             # SuperMarioEnv (PyBoy)
+│   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
+│   ├── network_attack/                 # EnvNASim (wraps NASim)
+│   ├── manufacturing/                  # MfgEnv + data/
+│   ├── urban_planning/                 # UrbanPlanningEnv + cities/
+│   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
+│   ├── power_grid/                     # PowerGridEnv (Grid2Op)
+│   └── crop_management/                # CropEnv (PCSE/WOFOST)
+├── problems/                           # deprecated shims for the old import paths
 ├── planners/
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
 └── simulator/
@@ -347,6 +425,9 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Manufacturing | [mfgrl](https://github.com/torayeff/mfgrl) |
 | Urban planning | *AI Agent as Urban Planner: Steering Stakeholder Dynamics in Urban Planning via Consensus-based Multi-Agent Reinforcement Learning* |
 | Super Mario Land, Puzznic (GB), Flipull (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
+| Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
+| Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
+| Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
 
 The flood/transport environment ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl))
 is referenced as a planned addition but is not yet in the tree.
@@ -357,6 +438,10 @@ is referenced as a planned addition but is not yet in the tree.
 - [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
 - [x] NASim network attack
 - [x] Test suite (`poetry run pytest`)
+- [x] Water distribution, power grid and crop management — three simulator-backed
+      environments whose transitions are solves, not add/delete lists
+- [x] One flat `planiverse.environments` package with a registry, replacing the
+      `real_world_problems` / `retro_games` split
 - [ ] Flood application
 - [ ] Optional dependency groups, so one environment doesn't pull in all of them
 - [ ] Replace `pddlgym` (unmaintained, pins `pillow <10`, caps the PDDL wrapper at Python 3.12)

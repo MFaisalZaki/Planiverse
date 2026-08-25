@@ -12,7 +12,7 @@ import pytest
 
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
-from planiverse.problems.retro_games.puzznic_gb import (  # noqa: E402
+from planiverse.environments.puzznic_gb import (  # noqa: E402
     STAGE_LOADER_ENTRY, _force_stage, boot, create_pyboy, cursor_of, stage_is_loaded,
     BLOCK_MIN, CELL_CLEARING, CELL_EMPTY, CELL_LEDGE, CELL_OUTSIDE, CELL_WALL, Calibration,
     GRID_ADDR, GRID_BYTES, GRID_COLS, GRID_ROWS, PROBE_MAX_HOLD, PUSH_SCHEMES,
