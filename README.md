@@ -285,6 +285,28 @@ through the facade will raise `AttributeError`/`NotImplementedError` rather than
 it when you need PDDL and simulator environments behind one interface; use the environment directly
 otherwise.
 
+## Planners
+
+| Family | Where | What it needs from an environment |
+|---|---|---|
+| Width-based — IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps | 
+| Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
+
+```python
+from planiverse.planners.width import IWSearch, BFWSSearch, Budget
+
+env.fix_index(0)
+result = IWSearch(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
+if result:
+    env.validate(result.plan)
+```
+
+The width-based family is documented in [docs/planners/width-based.md](docs/planners/width-based.md),
+including what has to change when the task is a simulator: there is no goal conjunction to
+count, so SIW and BFWS take a `progress` callback instead; expansions are expensive, so every
+search takes a budget and reports what it spent; and dead ends are real, which turns out to
+be worth a solved instance to SIW.
+
 ## Writing a planner
 
 Environments are planner-agnostic. [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py)
