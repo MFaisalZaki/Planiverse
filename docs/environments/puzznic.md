@@ -8,6 +8,7 @@ planning benchmark. 50 hand-written levels, no emulator, no dependencies beyond 
 - **Source:** [`planiverse/problems/retro_games/puzznic.py`](../../planiverse/problems/retro_games/puzznic.py)
 - **Instances:** 50 levels, indices `0`–`49`
 - **Dependencies:** none
+- **Sibling:** [`PuzznicGBEnv`](puzznic-gb.md) plays the real Game Boy cartridge in an emulator
 
 This is the reference implementation of the Planiverse interface: it is the only environment that
 implements every method in the contract (`step`, `validate`, `get_actions`, and `render` included).
@@ -130,8 +131,8 @@ every action — worth knowing when hand-writing a level to test against.
 
 - **Goal** (`is_goal`) — no `Box` remains on the grid.
 - **Terminal** (`is_terminal`) — some colour has exactly **one** block left. It can never be matched,
-  so the level is lost. This is one of only two environments in the repo that computes a real
-  terminal condition.
+  so the level is lost. This is one of only three environments in the repo that computes a real
+  terminal condition — [`PuzznicGBEnv`](puzznic-gb.md) applies the same rule to the cartridge.
 
 ## Scoring
 

@@ -19,6 +19,18 @@ def puzznic():
     return env
 
 
+def puzznic_gb():
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from fake_puzznic_rom import synthetic_rom
+    from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv
+
+    # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
+    # in `fake_puzznic_rom.py` rather than the real one.
+    env = PuzznicGBEnv(synthetic_rom(), verify_rom=False)
+    env.fix_index(0)
+    return env
+
+
 def manufacturing():
     from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
 
@@ -58,6 +70,7 @@ def epidemic():
 
 ENVIRONMENTS = {
     "puzznic": puzznic,
+    "puzznic_gb": puzznic_gb,
     "manufacturing": manufacturing,
     "urban_planning": urban_planning,
     "network_attack": network_attack,
