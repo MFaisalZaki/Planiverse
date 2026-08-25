@@ -13,10 +13,12 @@ import pytest
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
 from planiverse.problems.retro_games.puzznic_gb import (  # noqa: E402
-    BLOCK_MIN, CELL_CLEARING, CELL_EMPTY, CELL_LEDGE, CELL_OUTSIDE, CELL_WALL, GRID_ADDR,
-    GRID_BYTES, GRID_COLS, GRID_ROWS, PuzznicGBAction, PuzznicGBEnv, PuzznicGBState,
-    ROM_MD5, action_cost_map, action_list, block_counts, bounding_box, cell_address,
-    decode_blocks, decode_grid, decode_records, is_dead_end, render_grid,
+    BLOCK_MIN, CELL_CLEARING, CELL_EMPTY, CELL_LEDGE, CELL_OUTSIDE, CELL_WALL, Calibration,
+    GRID_ADDR, GRID_BYTES, GRID_COLS, GRID_ROWS, PROBE_MAX_HOLD, PUSH_SCHEMES,
+    PuzznicGBAction, PuzznicGBEnv, PuzznicGBPush, PuzznicGBState, ROM_MD5, action_cost_map,
+    action_list, available_pushes, block_counts, bounding_box, button_actions, calibrate,
+    cell_address, decode_blocks, decode_grid, decode_records, is_dead_end,
+    measure_hold_window, probe_push_scheme, render_grid, walk_cursor,
 )
 
 from conftest import (  # noqa: E402
@@ -39,6 +41,16 @@ def fake_rom():
 
 @pytest.fixture
 def env(fake_rom):
+    """The button action model, which is what most of these tests drive directly."""
+    game = PuzznicGBEnv(fake_rom, verify_rom=False, actions="button")
+    game.fix_index(0)
+    yield game
+    game.close()
+
+
+@pytest.fixture
+def push_env(fake_rom):
+    """The default model: one action per legal push."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False)
     game.fix_index(0)
     yield game
@@ -266,8 +278,8 @@ def test_successors_contract(env):
 def test_successors_exclude_moves_that_change_nothing(env):
     """The cursor starts on an empty cell, so a push has nothing to push."""
     state, _ = env.reset()
-    offered = {str(action) for action, _ in env.successors(state)}
-    assert offered == {"left_for_6", "right_for_6", "up_for_6", "down_for_6"}
+    offered = {str(action).rsplit("_for_", 1)[0] for action, _ in env.successors(state)}
+    assert offered == {"left", "right", "up", "down"}
 
 
 def test_successors_are_deterministic_and_leave_the_parent_alone(env):
@@ -350,7 +362,17 @@ def test_step_and_render_track_the_history(env):
 
 
 def test_get_actions(env):
-    assert env.get_actions() == action_list
+    env.reset()
+    assert [a.rsplit(",", 1)[0] for a in env.get_actions()] == \
+           [a.rsplit(",", 1)[0] for a in action_list]
+
+
+def test_get_actions_needs_a_board_in_push_mode(push_env):
+    """Which pushes exist is a property of the board, not a fixed list."""
+    with pytest.raises(ValueError, match="not initialized"):
+        push_env.get_actions()
+    push_env.reset()
+    assert all(isinstance(action, PuzznicGBPush) for action in push_env.get_actions())
 
 
 def test_a_won_stage_expands_to_nothing(env):
@@ -398,6 +420,167 @@ def test_search_solves_the_synthetic_stage(env):
             frontier.append((successor, actions + [action]))
     assert plan is not None, "the stage is solvable in four moves"
     assert env.validate(plan)
+
+
+# ------------------------------------------------------------------- calibration
+# How long a button must be held is bounded above by the cursor's auto-repeat delay, which
+# is not in the memory map and differs between cartridges. It is measured, not guessed. The
+# synthetic cartridge repeats after 16 frames so that there is a real bound to find.
+
+def test_calibration_measures_the_hold_window(env):
+    state, _ = env.reset()
+    window = measure_hold_window(env.pyboy, state)
+    assert window == (1, 16), "the synthetic cartridge repeats on the 17th frame"
+
+
+def test_calibration_settles_inside_that_window(env):
+    state, info = env.reset()
+    calibration = info["calibration"]
+    low, high = calibration.hold_window
+    assert low < calibration.press_ticks < high, \
+        "a hold on either edge is one frame of jitter away from missing or repeating"
+
+
+def test_a_hold_past_the_window_moves_two_cells(env):
+    """Which is exactly what calibration exists to avoid: the state a planner gets back
+    would not be the one its action described."""
+    state, info = env.reset()
+    inside = PuzznicGBAction(f"left,{info['calibration'].press_ticks}").apply(env.pyboy, state)
+    outside = PuzznicGBAction(f"left,{info['calibration'].hold_window[1] + 8}").apply(
+        env.pyboy, state)
+    assert state.cursor.col - inside.cursor.col == 1
+    assert state.cursor.col - outside.cursor.col > 1
+
+
+def test_calibration_finds_how_this_cartridge_pushes(env):
+    state, info = env.reset()
+    assert info["calibration"].push_scheme in PUSH_SCHEMES
+    assert info["calibration"].push_scheme == "modifier", "A plus a direction, on this ROM"
+    assert probe_push_scheme(env.pyboy, state, 8) == ("modifier", "a")
+
+
+def test_calibration_is_done_once_per_cartridge(env):
+    """It describes the game, not the stage, so a second reset must not pay for it again."""
+    _, first = env.reset()
+    calibration = env.calibration
+    _, second = env.reset()
+    assert env.calibration is calibration
+    assert first["calibration"] == second["calibration"]
+
+
+def test_button_actions_use_the_calibrated_hold(env):
+    _, info = env.reset()
+    ticks = info["calibration"].press_ticks
+    assert env.actions == button_actions(info["calibration"])
+    assert all(action.endswith(f",{ticks}") for action in env.actions)
+
+
+def test_calibration_can_be_turned_off(fake_rom):
+    game = PuzznicGBEnv(fake_rom, verify_rom=False, actions="button", calibrate=False)
+    game.fix_index(0)
+    try:
+        _, info = game.reset()
+        assert info["calibration"] is None
+        assert game.actions == action_list
+    finally:
+        game.close()
+
+
+# ------------------------------------------------------------------- push actions
+
+def test_available_pushes_needs_no_emulator(push_env):
+    """They are read off the grid, so the emulator never runs for a push that cannot
+    happen — which is most of them."""
+    state, _ = push_env.reset()
+    pushes = available_pushes(state, push_env.calibration)
+    assert pushes
+    for push in pushes:
+        assert state.grid[push.row][push.col] >= BLOCK_MIN, "pushing something that is not a block"
+        step = -1 if push.direction == "left" else 1
+        assert state.grid[push.row][push.col + step] == CELL_EMPTY, "pushing into a full cell"
+
+
+def test_a_blocked_push_is_never_offered():
+    """Only $00 permits movement: the check at 1:506E rejects every non-zero cell, so a
+    ledge obstructs exactly as a wall does."""
+    cells = [[CELL_OUTSIDE] * GRID_COLS for _ in range(GRID_ROWS)]
+    cells[5][4] = CELL_WALL           # wall to the left
+    cells[5][5] = 0x08                # the block
+    cells[5][6] = CELL_LEDGE          # ledge to the right
+    state = _state_from_cells(cells, cursor=(5, 5))
+    assert available_pushes(state) == []
+
+
+def test_push_cost_counts_the_walk_as_well_as_the_push(push_env):
+    """A push far from the cursor really does cost more button presses."""
+    state, _ = push_env.reset()
+    for push in available_pushes(state, push_env.calibration):
+        walk = abs(state.cursor.row - push.row) + abs(state.cursor.col - push.col)
+        assert push.cost() == walk + 1
+
+
+def test_push_rejects_a_vertical_direction():
+    with pytest.raises(ValueError, match="sideways"):
+        PuzznicGBPush(5, 3, "up")
+
+
+def test_pushing_walks_the_cursor_and_moves_the_block(push_env):
+    state, _ = push_env.reset()
+    push = next(p for p in available_pushes(state, push_env.calibration)
+                if (p.row, p.col) == (5, 3) and p.direction == "right")
+    after = push.apply(push_env.pyboy, state)
+    assert after.grid[5][3] == CELL_EMPTY
+    assert after.grid[5][4] >= BLOCK_MIN
+    assert after.cursor == (5, 4), "the cursor rides along with the block"
+    assert after.depth == state.depth + 1
+
+
+def test_walk_cursor_reports_how_far_it_went(push_env):
+    state, _ = push_env.reset()
+    presses = walk_cursor(push_env.pyboy, type(state.cursor)(row=5, col=3), 8)
+    assert presses == 2, "two cells from the starting cursor at (5, 5)"
+    assert (push_env.pyboy.memory[0xD013], push_env.pyboy.memory[0xD012]) == (5, 3)
+
+
+def test_every_push_successor_actually_changes_the_board(push_env):
+    """The point of the model: with primitive buttons under a tenth of expansions move a
+    block, and the rest is the cursor walking."""
+    state, _ = push_env.reset()
+    successors = push_env.successors(state)
+    assert successors
+    for action, child in successors:
+        assert child.grid != state.grid
+
+
+def test_push_mode_solves_the_stage_in_two_actions(push_env):
+    from collections import deque
+
+    root, _ = push_env.reset()
+    frontier, seen, plan = deque([(root, [])]), {root.literals}, None
+    while frontier and plan is None:
+        state, actions = frontier.popleft()
+        for action, child in push_env.successors(state):
+            if push_env.is_goal(child):
+                plan = actions + [action]
+                break
+            if child.literals in seen or push_env.is_terminal(child):
+                continue
+            seen.add(child.literals)
+            frontier.append((child, actions + [action]))
+    assert plan is not None and len(plan) == 2
+    assert push_env.validate(plan)
+
+
+def _state_from_cells(cells, cursor):
+    """A state built from a grid by hand, for the checks that need no emulator."""
+    class Fake:
+        pass
+
+    state = Fake()
+    state.grid = decode_grid(raw_grid(cells))
+    state.blocks = decode_blocks(raw_grid(cells))
+    state.cursor = type("C", (), {"row": cursor[0], "col": cursor[1]})()
+    return state
 
 
 # ------------------------------------------------------------------ the real thing

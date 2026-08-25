@@ -49,7 +49,15 @@ DIR = 0xC015
 ROW_COUNT = 0xC016
 COL_COUNT = 0xC017
 CLEARED = 0xC018
+HOLD = 0xC019                  # frames the current direction has been held
+TRIG = 0xC01A                  # NEW_PAD, plus auto-repeat re-fires
 MARKS = 0xC100                 # 240 bytes, indexed exactly like the grid
+
+# Holding a direction moves the cursor once, then again after REPEAT_DELAY frames, then
+# every REPEAT_RATE frames — the behaviour that puts an upper bound on how long an action
+# may hold a button before it moves the cursor twice.
+REPEAT_DELAY = 16
+REPEAT_RATE = 6
 
 ROWS, COLS = 12, 10
 CELL_BYTES = 2
@@ -69,6 +77,9 @@ SYMBOLS = {
     "RECORDS": RECORDS, "GRID": GRID, "MARKS": MARKS,
     "PAD": PAD, "PREV_PAD": PREV_PAD, "NEW_PAD": NEW_PAD, "TMP": TMP, "SLOT": SLOT,
     "DIR": DIR, "ROW_COUNT": ROW_COUNT, "COL_COUNT": COL_COUNT, "CLEARED": CLEARED,
+    "HOLD": HOLD, "TRIG": TRIG,
+    "REPEAT_DELAY": REPEAT_DELAY, "REPEAT_RATE": REPEAT_RATE,
+    "REPEAT_RELOAD": REPEAT_DELAY - REPEAT_RATE,
     "LCDC": 0x40, "LY": 0x44, "JOYP": 0x00,
 }
 
@@ -168,13 +179,13 @@ menu:
 main:
     call wait_frame
     call read_pad
-    ld a, (NEW_PAD)
+    ld a, (TRIG)
     and a
     jr z, main
     ld a, (PAD)
     bit 4, a                    ; A held turns a direction into a push
     jp z, move_cursor
-    ld a, (NEW_PAD)
+    ld a, (TRIG)
     bit 1, a
     jp nz, push_left
     bit 0, a
@@ -182,7 +193,7 @@ main:
     jr main
 
 move_cursor:
-    ld a, (NEW_PAD)
+    ld a, (TRIG)
     bit 0, a
     jr nz, .right
     bit 1, a
@@ -526,6 +537,33 @@ read_pad:
     ld a, (PAD)
     and b
     ld (NEW_PAD), a
+
+; Auto-repeat. A direction held unchanged re-fires REPEAT_DELAY frames in, then every
+; REPEAT_RATE frames after that, which is what stops an action from simply holding a
+; button for as long as it likes.
+    ld (TRIG), a                ; the rising edge always triggers
+    ld a, (PAD)
+    and $0F                     ; directions only; A and START do not repeat
+    jr z, .idle
+    ld b, a
+    ld a, (PREV_PAD)
+    and $0F
+    cp b
+    jr nz, .idle                ; a different set is held now, so start counting again
+    ld a, (HOLD)
+    inc a
+    ld (HOLD), a
+    cp REPEAT_DELAY
+    ret nz
+    ld a, REPEAT_RELOAD
+    ld (HOLD), a
+    ld a, (TRIG)
+    or b
+    ld (TRIG), a
+    ret
+.idle:
+    xor a
+    ld (HOLD), a
     ret
 """
 

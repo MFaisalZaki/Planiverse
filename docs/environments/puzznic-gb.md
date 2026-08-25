@@ -14,7 +14,7 @@ Every address this environment reads is catalogued in the
 verified against live RAM rather than read off a disassembly.
 
 - **Class:** `PuzznicGBEnv`
-- **Import:** `from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv, PuzznicGBAction`
+- **Import:** `from planiverse.problems.retro_games.puzznic_gb import PuzznicGBEnv, PuzznicGBPush`
 - **Source:** [`planiverse/problems/retro_games/puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py)
 - **Dependencies:** `pyboy` + a `Puzznic (J).gb` ROM you supply (`pillow` for screenshots)
 
@@ -57,8 +57,10 @@ print(state)              # the playfield, trimmed to its bounding box:
 print(state.blocks_remaining, state.cursor)
 for action, successor in env.successors(state):
     print(action, action.cost(), successor.blocks_remaining)
+# push_5_3_right 3 2      <- walk two cells, then push: three button presses
+# push_5_6_left 2 2
 
-trace = env.simulate([PuzznicGBAction("left,6"), PuzznicGBAction("a+right,6")])
+trace = env.simulate([PuzznicGBPush(5, 3, "right"), PuzznicGBPush(5, 4, "right")])
 print(env.is_goal(trace[-1]))
 ```
 
@@ -168,23 +170,118 @@ iterates all `$D018` slots and skips the dead ones.
 
 ## Actions
 
-`PuzznicGBAction` wraps a string of the form `"buttons,ticks"`, where buttons are `+`-joined and
-ticks is how many frames to hold them — the same spelling the
-[Super Mario Land](super-mario-land.md#actions) environment uses. The six actions in `action_list`:
+There are two action models. `push` is the default and is the one to plan with; `button` is
+the raw button presses underneath it.
+
+```python
+env = PuzznicGBEnv(rom)                      # push  — one action per legal push
+env = PuzznicGBEnv(rom, actions="button")    # button — one action per button press
+```
+
+### Why the default is not the buttons
+
+Measured on the synthetic cartridge's stages, expanding with the primitive button actions:
+
+| Stage | Branching factor | Successors that move a block |
+|---|---|---|
+| 2 blocks | 4.33 | **5.9%** |
+| 4 blocks | 4.06 | **3.3%** |
+| 7 blocks | 4.16 | **5.6%** |
+
+Over 90% of every expansion is the cursor walking. That is not a decision the planner is
+making — walking to a block is the *overhead* of making one — but blind search pays for it
+at every node, and it multiplies: a plan that pushes eight times across a 6×8 room is forty
+or fifty button presses deep, at branching 4.
+
+`PuzznicGBPush` collapses the walk into the push. Same stages, same breadth-first search,
+25-second budget:
+
+| Stage | Model | Branching | Productive | Result |
+|---|---|---|---|---|
+| 2 blocks | button | 4.33 | 5.9% | solved, 12 expansions, 1.8 s |
+| | **push** | 2.50 | **100%** | **solved, 2 expansions, 0.1 s** |
+| 4 blocks | button | 4.06 | 3.3% | **not solved** |
+| | **push** | 6.03 | **100%** | **solved in 12 s**, 4 pushes |
+| 7 blocks | button | 4.16 | 5.6% | not solved |
+| | push | 11.28 | 100% | not solved — this one needs a heuristic |
+
+Branching *rises* with the push model on a crowded board, because it is one action per legal
+push and a crowded board has more of them. That is the right trade: every one of them
+changes the position.
+
+### `push` — the planning model
+
+`PuzznicGBPush(row, col, direction)` walks the cursor onto the block at `(row, col)` and
+pushes it one cell left or right. `direction` is only ever `left` or `right`: Puzznic slides
+blocks sideways, it does not lift them.
+
+`successors` offers one per **legal** push, worked out from the grid without running the
+emulator at all — a block only moves into an empty cell, since the movement check at
+`1:506E` rejects every non-zero cell value, so ledges and walls obstruct exactly as each
+other. Illegal pushes never cost a frame of emulation.
+
+The walk is adaptive, not a precomputed button sequence: it presses towards the target,
+re-reads `$D012`/`$D013`, and stops when it arrives or when a press makes no progress. A
+cartridge whose cursor cannot cross some cell therefore produces a no-op, which `successors`
+filters out, rather than a plan that quietly does something else.
+
+**Cost** is the number of button presses: the walk plus the push. A planner minimising it
+prefers the block nearest the cursor, which is what a person would do.
+
+### `button` — the raw presses
+
+`PuzznicGBAction` wraps a string of the form `"buttons,ticks"`, where buttons are `+`-joined
+and ticks is how many frames to hold them — the same spelling the
+[Super Mario Land](super-mario-land.md#actions) environment uses.
 
 | Action | Effect |
 |---|---|
-| `left,6` / `right,6` / `up,6` / `down,6` | Move the cursor one cell |
-| `a+left,6` / `a+right,6` | Push the block under the cursor one cell sideways |
+| `left` / `right` / `up` / `down` | Move the cursor one cell |
+| `a+left` / `a+right` | Push the block under the cursor one cell sideways |
 
-There is no `a+up`/`a+down`: Puzznic slides blocks sideways, it does not lift them.
+**Cost** is `1` for every action. `a` costs `0` in `action_cost_map` because it is a
+modifier that turns a direction into a push, not a move of its own.
 
-Six frames is long enough for a press to register and short enough not to trip the cursor's
-auto-repeat. If your dump repeats faster than that, lower `PRESS_TICKS` and rebuild `action_list`.
+### Ticks are measured, not chosen
 
-**Cost** (`action.cost()`) is `1` for every action. `a` costs `0` in `action_cost_map` because it is
-a modifier that turns a direction into a push, not a move of its own — one input is one unit of plan,
-so minimising cost minimises plan length, which is the natural metric for a puzzle.
+How long to hold a button has two bounds, and neither is in the memory map:
+
+- **Too short** and the press is never sampled.
+- **Too long** and the cursor's auto-repeat fires, so one action moves the cursor two cells
+  and the state the planner gets back is not the one its action described.
+
+So `reset()` measures them off the cartridge instead of trusting a constant:
+
+```python
+state, info = env.reset()
+info["calibration"]
+# Calibration(press_ticks=8, hold_window=(1, 16), push_scheme='modifier', push_prefix='a')
+```
+
+`measure_hold_window` presses a direction for 1, 2, 3… frames and watches `$D012`/`$D013`,
+returning the closed range of holds that move the cursor **exactly one cell** — the lower
+end is where presses start registering, the upper end is one frame short of auto-repeat.
+`press_ticks` is the middle of that range, far enough from either edge to survive a frame of
+jitter in when the game samples input. The spare frames cost about 0.07 ms each, so there is
+nothing to win by shaving them.
+
+`probe_push_scheme` then answers a question the memory map does not: **how this cartridge
+moves a block.** It walks the cursor onto a real block with somewhere to go and tries each
+candidate:
+
+| Scheme | Inputs |
+|---|---|
+| `modifier` | hold A and press a direction — one input |
+| `grab` | press A to pick the block up, then a direction — two inputs |
+| `direct` | a direction alone moves the block under the cursor |
+
+whichever actually moves the block is the one both action models then use. Until this
+existed, `a+left` was an assumption; now it is a measurement, and a cartridge that works
+some other way is handled rather than silently mis-driven.
+
+Calibration describes the game, not the stage, so it runs once per environment and is reused
+across resets. It costs about 0.15 s. `PuzznicGBEnv(rom, calibrate=False)` skips it and
+falls back to `PRESS_TICKS` and the `modifier` scheme.
 
 ### Applying an action, and settling
 
@@ -277,11 +374,15 @@ env.validate(plan)
 `is_terminal` is worth checking during expansion: stranding a colour is a genuine dead end, and
 pruning those branches is most of what makes this a planning problem rather than a reflex one.
 
-Do not expect that heuristic to carry a real stage. The branching factor is six and a plan spends
-most of its length just walking the cursor to the block it wants, so a stage with a handful of blocks
-in an open room already runs to a search space that plain best-first will not close. The pieces worth
-attacking are the cursor-walking (macro-actions that move the cursor straight to a block) and a
-heuristic that counts *pushes* rather than Manhattan distance.
+The cursor-walking half of that problem is what the `push` action model fixes — see
+[Actions](#actions) for the measurements. What is left is the heuristic: Manhattan distance between
+same-typed blocks is a weak proxy, because it ignores whether the two can actually be brought
+together, and a seven-block stage still defeats plain best-first search. A heuristic that counts
+*pushes* rather than cells, and that recognises a block wedged where no push can reach the pair it
+needs, is the piece still worth writing.
+
+Note that `is_terminal` already prunes one whole class of dead end for free: a stage with a stranded
+colour cannot be won, and `successors` returns nothing from such a state.
 
 ## Known quirks and gaps
 
@@ -318,7 +419,9 @@ at `$DF00`, records at `$DD00`, counters at `$D018`/`$D019`, a cursor at `$D012`
 
 It is **not** a Puzznic clone: no gravity, no timer, no score, no cascades. A push that leaves two
 same-typed blocks adjacent clears both after a three-frame `$01` transient, and that is the entire
-rule set. What it exercises is the interface between the environment and a Game Boy — booting,
+rule set. It does model **cursor auto-repeat** — a direction held for more than 16 frames moves the
+cursor again, and every 6 frames after that — because otherwise any hold length would look correct
+and there would be nothing for `measure_hold_window` to find. What it exercises is the interface between the environment and a Game Boy — booting,
 hooking the loader to force a stage, decoding the grid, waiting for a move to settle, spotting a
 cleared stage — which is the part that otherwise could only be checked by hand.
 
@@ -336,7 +439,7 @@ PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" poetry run pytest tests/test_pu
 
 | Path | What |
 |---|---|
-| [`puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBAction`, and the RAM decoders |
+| [`puzznic_gb.py`](../../planiverse/problems/retro_games/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBPush`, `PuzznicGBAction`, the calibration, and the RAM decoders |
 | [`tests/test_puzznic_gb.py`](../../tests/test_puzznic_gb.py) | Tests, against the synthetic cartridge and the real one |
 | [`tests/fake_puzznic_rom.py`](../../tests/fake_puzznic_rom.py) | The synthetic cartridge |
 | [`tests/sm83.py`](../../tests/sm83.py) | The assembler that builds it |
