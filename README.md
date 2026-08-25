@@ -289,7 +289,9 @@ otherwise.
 
 | Family | Where | What it needs from an environment |
 |---|---|---|
-| Width-based — IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps | 
+| Width-based — IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
+| MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
+| Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else** — no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
 
 ```python
@@ -306,6 +308,13 @@ including what has to change when the task is a simulator: there is no goal conj
 count, so SIW and BFWS take a `progress` callback instead; expansions are expensive, so every
 search takes a budget and reports what it spent; and dead ends are real, which turns out to
 be worth a solved instance to SIW.
+
+MCTS and Future State Maximization are in
+[docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
+given no goal and no heuristic at all and picks whichever action leaves the most futures
+open, which makes `option_count` a goal-free measure of how close a state is to being stuck
+— useful as a heuristic for the other planners precisely when heuristics are hardest to
+write.
 
 ## Writing a planner
 
