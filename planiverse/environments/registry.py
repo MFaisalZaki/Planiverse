@@ -81,6 +81,16 @@ REGISTRY = (
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
     EnvironmentSpec(
+        name="flipull",
+        factory="planiverse.environments.flipull:FlipullGame",
+        summary="Flipull-like throwing puzzle, re-implemented in pure Python",
+        instances="10 stages",
+        deterministic=True,
+        state_identity="value",
+        docs="docs/environments/flipull.md",
+        tags=frozenset({"game", "puzzle", "dependency-free"}),
+    ),
+    EnvironmentSpec(
         name="flipull_gb",
         factory="planiverse.environments.flipull_gb:FlipullGBEnv",
         summary="Flipull (Taito's Plotting) on the Game Boy, through PyBoy",

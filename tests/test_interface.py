@@ -30,6 +30,14 @@ def puzznic_gb():
     return env
 
 
+def flipull():
+    from planiverse.environments.flipull import FlipullGame
+
+    env = FlipullGame()
+    env.fix_index(0)
+    return env
+
+
 def flipull_gb():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from fake_flipull_rom import synthetic_rom
@@ -110,6 +118,7 @@ def epidemic():
 ENVIRONMENTS = {
     "puzznic": puzznic,
     "puzznic_gb": puzznic_gb,
+    "flipull": flipull,
     "flipull_gb": flipull_gb,
     "water_network": water_network,
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
@@ -153,7 +162,7 @@ def test_is_a_recognised_environment_type(factory):
 def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
-    assert {"puzznic", "puzznic_gb", "flipull_gb", "super_mario_land", "epidemic",
+    assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb", "super_mario_land", "epidemic",
             "network_attack", "manufacturing", "urban_planning", "water_network",
             "power_grid", "crop_management"} == registered
 
