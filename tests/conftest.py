@@ -1,8 +1,8 @@
 """Shared fixtures and helpers for the Planiverse test suite.
 
 Environments differ in what they need to run: Puzznic needs nothing, the epidemic
-environment needs numba/sympy, NASim needs the NetworkAttackSimulator fork, and Super
-Mario Land needs a ROM the user supplies. Tests for an environment whose requirements
+environment needs numba/sympy, NASim needs the NetworkAttackSimulator fork, and the two
+Game Boy environments need a ROM the user supplies. Tests for an environment whose requirements
 are missing skip rather than fail, so the suite is runnable from a partial install.
 """
 import os
@@ -22,6 +22,19 @@ def sml_rom_path():
     PLANIVERSE_SML_ROM environment variable.
     """
     rom = os.environ.get("PLANIVERSE_SML_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def puzznic_rom_path():
+    """Path to a Puzznic (J) Game Boy ROM, or None.
+
+    Same deal as the Super Mario Land ROM: copyrighted, so it is opt-in via the
+    PLANIVERSE_PUZZNIC_ROM environment variable. The tests that do not need it run
+    against a synthetic cartridge built by `fake_puzznic_rom.py`.
+    """
+    rom = os.environ.get("PLANIVERSE_PUZZNIC_ROM")
     if rom and os.path.isfile(rom):
         return rom
     return None

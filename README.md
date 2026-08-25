@@ -23,6 +23,7 @@ Every environment answers the same four questions:
 | Manufacturing | `MfgEnv` | 7 demand/capacity instances | [docs](docs/environments/manufacturing.md) |
 | Urban planning | `UrbanPlanningEnv` | 2 cities (Kendall Square, St Andrews) | [docs](docs/environments/urban-planning.md) |
 | Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
+| Puzznic (Game Boy) | `PuzznicGBEnv` | the cartridge's stages (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
 | Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
@@ -52,8 +53,9 @@ even if you only want Puzznic. Puzznic needs nothing beyond the standard library
 environment needs only numpy. If you want a light install, install those selectively rather than
 running `poetry install`. Splitting these into optional groups is on the [roadmap](#status).
 
-Super Mario Land additionally needs a `SuperMarioLand.gb` ROM, which is **not** and cannot be
-distributed with this repo. See its [docs](docs/environments/super-mario-land.md).
+The two Game Boy environments additionally need a ROM each — `SuperMarioLand.gb` and
+`Puzznic (J).gb` — which are **not** and cannot be distributed with this repo. See their docs:
+[Super Mario Land](docs/environments/super-mario-land.md), [Puzznic (Game Boy)](docs/environments/puzznic-gb.md).
 
 ## Tests
 
@@ -63,12 +65,17 @@ poetry run pytest -m "not slow"    # skip the slow epidemic/search tests
 ```
 
 Tests for an environment whose dependencies are missing skip rather than fail, so the suite is
-runnable from a partial install. The Super Mario Land emulator tests are opt-in — point
-`PLANIVERSE_SML_ROM` at a ROM to run them:
+runnable from a partial install. The tests that need a copyrighted ROM are opt-in — point the
+matching environment variable at one to run them:
 
 ```bash
 PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb poetry run pytest tests/test_super_mario.py
+PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" poetry run pytest tests/test_puzznic_gb.py
 ```
+
+The Puzznic Game Boy environment is still covered without one: [`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py)
+assembles a synthetic cartridge that reproduces the game's memory layout, so booting, stage
+selection, grid decoding and settling are all tested against a real emulator.
 
 [`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
 environment; the other modules cover per-environment behaviour.
@@ -133,6 +140,7 @@ Not every environment implements every method. What is actually there today:
 | | `reset` | `fix_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `step` | `validate` | `get_actions` |
 |---|---|---|---|---|---|---|---|---|---|
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
@@ -141,8 +149,8 @@ Not every environment implements every method. What is actually there today:
 | `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
-detecting them is left to the planner. Puzznic and Super Mario Land are the two that really compute
-it.
+detecting them is left to the planner. The two Puzznics and Super Mario Land are the ones that really
+compute it.
 
 ### States and `literals`
 
@@ -265,6 +273,7 @@ planiverse/
 │   └── retro_games/
 │       ├── base.py                     # RetroGame marker base
 │       ├── puzznic.py                  # PuzznicGame
+│       ├── puzznic_gb.py               # PuzznicGBEnv (PyBoy)
 │       └── super_mario_bros_gb.py      # SuperMarioEnv (PyBoy)
 ├── planners/
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
@@ -275,6 +284,9 @@ planiverse/
         └── pddlgymenv.py               # PDDLGym adapter
 dev/                                    # scratch scripts — not part of the library
 docs/environments/                      # per-environment documentation
+tests/
+├── sm83.py                             # minimal SM83 assembler, for the test cartridge
+└── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
 ```
 
 `dev/` is a scratch area and is **not** an entry point. `dev/dev.py` is stale: it imports names that
