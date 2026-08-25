@@ -285,6 +285,19 @@ through the facade will raise `AttributeError`/`NotImplementedError` rather than
 it when you need PDDL and simulator environments behind one interface; use the environment directly
 otherwise.
 
+## Rendering a trace
+
+```python
+from planiverse.rendering import render_trace
+
+trace = env.simulate(plan)
+render_trace(trace, "plan.png", actions=plan, env=env)
+render_trace(trace, "plan.pdf", actions=plan, env=env, per_page=6)
+```
+
+Text states are typeset; Game Boy states become real console screenshots when you pass
+`gamerom=`. Goals and dead ends are marked. See [docs/rendering.md](docs/rendering.md).
+
 ## Planners
 
 | Family | Where | What it needs from an environment |
