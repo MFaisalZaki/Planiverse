@@ -104,10 +104,16 @@ class GBState:
         return self.depth < other.depth
 
     def save(self, gamerom, file, scale=4):
-        """Write a PNG of this state by booting a throwaway emulator to it. Needs Pillow."""
+        """Write a PNG of this state by booting a throwaway emulator to it. Needs Pillow.
+
+        The `render=True` on the tick is load-bearing and was missing: `load_state` defaults
+        to ticking *without* rendering, which is right everywhere else — search never looks
+        at the screen and drawing it is wasted work — but here it means the frame buffer is
+        never filled and every screenshot came out a blank white rectangle.
+        """
         dummy = create_pyboy(gamerom, False)
         try:
-            load_state(dummy, self.gb_state)
+            load_state(dummy, self.gb_state, render=True)
             image = dummy.screen.image
             if image is None:
                 raise RuntimeError("PyBoy could not render the screen — is Pillow installed?")

@@ -233,11 +233,14 @@ class SuperMarioState(GBState):
         """
         return 1 if self.touching_enemy else 0
 
-    def save(self, gamerom, file):
-        dummy_pyboy = create_pyboy(gamerom, True)
-        load_state(dummy_pyboy, self.gb_state, True)
-        dummy_pyboy.screen.image.resize((320*image_resize_factor,288*image_resize_factor)).save(file)
-        dummy_pyboy.stop()
+    def save(self, gamerom, file, scale=2 * image_resize_factor):
+        """Inherited behaviour, with this game's larger default scale.
+
+        It used to open a real SDL2 window to take the screenshot, which needs a display and
+        so failed on any headless machine — including every CI runner. The shared
+        implementation uses the null window, which renders the frame just as well.
+        """
+        return super().save(gamerom, file, scale=scale)
 
 class SuperMarioAction(GBAction):
     cost_map = action_cost_map
