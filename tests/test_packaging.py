@@ -31,6 +31,7 @@ pytestmark = pytest.mark.skipif(
 ENTRY_POINTS = [
     "planiverse.environments.puzznic",
     "planiverse.environments.puzznic_gb",
+    "planiverse.environments.flipull",
     "planiverse.environments.flipull_gb",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",

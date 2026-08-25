@@ -27,6 +27,7 @@ Every environment answers the same four questions:
 | Urban planning | `urban_planning` | 2 cities (Kendall Square, St Andrews) | policy | [docs](docs/environments/urban-planning.md) |
 | Puzznic | `puzznic` | 50 levels | game | [docs](docs/environments/puzznic.md) |
 | Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
+| Flipull | `flipull` | 10 stages | game | [docs](docs/environments/flipull.md) |
 | Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |
 | Super Mario Land | `super_mario_land` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land.md) |
 
@@ -195,6 +196,7 @@ Not every environment implements every method. What is actually there today:
 |---|---|---|---|---|---|---|---|---|---|
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -207,8 +209,10 @@ Not every environment implements every method. What is actually there today:
 | `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
-detecting them is left to the planner. The two Puzznics and Super Mario Land are the ones that really
-compute a positional dead end; `FlipullGBEnv` computes one, but only the clock running out.
+detecting them is left to the planner. The two Puzznics, `FlipullGame` and Super Mario Land are the
+ones that really compute a positional dead end — and `FlipullGame`'s is *exact*, because the rules
+are known in Python and it can ask outright whether any throw would connect. `FlipullGBEnv` computes
+one too, but only the clock running out: the emulator does not know what a throw hits.
 The three simulator-backed environments compute real ones too: a water network whose service has
 collapsed, a blacked-out grid, and a growing season whose water budget is spent.
 
@@ -426,6 +430,7 @@ planiverse/
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── puzznic.py                      # PuzznicGame
 │   ├── puzznic_gb.py                   # PuzznicGBEnv (PyBoy)
+│   ├── flipull.py                      # FlipullGame
 │   ├── flipull_gb.py                   # FlipullGBEnv (PyBoy)
 │   ├── super_mario_land.py             # SuperMarioEnv (PyBoy)
 │   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
@@ -500,8 +505,13 @@ is referenced as a planned addition but is not yet in the tree.
 - [x] Run `FlipullGBEnv` against a real `Flipull (USA).gb`, and correct what the memory map had
       wrong about the throw
 - [x] Flipull stage selection: all 32, via the loader's own stage digits
+- [x] A pure-Python Flipull twin (`FlipullGame`), with generated-and-verified stages and exact
+      dead-end detection
 - [ ] Work out what a Flipull throw actually hits — every row connects, so it is not simply the
-      first block in the player's row
+      first block in the player's row. Until it is settled, `FlipullGame` is a Flipull-*like*
+      environment with a stated rule set rather than a clone of the cartridge
+- [ ] A pure-Python Super Mario Land. Not attempted: a physics platformer is a different
+      proposition from a turn-based puzzle, and a half-modelled one would be worse than none
 - [ ] Flipull's second stage table at `$3A4E`, reached through the RNG — a bonus course, unexplored
 
 ## License
