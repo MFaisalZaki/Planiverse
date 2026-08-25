@@ -25,7 +25,7 @@ Every environment answers the same four questions:
 | Puzznic | `PuzznicGame` | 50 levels | [docs](docs/environments/puzznic.md) |
 | Puzznic (Game Boy) | `PuzznicGBEnv` | 128 rounds (needs a ROM you supply) | [docs](docs/environments/puzznic-gb.md) |
 | Super Mario Land | `SuperMarioEnv` | 12 levels (needs a ROM you supply) | [docs](docs/environments/super-mario-land.md) |
-| Flipull (Game Boy) | `FlipullGBEnv` | 1 stage (needs a ROM you supply) | [docs](docs/environments/flipull-gb.md) |
+| Flipull (Game Boy) | `FlipullGBEnv` | 32 stages (needs a ROM you supply) | [docs](docs/environments/flipull-gb.md) |
 
 PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
 see [The Simulator facade](#the-simulator-facade).
@@ -173,7 +173,7 @@ Not every environment implements every method. What is actually there today:
 |---|---|---|---|---|---|---|---|---|---|
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `FlipullGBEnv` | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
@@ -184,10 +184,6 @@ Not every environment implements every method. What is actually there today:
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
 detecting them is left to the planner. The two Puzznics and Super Mario Land are the ones that really
 compute a positional dead end; `FlipullGBEnv` computes one, but only the clock running out.
-
-⚠️ `FlipullGBEnv.fix_index` accepts only `0`: no verified way to select a stage has been found, and
-it asserts rather than quietly loading the wrong one. See
-[its docs](docs/environments/flipull-gb.md#stages).
 
 ### States and `literals`
 
@@ -369,9 +365,10 @@ is referenced as a planned addition but is not yet in the tree.
 - [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
 - [x] Run `FlipullGBEnv` against a real `Flipull (USA).gb`, and correct what the memory map had
       wrong about the throw
-- [ ] Find a stage-selection route for Flipull, so `fix_index` accepts more than `0`
+- [x] Flipull stage selection: all 32, via the loader's own stage digits
 - [ ] Work out what a Flipull throw actually hits — every row connects, so it is not simply the
       first block in the player's row
+- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG — a bonus course, unexplored
 
 ## License
 

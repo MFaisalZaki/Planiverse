@@ -11,8 +11,10 @@ block types, and the on-screen counters. This is the source for every address th
 > that `$FFD4` holds the *previously* held block, and that `$FFDF` is a free-running counter
 > rather than the in-flight X. The field geometry, the cell encoding, the digit-per-byte
 > counters and the column collapse in sections 2 and 3 all hold exactly as written.
-> [What the cartridge corrected](flipull-gb.md#what-the-cartridge-corrected) has the details
-> and what each byte really does.
+> `$FFC6` is not wrong either, only incomplete: the stage number is two decimal digits and
+> `$FFC7` holds the tens, which is what makes all 32 stages selectable.
+> [What the cartridge corrected](flipull-gb.md#what-the-cartridge-corrected) and
+> [Stages](flipull-gb.md#stages) have the details and what each byte really does.
 
 | | |
 |---|---|
@@ -130,7 +132,7 @@ as `05` and `02` in adjacent bytes.
 | `$FFCE` | Timer — minutes | Good (`02`) |
 | `$FFCD` | Sub-second tick counter | Moderate (`$28`, free-running) |
 | `$FFCF` | Clear target (`CLEAR 09`) | Moderate — never changed |
-| `$FFC6` | Stage number | **Unverified** (`01` in Stage 1) |
+| `$FFC6` | Stage number | **Unverified** (`01` in Stage 1) — **resolved:** the ones digit; `$FFC7` is the tens |
 
 `$FFC0`/`$FFC1` held `05`,`02` at stage start and **stayed** at `05`,`02` after
 the count dropped to 24 — which is why they read as the stage's starting total
@@ -218,7 +220,9 @@ the way Puzznic's `$29CE` calculator was.
   chains, which are the core of Flipull's scoring, were never exercised.
 - The **score** was never located. It advanced 0 → 100, but no candidate byte
   was isolated.
-- `$FFC6` as stage number — matched `01` but never seen changing.
+- `$FFC6` as stage number — matched `01` but never seen changing. **Since settled:** it is
+  the ones digit of a two-digit stage number whose tens live in `$FFC7`, and the loader at
+  `0:2D55` indexes a 32-entry table at `$3A0E` with `10*tens + ones - 1`.
 - `$CA00–$CA23` as the upcoming-block queue is a guess from its contents.
 - Field width beyond column 5 is inferred from the ceiling/floor rows showing
   `$80` across 16 columns; no stage was observed using the full width.

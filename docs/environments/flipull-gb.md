@@ -110,22 +110,105 @@ for the stage to start accepting input, calibrates, and snapshots.
 
 ## Stages
 
-**`fix_index` accepts only `0`.** No way to select a stage has been established, and rather than
-quietly starting stage 1 and calling it stage 9, anything else asserts:
+`Flipull (USA)` has **32 stages**, and `fix_index(i)` selects one of them zero-based —
+`fix_index(7)` is stage 8.
 
 ```python
-env.fix_index(3)
-# AssertionError: Invalid index: no verified way to select a stage exists yet.
+env.fix_index(7)
+state, info = env.reset()
+info["stage"], state.blocks_remaining, state.clear_target
+# (8, 36, 7)
 ```
 
-`$FFC6` looks like the stage number — it read `01` during stage 1 — but the memory map grades it
-**unverified**, having never seen it change, and no password or level-select route has been looked
-for. Puzznic's `fix_index` works because its password table was found in ROM at `$47FA` and typing a
-password was watched putting `$D003` on the right round; nothing equivalent exists here yet. So index
-0 is whatever stage the cartridge boots into, and `info["stage"]` reports what `$FFC6` says it is.
+or from the command line:
 
-This is the single biggest gap in the environment. Until it is closed, Flipull is one problem
-instance rather than a benchmark set.
+```bash
+python -m planiverse.problems.retro_games.flipull_gb "Flipull (USA).gb" --stage 7
+```
+
+### The stage number is two decimal digits
+
+The memory map offers `$FFC6` as the stage number and grades it **unverified** — "read `01` in
+stage 1, never seen change". It is half of one. Disassembling the loader shows the game keeps the
+number as two decimal digits: `$FFC6` is the ones and **`$FFC7` the tens**, which the map had not
+identified at all. `0:1673` is the advance:
+
+```
+1673  ld hl,$FFC6
+1676  inc (hl)          ; stage++
+1677  ld a,(hl)
+1678  cp $0A            ; ...and at ten,
+167A  jr nz,$1681
+167C  ld a,$00
+167E  ld (hl+),a        ; zero the ones, step to $FFC7
+167F  jr $1676          ; and carry into the tens
+```
+
+So stage *N* is `$FFC7 = N // 10`, `$FFC6 = N % 10`, and both feed the HUD directly — which is why
+the on-screen `STAGE` reads `23` and not `3`.
+
+### The stage list comes out of the cartridge
+
+`0:2D55` is the loader. It turns the two digits into `10*tens + ones - 1`, indexes a table of
+pointers at **`$3A0E`**, and copies the three bytes each entry points at into the HUD counters:
+
+```
+2D64  ldh a,($FFC6)     ; ones
+2D66  add a,b           ;   + 10 * tens
+2D67  sub $01           ; zero-based
+2D69  rlca              ; two bytes per pointer
+2D6A  ld hl,$3A0E       ; the table
+...
+2D7B  ldh ($FFCA),a     ; blocks, tens digit
+2D80  ldh ($FFC9),a     ; blocks, ones digit
+2D85  ldh ($FFCF),a     ; the CLEAR target
+```
+
+`read_stage_table(romfile)` walks that table rather than hard-coding it, the same way the Puzznic
+environment reads its password table out of ROM instead of transcribing a guide. Each descriptor is
+`[clear target, blocks ones, blocks tens]`, and the parse stops when an entry stops looking like a
+stage — which it must, because a second, shorter table follows immediately at `$3A4E`.
+
+```python
+env.stages[7]
+# Stage(number=8, clear_target=7, blocks=36)
+```
+
+That table is also what makes the selection **self-checking**. Every stage has a block total of 25,
+30 or 36 and a target between 5 and 9, so `reset` compares what came up against what the ROM said
+stage *N* holds, and raises if they disagree:
+
+```
+RuntimeError: selecting stage 8 did not take: the cartridge came up on stage 1 with 25
+blocks and a target of 9, where the ROM's own table at $3A0E says stage 8 has 36 blocks
+and a target of 7.
+```
+
+This matters because a wrong stage is not obviously wrong — it is a perfectly plausible board.
+
+### How the selection is made
+
+`reset` registers a PyBoy hook on the loader at `0:2D55` and writes the two digits as execution
+arrives there, before the first instruction reads them. The hook is then **disarmed as soon as the
+stage is up**, so the cartridge behaves normally from that point: a cleared stage advances to the
+next one, and a lost life reloads this one. Left armed, it would rewrite the number every time the
+loader ran and the game could never leave the chosen stage.
+
+This is not the same as [Puzznic's loader poke](puzznic-gb.md#why-not-just-poke-the-loader), which
+is kept there only as a fallback. That one swaps a layout in underneath a game that still believes
+it is on round 1, so everything the cartridge derives from the round is then wrong. Here the two
+bytes written **are** the game's own stage number, they are written before anything reads them, and
+all eleven places that read them agree afterwards — including the field builder and the HUD. The
+`STAGE` display really does say 8.
+
+All 32 stages were selected and checked this way against the cartridge, and all 32 loaded with the
+block total and CLEAR target the ROM's table predicts. It takes about 4 seconds for the set.
+
+### The bounds are the table's
+
+`fix_index` refuses anything outside `0`–`31`, because past the end of the table the loader reads
+whatever follows it in ROM and silently builds some other stage — the second table at `$3A4E`
+begins with a pointer back to stage 1's descriptor, so stage 33 would quietly *be* stage 1.
 
 ## State representation
 
@@ -143,7 +226,7 @@ from an identical machine.
 | `blocks_initial` | `$FFC1`×10 + `$FFC0` — what the stage started with |
 | `clear_target` | `$FFCF` — the `CLEAR` number |
 | `timer_seconds` | `$FFCE`×60 + `$FFCC`×10 + `$FFCB` |
-| `stage` | `$FFC6` |
+| `stage` | `$FFC7`×10 + `$FFC6` — the stage number is two decimal digits |
 | `held_block` | the hand sprite's tile, as a 1–4 type — **not** `$FFD4` |
 | `last_thrown` | `$FFD4`, which is the block *previously* in hand |
 | `throws` | `$FFD2`/`$FFD3`, a count of completed throws |
@@ -466,7 +549,7 @@ environment puts on each one. The map's own grading:
 
 | Verified | Good | Moderate | Unverified |
 |---|---|---|---|
-| Field base, stride, 14 rows, left wall | Blocks tens digit | Initial block count | Stage number `$FFC6` |
+| Field base, stride, 14 rows, left wall | Blocks tens digit | Initial block count | Stage number `$FFC6` — since **resolved**, see [Stages](#stages) |
 | Cell encoding (`$80`/`$83`–`$86`/`$87`) | Timer tens and minutes | Clear target `$FFCF` | Upcoming-block queue at `$CA00` |
 | Field count matching `BLOCK` at 25 and 24 | | Held block `$FFD4`, throw flags | |
 | Per-column collapse on destruction | | In-flight X `$FFDF` | |
@@ -476,10 +559,8 @@ What the map got right, it got very right: the field geometry, the cell encoding
 counters and the column collapse all hold exactly as written. Everything under **The throw** did not
 — see the next section.
 
-Two consequences of the map's grading still run through the code:
+One consequence of the map's grading still runs through the code:
 
-- **`fix_index` refuses everything but 0**, because the stage number is the map's least-supported
-  claim and a silently wrong stage is worse than a loud refusal.
 - **`is_goal` leans on `$FFCF`**, which is graded moderate: it read `09` and never changed, which is
   consistent with a clear target but was never watched being *met*. The environment cross-checks what
   it can — `blocks_initial > 0` guards against calling an unloaded stage cleared — but the actual
@@ -502,7 +583,8 @@ Driving this code through PyBoy against the same dump turned up four:
 | `$FFD2`/`$FFD3` — throw state flags, both `00`→`01` on release | A **count of completed throws**: `0,0 → 1,1 → 2,2 → 3,3`. It stays `0` for the entire flight and rises only when the block lands, so it is the opposite of the in-flight marker it was taken for — and it does not move at all for a throw that changes nothing. The map saw the first increment and read it as a flag. |
 | `$FFD4` — held / in-flight block type | The block **previously** in hand — the one just thrown. It lags the hand by one throw and reads `$00` until the first throw of a stage. |
 | `$FFDF` — in-flight block X, falling steadily as the block travels | A free-running counter. It falls by 17 a frame, wrapping through zero, whether or not anything is in flight. The map sampled it during a throw and read the fall as travel. |
-| `TIME 2:59` at stage start | The clock starts at `3:00`; the map read it a second in. |
+| `TIME 2:59` at stage start | The clock starts at `3:00`; the map read it a second in. The loader writes it: `$FFCE = 3`, seconds zeroed. |
+| `$FFC6` — stage number, unverified | Right, and only half of it. The number is two decimal digits, `$FFC7` tens and `$FFC6` ones, and once you have both the loader at `0:2D55` gives you all 32 stages. See [Stages](#stages). |
 
 The first of those was not a documentation nit. `settle` used it to decide a throw was still in the
 air, so it believed every throw had landed the moment it was pressed, and — because the field does
@@ -521,10 +603,12 @@ written to the map. It now reproduces the corrected behaviour instead — see
 
 ## Known quirks and gaps
 
-- **One stage.** See [Stages](#stages). This is the gap to close first — until it is closed, Flipull
-  is one problem instance rather than a benchmark set.
 - **What a throw hits is not modelled.** See [Actions](#actions). A planner gets throw outcomes by
-  expanding, never by predicting, so it cannot prune a throw without spending a state on it.
+  expanding, never by predicting, so it cannot prune a throw without spending a state on it. This is
+  the gap to close next.
+- **Only the 32 main stages.** A second, shorter table at `$3A4E` is picked from by a routine that
+  consults the RNG at `$FFAF` — a bonus or alternate course, unexplored. `fix_index` reaches the
+  main table only.
 - **No score.** Not located in RAM. `step` returns `blocks_initial - blocks_remaining`.
 - **No dead-end detection.** A field that can no longer reach its target is not terminal until the
   clock runs out — and since the throw is not modelled, there is no cheap way to recognise one. It

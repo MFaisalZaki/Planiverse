@@ -75,7 +75,38 @@ TIMER_SECONDS_TENS_ADDR = 0xFFCC  # good
 TIMER_MINUTES_ADDR = 0xFFCE      # good
 SUBSECOND_ADDR = 0xFFCD          # moderate: free-running tick
 CLEAR_TARGET_ADDR = 0xFFCF       # moderate: the CLEAR number; never seen change
-STAGE_ADDR = 0xFFC6              # unverified: read 01 in stage 1, never seen change
+
+# ------------------------------------------------------------------------ the stage
+# The map graded `$FFC6` unverified — "read 01 in stage 1, never seen change" — and it is
+# half the answer. Disassembling the loader shows the stage number is kept as two decimal
+# digits, and both are read straight into the HUD:
+STAGE_ONES_ADDR = 0xFFC6         # verified: the on-screen STAGE number tracks these two
+STAGE_TENS_ADDR = 0xFFC7         # across every stage this environment can select
+STAGE_ADDR = STAGE_ONES_ADDR     # kept for the map's own name
+
+def stage_digits(stage):
+    """The two bytes the cartridge keeps a stage number in. `stage` is 1-based.
+
+    `0:1673` is the advance: `inc ($FFC6)`, and at ten it zeroes that and carries into
+    `$FFC7`. So the pair is a two-digit decimal number, tens then ones, and the loader's
+    table index is `10*tens + ones - 1`.
+    """
+    return stage // 10, stage % 10
+
+
+def stage_number(tens, ones):
+    """The inverse of `stage_digits`."""
+    return tens * 10 + ones
+
+
+#: `0:2D55` is the loader. It reads both digits, indexes a table of 32 pointers at `$3A0E`,
+#: and copies the three bytes each one points at into the HUD counters. Hooking it is how
+#: `fix_index` selects a stage — see `FlipullGBEnv.fix_index`.
+STAGE_LOADER_ADDR = 0x2D55
+STAGE_TABLE_ADDR = 0x3A0E
+STAGE_COUNT = 32
+STAGE_DESCRIPTOR_BYTES = 3       # clear target, blocks ones, blocks tens
+ROM_BANK = 0                     # no mapper: the whole ROM is flat at $0000-$7FFF
 
 # ----------------------------------------------------------------------- the throw
 # Three of the map's four entries here turned out to mean something else when the cartridge
@@ -201,6 +232,41 @@ def row_for_y(y, row_pitch, bottom_y):
     if y is None or not row_pitch or bottom_y is None:
         return None
     return (FLOOR_ROW - 1) - (bottom_y - y) // row_pitch
+
+
+Stage = namedtuple("Stage", ["number", "clear_target", "blocks"])
+
+
+def read_stage_table(romfile, base=STAGE_TABLE_ADDR, count=STAGE_COUNT):
+    """The stage list, read out of the cartridge rather than transcribed.
+
+    `$3A0E` is a table of `count` little-endian pointers; each points at three bytes —
+    the CLEAR target, then the block total as ones and tens digits, the same
+    digit-per-byte spelling the HUD counters use. The loader at `0:2D55` indexes it with
+    `10*$FFC7 + $FFC6 - 1`.
+
+    Reading it means the stage list always matches the ROM in hand, and it gives `reset`
+    something independent to check a selected stage against: stage 8 has 36 blocks and a
+    target of 7, and if the cartridge says otherwise the selection did not take.
+    """
+    with open(romfile, "rb") as handle:
+        rom = handle.read()
+    stages = []
+    for index in range(count):
+        pointer = base + 2 * index
+        if pointer + 1 >= len(rom):
+            break
+        target = rom[pointer] | (rom[pointer + 1] << 8)
+        if target + STAGE_DESCRIPTOR_BYTES > len(rom):
+            break
+        clear, ones, tens = rom[target:target + STAGE_DESCRIPTOR_BYTES]
+        # The table is followed in ROM by a shorter second one, so the parse has to know
+        # where to stop rather than trust `count`. Digits that are not digits mean we have
+        # walked off the end of it.
+        if ones > 9 or tens > 9 or clear > 99 or not (tens * 10 + ones):
+            break
+        stages.append(Stage(index + 1, clear, tens * 10 + ones))
+    return tuple(stages)
 
 
 def row_blocks(field, row):
@@ -636,7 +702,8 @@ class FlipullGBState:
                                             pyboy.memory[INITIAL_ONES_ADDR])
         self.clear_target = pyboy.memory[CLEAR_TARGET_ADDR]
         self.timer_seconds = read_timer(pyboy)
-        self.stage = pyboy.memory[STAGE_ADDR]
+        self.stage = stage_number(pyboy.memory[STAGE_TENS_ADDR],
+                                  pyboy.memory[STAGE_ONES_ADDR])
 
         # Both read off sprites, because neither is in RAM: `$FFD4` lags a throw behind
         # what is in hand, and the player has no row variable at all.
@@ -820,8 +887,14 @@ class FlipullGBEnv(RetroGame):
         self.actions = action_list
         self.settle_kwargs = {"max_ticks": settle_max_ticks, "stable_ticks": settle_stable_ticks}
         self.boot_max_ticks = boot_max_ticks
+        self.stages = read_stage_table(romfile) if os.path.isfile(romfile) else ()
+        self.forcing_stage = None
         if verify_rom:
             self.__verify_rom__()
+
+    def stage_for(self, index):
+        """What the cartridge says stage `index` (0-based) holds, before loading it."""
+        return self.stages[index]
 
     def __verify_rom__(self):
         """Warn when the dump is not the revision these addresses were read from."""
@@ -836,27 +909,44 @@ class FlipullGBEnv(RetroGame):
                 UserWarning, stacklevel=3)
 
     def fix_index(self, index):
-        """Select the stage — except that no way to do so has been established.
+        """Select the stage, zero-based: `fix_index(7)` is stage 8.
 
-        The memory map offers `$FFC6` as a stage number but grades it unverified, having
-        never seen it change, and no password or level-select route has been looked for. So
-        index 0 is the stage the cartridge boots into, and anything else fails loudly rather
-        than quietly starting stage 1 and calling it stage 9.
+        The cartridge keeps its stage number as two decimal digits — `$FFC7` tens, `$FFC6`
+        ones — and the loader at `0:2D55` turns them into an index into a 32-entry table.
+        `reset` hooks that loader and writes the digits as it arrives, so the stage the
+        cartridge builds is the one asked for.
+
+        This is not the same as poking a layout in behind the game's back, which is what
+        Puzznic's fallback route does and why that one is kept for emergencies. Here the
+        two bytes written *are* the game's own stage number, they are written before
+        anything reads them, and the eleven places that read them — the field builder and
+        the HUD among them — all then agree: the on-screen `STAGE` really does say 8.
         """
-        assert index == 0, (
-            "Invalid index: no verified way to select a stage exists yet. $FFC6 looks like "
-            "the stage number but was never watched changing, and no password route has "
-            "been found — see docs/environments/flipull-gb.md.")
+        if not self.stages:
+            raise RuntimeError(
+                f"no stage table could be read from {self.romfile} at ${STAGE_TABLE_ADDR:04X}. "
+                f"Check the ROM is Flipull (USA) (MD5 {ROM_MD5}).")
+        if not 0 <= index < len(self.stages):
+            raise IndexError(
+                f"Invalid index: {index}. {self.romfile} has {len(self.stages)} stages, so "
+                f"the index must be 0-{len(self.stages) - 1}. Past the end of the table the "
+                "loader reads whatever follows it in ROM and silently builds some other "
+                "stage, so this refuses rather than doing that.")
         self.stage_index = index
 
     def reset(self):
         if self.pyboy is not None:
             self.pyboy.stop(save=False)
         self.pyboy = create_pyboy(self.romfile, self.render_window)
+        self.__force_stage__()
         if not boot(self.pyboy, self.render_window, self.boot_max_ticks):
             raise RuntimeError(
                 f"no stage was loaded within {self.boot_max_ticks} frames of booting "
                 f"{self.romfile}. Check the ROM is Flipull (USA) (MD5 {ROM_MD5}).")
+        # Stop forcing now that the stage is up, so the cartridge behaves normally from
+        # here: a cleared stage advances to the next one, and a lost life reloads this one.
+        self.forcing_stage = None
+        self.__check_stage__()
         self.intro_ticks = wait_until_interactive(self.pyboy, self.render_window)
         settle(self.pyboy, self.render_window, **self.settle_kwargs)
 
@@ -880,6 +970,42 @@ class FlipullGBEnv(RetroGame):
                             "intro_ticks": self.intro_ticks,
                             "held_block": self.state.held_block,
                             "calibration": self.calibration}
+
+    def __force_stage__(self):
+        """Write the stage digits each time the loader is reached, for the boot only."""
+        if self.stage_index is None:
+            return
+        self.forcing_stage = self.stage_index + 1
+
+        def force(_context):
+            if self.forcing_stage is None:
+                return
+            tens, ones = stage_digits(self.forcing_stage)
+            self.pyboy.memory[STAGE_TENS_ADDR] = tens
+            self.pyboy.memory[STAGE_ONES_ADDR] = ones
+
+        self.pyboy.hook_register(ROM_BANK, STAGE_LOADER_ADDR, force, None)
+
+    def __check_stage__(self):
+        """Did the stage that loaded match what the ROM's table said it would?
+
+        The table gives a block total and a CLEAR target per stage, and no two neighbours
+        share both, so this catches a selection that silently did not take — which is the
+        failure worth catching, because a wrong stage still looks like a perfectly good one.
+        """
+        if self.stage_index is None:
+            return
+        want = self.stages[self.stage_index]
+        got_stage = stage_number(self.pyboy.memory[STAGE_TENS_ADDR],
+                                 self.pyboy.memory[STAGE_ONES_ADDR])
+        got_blocks = read_blocks_remaining(self.pyboy)
+        got_clear = self.pyboy.memory[CLEAR_TARGET_ADDR]
+        if (got_stage, got_blocks, got_clear) != (want.number, want.blocks, want.clear_target):
+            raise RuntimeError(
+                f"selecting stage {want.number} did not take: the cartridge came up on "
+                f"stage {got_stage} with {got_blocks} blocks and a target of {got_clear}, "
+                f"where the ROM's own table at ${STAGE_TABLE_ADDR:04X} says stage "
+                f"{want.number} has {want.blocks} blocks and a target of {want.clear_target}.")
 
     def is_goal(self, state):
         """Few enough blocks left.
@@ -978,10 +1104,12 @@ class FlipullGBEnv(RetroGame):
 
 # --------------------------------------------------------------------------- reporting
 
-def _report(romfile, render=False):
-    """Print what this cartridge wants: the measurements, and the stage it booted into."""
+def _report(romfile, stage=None, render=False):
+    """Print what this cartridge wants: the measurements, and the stage it loaded."""
     env = FlipullGBEnv(romfile, render=render)
     try:
+        print(f"{len(env.stages)} stages in the table at ${STAGE_TABLE_ADDR:04X}\n")
+        env.fix_index(0 if stage is None else stage)
         state, info = env.reset()
         calibration = info["calibration"]
         print(f"stage {info['stage']}: {state.blocks_remaining} blocks, "
@@ -1023,6 +1151,8 @@ if __name__ == "__main__":
                     "player is, how long a button must be held to move exactly one row, "
                     "and which button throws.")
     parser.add_argument("rom", help="path to Flipull (USA).gb")
+    parser.add_argument("--stage", type=int, default=None,
+                        help="stage index to load, zero-based (--stage 7 is stage 8)")
     parser.add_argument("--render", action="store_true", help="open an SDL2 window")
     args = parser.parse_args()
-    _report(args.rom, args.render)
+    _report(args.rom, args.stage, args.render)

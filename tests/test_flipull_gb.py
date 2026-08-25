@@ -17,7 +17,8 @@ from planiverse.problems.retro_games.flipull_gb import (  # noqa: E402
     FlipullGBAction, FlipullGBEnv, FlipullGBState, action_cost_map, block_counts,
     bounding_box, button_actions, cell_address, column_blocks, decode_blocks, decode_digits,
     decode_field, decode_staircase, decode_timer, is_playable, load_state, read_field,
-    render_field, row_blocks, row_for_y, settle, sprites, throw_count,
+    render_field, row_blocks, row_for_y, read_stage_table, settle, sprites, stage_digits,
+    stage_number, throw_count,
 )
 
 from conftest import (  # noqa: E402
@@ -183,13 +184,71 @@ def test_action_string_is_filename_safe():
     assert str(FlipullGBAction("a,8")) == "a_for_8"
 
 
-def test_fix_index_refuses_a_stage_it_cannot_reach():
-    """`$FFC6` looks like a stage number but was never watched changing, and no password
-    route has been found — so anything but the boot stage fails loudly."""
-    game = FlipullGBEnv("unused.gb")
-    game.fix_index(0)
-    with pytest.raises(AssertionError, match="no verified way to select a stage"):
-        game.fix_index(1)
+# ------------------------------------------------------------------ stage selection
+
+def test_the_stage_table_is_read_out_of_the_rom(fake_rom):
+    """Not transcribed. The table gives each stage's block total and CLEAR target, which
+    is what `reset` checks a selected stage against."""
+    stages = read_stage_table(fake_rom)
+    assert [stage.number for stage in stages] == [1, 2, 3, 4]
+    assert [stage.blocks for stage in stages] == [25, 20, 15, 10]
+    assert [stage.clear_target for stage in stages] == [9, 8, 6, 5]
+
+
+def test_the_stage_table_stops_at_the_end_rather_than_running_on(fake_rom):
+    """A pointer table has no length field, so the parse has to recognise its own end —
+    on the cartridge another, shorter table follows it immediately in ROM."""
+    stages = read_stage_table(fake_rom, count=64)
+    assert len(stages) == 4, "the terminator entry is not a stage"
+
+
+def test_the_stage_number_is_two_decimal_digits():
+    """`0:1673` increments `$FFC6` and carries into `$FFC7` at ten, so the pair is a
+    two-digit decimal number and the table index is `10*tens + ones - 1`."""
+    assert stage_digits(1) == (0, 1)
+    assert stage_digits(9) == (0, 9)
+    assert stage_digits(10) == (1, 0)
+    assert stage_digits(32) == (3, 2)
+    for stage in range(1, 100):
+        assert stage_number(*stage_digits(stage)) == stage
+
+
+def test_fix_index_selects_the_stage_the_loader_builds(fake_rom):
+    """Each stage comes up with its own block count, checked against the ROM's table.
+
+    The counts differ per stage precisely so that a selection which silently failed is
+    visible: a wrong stage still looks like a perfectly good board.
+    """
+    game = FlipullGBEnv(fake_rom, verify_rom=False)
+    try:
+        for index, want in enumerate(game.stages):
+            game.fix_index(index)
+            state, info = game.reset()
+            assert state.stage == want.number
+            assert state.blocks_remaining == want.blocks
+            assert state.clear_target == want.clear_target
+            assert info["stage"] == want.number
+            assert state.is_consistent(), "and the field agrees with the counter"
+    finally:
+        game.close()
+
+
+def test_fix_index_refuses_a_stage_that_is_not_there(fake_rom):
+    """Past the end of the table the loader reads whatever follows it in ROM and builds
+    some other stage, so an out-of-range index has to fail rather than do that."""
+    game = FlipullGBEnv(fake_rom, verify_rom=False)
+    game.fix_index(len(game.stages) - 1)
+    for index in (-1, len(game.stages), 99):
+        with pytest.raises(IndexError, match="Invalid index"):
+            game.fix_index(index)
+
+
+def test_fix_index_refuses_a_rom_with_no_stage_table(tmp_path):
+    rom = tmp_path / "not-flipull.gb"
+    rom.write_bytes(b"\x00" * 32768)
+    game = FlipullGBEnv(str(rom), verify_rom=False)
+    with pytest.raises(RuntimeError, match="no stage table"):
+        game.fix_index(0)
 
 
 def test_a_foreign_rom_warns_because_the_addresses_are_revision_specific(tmp_path):
@@ -522,6 +581,55 @@ def test_cartridge_row_for_y_names_the_row_a_throw_hits(cartridge):
     changed = {row for row in range(FIELD_ROWS) for col in range(FIELD_COLS)
                if state.field[row][col] != after.field[row][col]}
     assert max(changed) == state.player_row
+
+
+@needs_rom
+def test_cartridge_has_thirty_two_stages_and_every_one_of_them_loads(cartridge):
+    """The whole point of `fix_index`, checked against the ROM's own table.
+
+    Each stage's block total and CLEAR target come from the descriptor table at `$3A0E`,
+    so this is not "a different board appeared" — it is the board the cartridge itself
+    says stage N has. `reset` makes the same check and raises if it fails, so this is
+    really asserting that all 32 selections take.
+    """
+    assert len(cartridge.stages) == 32
+    for index in range(32):
+        want = cartridge.stage_for(index)
+        cartridge.fix_index(index)
+        state, info = cartridge.reset()
+        assert state.stage == want.number == index + 1
+        assert state.blocks_remaining == want.blocks
+        assert state.clear_target == want.clear_target
+        assert state.is_consistent()
+
+
+@needs_rom
+def test_cartridge_the_stage_number_reaches_the_hud(cartridge):
+    """The digits written are the game's own stage number, not a layout poked in behind
+    its back: the on-screen STAGE really does change with them.
+
+    The HUD draws digits as tiles `$100 + digit` at the right-hand end of the status row.
+    """
+    def displayed():
+        tilemap = cartridge.pyboy.tilemap_background
+        return [tilemap[x, 13] - 0x100 for x in (16, 17)]
+
+    cartridge.fix_index(0)
+    cartridge.reset()
+    assert displayed()[1] == 1, "stage 1"
+
+    cartridge.fix_index(22)
+    cartridge.reset()
+    assert displayed() == [2, 3], "stage 23"
+
+
+@needs_rom
+def test_cartridge_selecting_a_stage_stops_forcing_once_it_is_up(cartridge):
+    """The hook is for the boot only. Left armed it would rewrite the stage number every
+    time the loader ran, so a cleared stage would reload itself instead of advancing."""
+    cartridge.fix_index(4)
+    cartridge.reset()
+    assert cartridge.forcing_stage is None
 
 
 @needs_rom

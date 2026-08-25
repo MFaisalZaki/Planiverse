@@ -46,7 +46,8 @@ BLOCK_MIN, BLOCK_MAX = 0x83, 0x86
 
 # HRAM, as low bytes for `ldh`.
 H_INITIAL_ONES, H_INITIAL_TENS = 0xC0, 0xC1
-H_STAGE = 0xC6
+H_STAGE = 0xC6                 # the stage number, as two decimal digits: ones here...
+H_STAGE_TENS = 0xC7            # ...and tens here, exactly as the cartridge keeps it
 H_BLOCKS_ONES, H_BLOCKS_TENS = 0xC9, 0xCA
 H_SEC_ONES, H_SEC_TENS, H_SUBSECOND, H_MINUTES = 0xCB, 0xCC, 0xCD, 0xCE
 H_CLEAR_TARGET = 0xCF
@@ -65,6 +66,7 @@ HAND_X = 0xC70A                # where the hand block is drawn: it leaves during
 THREW = 0xC70B                 # has anything been thrown yet this stage?
 HIT = 0xC70C                   # did this throw connect?
 PREV_HAND = 0xC70D             # what was in hand before this throw, which is what $FFD4 keeps
+STAGE_IDX = 0xC70E             # 10*tens + ones - 1, as the loader works it out
 
 REPEAT_DELAY = 16              # frames a held direction waits before it repeats
 REPEAT_RATE = 6
@@ -80,6 +82,14 @@ HAND_START_TILE = 0x82         # not a block value: the real cartridge shows thi
 
 CLEAR_TARGET = 9
 START_MINUTES, START_SECONDS = 2, 59
+
+# The cartridge's own stage machinery, at the cartridge's own addresses, so that
+# `fix_index` is exercised here rather than only against a copyrighted ROM.
+STAGE_TABLE = 0x3A0E           # 2-byte pointers, indexed by 10*tens + ones - 1
+STAGE_DESCRIPTORS = 0x3A80     # each: clear target, blocks ones, blocks tens
+STAGE_LOADER = 0x2D55          # what FlipullGBEnv hooks to write the stage digits
+STAGE_BYTES = FIELD_ROWS * FIELD_COLS
+STAGE_DESCRIPTOR_BYTES = 3
 
 NINTENDO_LOGO = bytes.fromhex(
     "CEED6666CC0D000B03730083000C000D0008111F8889000E"
@@ -104,8 +114,12 @@ SYMBOLS = {
     "TOP_ROW": TOP_ROW, "CLEAR_TARGET": CLEAR_TARGET,
     "START_MINUTES": START_MINUTES, "START_SECONDS_TENS": START_SECONDS // 10,
     "START_SECONDS_ONES": START_SECONDS % 10,
+    "H_STAGE_TENS": H_STAGE_TENS, "STAGE_TABLE": STAGE_TABLE, "STAGE_IDX": STAGE_IDX,
+    "STAGE_BYTES": STAGE_BYTES,
     "LCDC": 0x40, "LY": 0x44, "JOYP": 0x00,
 }
+
+
 
 
 def stage_one():
@@ -136,6 +150,24 @@ def block_count(field):
     return sum(BLOCK_MIN <= cell <= BLOCK_MAX for row in field for cell in row)
 
 
+def stage_n(index):
+    """Stages 2 and up: the same shape with fewer rows, so each has its own block count.
+
+    They only have to differ — `read_stage_table` reads the count out of ROM and `reset`
+    checks the stage that loaded against it, so a selection that silently failed shows up
+    as the wrong number of blocks rather than as a board that merely looks unfamiliar.
+    """
+    field = stage_one()
+    for row in range(8, 8 + index):          # strip a row of blocks per stage
+        for col in range(1, 6):
+            field[row][col] = CELL_OUTSIDE
+    return field
+
+
+STAGES = [stage_n(index) for index in range(4)]
+CLEAR_TARGETS = [9, 8, 6, 5]
+
+
 PROGRAM = """
 boot:
     di
@@ -160,6 +192,7 @@ menu:                           ; a title screen that waits for START
     call wait_frame
     jr menu
 .start:
+    call init_stage_number
     call load_stage
     ld b, INTRO_FRAMES          ; the stage announces itself before it will listen
     call wait_frames
@@ -167,8 +200,23 @@ menu:                           ; a title screen that waits for START
 
 ; ---------------------------------------------------------------- stage setup
 load_stage:
-    ld de, stage_data           ; 14 rows of 16 bytes, into a field of stride $20
-    ld hl, FIELD
+    call stage_descriptor       ; sets the counters, and leaves the index in STAGE_IDX.
+                                ; FlipullGBEnv hooks this call's target to write the stage
+                                ; digits, so everything below picks up the chosen stage.
+    ld de, stage_data           ; de = stage_data + STAGE_IDX * STAGE_BYTES
+    ld a, (STAGE_IDX)
+    and a
+    jr z, .copy
+    ld b, a
+.offset:
+    ld hl, STAGE_BYTES
+    add hl, de
+    ld d, h
+    ld e, l
+    dec b
+    jr nz, .offset
+.copy:
+    ld hl, FIELD                ; 14 rows of 16 bytes, into a field of stride $20
     ld c, 14
 .row:
     ld b, 16
@@ -185,16 +233,6 @@ load_stage:
     dec c
     jr nz, .row
 
-    ld a, BLOCK_TOTAL_ONES      ; counters are decimal digits, ones first
-    ldh (H_BLOCKS_ONES), a
-    ldh (H_INITIAL_ONES), a
-    ld a, BLOCK_TOTAL_TENS
-    ldh (H_BLOCKS_TENS), a
-    ldh (H_INITIAL_TENS), a
-    ld a, CLEAR_TARGET
-    ldh (H_CLEAR_TARGET), a
-    ld a, 1
-    ldh (H_STAGE), a
     ld a, START_MINUTES
     ldh (H_MINUTES), a
     ld a, START_SECONDS_TENS
@@ -214,6 +252,14 @@ load_stage:
     ld a, START_ROW             ; on the floor, where `down` does nothing at all
     ld (PLAYER_ROW), a
     call draw_player
+    ret
+
+; The two stage digits, as the cartridge initialises them before its first load.
+init_stage_number:
+    ld a, 1
+    ldh (H_STAGE), a
+    xor a
+    ldh (H_STAGE_TENS), a
     ret
 
 ; Two sprites, and they move together: sprite 0 is the player at x=140, sprite 1 the block
@@ -559,10 +605,51 @@ read_pad:
 """
 
 
+LOADER_PROGRAM = """
+; The stage descriptor loader, deliberately at the cartridge's own $2D55 so that the hook
+; FlipullGBEnv registers lands here. Index = 10*tens + ones - 1, into a table of pointers
+; at $3A0E; each points at [clear target, blocks ones, blocks tens].
+stage_descriptor:
+    ldh a, (H_STAGE_TENS)
+    and a
+    jr z, .no_tens
+    ld b, a
+    xor a
+.tens:
+    add a, 10
+    dec b
+    jr nz, .tens
+.no_tens:
+    ld b, a
+    ldh a, (H_STAGE)
+    add a, b
+    dec a
+    ld (STAGE_IDX), a
+    add a, a                    ; two bytes per pointer
+    ld c, a
+    ld b, 0
+    ld hl, STAGE_TABLE
+    add hl, bc
+    ld a, (hl+)
+    ld b, a
+    ld a, (hl)
+    ld h, a
+    ld l, b                     ; hl = the descriptor
+    ld a, (hl+)
+    ldh (H_CLEAR_TARGET), a
+    ld a, (hl+)
+    ldh (H_BLOCKS_ONES), a
+    ldh (H_INITIAL_ONES), a
+    ld a, (hl)
+    ldh (H_BLOCKS_TENS), a
+    ldh (H_INITIAL_TENS), a
+    ret
+"""
+
+
 def build_rom(title=b"FLIPULLFAKE"):
     """Assemble the cartridge and return its 32 KiB image."""
-    field = stage_one()
-    total = block_count(field)
+    total = block_count(STAGES[0])
     symbols = dict(SYMBOLS, BLOCK_TOTAL_ONES=total % 10, BLOCK_TOTAL_TENS=total // 10)
     asm = Assembler(symbols)
 
@@ -580,9 +667,25 @@ def build_rom(title=b"FLIPULLFAKE"):
     asm.org(0x0400)
     asm.asm(PROGRAM)
 
+    asm.org(STAGE_LOADER)                 # the address FlipullGBEnv hooks
+    asm.asm(LOADER_PROGRAM)
+
     asm.org(0x2000)
     asm.label("stage_data")
-    asm.db([cell for row in field for cell in row])
+    for stage in STAGES:
+        asm.db([cell for row in stage for cell in row])
+
+    # The pointer table, and the descriptors it points at. A fifth entry points at bytes
+    # that are not decimal digits, so `read_stage_table` stops after four rather than
+    # walking into whatever follows — the same way it stops on the real cartridge.
+    asm.org(STAGE_TABLE)
+    for index in range(len(STAGES) + 1):
+        asm.dw(STAGE_DESCRIPTORS + STAGE_DESCRIPTOR_BYTES * index)
+    asm.org(STAGE_DESCRIPTORS)
+    for stage, clear in zip(STAGES, CLEAR_TARGETS):
+        total = block_count(stage)
+        asm.db([clear, total % 10, total // 10])
+    asm.db([0xFF, 0xFF, 0xFF])            # the terminator
 
     rom = bytearray(asm.link())
     _stamp_checksums(rom)
