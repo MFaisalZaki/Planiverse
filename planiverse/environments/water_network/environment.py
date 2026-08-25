@@ -410,9 +410,6 @@ class WaterNetworkEnv(Environment):
         self.state_history.append(self.state)
         return self.state, before - self.state.contaminated
 
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
-
     def get_actions(self):
         return [WaterNetworkAction(pipe) for pipe in self.candidates]
 

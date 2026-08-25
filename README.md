@@ -199,7 +199,7 @@ Not every environment implements every method. What is actually there today:
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `MfgEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
@@ -212,8 +212,13 @@ compute a positional dead end; `FlipullGBEnv` computes one, but only the clock r
 The three simulator-backed environments compute real ones too: a water network whose service has
 collapsed, a blacked-out grid, and a growing season whose water budget is spent.
 
-`Environment.capabilities()` reports this per class, so the table above can be checked against the
-code rather than trusted.
+`Environment.capabilities()` reports this per class, so the table above is checked against the code
+rather than trusted — `tests/test_interface.py` asserts the two agree.
+
+Note that `validate` is now provided by the base class for everything, derived from `simulate` and
+`is_goal`, so no environment writes it out. `step` and `get_actions` have base defaults too, but
+theirs only explain their own absence, which is why "does the class override it" is the wrong test
+and `capabilities()` asks whether the method would actually do something.
 
 ### States and `literals`
 

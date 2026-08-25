@@ -6,15 +6,12 @@ Addresses come from a reverse-engineering pass over `Super Mario Land (World) (R
 work RAM every frame while driving scripted input — so its confidence varies field by field,
 and the constants below carry that grading rather than pretending to it.
 """
-import os
-import io
-import hashlib
-import warnings
 from itertools import product, chain
 from collections import namedtuple
-from pyboy import PyBoy
 from pyboy.utils import bcd_to_dec
-from planiverse.environments.base import Environment
+from planiverse.environments.gb import (
+    GBAction, GBEnv, GBState, create_pyboy, load_state,
+)
 
 #: The dump the addresses below were read from. Another revision will read garbage.
 ROM_MD5 = "b259feb41811c7e4e1dc200167985c84"
@@ -111,15 +108,6 @@ def read_objects(pyboy):
     return decode_objects(pyboy.memory[OBJECTS_ADDR:OBJECTS_ADDR + OBJECT_SLOTS * OBJECT_STRIDE])
 
 
-def touching(mario, enemy, reach=8):
-    """Whether an object's box overlaps Mario's.
-
-    Both are screen coordinates read on the same frame, so they are directly comparable.
-    This is a proximity test, not a flag the game sets — the map found no damage byte — so
-    it says "in contact", not "took a hit": what contact costs depends on power-up state,
-    which the map could not confirm either.
-    """
-    return abs(mario.x - enemy.x) < reach and abs(mario.y - enemy.y) < reach
 action_list  = list()
 action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['a+left', 'a+right', 'b+left', 'b+right']] for t in [5,10,15]])) # [3, 5, 10]
 action_list += list(chain.from_iterable([[f'{a},{t}' for a in ['nop', 'left', 'right', 'down']] for t in [3]])) #[2]
@@ -134,31 +122,14 @@ action_cost_map = {
 }
 
 
-def create_pyboy(romfile, render):
-    return PyBoy(romfile, sound_emulated=False, window="SDL2" if render else "null")
+# The emulator plumbing (`create_pyboy`, `load_state`, save-states) comes from the
+# shared `gb` module.
 
-def save_state(pyboy):
-    with io.BytesIO() as f:
-        pyboy.save_state(f)
-        f.seek(0)
-        state_bytes = f.getvalue()
-    return state_bytes
-
-def load_state(pyboy, state_bytes, render=False):
-    with io.BytesIO(state_bytes) as f:
-        pyboy.load_state(f)
-        pyboy.tick(1, render)
-
-class SuperMarioState:
+class SuperMarioState(GBState):
     def __init__(self, pyboy, depth):
-        self.depth     = depth
-        self.literals  = frozenset() # Dummy
-        self.gb_state  = save_state(pyboy)
+        super().__init__(pyboy, depth)
         self.__update__(pyboy)
-        
-    def __lt__(self, other):
-        return self.depth < other.depth
-    
+
     def __update__(self, pyboy):
         # --- Mario. $C201/$C202 are *screen* coordinates: X stops at $51 once he reaches
         # the scroll trigger and the camera takes over, so it is a position on the display,
@@ -188,7 +159,8 @@ class SuperMarioState:
         # ever recognised one identifier.
         self.enemies = read_objects(pyboy)
         self.enemies_on_screen = len(self.enemies)
-        self.touching_enemy = any(touching(self.mario_position, enemy) for enemy in self.enemies)
+        self.touching_enemy = any(self.touching(self.mario_position, enemy)
+                                  for enemy in self.enemies)
         self.collision = self.touching_enemy
 
         # Goal/terminal flags are sampled here, while the emulator still holds this state.
@@ -242,6 +214,17 @@ class SuperMarioState:
         return (f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position}, '
                 f'progress={self.level_progress}, enemies={self.enemies_on_screen})>')
     
+    @staticmethod
+    def touching(mario, enemy, reach=8):
+        """Whether an object's box overlaps Mario's.
+
+        Both are screen coordinates read on the same frame, so they are directly
+        comparable. This is a proximity test, not a flag the game sets — the map found no
+        damage byte — so it says "in contact", not "took a hit": what contact costs
+        depends on power-up state, which the map could not confirm either.
+        """
+        return abs(mario.x - enemy.x) < reach and abs(mario.y - enemy.y) < reach
+
     def mario_damage(self):
         """1 when an object's box overlaps Mario's.
 
@@ -256,71 +239,50 @@ class SuperMarioState:
         dummy_pyboy.screen.image.resize((320*image_resize_factor,288*image_resize_factor)).save(file)
         dummy_pyboy.stop()
 
-class SuperMarioAction:
-    def __init__(self, action):
-        self.action = action
-        self.actions_tick_list = self.__parse_action__(action)
-        # old action cost computation.
-        # self.cost_value = sum(a[1] for a in self.actions_tick_list)
-        self.cost_value = sum(action_cost_map[a[0]] for a in self.actions_tick_list) * self.actions_tick_list[-1][1]
-        pass
+class SuperMarioAction(GBAction):
+    cost_map = action_cost_map
+
+    def __cost__(self):
+        # Unlike the siblings, cost scales with how long the buttons are held.
+        return (sum(self.cost_map[button] for button, _ in self.actions_tick_list)
+                * self.actions_tick_list[-1][1])
 
     def __lt__(self, other):
         s = self.actions_tick_list
         o = other.actions_tick_list
         return max(x[1] for x in s) < max(x[1] for x in o)
 
-    def __str__(self):
-        return self.action.replace(',', '_for_').replace('+', '_with_')
+    # No `__settle__` override: this environment snapshots straight after the hold. The
+    # siblings wait for the game to stop moving first; deciding what "settled" honestly
+    # means for a scrolling platformer needs the real cartridge, so it is deliberately
+    # not changed here.
 
-    def __repr__(self):
-        return str(self)
+    def __next_state__(self, pyboy, state):
+        return SuperMarioState(pyboy, state.depth + 1)
 
-    def __parse_action__(self, act):
-        # Parse the action string into a list of individual actions.
-        actions, tick = act.split(',')
-        return [(a, int(tick)) for a in actions.split('+')]
 
-    def apply(self, pyboy, state):
-        load_state(pyboy, state.gb_state)
-        # apply the action n times to speed up the search.
-        ticks_values = set()
-        for act, ticks in self.__parse_action__(self.action):
-            if act != 'nop': pyboy.button(act, ticks)
-            ticks_values.add(ticks)
-        pyboy.tick(max(ticks_values)+1, False)
-        ret_state = SuperMarioState(pyboy, state.depth + 1)
-        return ret_state
-    
-    def cost(self):
-        return self.cost_value
+class SuperMarioEnv(GBEnv):
+    rom_md5 = ROM_MD5
+    rom_name = "Super Mario Land (World) (Rev 1)"
+    action_class = SuperMarioAction
 
-class SuperMarioEnv(Environment):
     def __init__(self, romfile, render=False, verify_rom=True):
         self.romfile = romfile
         self.pyboy   = None
-        self.render  = render
+        # Not `self.render`: that name belongs to the method which prints the history.
+        self.render_window = render
         self.world_level = None
         # Super Mario Land has 4 worlds of 3 levels each, both 1-indexed.
         self.world_level_map = {k:v for k, v in enumerate(product(range(1,5), range(1,4)))}
         self.actions = action_list
+        self.state = None
+        self.state_history = []
+        self.settle_kwargs = {}
         if verify_rom:
             self.__verify_rom__()
 
-    def __verify_rom__(self):
-        """Warn when the dump is not the revision the addresses were read from."""
-        if not os.path.isfile(self.romfile):
-            return
-        with open(self.romfile, "rb") as handle:
-            digest = hashlib.md5(handle.read()).hexdigest()
-        if digest != ROM_MD5:
-            warnings.warn(
-                f"{self.romfile} has MD5 {digest}, not {ROM_MD5} (Super Mario Land (World) "
-                "(Rev 1)). The addresses this environment reads are revision-specific and "
-                "may not hold.", UserWarning, stacklevel=3)
-
     def reset(self):
-        self.pyboy = create_pyboy(self.romfile, self.render)
+        self.__restart_emulator__()
         self.game = self.pyboy.game_wrapper
         self.game.game_area_mapping(self.game.mapping_compressed, 0)
         # world_level is None until fix_index is called, which starts the game at its default level.
@@ -328,7 +290,9 @@ class SuperMarioEnv(Environment):
         self.game.set_lives_left(0) # to avoid replays
         self.pyboy.tick() # To render screen after `.start_game`
         self.game.post_tick()
-        return SuperMarioState(self.pyboy, 0), {}
+        self.state = SuperMarioState(self.pyboy, 0)
+        self.state_history = [self.state]
+        return self.state, {}
 
     def fix_index(self, index):
         assert index in self.world_level_map.keys(), "Invalid index"
@@ -348,21 +312,18 @@ class SuperMarioEnv(Environment):
         contact as a heuristic penalty.
         """
         return state.game_over
-    
-    # Returns a list of [action, successor_state]
-    def successors(self, state):
-        ret = []
-        for idx, actionstr in enumerate(self.actions):
-            action = SuperMarioAction(actionstr)
-            successor_state = action.apply(self.pyboy, state)
-            if successor_state == state: continue
-            ret.append((action, successor_state))
-        return ret
-    
-    def simulate(self, plan):
-        state, _ = self.reset()
-        state_trace = [state]
-        for idx, action in enumerate(plan):
-            new_state = action.apply(self.pyboy, state_trace[-1])
-            state_trace.append(new_state)
-        return state_trace
+
+    def __score__(self, state):
+        return state.level_progress
+
+    def __advance__(self, state, action):
+        """Apply one action.
+
+        Unlike the siblings there is no absorbing rule for won or lost levels here, and no
+        settle: both would change what this environment has always handed back, and
+        verifying the change needs the real cartridge — so the alignment is deliberately
+        deferred rather than slipped in.
+        """
+        if isinstance(action, str):
+            action = SuperMarioAction(action)
+        return action.apply(self.pyboy, state)

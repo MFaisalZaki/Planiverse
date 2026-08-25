@@ -14,7 +14,7 @@ pytest.importorskip("pyboy", reason="pyboy is not installed")
 from planiverse.environments.super_mario_land import (  # noqa: E402
     DIRECTIONS, FACING_LEFT, MARIO_X_SATURATES_AT, OBJECT_EMPTY, OBJECT_SLOTS, OBJECT_STRIDE,
     ROM_MD5, SuperMarioAction, SuperMarioEnv, action_cost_map, action_list, decode_objects,
-    decode_timer, position, touching,
+    decode_timer, position, SuperMarioState,
 )
 
 from conftest import assert_state_contract, assert_successors_contract, sml_rom_path  # noqa: E402
@@ -114,8 +114,8 @@ def test_touching_compares_screen_coordinates():
     mario = position(x=0x40, y=0x88)
     close = decode_objects(bytes([0x00, 0x01, 0x88, 0x42]) + b"\xff" * 156)[0]
     far = decode_objects(bytes([0x00, 0x01, 0x88, 0x70]) + b"\xff" * 156)[0]
-    assert touching(mario, close)
-    assert not touching(mario, far)
+    assert SuperMarioState.touching(mario, close)
+    assert not SuperMarioState.touching(mario, far)
 
 
 def test_direction_is_a_code_not_a_velocity():
