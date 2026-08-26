@@ -364,11 +364,16 @@ Pass them instead of being asked — the same flags work on `planiverse-bench in
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
 
-`--yes` takes every default and asks nothing. `--venv DIR` creates a virtualenv, installs the
-library into it, and activates it in every generated job — on a cluster, point it somewhere the
-compute nodes can see. Without it the script installs nothing and stops with instructions if
-`planiverse` is not already importable, rather than failing three stages later. SLURM settings
-go in as `--partition`, `--account`, `--qos` and `--setup-command`.
+It builds a virtualenv and installs the library into it first — `.venv` beside the script by
+default, reused if it is already there, editable. The generated jobs then call **that venv's
+`planiverse-bench` by absolute path**, which is what makes them work on a compute node whose
+shell never saw your activation and never lets them silently pick up a different install off
+`PATH`; the venv is activated in the jobs and in `run_local.sh` as well, so a local run and a
+cluster run use the same Python.
+
+`--venv DIR` moves it — on a cluster it has to be somewhere the compute nodes can see —
+`--no-venv` skips it and uses the current environment, and `--yes` takes every default and asks
+nothing. SLURM settings go in as `--partition`, `--account`, `--qos` and `--setup-command`.
 
 `generate` writes one **job array per planner** — a benchmark is thousands of short runs, and a
 scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are

@@ -185,7 +185,8 @@ def generate(sandbox_dir, pairs, experiment, experiment_dir,
     submit = os.path.join(slurm_dir, "submit_all.sh")
     _write_executable(submit, _submit_all(scripts))
     local = os.path.join(sandbox_dir, "run_local.sh")
-    _write_executable(local, _run_local(sorted(path for path, _ in commands.values())))
+    _write_executable(local, _run_local(sorted(path for path, _ in commands.values()),
+                                        experiment.slurm.setup_commands))
 
     return {"commands": {tag: {"path": path, "count": count}
                          for tag, (path, count) in commands.items()},
@@ -224,13 +225,18 @@ def _submit_all(scripts):
     return "\n".join(lines)
 
 
-def _run_local(command_files):
+def _run_local(command_files, setup_commands=()):
     """The no-cluster path.
 
     Uses GNU parallel when it is there and `xargs -P` when it is not, because `xargs` is
     everywhere and the difference does not matter for running a command per line.
+
+    It runs the same `setup_commands` an sbatch job does. Skipping them here was a real hole:
+    `setup_benchmark.sh` builds a virtualenv and puts its activation in those commands, and a
+    local run that ignored them used whichever interpreter happened to be on PATH — which is
+    exactly the kind of difference that makes two runs of "the same" benchmark disagree.
     """
-    return "\n".join([
+    lines = [
         "#!/bin/bash",
         "# Run the whole benchmark here instead of on a cluster.",
         "#   bash run_local.sh [parallel-jobs]",
@@ -238,6 +244,11 @@ def _run_local(command_files):
         "# wall-clock timings from a loaded laptop are not comparable with a cluster's.",
         "set -euo pipefail",
         "",
+    ]
+    if setup_commands:
+        lines += ["# The same setup the cluster jobs run, so both use the same interpreter.",
+                  *setup_commands, ""]
+    return "\n".join(lines + [
         'JOBS="${1:-4}"',
         f"FILES=({' '.join(_quote(path) for path in command_files)})",
         "",
