@@ -392,9 +392,12 @@ a width someone picked: novelty is a *filter* in both, so a width too low loses 
 and which width is enough is a property of the problem. The loop stops when a width solves it,
 the budget runs out, or a width covers the reachable space without pruning anything for novelty
 — which for IW is also a proof that there is no plan. `bfws` is pinned at 1 and 2 on purpose:
-it uses novelty as a *sort key*, nothing is discarded, so it is complete at every width and a
-failure means the budget ran out, not the width. There, 1 and 2 are two different search orders
-worth comparing rather than a weaker and a stronger one.
+it uses novelty as a *sort key*, so nothing is discarded and no width can make it miss anything
+— it ends solved, exhausted, or out of budget, all stop conditions, so an iterated BFWS would
+spend the whole budget at width 1 and never reach width 2. Measured, a wider BFWS is often
+*worse*: on `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and above time out.
+Width there is a dial that changes the search order, not a ladder — so 1 and 2 are two
+strategies to compare. [docs/benchmark.md](docs/benchmark.md) has the numbers.
 
 A real run — 7 planners over 18 tasks, a Puzznic cartridge supplied, 20-second limit:
 
