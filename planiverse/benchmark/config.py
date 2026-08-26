@@ -92,16 +92,20 @@ class TaskSelection:
     tags: tuple = ()
     include_environments: tuple = ()
     exclude_environments: tuple = ()
-    max_instances_per_environment: int = 10
+    #: 0 means every instance. Capping is for a quick look; a benchmark that reports
+    #: coverage over a tenth of each environment is reporting on a sample it chose.
+    max_instances_per_environment: int = 0
     #: `"even"` spreads the chosen indices across the range, `"first"` takes a prefix. Even
     #: is the default because instance 0 of most of these environments is a tutorial.
     selection: str = "even"
     #: Environments whose dependencies are missing are skipped rather than recorded as
     #: failures — running half a catalogue and saying so beats refusing to run at all.
     skip_unavailable: bool = True
-    #: Environments needing a ROM the user supplies. Off by default: the files are
-    #: copyrighted and cannot be assumed present.
-    include_rom_environments: bool = False
+    #: Environments needing a ROM the user supplies. On, so that a cartridge-backed
+    #: environment and its pure-Python twin are benchmarked side by side — which is most of
+    #: the point of having both. Without a cartridge they are skipped with a reason, so
+    #: leaving this on costs nothing when the files are absent.
+    include_rom_environments: bool = True
     #: Explicit `env@index` strings. When set, everything above is ignored.
     selected_tasks: tuple = ()
 
@@ -158,6 +162,11 @@ class ExperimentConfig:
     tasks: TaskSelection = field(default_factory=TaskSelection)
     slurm: SlurmConfig = field(default_factory=SlurmConfig)
     planners: tuple = ()
+    #: `environment name -> cartridge path`, for the Game Boy environments. Held here rather
+    #: than left to environment variables so the experiment is self-contained: a variable
+    #: exported in the shell that ran `generate` is not there on the compute node, and the
+    #: whole array would come back UNSUPPORTED. A variable is still honoured as a fallback.
+    roms: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------------ on disk
 
@@ -193,6 +202,7 @@ class ExperimentConfig:
             tasks=TaskSelection(**_snake(details.get("tasks", {}), TaskSelection)),
             slurm=SlurmConfig(**_snake(details.get("slurm", {}), SlurmConfig)),
             planners=tuple(planners),
+            roms=dict(details.get("roms", {})),
         )
 
     def save(self, experiment_dir):
@@ -203,6 +213,7 @@ class ExperimentConfig:
             "limits": _kebab(asdict(self.limits)),
             "tasks": _kebab(asdict(self.tasks)),
             "slurm": _kebab(asdict(self.slurm)),
+            "roms": dict(self.roms),
         }
         with open(os.path.join(experiment_dir, DETAILS_FILENAME), "w") as handle:
             json.dump(details, handle, indent=4)
@@ -216,6 +227,17 @@ class ExperimentConfig:
 
     def active_planners(self):
         return tuple(spec for spec in self.planners if spec.enabled)
+
+    def rom_for(self, spec):
+        """The cartridge for an environment: this experiment's, else its variable, else None.
+
+        Checked for existence, because a path recorded on the machine that wrote the config
+        is a promise about a different filesystem until it is.
+        """
+        path = self.roms.get(spec.name)
+        if path and os.path.isfile(path):
+            return path
+        return spec.rom_path()
 
 
 def _snake(mapping, cls):

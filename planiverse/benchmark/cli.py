@@ -29,12 +29,24 @@ from planiverse.benchmark.measures import has_measure
 from planiverse.benchmark.runner import solve as solve_one
 from planiverse.environments import REGISTRY
 
+#: How high `iw` is allowed to climb. A bound, not a plan: `IteratedWidth` stops as soon as a
+#: width solves the problem, the budget runs out, or a width covers the whole reachable space
+#: without discarding anything for novelty — so in practice it stops at 1 or 2 and this
+#: number is never reached. Fixing the width instead would report IW at a configuration we
+#: chose rather than at the one the algorithm defines.
+MAX_WIDTH = 1000
+
 #: What `init` writes. A spread rather than a single planner: the point of the harness is
 #: comparison, and one of each family makes the first report say something.
+#:
+#: `iw` iterates its width; `siw` and `bfws` are pinned at 1 and 2 because those are the
+#: configurations the width-based literature reports and the ones worth comparing against.
+#: Change any of it in `planners/*.json`.
 DEFAULT_PLANNERS = (
-    PlannerSpec(tag="iw-1", planner="iw", params={"width": 1}),
-    PlannerSpec(tag="iw-2", planner="iw", params={"width": 2}),
+    PlannerSpec(tag="iw", planner="iterated_width",
+                params={"max_width": MAX_WIDTH, "strict": False}),
     PlannerSpec(tag="siw-1", planner="siw", params={"width": 1}),
+    PlannerSpec(tag="siw-2", planner="siw", params={"width": 2}),
     PlannerSpec(tag="bfws-1", planner="bfws", params={"width": 1}),
     PlannerSpec(tag="bfws-2", planner="bfws", params={"width": 2}),
     PlannerSpec(tag="fsx", planner="fsx",
@@ -58,8 +70,13 @@ def main(argv=None):
     init.add_argument("--time", default="30m", help="per-run wall-clock limit")
     init.add_argument("--memory", default="8GB", help="per-run memory limit")
     init.add_argument("--max-expansions", type=int, default=100000)
-    init.add_argument("--max-instances", type=int, default=10,
-                      help="instances per environment")
+    init.add_argument("--max-instances", type=int, default=0,
+                      help="instances per environment; 0 means every one")
+    init.add_argument("--no-roms", action="store_true",
+                      help="leave out the environments that need a cartridge")
+    init.add_argument("--rom", action="append", default=[], metavar="ENV=PATH",
+                      help="a cartridge, e.g. --rom puzznic_gb=/path/to/Puzznic.gb. "
+                           "Repeatable. Recorded in the experiment so cluster jobs get it.")
     init.add_argument("--partition", default=None)
     init.add_argument("--account", default=None)
     init.add_argument("--force", action="store_true", help="overwrite an existing experiment")
@@ -120,18 +137,35 @@ def _init(arguments):
     if os.path.exists(details) and not arguments.force:
         print(f"{details} already exists. Pass --force to overwrite it.", file=sys.stderr)
         return 1
+    roms = {}
+    for entry in arguments.rom:
+        name, _, path = entry.partition("=")
+        if not name or not path:
+            print(f"--rom wants ENV=PATH, got {entry!r}", file=sys.stderr)
+            return 2
+        roms[name] = os.path.abspath(os.path.expanduser(path))
+
     experiment = ExperimentConfig(
         name=arguments.name,
         limits=Limits(time=arguments.time, memory=arguments.memory,
                       max_expansions=arguments.max_expansions),
-        tasks=TaskSelection(max_instances_per_environment=arguments.max_instances),
+        tasks=TaskSelection(max_instances_per_environment=arguments.max_instances,
+                            include_rom_environments=not arguments.no_roms),
         slurm=SlurmConfig(partition=arguments.partition, account=arguments.account),
         planners=DEFAULT_PLANNERS,
+        roms=roms,
     )
     experiment.save(arguments.exp_dir)
     print(f"wrote {details}")
     for spec in experiment.planners:
         print(f"  planners/{spec.tag}.json  ({spec.planner})")
+    missing = [spec.name for spec in REGISTRY
+               if spec.needs_rom and not experiment.rom_for(spec)]
+    if missing and experiment.tasks.include_rom_environments:
+        print(f"\nNo cartridge for {', '.join(missing)}. They will be skipped until you "
+              f"add one:\n  planiverse-bench init --exp-dir {arguments.exp_dir} --force "
+              f"--rom {missing[0]}=/path/to/rom.gb\nor run ./setup_benchmark.sh, which "
+              f"asks for them.")
     print(f"\nNext: planiverse-bench discover --exp-dir {arguments.exp_dir}")
     return 0
 
@@ -139,7 +173,8 @@ def _init(arguments):
 def _environments(arguments):
     rows = []
     for spec in REGISTRY:
-        ok, reason = discovery.eligible(spec, TaskSelection(include_rom_environments=True))
+        ok, reason = discovery.eligible(spec, TaskSelection(include_rom_environments=True),
+                                        rom=spec.rom_path())
         rows.append({"environment": spec.name, "available": ok, "reason": reason,
                      "needs_rom": spec.needs_rom, "instances": spec.instances,
                      "state_identity": spec.state_identity,
@@ -169,14 +204,17 @@ def _planners(arguments):
              "params": list(catalogue.PLANNERS[name][2]),
              "takes_progress": catalogue.takes_progress(name),
              "randomised": catalogue.is_randomised(name),
-             "complete": catalogue.is_complete(name)}
+             "complete": catalogue.is_complete(name),
+             "complete_when_exhausted": name in catalogue.COMPLETE_WHEN_EXHAUSTED}
             for name in catalogue.names()]
     if arguments.json:
         print(json.dumps(rows, indent=2))
         return 0
     for row in rows:
         flags = [name for name, on in
-                 (("complete", row["complete"]), ("randomised", row["randomised"]),
+                 (("complete", row["complete"]),
+                  ("complete when it reports exhausted", row["complete_when_exhausted"]),
+                  ("randomised", row["randomised"]),
                   ("uses progress measure", row["takes_progress"])) if on]
         print(f"{row['planner']:16}  {row['class']:16}  {', '.join(row['params'])}")
         if flags:
@@ -186,7 +224,7 @@ def _planners(arguments):
 
 def _discover(arguments):
     experiment = ExperimentConfig.load(arguments.exp_dir)
-    discovered = discovery.discover(experiment.tasks)
+    discovered = discovery.discover(experiment.tasks, roms=experiment.roms)
     pairs = discovery.pair_up(discovered["tasks"], experiment.active_planners())
     path = discovery.write_tasks(arguments.sandbox_dir, discovered, pairs, arguments.exp_dir)
 
@@ -206,7 +244,7 @@ def _generate(arguments):
     experiment = ExperimentConfig.load(arguments.exp_dir)
     if arguments.rediscover or not os.path.isfile(
             os.path.join(arguments.sandbox_dir, "tasks.json")):
-        discovered = discovery.discover(experiment.tasks)
+        discovered = discovery.discover(experiment.tasks, roms=experiment.roms)
         pairs = discovery.pair_up(discovered["tasks"], experiment.active_planners())
         discovery.write_tasks(arguments.sandbox_dir, discovered, pairs, arguments.exp_dir)
     else:
@@ -236,7 +274,8 @@ def _solve(arguments):
               file=sys.stderr)
         return 2
     record = solve_one(matching[0], arguments.task, experiment.limits,
-                       sandbox_dir=arguments.sandbox_dir, seed=arguments.seed)
+                       sandbox_dir=arguments.sandbox_dir, seed=arguments.seed,
+                       roms=experiment.roms)
     print(f"{record['task']:24} {record['planner']:16} {record['status']:12} "
           f"{record['seconds']:.2f}s "
           f"exp={record.get('statistics', {}).get('expansions', 0)}"

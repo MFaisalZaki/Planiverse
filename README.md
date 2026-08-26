@@ -344,13 +344,17 @@ JSON, a sandbox is a directory of results, and the stages between them run indep
 benchmark can be prepared on a laptop, run on a cluster, and analysed somewhere else again.
 
 ```bash
-planiverse-bench init      --exp-dir experiment
-planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
-planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
+./setup_benchmark.sh                      # asks about limits and your Game Boy cartridges
 bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
 planiverse-bench analyze   --sandbox-dir sandbox
 planiverse-bench report    --sandbox-dir sandbox
 ```
+
+`setup_benchmark.sh` runs `init`, `discover` and `generate`, and asks the one thing nothing
+else can work out: where your Puzznic, Flipull and Super Mario Land cartridges are. They are
+copyrighted and cannot ship here, so supplying them is what lets an emulated environment be
+compared against its pure-Python twin under the same planners and limits; skip one and it is
+reported as skipped rather than quietly dropped. `--yes` takes every default and asks nothing.
 
 `generate` writes one **job array per planner** — a benchmark is thousands of short runs, and a
 scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
@@ -363,20 +367,30 @@ Every run ends in a status — `SOLVED`, `INVALID`, `UNSOLVED`, `TIMEOUT`, `NODE
 expected set of runs comes from `tasks.json`, so a job that never ran is counted as `MISSING`
 rather than quietly improving a planner's coverage.
 
-A real run, 7 planners over 16 tasks at a 20-second limit:
+By default the benchmark covers **every instance of every environment it can run**, cartridge
+ones included. `iw` runs as Iterated Width up to a bound of 1000 rather than at a width someone
+picked: IW(k) is a family, and which member a problem needs is a property of the problem. The
+loop stops when a width solves it, the budget runs out, or a width covers the reachable space
+without pruning anything for novelty — which is also a proof that there is no plan.
+
+A real run — 7 planners over 18 tasks, a Puzznic cartridge supplied, 20-second limit:
 
 ```
 planner       solved  of   coverage  total time  median   plan len
-bfws-2        12      16   75%       74.7s       1.40s    18.8
-bfws-1        11      16   69%       51.0s       0.82s    20.5
-mcts *        7       16   44%       122.5s      20.05s   5.1
-iw-1 *        6       16   38%       30.6s       2.55s    19.8
-iw-2 *        6       16   38%       8.4s        0.17s    4.0
-siw-1 *       6       16   38%       17.4s       0.54s    20.2
-fsx *         2       16   12%       40.0s       20.02s   2.0
+bfws-1        15      18   83%       76.7s       4.49s    16.3
+bfws-2        15      18   83%       75.2s       3.58s    16.3
+iw            14      18   78%       98.4s       4.93s    12.2
+mcts          8       18   44%       145.3s      20.03s   4.6
+siw-1 *       7       18   39%       33.8s       0.56s    17.6
+siw-2 *       7       18   39%       13.6s       0.06s    6.3
+fsx           2       18   11%       26.8s       13.42s   2.0
 
-* incomplete: a no-plan answer from this planner is not a proof.
+* at least one UNSOLVED row from this planner is not a proof that there is no plan.
 ```
+
+`puzznic` and `puzznic_gb` come out identical planner for planner in the per-environment table
+— the cartridge and its pure-Python twin agreeing, which is the comparison supplying a ROM
+buys you.
 
 The full documentation is in [docs/benchmark.md](docs/benchmark.md), including the progress
 measures SIW and BFWS need per environment, the three environments that have none and why, and
@@ -515,6 +529,7 @@ planiverse/
         └── pddlgym/                    # vendored PDDLGym 0.0.7 — see its VENDORING.md
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark harness
+setup_benchmark.sh                      # interactive benchmark setup; asks for the cartridges
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
 ├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout

@@ -118,7 +118,7 @@ def result_path(sandbox_dir, planner_tag, task):
     return os.path.join(sandbox_dir, "results", planner_tag, f"{task_filename(task)}.json")
 
 
-def solve(planner_spec, task, limits, sandbox_dir=None, seed=None):
+def solve(planner_spec, task, limits, sandbox_dir=None, seed=None, roms=None):
     """Run one pair and return the result dictionary, writing it out if given a sandbox.
 
     The result is written even when the run fails, which is the whole point: a benchmark that
@@ -151,11 +151,15 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None):
     environment = None
     try:
         spec = get_spec(environment_name)
-        if not spec.available():
+        rom = _rom_for(spec, roms)
+        if not _dependencies_present(spec):
             return _finish(record, "UNSUPPORTED", started_wall, sandbox_dir,
                            note=f"{environment_name} needs {', '.join(spec.requires)}")
+        if spec.needs_rom and rom is None:
+            return _finish(record, "UNSUPPORTED", started_wall, sandbox_dir,
+                           note=f"{environment_name} has no cartridge on this machine")
         try:
-            environment = spec.build()
+            environment = spec.build(**({spec.rom_argument: rom} if rom else {}))
             environment.fix_index(index)
         except Exception as exc:
             return _finish(record, "UNSUPPORTED", started_wall, sandbox_dir,
@@ -185,6 +189,9 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None):
 
         record["statistics"] = _statistics(outcome)
         record["search_status"] = outcome.status
+        # Recomputed now the run is over: a conditionally complete planner — `IteratedWidth`
+        # — only proves unsolvability on the runs where it says it exhausted the space.
+        record["complete"] = catalogue.is_complete(planner_spec.planner, outcome.status)
         record["plan_length"] = len(outcome.plan) if outcome.plan is not None else None
         record["plan_cost"] = outcome.cost if outcome.plan else None
         record["width"] = outcome.width
@@ -213,6 +220,33 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None):
                 close()
             except Exception:
                 pass
+
+
+def _dependencies_present(spec):
+    """Are the environment's third-party modules importable?
+
+    Not `spec.available()`, which also asks whether a cartridge is present — and answers by
+    looking at an environment variable. The experiment's own recorded ROM path has to be
+    allowed to satisfy that instead, so the two questions are asked separately here.
+    """
+    import importlib
+
+    for module_name in spec.requires:
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            return False
+    return True
+
+
+def _rom_for(spec, roms):
+    """The cartridge for an environment: the experiment's, else its variable, else None."""
+    if not spec.needs_rom:
+        return None
+    path = (roms or {}).get(spec.name)
+    if path and os.path.isfile(path):
+        return path
+    return spec.rom_path()
 
 
 def _classify(outcome, limits, elapsed):

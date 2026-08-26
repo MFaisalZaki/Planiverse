@@ -116,6 +116,94 @@ def test_iterated_width_gives_up_when_its_ceiling_is_too_low(env):
     assert result.statistics.widths_tried == (1,)
 
 
+class _Step:
+    def __init__(self, number):
+        self.number = number
+        self.literals = frozenset({f"at({number})"})
+
+
+class _Chain:
+    """Three states in a line, no goal. IW(1) covers it without pruning for novelty."""
+
+    def fix_index(self, index): pass
+
+    def reset(self): return _Step(0), {}
+
+    def successors(self, state):
+        return [] if state.number == 2 else [("go", _Step(state.number + 1))]
+
+    def is_goal(self, state): return False
+
+    def is_terminal(self, state): return False
+
+    def simulate(self, plan): return [_Step(i) for i in range(len(plan) + 1)]
+
+
+def test_a_huge_width_bound_costs_nothing_when_the_space_is_already_covered():
+    """`max_width` is a bound, not a plan. If a width exhausts the reachable space without
+    discarding anything for novelty, no larger width can reach further — so iterating on
+    would re-run the identical search a thousand times."""
+    result = IteratedWidth(max_width=1000, strict=False).solve(_Chain(), Budget())
+    assert result.statistics.widths_tried == (1,), "it stopped after the first"
+    assert result.status == "exhausted", "and says the space really was covered"
+
+
+def test_exhausting_the_space_is_reported_as_such_not_as_a_plain_failure():
+    """`SearchResult.__bool__` is `solved`, so `last.status if last else ...` silently
+    reported "failed" for every unsolved outcome — including a proof that there is no plan."""
+    assert IteratedWidth(max_width=3, strict=False).solve(_Chain(), Budget()).status \
+        == "exhausted"
+
+
+def test_running_out_of_budget_is_not_mistaken_for_covering_the_space():
+    result = IteratedWidth(max_width=1000, strict=False).solve(
+        _Chain(), Budget(max_expansions=1))
+    assert result.status == "out_of_budget"
+
+
+def test_a_width_strict_refuses_stops_the_iteration_rather_than_raising(env):
+    """The widths already tried are a real result; an exception would throw them away."""
+    result = IteratedWidth(max_width=9, strict=True).solve(env, Budget(max_expansions=5000))
+    assert result.solved or result.statistics.widths_tried == (1, 2)
+
+
+def test_a_bound_below_one_is_refused():
+    with pytest.raises(ValueError, match="max_width"):
+        IteratedWidth(max_width=0)
+
+
+def test_novelty_stops_at_the_number_of_atoms_a_state_has():
+    """A tuple longer than the state has atoms does not exist, so the work a huge width costs
+    is bounded by the state, not by the width. Without that a bound of 1000 meant a thousand
+    empty combination ranges per record and a thousand allocated levels per table."""
+    import time
+
+    atoms = frozenset({"a", "b", "c"})
+    table = NoveltyTable(width=1000, strict=False)
+    table.evaluate_and_record(atoms)
+    seen_after_first = table.tuples_enumerated
+    table.evaluate_and_record(atoms)
+    assert table.tuples_enumerated - seen_after_first == 7, \
+        "the whole power set of three atoms, and nothing above size three"
+    assert len(table) == 7
+
+    started = time.perf_counter()
+    huge = NoveltyTable(width=10 ** 6, strict=False)
+    huge.evaluate_and_record(atoms)
+    assert time.perf_counter() - started < 1.0, "a million levels must not be allocated"
+    assert huge.evaluate(atoms) == 10 ** 6 + 1, "and the answer is unchanged"
+
+
+def test_a_huge_width_scores_the_same_as_one_the_size_of_the_state():
+    """Widths above the atom count are the same search, so they had better agree."""
+    atoms = [frozenset({"a", "b"}), frozenset({"b", "c"}), frozenset({"a", "b"})]
+    small = NoveltyTable(width=2, strict=False)
+    large = NoveltyTable(width=500, strict=False)
+    for state in atoms:
+        assert (small.evaluate_and_record(state) <= 2) == \
+               (large.evaluate_and_record(state) <= 500)
+
+
 def test_the_plan_and_trace_line_up(env):
     result = IWSearch(width=2).solve(env, Budget(max_expansions=5000))
     assert len(result.states) == len(result.plan) + 1, "the trace is one longer"

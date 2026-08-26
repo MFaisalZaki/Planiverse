@@ -48,6 +48,13 @@ RANDOMISED = ("fsx", "mcts")
 #: tuple it means "this planner did not find one", and the reports say so.
 COMPLETE = ("bfws",)
 
+#: Planners that prove unsolvability only when they say so. `IteratedWidth` reports
+#: `exhausted` when one of its widths covered the whole reachable space without discarding
+#: anything for novelty — at that point no larger width can reach further, and there is no
+#: plan. Any other way it stops (the budget, or reaching `max_width`) proves nothing, so
+#: completeness here is a property of the individual run rather than of the planner.
+COMPLETE_WHEN_EXHAUSTED = ("iterated_width",)
+
 
 def names():
     return tuple(sorted(PLANNERS))
@@ -90,6 +97,13 @@ def is_randomised(name):
     return name in RANDOMISED
 
 
-def is_complete(name):
-    """Does a no-plan answer from this planner prove there is no plan? See `COMPLETE`."""
-    return name in COMPLETE
+def is_complete(name, search_status=None):
+    """Does a no-plan answer prove there is no plan?
+
+    `search_status` is the planner's own status for one run. Without it this answers for the
+    planner in general; with it, a conditionally complete planner can be judged on what it
+    actually did.
+    """
+    if name in COMPLETE:
+        return True
+    return name in COMPLETE_WHEN_EXHAUSTED and search_status == "exhausted"

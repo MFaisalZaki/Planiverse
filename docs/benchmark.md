@@ -13,12 +13,20 @@ JSON, a sandbox is a directory of results, and the stages between them run indep
 ## The five minute version
 
 ```bash
-planiverse-bench init      --exp-dir experiment
-planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
-planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
+./setup_benchmark.sh                      # asks about limits and your Game Boy cartridges
 bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
 planiverse-bench analyze   --sandbox-dir sandbox
 planiverse-bench report    --sandbox-dir sandbox
+```
+
+`setup_benchmark.sh` is the front door. It runs the first three stages and asks the one thing
+nothing else can work out — where your cartridges are. `--yes` takes every default and asks
+nothing. The stages underneath are ordinary commands if you would rather drive them:
+
+```bash
+planiverse-bench init      --exp-dir experiment --rom puzznic_gb=/path/to/Puzznic.gb
+planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
+planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
 ```
 
 `init` writes a default experiment; `discover` resolves which `(environment, index)` pairs
@@ -59,10 +67,13 @@ experiment/
         "tags": [],
         "include-environments": [],
         "exclude-environments": [],
-        "max-instances-per-environment": 10,
+        "max-instances-per-environment": 0,
         "selection": "even",
-        "include-rom-environments": false,
+        "include-rom-environments": true,
         "selected-tasks": []
+    },
+    "roms": {
+        "puzznic_gb": "/path/to/Puzznic (J).gb"
     },
     "slurm": {
         "cpus-per-task": 1,
@@ -95,6 +106,20 @@ A planner file:
 }
 ```
 
+`max-instances-per-environment` is `0`, meaning **every instance of every environment**. Set
+a number for a quick look, but be clear about what it costs: a benchmark that samples a tenth
+of each environment is reporting on a sample it chose, and `selection: "even"` decides which
+tenth. `include-rom-environments` is on, so a Game Boy environment is benchmarked next to its
+pure-Python twin — which is most of the point of having both. Without a cartridge those
+environments are skipped with a reason rather than failing.
+
+`roms` records where the cartridges are. It lives in the experiment rather than in environment
+variables so the experiment is self-contained: a variable exported in the shell that ran
+`generate` is not there on the compute node, and the whole array would come back
+`UNSUPPORTED`. A variable is still honoured as a fallback, and a recorded path that does not
+exist falls back to one — a path written on the machine that made the config is a promise
+about a different filesystem until it is checked.
+
 `tag` names the planner everywhere afterwards — result filenames, sbatch job name, every table
 — so it must be filesystem-safe and stable. `planner` is a name from the catalogue
 (`planiverse-bench planners` lists them). A misspelled parameter is **refused**, not ignored: a
@@ -103,6 +128,26 @@ nothing downstream can tell.
 
 `tags` and `exclude-environments` narrow one planner's task list, so a single experiment can run
 a cheap planner over everything and an expensive one over a subset.
+
+### Why `iw` has no width
+
+Because IW does not have one. IW(k) is a family, and which member you need is a property of the
+problem, not a setting — so the default experiment runs `iterated_width`, which tries IW(1),
+IW(2), … up to `max_width`, set to 1000.
+
+That bound is a bound, not a plan. The loop stops as soon as any of three things happens: a
+width solves the problem; the budget runs out (the usual outcome above width 2, since IW(k)
+enumerates every k-tuple of every state's atoms); or **a width exhausts the reachable space
+without discarding anything for novelty**, at which point no larger width can reach further and
+there is no plan. In practice it stops at 1 or 2 and the 1000 is never approached.
+
+Widths above 2 need `strict: false`. `NoveltyTable` refuses them otherwise, on the grounds that
+C(n, k) tuples per state is usually more expensive than the simulator it is meant to be saving
+— which is true, and is exactly why the bound has to be discovered rather than assumed.
+
+`siw` and `bfws` are still pinned, at widths 1 and 2, because those are the configurations the
+width-based literature reports and the ones worth comparing against. Change them in
+`planners/*.json` if you disagree.
 
 ## The sandbox
 
@@ -184,9 +229,19 @@ that dies on instance 12 must not take the other 400 runs with it.
 `TIMEOUT` and `NODEOUT` are separate because they say different things about the same planner:
 one is too slow per node, the other is looking in the wrong place.
 
-`UNSOLVED` deliberately does **not** mean "unsolvable". Only BFWS among these planners is
-complete, so for everything else it means no more than "this planner stopped looking". The
-tables mark incomplete planners with `*`.
+`UNSOLVED` deliberately does **not** mean "unsolvable". It means the planner stopped of its
+own accord without a plan, and whether that is a proof depends on the planner:
+
+- **BFWS** is complete — it uses novelty as a sort key rather than as a filter, so nothing is
+  ever discarded. Its `UNSOLVED` rows are proofs.
+- **Iterated Width** is complete *on the runs where it says so*. It reports `exhausted` when
+  one of its widths covered the reachable space without discarding anything for novelty; that
+  is a proof. Stopped by the budget instead, it proves nothing. So each result carries its own
+  `complete` flag rather than inheriting one from the planner.
+- **IW at a fixed width, SIW, FSX and MCTS** prove nothing either way.
+
+The coverage table stars a planner when at least one of its `UNSOLVED` rows is not a proof, and
+`results.csv` has the per-run `complete` and `search_status` columns behind it.
 
 `MISSING` is the one worth watching. A benchmark's most common failure is a job that never ran
 — cancelled, evicted, submitted to a partition that does not exist — and an analysis that reads
@@ -228,16 +283,28 @@ result, not a broken one, but it is a different experiment — and the reports m
 
 ## Game Boy environments
 
-They need a cartridge, which is copyrighted and cannot ship here. Point an environment variable
-at one and set `"include-rom-environments": true`:
+They need a cartridge, which is copyrighted and cannot ship here — so the path can only come
+from you. `./setup_benchmark.sh` asks for all three, checks each file exists, and records the
+paths in the experiment. That is the recommended route, and it is why the script exists.
+
+Equivalently, by hand:
 
 ```bash
-export PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb"
-export PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb"
-export PLANIVERSE_SML_ROM="/path/to/Super Mario Land.gb"
+planiverse-bench init --exp-dir experiment --force \
+    --rom "puzznic_gb=/path/to/Puzznic (J).gb" \
+    --rom "flipull_gb=/path/to/Flipull (USA).gb" \
+    --rom "super_mario_land=/path/to/Super Mario Land.gb"
 ```
 
-Set them in `setup-commands` too, or the cluster jobs will not see them.
+Environment variables — `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
+`PLANIVERSE_SML_ROM` — still work as a fallback, but they are the weaker option for a cluster
+run: a variable exported in your shell is not there on the compute node unless you also put it
+in `setup-commands`. The recorded path travels with the experiment.
+
+Each of these has a pure-Python counterpart — `puzznic`, `flipull`, `platformer` — so
+supplying a cartridge is what lets you compare an emulated environment against an implemented
+one under the same planners and the same limits. Skip one and it is reported as skipped, with
+the reason, rather than quietly dropped.
 
 ## Reading the report
 
@@ -262,24 +329,43 @@ solves the same 40 just inside the limit.
 
 ## A worked example
 
-7 planners over 16 tasks, 20-second limit, run locally:
+7 planners over 18 tasks — two instances from each environment, a Puzznic cartridge supplied —
+at a 20-second limit, run locally:
 
 ```
 Coverage
 planner       solved  of   coverage  total time  median   plan len
-bfws-2        12      16   75%       74.7s       1.40s    18.8
-bfws-1        11      16   69%       51.0s       0.82s    20.5
-mcts *        7       16   44%       122.5s      20.05s   5.1
-iw-1 *        6       16   38%       30.6s       2.55s    19.8
-iw-2 *        6       16   38%       8.4s        0.17s    4.0
-siw-1 *       6       16   38%       17.4s       0.54s    20.2
-fsx *         2       16   12%       40.0s       20.02s   2.0
+bfws-1        15      18   83%       76.7s       4.49s    16.3
+bfws-2        15      18   83%       75.2s       3.58s    16.3
+iw            14      18   78%       98.4s       4.93s    12.2
+mcts          8       18   44%       145.3s      20.03s   4.6
+siw-1 *       7       18   39%       33.8s       0.56s    17.6
+siw-2 *       7       18   39%       13.6s       0.06s    6.3
+fsx           2       18   11%       26.8s       13.42s   2.0
+
+Solved per environment
+environment       bfws-1  bfws-2  fsx   iw    mcts  siw-1  siw-2
+crop_management   2/2     2/2     0/2   2/2   2/2   1/2    1/2
+flipull           2/2     2/2     0/2   1/2   1/2   1/2    1/2
+manufacturing †   2/2     2/2     2/2   2/2   2/2   2/2    2/2
+platformer        2/2     2/2     0/2   2/2   1/2   0/2    0/2
+power_grid        2/2     2/2     0/2   2/2   1/2   1/2    0/2
+puzznic           1/2     1/2     0/2   1/2   0/2   0/2    1/2
+puzznic_gb        1/2     1/2     0/2   1/2   0/2   0/2    1/2
+urban_planning †  1/2     1/2     0/2   1/2   0/2   1/2    0/2
+water_network     2/2     2/2     0/2   2/2   1/2   1/2    1/2
 ```
 
-Worth noticing: `iw-2` and `siw-1` solve the same number as `iw-1` but `iw-2`'s plans are a
-quarter the length and it is fifteen times faster overall, and `mcts` finds much shorter plans
-than anything else while spending the entire limit doing it. None of that is visible from a
-coverage column alone, which is the argument for the rest of the tables.
+Worth noticing. `iw` — Iterated Width, not a width someone picked — lands within one task of
+BFWS, and finds shorter plans than either BFWS configuration while doing it; an earlier run
+with IW pinned at 1 and 2 had each managing well under half of what BFWS did. `mcts` finds much
+shorter plans than anything else and spends the entire limit doing it. `siw-2` is an order of
+magnitude faster than `siw-1` at identical coverage. And `puzznic` and `puzznic_gb` come out
+identical planner for planner, which is the cartridge and its pure-Python twin agreeing — the
+comparison you can only make by supplying a ROM.
+
+None of that is visible from a coverage column alone, which is the argument for the rest of the
+tables.
 
 ## Python API
 

@@ -7,6 +7,7 @@ and accounting for results that never arrived.
 """
 import json
 import os
+import pathlib
 import stat
 
 import pytest
@@ -117,6 +118,49 @@ def test_two_planner_files_cannot_share_a_tag(tmp_path):
         json.dump({"tag": "a", "planner": "iw"}, handle)
     with pytest.raises(ValueError, match="share a tag"):
         ExperimentConfig.load(tmp_path)
+
+
+def test_the_defaults_cover_every_instance_and_both_versions_of_a_game():
+    """A benchmark that samples a tenth of each environment is reporting on a sample it
+    chose, and one that leaves out the cartridge-backed environments cannot compare a Game
+    Boy environment against its pure-Python twin — which is most of the point of having
+    both."""
+    selection = TaskSelection()
+    assert selection.max_instances_per_environment == 0, "0 means every instance"
+    assert selection.include_rom_environments is True
+
+
+def test_rom_paths_live_in_the_experiment_so_a_cluster_job_gets_them(tmp_path, monkeypatch):
+    """A variable exported in the shell that ran `generate` is not there on the compute
+    node, and the whole array would come back UNSUPPORTED."""
+    from planiverse.environments import get_spec
+
+    cartridge = tmp_path / "rom.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    experiment = ExperimentConfig(roms={"puzznic_gb": str(cartridge)})
+    experiment.save(tmp_path / "exp")
+
+    loaded = ExperimentConfig.load(tmp_path / "exp")
+    assert loaded.roms == {"puzznic_gb": str(cartridge)}
+
+    spec = get_spec("puzznic_gb")
+    monkeypatch.delenv(spec.rom_variable, raising=False)
+    assert loaded.rom_for(spec) == str(cartridge), "the experiment's copy, with no variable"
+
+
+def test_a_recorded_rom_path_that_is_not_there_falls_back_to_the_variable(tmp_path,
+                                                                         monkeypatch):
+    """A path recorded on the machine that wrote the config is a promise about a different
+    filesystem until it is checked."""
+    from planiverse.environments import get_spec
+
+    spec = get_spec("puzznic_gb")
+    elsewhere = tmp_path / "elsewhere.gb"
+    elsewhere.write_bytes(b"\x00" * 32768)
+    monkeypatch.setenv(spec.rom_variable, str(elsewhere))
+
+    experiment = ExperimentConfig(roms={"puzznic_gb": str(tmp_path / "gone.gb")})
+    assert experiment.rom_for(spec) == str(elsewhere)
 
 
 def test_disabled_planners_are_left_out():
@@ -281,8 +325,16 @@ def test_eligibility_says_why_something_was_left_out():
     """"Skipped" and "skipped because PyBoy is not installed" read very differently in a
     report."""
     selection = TaskSelection()
-    ok, reason = discovery.eligible(fake_spec("rommy", needs_rom=True), selection)
-    assert not ok and "ROM" in reason
+    ok, reason = discovery.eligible(fake_spec("rommy", needs_rom=True), selection, rom=None)
+    assert not ok and "cartridge" in reason, "no cartridge is its own reason"
+
+    ok, reason = discovery.eligible(
+        fake_spec("rommy", needs_rom=True),
+        TaskSelection(include_rom_environments=False), rom="/some/rom.gb")
+    assert not ok and "include-rom-environments" in reason, "turned off is a different reason"
+
+    assert discovery.eligible(fake_spec("rommy", needs_rom=True), selection,
+                              rom="/some/rom.gb") == (True, "")
 
     ok, reason = discovery.eligible(fake_spec("nope", requires=("no_such_module",)),
                                     selection)
@@ -860,9 +912,25 @@ def test_the_default_experiment_is_a_spread_of_planners(tmp_path):
     run_cli("init", "--exp-dir", str(tmp_path / "exp"))
     loaded = ExperimentConfig.load(tmp_path / "exp")
     families = {spec.planner for spec in loaded.planners}
-    assert {"iw", "siw", "bfws", "fsx", "mcts"} <= families, "one of each, so a report says something"
+    assert {"iterated_width", "siw", "bfws", "fsx", "mcts"} <= families, \
+        "one of each, so a report says something"
     for spec in loaded.planners:
         assert catalogue.build(spec.planner, spec.params) is not None
+
+
+def test_iw_iterates_its_width_rather_than_running_at_one_we_picked(tmp_path):
+    """Pinning IW at a width reports it at a configuration we chose rather than the one the
+    algorithm defines. The bound is a bound: IteratedWidth stops when a width solves it, the
+    budget runs out, or a width covers the reachable space without pruning for novelty."""
+    run_cli("init", "--exp-dir", str(tmp_path / "exp"))
+    loaded = ExperimentConfig.load(tmp_path / "exp")
+    iterated = [spec for spec in loaded.planners if spec.planner == "iterated_width"]
+    assert iterated, "there has to be one"
+    assert not any(spec.planner == "iw" for spec in loaded.planners), \
+        "and no fixed-width IW alongside it"
+    assert iterated[0].params["max_width"] >= 1000
+    assert iterated[0].params["strict"] is False, \
+        "strict refuses widths above 2, so it would stop at the cap we were trying to lift"
 
 
 def test_environments_and_planners_list_without_a_config(capsys):
@@ -925,6 +993,103 @@ def test_solve_refuses_a_planner_tag_that_is_not_in_the_experiment(tmp_path, cap
     assert run_cli("solve", "--exp-dir", str(experiment_dir),
                    "--sandbox-dir", str(tmp_path / "sandbox"),
                    "--planner", "nope", "--task", "puzznic@0") == 2
+
+
+def test_a_missing_cartridge_and_a_missing_dependency_read_differently():
+    """One is fixed by installing something, the other by supplying a file only you have."""
+    selection = TaskSelection()
+    _, no_rom = discovery.eligible(fake_spec("g", needs_rom=True), selection, rom=None)
+    _, no_dep = discovery.eligible(fake_spec("d", requires=("no_such_module",)), selection)
+    assert "cartridge" in no_rom and "no_such_module" in no_dep
+    assert no_rom != no_dep
+
+
+def test_the_runner_builds_a_rom_environment_from_the_experiments_path(tmp_path,
+                                                                      monkeypatch):
+    built = {}
+
+    class Fake:
+        def fix_index(self, index): raise IndexError("far enough — it was constructed")
+
+    spec = EnvironmentSpec(name="romy", factory="x:Y", summary="", instances="",
+                           deterministic=True, state_identity="value", needs_rom=True,
+                           rom_variable="NOT_SET_ANYWHERE")
+    monkeypatch.setattr(runner, "get_spec", lambda name: spec)
+    monkeypatch.setattr(type(spec), "build",
+                        lambda self, **kw: built.update(kw) or Fake(), raising=False)
+
+    cartridge = tmp_path / "rom.gb"
+    cartridge.write_bytes(b"\x00")
+    record = runner.solve(bfws_spec(), "romy@0", Limits(time="10s"),
+                          roms={"romy": str(cartridge)})
+    assert built == {"romfile": str(cartridge)}, "the path reached the constructor"
+    assert record["status"] == "UNSUPPORTED" and "IndexError" in record["note"]
+
+
+def test_a_rom_environment_with_no_cartridge_anywhere_is_unsupported(tmp_path, monkeypatch):
+    spec = EnvironmentSpec(name="romy", factory="x:Y", summary="", instances="",
+                           deterministic=True, state_identity="value", needs_rom=True,
+                           rom_variable="NOT_SET_ANYWHERE")
+    monkeypatch.setattr(runner, "get_spec", lambda name: spec)
+    record = runner.solve(bfws_spec(), "romy@0", Limits(time="10s"), sandbox_dir=tmp_path)
+    assert record["status"] == "UNSUPPORTED"
+    assert "cartridge" in record["note"]
+
+
+def test_iterated_width_is_complete_only_on_the_runs_where_it_says_so(tiny, tmp_path):
+    """It proves unsolvability when a width covers the reachable space without pruning for
+    novelty, and proves nothing when the budget stops it. So completeness is a property of
+    the run, not of the planner."""
+    tiny("unsolvable")
+    spec = PlannerSpec(tag="iw", planner="iterated_width",
+                       params={"max_width": 1000, "strict": False})
+    proved = runner.solve(spec, "tiny@0", Limits(time="30s", max_expansions=500),
+                          sandbox_dir=tmp_path)
+    assert proved["status"] == "UNSOLVED"
+    assert proved["search_status"] == "exhausted"
+    assert proved["complete"] is True
+
+    stopped = runner.solve(spec, "tiny@0", Limits(time="30s", max_expansions=1),
+                           sandbox_dir=tmp_path)
+    assert stopped["status"] in ("NODEOUT", "TIMEOUT")
+    assert stopped["complete"] is False
+
+
+# ------------------------------------------------------------------------- setup script
+
+SETUP_SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "setup_benchmark.sh"
+
+
+@pytest.mark.skipif(not SETUP_SCRIPT.is_file(), reason="not a source checkout")
+def test_the_setup_script_is_executable_and_parses():
+    import subprocess
+
+    assert os.stat(SETUP_SCRIPT).st_mode & stat.S_IXUSR
+    subprocess.run(["bash", "-n", str(SETUP_SCRIPT)], check=True)
+
+
+@pytest.mark.skipif(not SETUP_SCRIPT.is_file(), reason="not a source checkout")
+def test_the_setup_script_asks_for_every_cartridge():
+    """The three copyrighted ones. An experiment that silently skipped them would be
+    benchmarking half of what it claims to."""
+    body = SETUP_SCRIPT.read_text()
+    for environment in ("puzznic_gb", "flipull_gb", "super_mario_land"):
+        assert environment in body, environment
+    assert "ask_rom" in body
+
+
+@pytest.mark.skipif(not SETUP_SCRIPT.is_file(), reason="not a source checkout")
+def test_skipping_a_cartridge_does_not_end_the_script():
+    """`set -e` plus a bare `return` carrying a failed test's status ended the run on the
+    first environment the user had no ROM for."""
+    import subprocess
+
+    result = subprocess.run(
+        ["bash", str(SETUP_SCRIPT), "--yes", "--help"],
+        capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "--rom" not in result.stdout or "cartridge" in result.stdout.lower() \
+        or "ROM" in result.stdout
 
 
 def test_generate_says_so_rather_than_writing_nothing(tmp_path, capsys):
