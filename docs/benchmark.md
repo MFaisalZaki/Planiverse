@@ -24,7 +24,7 @@ nothing else can work out — where your cartridges are. `--yes` takes every def
 nothing. The stages underneath are ordinary commands if you would rather drive them:
 
 ```bash
-planiverse-bench init      --exp-dir experiment --rom puzznic_gb=/path/to/Puzznic.gb
+planiverse-bench init      --exp-dir experiment --rom-puzznic /path/to/Puzznic.gb
 planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
 planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
 ```
@@ -47,8 +47,9 @@ it and a result can always be traced back to the limits it was obtained under.
 experiment/
 ├── exp-details.json          limits, task selection, SLURM directives
 └── planners/
+    ├── bfws-1.json
     ├── bfws-2.json
-    ├── iw-1.json
+    ├── iw.json
     └── ...
 ```
 
@@ -287,17 +288,41 @@ They need a cartridge, which is copyrighted and cannot ship here — so the path
 from you. `./setup_benchmark.sh` asks for all three, checks each file exists, and records the
 paths in the experiment. That is the recommended route, and it is why the script exists.
 
-Equivalently, by hand:
+There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
+`planiverse-bench init`:
+
+| Flag | Environment | Variable |
+|---|---|---|
+| `--rom-puzznic PATH` | `puzznic_gb` | `PLANIVERSE_PUZZNIC_ROM` |
+| `--rom-flipull PATH` | `flipull_gb` | `PLANIVERSE_FLIPULL_ROM` |
+| `--rom-sml PATH`, `--rom-mario PATH` | `super_mario_land` | `PLANIVERSE_SML_ROM` |
+
+```bash
+./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
+                     --rom-flipull ~/roms/"Flipull (USA).gb" \
+                     --rom-mario   ~/roms/"Super Mario Land.gb"
+```
+
+Give one on the command line and the script does not ask about it; leave it out and it does.
+The same flags work on `init` directly:
 
 ```bash
 planiverse-bench init --exp-dir experiment --force \
-    --rom "puzznic_gb=/path/to/Puzznic (J).gb" \
-    --rom "flipull_gb=/path/to/Flipull (USA).gb" \
-    --rom "super_mario_land=/path/to/Super Mario Land.gb"
+    --rom-puzznic "/path/to/Puzznic (J).gb" \
+    --rom-flipull "/path/to/Flipull (USA).gb" \
+    --rom-mario   "/path/to/Super Mario Land.gb"
 ```
 
-Environment variables — `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
-`PLANIVERSE_SML_ROM` — still work as a fallback, but they are the weaker option for a cluster
+The flags are generated from the registry, so a new Game Boy environment gets one by existing,
+and each is the same name as its environment variable in a different spelling — which is where
+`--rom-sml` comes from. `--rom-mario` is an alias, because nobody types "sml" first. A path
+that does not exist is refused there and then: a typo caught while typing costs a second, and
+one caught after submitting four thousand jobs costs rather more.
+
+`--rom puzznic_gb=PATH` keys the same thing by environment name, which is easier in a loop
+where the environment is itself a variable.
+
+Environment variables still work as a fallback, but they are the weaker option for a cluster
 run: a variable exported in your shell is not there on the compute node unless you also put it
 in `setup-commands`. The recorded path travels with the experiment.
 
