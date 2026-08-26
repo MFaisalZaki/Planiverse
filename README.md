@@ -335,6 +335,53 @@ open, which makes `option_count` a goal-free measure of how close a state is to 
 — useful as a heuristic for the other planners precisely when heuristics are hardest to
 write.
 
+## Benchmarking
+
+`planiverse-bench` runs every planner over every environment, on a SLURM cluster or on one
+machine, and turns the results into tables and plots. It follows
+[pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit): an experiment is a directory of
+JSON, a sandbox is a directory of results, and the stages between them run independently — so a
+benchmark can be prepared on a laptop, run on a cluster, and analysed somewhere else again.
+
+```bash
+planiverse-bench init      --exp-dir experiment
+planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
+planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
+bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
+planiverse-bench analyze   --sandbox-dir sandbox
+planiverse-bench report    --sandbox-dir sandbox
+```
+
+`generate` writes one **job array per planner** — a benchmark is thousands of short runs, and a
+scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
+split at the site's `MaxArraySize`, throttled with `%N` so a shared partition survives, and given
+time and memory headroom above the harness's own limits so that a timeout is recorded as a
+`TIMEOUT` row rather than vanishing as a killed job.
+
+Every run ends in a status — `SOLVED`, `INVALID`, `UNSOLVED`, `TIMEOUT`, `NODEOUT`, `MEMOUT`,
+`ERROR`, `UNSUPPORTED`, `MISSING` — because a failure has to be recorded rather than raised. The
+expected set of runs comes from `tasks.json`, so a job that never ran is counted as `MISSING`
+rather than quietly improving a planner's coverage.
+
+A real run, 7 planners over 16 tasks at a 20-second limit:
+
+```
+planner       solved  of   coverage  total time  median   plan len
+bfws-2        12      16   75%       74.7s       1.40s    18.8
+bfws-1        11      16   69%       51.0s       0.82s    20.5
+mcts *        7       16   44%       122.5s      20.05s   5.1
+iw-1 *        6       16   38%       30.6s       2.55s    19.8
+iw-2 *        6       16   38%       8.4s        0.17s    4.0
+siw-1 *       6       16   38%       17.4s       0.54s    20.2
+fsx *         2       16   12%       40.0s       20.02s   2.0
+
+* incomplete: a no-plan answer from this planner is not a proof.
+```
+
+The full documentation is in [docs/benchmark.md](docs/benchmark.md), including the progress
+measures SIW and BFWS need per environment, the three environments that have none and why, and
+how to point the harness at a Game Boy cartridge.
+
 ## Writing a planner
 
 Environments are planner-agnostic. [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py)
@@ -445,27 +492,41 @@ planiverse/
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
 ├── problems/                           # deprecated shims for the old import paths
 ├── planners/
+│   ├── width/                          # IW, Iterated Width, SIW, BFWS
+│   ├── fsx.py                          # FSXPlanner (future state maximisation)
+│   ├── mcts.py                         # MCTSPlanner (UCT)
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
+├── rendering/                          # traces to PNG and PDF
+├── benchmark/                          # planiverse-bench: run the planners, generate SLURM jobs
+│   ├── cli.py                          # init / discover / generate / solve / analyze / report
+│   ├── config.py                       # exp-details.json and planners/*.json
+│   ├── catalogue.py                    # which planners exist and how to build them
+│   ├── measures.py                     # per-environment progress measures
+│   ├── discovery.py                    # resolving (environment, index) task lists
+│   ├── runner.py                       # one run, under limits, with a status
+│   ├── slurm.py                        # job arrays, submit_all.sh, run_local.sh
+│   ├── analysis.py                     # coverage, head to head, IPC scores, CSV
+│   └── report.py                       # text and LaTeX tables, cactus and scatter plots
 └── simulator/
     ├── simulator.py                    # Simulator facade
     └── wrappers/
         ├── base.py                     # SimulatorBase interface
         ├── pddlgymenv.py               # PDDLGym adapter
         └── pddlgym/                    # vendored PDDLGym 0.0.7 — see its VENDORING.md
-dev/                                    # scratch scripts — not part of the library
 docs/environments/                      # per-environment documentation
+docs/benchmark.md                       # the benchmark harness
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
 ├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
 └── fake_flipull_rom.py                 # synthetic Game Boy ROM with Flipull's memory layout
 ```
 
-`dev/` is a scratch area and is **not** an entry point. `dev/dev.py` is stale: it imports names that
-no longer exist (`SuperMario`, `super_mario_bros_grid`, `super_mario_planner_tile`) and will not run.
-It is also the only thing that ever imported `pcg_benchmark`, which is no longer a declared
-dependency — `pip install git+https://github.com/amidos2006/pcg_benchmark.git` if you revive it.
-`dev/earthmodel.py` is a vendored copy of the c:GLOBAL gym environment (© Felix Strnad), kept for a
-future port — it does not implement the Planiverse interface yet.
+There was a `dev/` scratch directory; it is gone. It held two files. `dev.py` was stale — it
+imported names that no longer exist (`SuperMario`, `super_mario_bros_grid`,
+`super_mario_planner_tile`) and could not run — and it was the only thing that ever imported
+`pcg_benchmark`. `earthmodel.py` was a vendored copy of the c:GLOBAL gym environment
+(© Felix Strnad), kept for a port that never happened; it never implemented the Planiverse
+interface. Both are recoverable from git history if the port is ever picked up.
 
 `chex`, `flax`, `jaxmarl` and `dill` were declared as required dependencies but are imported nowhere
 in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them. The
