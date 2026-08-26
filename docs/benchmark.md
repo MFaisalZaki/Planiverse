@@ -200,13 +200,39 @@ cannot spend more than a leg that succeeded immediately. `statistics.widths_trie
 the widths the legs actually needed — a problem whose hardest leg needed IW(2) is a different
 problem from one every leg solved at IW(1), and pinning the width hid that.
 
-**`bfws` does not iterate, and that is deliberate.** BFWS uses novelty as a *sort key* rather
-than as a filter: nothing is ever discarded, so BFWS(k) is complete at every width. A BFWS(1)
-that fails ran out of budget — it did not run out of width — and restarting at a wider one
-would re-expand everything while splitting the same budget across the attempts, which is
-strictly worse. What the width changes is the search *order*, so `bfws-1` and `bfws-2` are two
-different strategies worth comparing side by side rather than a weaker and a stronger one.
-That is why they are two entries and `iw` and `siw` are one each.
+**`bfws` does not iterate, and that is not an inconsistency.** BFWS uses novelty as a *sort
+key* rather than as a filter: nothing is ever discarded, so no width can make it miss anything.
+Measured over a few tasks at a 3000-expansion budget:
+
+```
+task              w status           exp  pruned_novelty  plan
+puzznic@1         1 solved            89               0    10
+puzznic@1         2 solved            89               0    10
+puzznic@1         4 solved            89               0    10
+puzznic@30        1 solved          2042               0    65
+puzznic@30        2 out_of_budget   3000               0     -
+puzznic@30        4 out_of_budget   2788               0     -
+flipull@9         1 solved          2395               0    61
+flipull@9         2 out_of_budget   3000               0     -
+
+IW(1) puzznic@1: exhausted, pruned_novelty=47
+```
+
+Three things follow. `pruned_novelty` is zero at every width — BFWS discards nothing, where
+IW(1) threw away 47 states on the same task. There is no "the width was too small" outcome to
+escalate from: BFWS(1) ends solved, `exhausted` (it covered the reachable space, which is a
+proof there is no plan), or `out_of_budget`, and all three are stop conditions — so an iterated
+BFWS sharing one budget would spend it at width 1 and never reach width 2. It would be *exactly*
+BFWS(1) with extra machinery.
+
+And wider is not stronger: on `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and
+above run out of budget. A higher width discriminates more finely and so changes the search
+*order*, and on those tasks the coarser order is the better one. Width in BFWS is a dial, not a
+ladder, which is why `bfws-1` and `bfws-2` are two entries to compare rather than one to climb.
+
+For IW and SIW novelty is a filter, so a width too low genuinely loses states and climbing is
+the only way to find out what the problem needs. That asymmetry is the whole reason the two are
+configured differently.
 
 ## The sandbox
 
