@@ -1,14 +1,18 @@
 #!/bin/bash
 # Set up a Planiverse benchmark, interactively.
 #
-# Walks you through the whole preparation — limits, cartridge paths, SLURM settings — and
-# then runs init, discover and generate, leaving you a directory of jobs to submit. Every
-# answer has a default, so holding Enter through it gives a complete experiment.
+# Builds a virtualenv, installs planiverse into it, walks you through the preparation —
+# limits, cartridge paths, SLURM settings — and runs init, discover and generate, leaving you
+# a directory of jobs to submit. Every answer has a default, so holding Enter through it gives
+# a complete experiment.
+#
+# The generated jobs call the venv's own planiverse-bench by absolute path and activate the
+# venv before running, so they do not depend on whatever happens to be on PATH on a node.
 #
 #   ./setup_benchmark.sh                    # ask about everything
 #   ./setup_benchmark.sh --yes              # take every default, ask nothing
 #   ./setup_benchmark.sh --rom-puzznic ~/roms/Puzznic.gb --rom-flipull ~/roms/Flipull.gb
-#   ./setup_benchmark.sh --venv ~/planiverse-venv    # make one and install planiverse in it
+#   ./setup_benchmark.sh --venv /shared/planiverse-venv     # put the venv somewhere else
 #   ./setup_benchmark.sh --exp-dir e --sandbox-dir s
 #
 # The reason this exists rather than a line in the README is the cartridges. Puzznic, Flipull
@@ -31,6 +35,7 @@ SEED="0"
 ASSUME_YES=0
 ENTRY_POINT=""
 VENV_DIR=""
+USE_VENV=1
 PYTHON_BIN="python3"
 
 usage() {
@@ -38,10 +43,10 @@ usage() {
     cat <<'USAGE'
 
 Options:
-  --venv DIR            create (or reuse) a virtualenv there, pip-install planiverse into
-                        it, and activate it in every generated job. On a cluster this must
-                        be on a filesystem the compute nodes can see. Without it, the script
-                        uses whatever planiverse is already importable and stops if none is.
+  --venv DIR            where the virtualenv goes            (default: <repo>/.venv)
+                        On a cluster this must be on a filesystem the compute nodes can
+                        see, or every job will fail identically.
+  --no-venv             do not build one; use whatever planiverse is already importable
   --python BIN          interpreter to build the venv with          (default: python3)
   --rom-puzznic PATH    Puzznic cartridge; skips the question for it
   --rom-flipull PATH    Flipull cartridge
@@ -90,6 +95,7 @@ while [ $# -gt 0 ]; do
         --seed) SEED="$2"; shift 2 ;;
         --entry-point) ENTRY_POINT="$2"; shift 2 ;;
         --venv) VENV_DIR="$2"; shift 2 ;;
+        --no-venv) USE_VENV=0; shift ;;
         --python) PYTHON_BIN="$2"; shift 2 ;;
         --yes|-y) ASSUME_YES=1; shift ;;
         --help|-h) usage; exit 0 ;;
@@ -100,51 +106,60 @@ done
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETUP_COMMANDS=()
 
-if [ -n "$VENV_DIR" ]; then
-    # A virtualenv the compute nodes can see. It has to be on a shared filesystem — a venv
-    # in /tmp on the submitting host does not exist on the node that runs the job — so the
-    # path is left to you rather than guessed.
-    VENV_DIR="$(mkdir -p "$VENV_DIR" && cd "$VENV_DIR" && pwd)"
-    if [ ! -f "$VENV_DIR/bin/activate" ]; then
-        echo "== creating a virtualenv in $VENV_DIR"
-        "${PYTHON_BIN}" -m venv "$VENV_DIR"
+if [ "$USE_VENV" = "1" ]; then
+    : "${VENV_DIR:=$REPO/.venv}"
+
+    if [ ! -d "$VENV_DIR" ]; then
+        echo "== creating virtualenv at $VENV_DIR"
+        "$PYTHON_BIN" -m venv "$VENV_DIR"
     else
-        echo "== reusing the virtualenv in $VENV_DIR"
+        echo "== reusing virtualenv at $VENV_DIR"
     fi
+    VENV_DIR="$(cd "$VENV_DIR" && pwd)"
+
     # shellcheck disable=SC1091
-    source "$VENV_DIR/bin/activate"
+    . "$VENV_DIR/bin/activate"
     echo "== installing planiverse from $REPO"
-    python -m pip install --upgrade pip > /dev/null
-    python -m pip install "$REPO"
-    # The jobs run on another machine, in a shell that never saw this activation, so it goes
-    # into the experiment's setup-commands and gets written into every sbatch file.
-    SETUP_COMMANDS+=(--setup-command "source $VENV_DIR/bin/activate")
+    python -m pip install --quiet --upgrade pip setuptools wheel
+    python -m pip install --quiet -e "$REPO"
+    deactivate
+
+    # The console script inside the venv, by absolute path. That is what the generated jobs
+    # call, and it is deliberately not "activate, then run planiverse-bench": a job runs in a
+    # shell that never saw this activation, and one that silently falls back to some other
+    # interpreter on PATH is worse than one that fails. An absolute path cannot do either.
+    CLI="$VENV_DIR/bin/planiverse-bench"
+    if [ ! -x "$CLI" ]; then
+        echo "planiverse-bench was not installed into $VENV_DIR" >&2
+        exit 1
+    fi
+    ENTRY_POINT="$CLI"
+    # Activated as well, so anything a job runs after the CLI — and anything you run by hand
+    # in one of these directories — gets the same interpreter.
+    SETUP_COMMANDS+=(--setup-command ". $VENV_DIR/bin/activate")
+else
+    if [ -z "$ENTRY_POINT" ]; then
+        if command -v planiverse-bench > /dev/null 2>&1; then
+            ENTRY_POINT="planiverse-bench"
+        else
+            ENTRY_POINT="python -m planiverse.benchmark.cli"
+        fi
+    fi
 fi
 
-if [ -z "$ENTRY_POINT" ]; then
-    if command -v planiverse-bench > /dev/null 2>&1; then
-        ENTRY_POINT="planiverse-bench"
-    else
-        # A source checkout that has not been pip-installed. The generated jobs need
-        # something that works on the compute node, and `python -m` does — provided the
-        # package is importable there, which is checked below.
-        ENTRY_POINT="python -m planiverse.benchmark.cli"
-    fi
-fi
 BENCH=($ENTRY_POINT)
 
-# Fail here rather than three stages in. Without this the script picks the `python -m` form,
-# runs `init`, and dies on an ImportError that says nothing about what to do next.
+# Fail here rather than three stages in. Without this the script picks an entry point, runs
+# `init`, and dies on an ImportError that says nothing about what to do next.
 if ! "${BENCH[@]}" --help > /dev/null 2>&1; then
     cat >&2 <<INSTALL
 
-planiverse is not importable with '$ENTRY_POINT'.
+planiverse is not usable through '$ENTRY_POINT'.
 
-  pip install -e "$REPO"                     install it into the current environment
-  ./setup_benchmark.sh --venv ~/planiverse-venv   or let this script make one for you
+Drop --no-venv and this script will build one and install into it, or install
+it yourself with:
 
-On a cluster the virtualenv has to be somewhere the compute nodes can see, and
---venv puts its activation into every generated job for you.
+  pip install -e "$REPO"
 INSTALL
     exit 1
 fi

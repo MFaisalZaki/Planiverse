@@ -548,6 +548,22 @@ def test_run_local_is_written_for_people_without_a_cluster(tmp_path, experiment)
     assert "parallel" in body and "xargs" in body, "xargs is the fallback"
 
 
+def test_run_local_runs_the_same_setup_as_the_cluster_jobs(tmp_path):
+    """`setup_benchmark.sh` puts its virtualenv activation in setup-commands. A local run that
+    ignored them used whichever interpreter was on PATH, which is exactly the difference that
+    makes two runs of "the same" benchmark disagree."""
+    config = ExperimentConfig(
+        name="v",
+        slurm=SlurmConfig(setup_commands=(". /shared/venv/bin/activate",)),
+        planners=(PlannerSpec(tag="bfws-2", planner="bfws"),))
+    written = slurm.generate(tmp_path / "sandbox", pairs_for(2), config,
+                             tmp_path / "experiment")
+    local = open(written["run_local"]).read()
+    assert ". /shared/venv/bin/activate" in local
+    assert local.index("activate") < local.index("FILES="), "before anything runs"
+    assert ". /shared/venv/bin/activate" in open(written["scripts"][0]).read()
+
+
 def test_a_seed_reaches_every_generated_command(tmp_path, experiment):
     written = slurm.generate(tmp_path / "sandbox", pairs_for(2), experiment,
                              tmp_path / "experiment", seed=17)

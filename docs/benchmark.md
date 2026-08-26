@@ -34,32 +34,49 @@ exist here; `generate` writes the commands and the SLURM job arrays; `analyze` c
 result files into tables and a CSV; `report` adds LaTeX and plots. `solve` is the one stage you
 do not normally type — it is what each array element runs.
 
-## Installing, and where
+## Installing
 
-By default `setup_benchmark.sh` installs nothing. It uses whatever `planiverse` is already
-importable and **stops with instructions if there is none**, rather than picking a command that
-will fail three stages later on an `ImportError`.
+`setup_benchmark.sh` builds a virtualenv and installs the library into it, before it does
+anything else. There is no flag to turn that on — it is the first thing it does.
 
-`--venv DIR` makes it do the work: create the virtualenv if it is not there, `pip install` the
-repository into it, activate it for the rest of the run, and — the part that matters on a
-cluster — write `source DIR/bin/activate` into every generated job.
-
-```bash
-./setup_benchmark.sh --venv ~/shared/planiverse-venv --rom-puzznic ~/roms/Puzznic.gb
+```
+== creating virtualenv at /path/to/repo/.venv
+== installing planiverse from /path/to/repo
 ```
 
-The directory has to be on a filesystem the **compute nodes** can see. A virtualenv under
-`/tmp` on the submitting host does not exist on the node that runs the job, and every array
-element would fail identically. The script cannot tell which of your paths is shared, so it
-does not guess — it uses the one you name. `--python BIN` chooses the interpreter to build it
-with, for a site where `python3` is older than the library needs.
+The venv defaults to `.venv` beside the script, is **reused** if it is already there, and gets
+an editable install (`pip install -e`), so editing the library and re-running the benchmark
+does not need a reinstall.
 
-Running it again with the same `--venv` reuses the environment and reinstalls, which is what
-you want after editing the library.
+What the generated jobs then call is the venv's own console script, **by absolute path**:
 
-If you would rather manage this yourself, `pip install -e .` and skip the flag; and
-`--setup-command` on `init` puts arbitrary lines at the top of every job (`module load
-python/3.11`, `conda activate ...`), repeatable and in order.
+```bash
+/path/to/repo/.venv/bin/planiverse-bench solve --exp-dir ... --task puzznic@0
+```
+
+That is deliberate, and it is the part that makes this work on a cluster. "Activate, then run
+`planiverse-bench`" depends on the activation having happened in that shell, and a job runs in
+a shell that never saw yours — so it either fails, or worse, silently finds some other
+`planiverse-bench` on `PATH` and benchmarks a different version of the library. An absolute
+path can do neither. The venv is activated in the jobs **as well**, so anything they run after
+the CLI gets the same interpreter; `run_local.sh` activates it too, so a local run and a
+cluster run use the same Python rather than differing by whatever was on `PATH`.
+
+| Flag | |
+|---|---|
+| `--venv DIR` | put the virtualenv somewhere else |
+| `--no-venv` | do not build one; use whatever `planiverse` is already importable |
+| `--python BIN` | interpreter to build it with (default `python3`) |
+
+**On a cluster, `--venv` has to name a filesystem the compute nodes can see.** A virtualenv
+under `/tmp` on the login node does not exist on the node that runs the job, and every array
+element fails identically. The script cannot tell which of your paths is shared, so the default
+is next to the repository and moving it is your call.
+
+`--no-venv` uses the current environment and stops with instructions if the library is not
+importable, rather than picking an entry point that fails three stages later. `--setup-command`
+on `init` adds arbitrary lines to the top of every job (`module load python/3.11`), repeatable
+and in order.
 
 ## Why the stages are separate
 
@@ -239,9 +256,9 @@ Three things a generated array has to get right, none of them obvious the first 
   the same instant, the row is missing instead — and a missing row reads as an infrastructure
   problem rather than a slow planner.
 
-`setup-commands` are prepended to every job body, for `module load` and `conda activate`. Set
-them with `--setup-command` on `init`, repeatable and in order; `setup_benchmark.sh --venv`
-fills in the activation for you.
+`setup-commands` are prepended to every job body **and to `run_local.sh`**, so a local run and
+a cluster run use the same interpreter. `setup_benchmark.sh` puts its virtualenv activation
+there; add your own with `--setup-command` on `init`, repeatable and in order.
 `--per-task-scripts` writes one file per run instead of arrays, for sites that disable them.
 `${SLURM_ARRAY_TASK_ID:-0}` means a script run directly executes its first element, which is
 how you debug one without a scheduler.
