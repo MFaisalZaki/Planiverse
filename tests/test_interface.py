@@ -50,6 +50,14 @@ def flipull_gb():
     return env
 
 
+def platformer():
+    from planiverse.environments.platformer import PlatformerGame
+
+    env = PlatformerGame()
+    env.fix_index(0)
+    return env
+
+
 def water_network():
     pytest.importorskip("wntr", reason="wntr is not installed")
     from planiverse.environments.water_network.environment import WaterNetworkEnv
@@ -120,6 +128,7 @@ ENVIRONMENTS = {
     "puzznic_gb": puzznic_gb,
     "flipull": flipull,
     "flipull_gb": flipull_gb,
+    "platformer": platformer,
     "water_network": water_network,
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
@@ -162,9 +171,10 @@ def test_is_a_recognised_environment_type(factory):
 def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
-    assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb", "super_mario_land", "epidemic",
-            "network_attack", "manufacturing", "urban_planning", "water_network",
-            "power_grid", "crop_management"} == registered
+    assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb", "platformer",
+            "super_mario_land", "epidemic", "network_attack", "manufacturing",
+            "urban_planning", "water_network", "power_grid",
+            "crop_management"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():

@@ -29,6 +29,7 @@ Every environment answers the same four questions:
 | Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
 | Flipull | `flipull` | 10 stages | game | [docs](docs/environments/flipull.md) |
 | Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |
+| Platformer | `platformer` | 8 levels | game, platformer | [docs](docs/environments/platformer.md) |
 | Super Mario Land | `super_mario_land` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land.md) |
 
 ```python
@@ -198,6 +199,7 @@ Not every environment implements every method. What is actually there today:
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `PlatformerGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -432,6 +434,7 @@ planiverse/
 │   ├── puzznic_gb.py                   # PuzznicGBEnv (PyBoy)
 │   ├── flipull.py                      # FlipullGame
 │   ├── flipull_gb.py                   # FlipullGBEnv (PyBoy)
+│   ├── platformer.py                   # PlatformerGame
 │   ├── super_mario_land.py             # SuperMarioEnv (PyBoy)
 │   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
@@ -510,8 +513,12 @@ is referenced as a planned addition but is not yet in the tree.
 - [ ] Work out what a Flipull throw actually hits — every row connects, so it is not simply the
       first block in the player's row. Until it is settled, `FlipullGame` is a Flipull-*like*
       environment with a stated rule set rather than a clone of the cartridge
-- [ ] A pure-Python Super Mario Land. Not attempted: a physics platformer is a different
-      proposition from a turn-based puzzle, and a half-modelled one would be worse than none
+- [x] A dependency-free platformer (`PlatformerGame`) to stand where a pure-Python Super
+      Mario Land would. It is a genre counterpart with stated physics, **not** a twin of the
+      cartridge — nothing in it was read off that ROM, and the docs lead with that
+- [ ] An actual pure-Python Super Mario Land. Deliberately not attempted: reverse-engineering
+      a physics platformer is a far larger job than a turn-based puzzle, and a half-modelled
+      one would look like a prediction of the cartridge without being one
 - [ ] Flipull's second stage table at `$3A4E`, reached through the RNG — a bonus course, unexplored
 
 ## License
