@@ -103,6 +103,16 @@ REGISTRY = (
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
     EnvironmentSpec(
+        name="platformer",
+        factory="planiverse.environments.platformer:PlatformerGame",
+        summary="Run-and-jump platformer with stated physics, in pure Python",
+        instances="8 levels",
+        deterministic=True,
+        state_identity="value",
+        docs="docs/environments/platformer.md",
+        tags=frozenset({"game", "platformer", "dependency-free"}),
+    ),
+    EnvironmentSpec(
         name="super_mario_land",
         factory="planiverse.environments.super_mario_land:SuperMarioEnv",
         summary="Super Mario Land on the Game Boy, through PyBoy",

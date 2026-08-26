@@ -36,6 +36,7 @@ ENTRY_POINTS = [
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
+    "planiverse.environments.platformer",
     "planiverse.environments.super_mario_land",
     "planiverse.environments.epidemic_control.environment",
     "planiverse.environments.urban_planning.environment",
