@@ -364,7 +364,11 @@ Pass them instead of being asked — the same flags work on `planiverse-bench in
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
 
-`--yes` takes every default and asks nothing.
+`--yes` takes every default and asks nothing. `--venv DIR` creates a virtualenv, installs the
+library into it, and activates it in every generated job — on a cluster, point it somewhere the
+compute nodes can see. Without it the script installs nothing and stops with instructions if
+`planiverse` is not already importable, rather than failing three stages later. SLURM settings
+go in as `--partition`, `--account`, `--qos` and `--setup-command`.
 
 `generate` writes one **job array per planner** — a benchmark is thousands of short runs, and a
 scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
@@ -378,10 +382,14 @@ expected set of runs comes from `tasks.json`, so a job that never ran is counted
 rather than quietly improving a planner's coverage.
 
 By default the benchmark covers **every instance of every environment it can run**, cartridge
-ones included. `iw` runs as Iterated Width up to a bound of 1000 rather than at a width someone
-picked: IW(k) is a family, and which member a problem needs is a property of the problem. The
-loop stops when a width solves it, the budget runs out, or a width covers the reachable space
-without pruning anything for novelty — which is also a proof that there is no plan.
+ones included. `iw` and `siw` both run at an iterated width up to a bound of 1000 rather than at
+a width someone picked: novelty is a *filter* in both, so a width too low loses states outright,
+and which width is enough is a property of the problem. The loop stops when a width solves it,
+the budget runs out, or a width covers the reachable space without pruning anything for novelty
+— which for IW is also a proof that there is no plan. `bfws` is pinned at 1 and 2 on purpose:
+it uses novelty as a *sort key*, nothing is discarded, so it is complete at every width and a
+failure means the budget ran out, not the width. There, 1 and 2 are two different search orders
+worth comparing rather than a weaker and a stronger one.
 
 A real run — 7 planners over 18 tasks, a Puzznic cartridge supplied, 20-second limit:
 

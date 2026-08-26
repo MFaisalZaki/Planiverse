@@ -34,6 +34,33 @@ exist here; `generate` writes the commands and the SLURM job arrays; `analyze` c
 result files into tables and a CSV; `report` adds LaTeX and plots. `solve` is the one stage you
 do not normally type — it is what each array element runs.
 
+## Installing, and where
+
+By default `setup_benchmark.sh` installs nothing. It uses whatever `planiverse` is already
+importable and **stops with instructions if there is none**, rather than picking a command that
+will fail three stages later on an `ImportError`.
+
+`--venv DIR` makes it do the work: create the virtualenv if it is not there, `pip install` the
+repository into it, activate it for the rest of the run, and — the part that matters on a
+cluster — write `source DIR/bin/activate` into every generated job.
+
+```bash
+./setup_benchmark.sh --venv ~/shared/planiverse-venv --rom-puzznic ~/roms/Puzznic.gb
+```
+
+The directory has to be on a filesystem the **compute nodes** can see. A virtualenv under
+`/tmp` on the submitting host does not exist on the node that runs the job, and every array
+element would fail identically. The script cannot tell which of your paths is shared, so it
+does not guess — it uses the one you name. `--python BIN` chooses the interpreter to build it
+with, for a site where `python3` is older than the library needs.
+
+Running it again with the same `--venv` reuses the environment and reinstalls, which is what
+you want after editing the library.
+
+If you would rather manage this yourself, `pip install -e .` and skip the flag; and
+`--setup-command` on `init` puts arbitrary lines at the top of every job (`module load
+python/3.11`, `conda activate ...`), repeatable and in order.
+
 ## Why the stages are separate
 
 Each writes files the next one reads, so no stage needs another to be running. That is what
@@ -130,7 +157,7 @@ nothing downstream can tell.
 `tags` and `exclude-environments` narrow one planner's task list, so a single experiment can run
 a cheap planner over everything and an expensive one over a subset.
 
-### Why `iw` has no width
+### Why `iw` and `siw` have no width, and `bfws` does
 
 Because IW does not have one. IW(k) is a family, and which member you need is a property of the
 problem, not a setting — so the default experiment runs `iterated_width`, which tries IW(1),
@@ -146,9 +173,23 @@ Widths above 2 need `strict: false`. `NoveltyTable` refuses them otherwise, on t
 C(n, k) tuples per state is usually more expensive than the simulator it is meant to be saving
 — which is true, and is exactly why the bound has to be discovered rather than assumed.
 
-`siw` and `bfws` are still pinned, at widths 1 and 2, because those are the configurations the
-width-based literature reports and the ones worth comparing against. Change them in
-`planners/*.json` if you disagree.
+**`siw` iterates for the same reason**, because each of its legs *is* an IW search. Novelty is
+a filter there too, so if no state within IW(k)'s pruned reach improves progress, the leg fails
+and the whole search fails — even though a wider leg would have found one. `SIWSearch` takes a
+`max_width`, and a leg tries increasing widths until it makes progress, runs out of budget, or
+finds that a width covered everything reachable from its start without pruning anything, which
+means no wider leg could do better either. The widths share one budget, so a stubborn leg
+cannot spend more than a leg that succeeded immediately. `statistics.widths_tried` then reports
+the widths the legs actually needed — a problem whose hardest leg needed IW(2) is a different
+problem from one every leg solved at IW(1), and pinning the width hid that.
+
+**`bfws` does not iterate, and that is deliberate.** BFWS uses novelty as a *sort key* rather
+than as a filter: nothing is ever discarded, so BFWS(k) is complete at every width. A BFWS(1)
+that fails ran out of budget — it did not run out of width — and restarting at a wider one
+would re-expand everything while splitting the same budget across the attempts, which is
+strictly worse. What the width changes is the search *order*, so `bfws-1` and `bfws-2` are two
+different strategies worth comparing side by side rather than a weaker and a stronger one.
+That is why they are two entries and `iw` and `siw` are one each.
 
 ## The sandbox
 
@@ -198,7 +239,9 @@ Three things a generated array has to get right, none of them obvious the first 
   the same instant, the row is missing instead — and a missing row reads as an infrastructure
   problem rather than a slow planner.
 
-`setup-commands` are prepended to every job body, for `module load` and `conda activate`.
+`setup-commands` are prepended to every job body, for `module load` and `conda activate`. Set
+them with `--setup-command` on `init`, repeatable and in order; `setup_benchmark.sh --venv`
+fills in the activation for you.
 `--per-task-scripts` writes one file per run instead of arrays, for sites that disable them.
 `${SLURM_ARRAY_TASK_ID:-0}` means a script run directly executes its first element, which is
 how you debug one without a scheduler.
@@ -355,7 +398,11 @@ solves the same 40 just inside the limit.
 ## A worked example
 
 7 planners over 18 tasks — two instances from each environment, a Puzznic cartridge supplied —
-at a 20-second limit, run locally:
+at a 20-second limit, run locally.
+
+This was recorded before SIW was changed to iterate its width, so the `siw-1` and `siw-2` rows
+are the pinned configurations; the default set now has a single iterated `siw` in their place.
+Everything else is current.
 
 ```
 Coverage

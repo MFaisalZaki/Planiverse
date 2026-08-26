@@ -219,8 +219,24 @@ class SIWSearch:
     """
 
     def __init__(self, width=1, progress=None, max_rounds=50, strict=True,
-                 avoid_dead_ends=True):
-        """`avoid_dead_ends` stops a leg committing to progress that ends the problem.
+                 avoid_dead_ends=True, max_width=None):
+        """`max_width` makes each leg iterate its width instead of running at a fixed one.
+
+        SIW inherits IW's width sensitivity exactly, because each leg *is* an IW search:
+        novelty is a filter there, so if no state within IW(k)'s pruned reach improves
+        progress, the leg fails and the whole search fails — even though a wider leg would
+        have found one. Pinning `width` therefore reports SIW at a width someone chose rather
+        than at the width the problem needs, which is the same mistake as pinning IW.
+
+        With `max_width` set, a leg tries IW(`width`), then IW(`width` + 1), and so on until
+        it makes progress, the budget runs out, or a width covers everything reachable from
+        the leg's start without discarding anything for novelty — at which point no wider leg
+        can help either and the search is genuinely stuck. The budget is shared across the
+        widths within a leg, so a stubborn leg cannot spend more than its allowance.
+
+        Left as `None` this behaves exactly as before, at the single `width`.
+
+        `avoid_dead_ends` stops a leg committing to progress that ends the problem.
 
         SIW is incomplete because each leg commits irrevocably to the first improvement it
         finds, and greedy progress can be a trap. It really happens here: on Puzznic level 1
@@ -232,16 +248,27 @@ class SIWSearch:
         sound and costs nothing: a dead end is not progress. Set it False for the classical
         behaviour.
         """
+        if max_width is not None and max_width < width:
+            raise ValueError(
+                f"max_width {max_width} is below width {width}: a leg cannot iterate down")
         self.width = width
         self.progress = progress
         self.max_rounds = max_rounds
         self.strict = strict
         self.avoid_dead_ends = avoid_dead_ends
+        self.max_width = max_width
+
+    @property
+    def ceiling(self):
+        """The widest a leg may go. Equal to `width` when `max_width` is not set."""
+        return self.width if self.max_width is None else self.max_width
 
     def solve(self, env, budget=None, state=None):
         budget = (budget or Budget()).start()
         if self.progress is None:
-            result = IWSearch(self.width, strict=self.strict).solve(env, budget, state)
+            search = (IWSearch(self.width, strict=self.strict) if self.max_width is None
+                      else IteratedWidth(self.ceiling, strict=self.strict))
+            result = search.solve(env, budget, state)
             if not result.solved:
                 result.status = f"{result.status} (no progress measure; SIW degraded to IW)"
             return result
@@ -251,11 +278,13 @@ class SIWSearch:
             state, _ = env.reset()
         plan, trace = [], [state]
         best = self.progress(state)
+        # The width each leg actually needed. A problem whose hardest leg needed IW(2) is a
+        # different problem from one every leg solved at IW(1), and the summary should say so.
+        widths_used = []
 
         for _ in range(self.max_rounds):
             if env.is_goal(state):
-                totals.elapsed = budget.elapsed()
-                return SearchResult(plan, trace, "solved", self.width, totals)
+                return self.__solved__(plan, trace, widths_used, totals, budget)
             if budget.exhausted(totals.expansions):
                 break
 
@@ -267,34 +296,70 @@ class SIWSearch:
             leg = self.__reach_progress__(env, state, best, remaining, totals)
             if leg is None:
                 break
-            state, leg_plan, leg_trace = leg
+            state, leg_plan, leg_trace, leg_width = leg
+            widths_used.append(leg_width)
             plan += leg_plan
             trace += leg_trace
             best = self.progress(state)
 
-        totals.elapsed = budget.elapsed()
         if env.is_goal(state):
-            return SearchResult(plan, trace, "solved", self.width, totals)
+            return self.__solved__(plan, trace, widths_used, totals, budget)
+        totals.elapsed = budget.elapsed()
+        if widths_used:
+            totals.widths_tried = tuple(sorted(set(widths_used)))
         return SearchResult(status="failed", statistics=totals)
 
-    def __reach_progress__(self, env, start, baseline, budget, totals):
-        """One leg: IW from `start`, stopping at the first state that improves on `baseline`.
+    def __solved__(self, plan, trace, widths_used, totals, budget):
+        totals.elapsed = budget.elapsed()
+        if widths_used:
+            totals.widths_tried = tuple(sorted(set(widths_used)))
+        return SearchResult(plan, trace, "solved", max(widths_used, default=self.width),
+                            totals)
 
-        A goal also ends the leg, so the caller's loop sees it and reports solved.
+    def __reach_progress__(self, env, start, baseline, budget, totals):
+        """One leg, widening until it gets somewhere.
+
+        Returns `(state, plan, trace, width)` or `None`. The widths share one budget: a leg
+        that keeps widening must not spend more than a leg that succeeded at the first width.
         """
         budget = budget.start()
-        table = NoveltyTable(self.width, strict=self.strict)
+        spent = 0
+        for width in range(self.width, self.ceiling + 1):
+            try:
+                outcome, status, pruned, spent = self.__leg_at_width__(
+                    env, start, baseline, budget, totals, width, spent)
+            except ValueError:
+                break               # `strict` refused this width; the leg stops here
+            if outcome is not None:
+                return outcome + (width,)
+            if status == "out_of_budget":
+                return None
+            if not pruned:
+                # Nothing was discarded for novelty, so this width saw everything reachable
+                # from here and none of it was progress. A wider leg would see the same.
+                return None
+        return None
+
+    def __leg_at_width__(self, env, start, baseline, budget, totals, width, spent):
+        """IW(`width`) from `start`, stopping at the first state that improves on `baseline`.
+
+        A goal also ends the leg, so the caller's loop sees it and reports solved. Returns
+        `(outcome, status, pruned_for_novelty, spent)`, where `pruned_for_novelty` is what
+        tells the caller whether a wider leg could see anything this one could not.
+        """
+        table = NoveltyTable(width, strict=self.strict)
         table.evaluate_and_record(start.literals)
         frontier = deque([(start, [], [])])
         closed = {start.literals}
-        # This leg's own count. The budget handed in has already had the previous legs'
-        # expansions subtracted from it, so checking the cumulative total against it would
-        # subtract them a second time and starve the search after half its allowance.
-        spent = 0
+        pruned = 0
 
         while frontier:
+            # `spent` is this leg's own count, carried across widths. The budget handed in
+            # has already had the previous legs' expansions subtracted from it, so checking
+            # the cumulative total against it would subtract them a second time and starve
+            # the search after half its allowance.
             if budget.exhausted(spent):
-                return None
+                return None, "out_of_budget", pruned, spent
             node, plan, trace = frontier.popleft()
             spent += 1
             totals.expansions += 1
@@ -304,15 +369,17 @@ class SIWSearch:
                 if successor.literals in closed:
                     totals.pruned_duplicate += 1
                     continue
-                if table.evaluate_and_record(successor.literals) > self.width:
+                if table.evaluate_and_record(successor.literals) > width:
                     totals.pruned_novelty += 1
+                    pruned += 1
                     continue
                 closed.add(successor.literals)
                 successor_plan = plan + [action]
                 successor_trace = trace + [successor]
 
                 if env.is_goal(successor):
-                    return successor, successor_plan, successor_trace
+                    return (successor, successor_plan, successor_trace), "progress", \
+                        pruned, spent
                 if env.is_terminal(successor):
                     totals.pruned_terminal += 1
                     # A dead end is not progress. Committing to one ends the whole search,
@@ -320,9 +387,11 @@ class SIWSearch:
                     if self.avoid_dead_ends:
                         continue
                     if self.progress(successor) < baseline:
-                        return successor, successor_plan, successor_trace
+                        return (successor, successor_plan, successor_trace), "progress", \
+                            pruned, spent
                     continue
                 if self.progress(successor) < baseline:
-                    return successor, successor_plan, successor_trace
+                    return (successor, successor_plan, successor_trace), "progress", \
+                        pruned, spent
                 frontier.append((successor, successor_plan, successor_trace))
-        return None
+        return None, "exhausted", pruned, spent

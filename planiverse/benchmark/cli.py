@@ -39,14 +39,20 @@ MAX_WIDTH = 1000
 #: What `init` writes. A spread rather than a single planner: the point of the harness is
 #: comparison, and one of each family makes the first report say something.
 #:
-#: `iw` iterates its width; `siw` and `bfws` are pinned at 1 and 2 because those are the
-#: configurations the width-based literature reports and the ones worth comparing against.
-#: Change any of it in `planners/*.json`.
+#: `iw` and `siw` both iterate their width, for the same reason: novelty is a *filter* in
+#: both, so a width too low loses states outright and which width is enough is a property of
+#: the problem. `bfws` is pinned at 1 and 2 deliberately — see the note below.
 DEFAULT_PLANNERS = (
     PlannerSpec(tag="iw", planner="iterated_width",
                 params={"max_width": MAX_WIDTH, "strict": False}),
-    PlannerSpec(tag="siw-1", planner="siw", params={"width": 1}),
-    PlannerSpec(tag="siw-2", planner="siw", params={"width": 2}),
+    PlannerSpec(tag="siw", planner="siw",
+                params={"width": 1, "max_width": MAX_WIDTH, "strict": False}),
+    # BFWS is *not* iterated, and that is not an oversight. It uses novelty as a sort key
+    # rather than as a filter, so nothing is ever discarded and BFWS(k) is complete at every
+    # width: a BFWS(1) that fails ran out of budget, it did not run out of width. Restarting
+    # at a wider one would re-expand everything and split the same budget across the attempts,
+    # which is strictly worse. What the width changes is the *ordering*, so 1 and 2 are two
+    # different search strategies worth comparing side by side — not a weaker and a stronger.
     PlannerSpec(tag="bfws-1", planner="bfws", params={"width": 1}),
     PlannerSpec(tag="bfws-2", planner="bfws", params={"width": 2}),
     PlannerSpec(tag="fsx", planner="fsx",
@@ -129,8 +135,12 @@ def main(argv=None):
                       help="the same thing keyed by environment name, e.g. "
                            "--rom puzznic_gb=/path/to.gb. Repeatable; useful in a loop where "
                            "the environment is a variable.")
-    init.add_argument("--partition", default=None)
-    init.add_argument("--account", default=None)
+    init.add_argument("--partition", default=None, help="SLURM partition")
+    init.add_argument("--account", default=None, help="SLURM account")
+    init.add_argument("--qos", default=None, help="SLURM quality of service")
+    init.add_argument("--setup-command", action="append", default=[], metavar="CMD",
+                      help="run at the top of every job — `module load python`, "
+                           "`source .../activate`. Repeatable, order preserved.")
     init.add_argument("--force", action="store_true", help="overwrite an existing experiment")
     init.set_defaults(handler=_init)
 
@@ -201,7 +211,9 @@ def _init(arguments):
                       max_expansions=arguments.max_expansions),
         tasks=TaskSelection(max_instances_per_environment=arguments.max_instances,
                             include_rom_environments=not arguments.no_roms),
-        slurm=SlurmConfig(partition=arguments.partition, account=arguments.account),
+        slurm=SlurmConfig(partition=arguments.partition, account=arguments.account,
+                          qos=arguments.qos,
+                          setup_commands=tuple(arguments.setup_command)),
         planners=DEFAULT_PLANNERS,
         roms=roms,
     )

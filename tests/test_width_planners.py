@@ -167,6 +167,29 @@ def test_a_width_strict_refuses_stops_the_iteration_rather_than_raising(env):
     assert result.solved or result.statistics.widths_tried == (1, 2)
 
 
+def test_siw_can_iterate_a_legs_width_instead_of_pinning_it(env):
+    """Each SIW leg *is* an IW search, so SIW inherits IW's width sensitivity exactly: a leg
+    that finds no progress within IW(k)'s pruned reach fails, and the whole search fails,
+    even though a wider leg would have found some."""
+    def boxes(state):
+        return sum(1 for literal in state.literals if literal.startswith("at(box"))
+
+    pinned = SIWSearch(width=2, progress=boxes).solve(env, Budget(max_expansions=5000))
+    assert pinned.statistics.widths_tried == (2,), "unchanged without max_width"
+
+    iterated = SIWSearch(width=1, max_width=1000, strict=False, progress=boxes).solve(
+        env, Budget(max_expansions=5000))
+    assert iterated.solved
+    assert iterated.statistics.widths_tried == (1, 2), \
+        "the widths the legs actually needed, which pinning hid"
+    assert iterated.width == 2, "the hardest leg is what the problem cost"
+
+
+def test_a_max_width_below_the_starting_width_is_refused():
+    with pytest.raises(ValueError, match="max_width"):
+        SIWSearch(width=3, max_width=2)
+
+
 def test_a_bound_below_one_is_refused():
     with pytest.raises(ValueError, match="max_width"):
         IteratedWidth(max_width=0)
