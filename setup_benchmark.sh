@@ -7,6 +7,7 @@
 #
 #   ./setup_benchmark.sh                    # ask about everything
 #   ./setup_benchmark.sh --yes              # take every default, ask nothing
+#   ./setup_benchmark.sh --rom-puzznic ~/roms/Puzznic.gb --rom-flipull ~/roms/Flipull.gb
 #   ./setup_benchmark.sh --exp-dir e --sandbox-dir s
 #
 # The reason this exists rather than a line in the README is the cartridges. Puzznic, Flipull
@@ -29,10 +30,13 @@ ASSUME_YES=0
 ENTRY_POINT=""
 
 usage() {
-    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
     cat <<'USAGE'
 
 Options:
+  --rom-puzznic PATH    Puzznic cartridge; skips the question for it
+  --rom-flipull PATH    Flipull cartridge
+  --rom-sml PATH        Super Mario Land cartridge (--rom-mario works too)
   --exp-dir DIR         where to write the experiment  (default: experiment)
   --sandbox-dir DIR     where results will go          (default: sandbox)
   --name NAME           experiment name, used in job names
@@ -50,8 +54,19 @@ Options:
 USAGE
 }
 
+ROM_ARGS=()
+SUPPLIED_ROMS=()
+
 while [ $# -gt 0 ]; do
     case "$1" in
+        # --rom-puzznic, --rom-flipull, --rom-sml (--rom-mario), and whatever a future Game
+        # Boy environment adds. Matched by shape and handed straight to `init`, which
+        # generates the real flags from the registry — so this script never holds a second
+        # list of them that could fall out of step.
+        --rom-*)
+            ROM_ARGS+=("$1" "$2")
+            SUPPLIED_ROMS+=("${1#--rom-}")
+            shift 2 ;;
         --exp-dir) EXP_DIR="$2"; shift 2 ;;
         --sandbox-dir) SANDBOX_DIR="$2"; shift 2 ;;
         --name) NAME="$2"; shift 2 ;;
@@ -153,22 +168,43 @@ echo "  pure-Python twin; each one you skip is reported as skipped rather than s
 echo "  dropped. Paths are recorded in the experiment, so cluster jobs get them too."
 echo
 
-# Environment, variable and label, three fields per entry — kept as a flat list and read
-# three at a time, because a label contains a space and word-splitting one string would tear
+# Environment, variable, flag and label, four fields per entry — kept as a flat list and read
+# four at a time, because a label contains a space and word-splitting one string would tear
 # "Super Mario Land" into three.
 ROM_ENTRIES=(
-    puzznic_gb        PLANIVERSE_PUZZNIC_ROM  "Puzznic"
-    flipull_gb        PLANIVERSE_FLIPULL_ROM  "Flipull"
-    super_mario_land  PLANIVERSE_SML_ROM      "Super Mario Land"
+    puzznic_gb        PLANIVERSE_PUZZNIC_ROM  puzznic  "Puzznic"
+    flipull_gb        PLANIVERSE_FLIPULL_ROM  flipull  "Flipull"
+    super_mario_land  PLANIVERSE_SML_ROM      sml      "Super Mario Land"
 )
 
-ROM_ARGS=()
-for ((i = 0; i < ${#ROM_ENTRIES[@]}; i += 3)); do
-    rom=$(ask_rom "${ROM_ENTRIES[i]}" "${ROM_ENTRIES[i + 1]}" "${ROM_ENTRIES[i + 2]}")
+supplied() {
+    # Was this cartridge already given as a --rom-<flag> on the command line?
+    local flag="$1" given
+    for given in ${SUPPLIED_ROMS[@]+"${SUPPLIED_ROMS[@]}"}; do
+        # --rom-mario is an alias for --rom-sml; accept either spelling here.
+        if [ "$given" = "$flag" ] || { [ "$flag" = "sml" ] && [ "$given" = "mario" ]; }; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+for ((i = 0; i < ${#ROM_ENTRIES[@]}; i += 4)); do
+    environment="${ROM_ENTRIES[i]}"
+    variable="${ROM_ENTRIES[i + 1]}"
+    flag="${ROM_ENTRIES[i + 2]}"
+    label="${ROM_ENTRIES[i + 3]}"
+
+    if supplied "$flag"; then
+        echo "  $label: given on the command line."
+        continue
+    fi
+
+    rom=$(ask_rom "$environment" "$variable" "$label")
     # An `if`, not `[ -n "$rom" ] && ROM_ARGS+=(...)`: under `set -e` that compound returns
     # non-zero for every skipped cartridge and takes the whole script down with it.
     if [ -n "$rom" ]; then
-        ROM_ARGS+=(--rom "$rom")
+        ROM_ARGS+=("--rom-$flag" "${rom#*=}")
         echo "    using ${rom#*=}"
     fi
 done

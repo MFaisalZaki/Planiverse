@@ -85,6 +85,23 @@ class EnvironmentSpec:
         path = os.environ.get(self.rom_variable)
         return path if path and os.path.isfile(path) else None
 
+    def rom_flag(self):
+        """The short name this environment's cartridge goes by on a command line.
+
+        Derived from `rom_variable` rather than stored, so the flag and the variable are the
+        same name in two spellings and cannot drift apart:
+        `PLANIVERSE_PUZZNIC_ROM` is `--rom-puzznic`.
+        """
+        if not self.rom_variable:
+            return None
+        name = self.rom_variable
+        for prefix in ("PLANIVERSE_",):
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+        if name.endswith("_ROM"):
+            name = name[:-len("_ROM")]
+        return name.lower().replace("_", "-")
+
     def available(self):
         """Can this environment run here — dependencies importable, and a ROM if it needs one?"""
         for module_name in self.requires:

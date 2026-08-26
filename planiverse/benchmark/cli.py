@@ -56,6 +56,56 @@ DEFAULT_PLANNERS = (
 )
 
 
+#: A friendlier spelling for a cartridge whose variable is an abbreviation. `--rom-sml`
+#: follows PLANIVERSE_SML_ROM and stays for that reason, but nobody types "sml" first.
+ROM_ALIASES = {"sml": ("--rom-mario",)}
+
+
+def rom_environments():
+    """The registry entries that need a cartridge, with the flag each one answers to."""
+    return tuple((spec, spec.rom_flag()) for spec in REGISTRY if spec.needs_rom)
+
+
+def add_rom_arguments(parser):
+    """One `--rom-<name>` per cartridge environment, generated from the registry.
+
+    Generated rather than listed so a new Game Boy environment gets a flag by existing, and
+    so the flag and the environment variable stay the same name in two spellings.
+    """
+    for spec, flag in rom_environments():
+        parser.add_argument(f"--rom-{flag}", *ROM_ALIASES.get(flag, ()),
+                            dest=f"rom_{flag.replace('-', '_')}", metavar="PATH",
+                            help=f"{spec.summary.split(',')[0]} "
+                                 f"(or set {spec.rom_variable})")
+
+
+def collect_roms(arguments):
+    """`{environment: absolute path}` from the named flags and from `--rom ENV=PATH`.
+
+    A path that does not exist is refused here rather than at discovery: a typo you find
+    while typing costs a second, and one you find after submitting four thousand jobs costs
+    rather more.
+    """
+    roms = {}
+    for spec, flag in rom_environments():
+        path = getattr(arguments, f"rom_{flag.replace('-', '_')}", None)
+        if path:
+            roms[spec.name] = _cartridge(path, f"--rom-{flag}")
+    for entry in getattr(arguments, "rom", []) or []:
+        name, _, path = entry.partition("=")
+        if not name or not path:
+            raise ValueError(f"--rom wants ENV=PATH, got {entry!r}")
+        roms[name] = _cartridge(path, "--rom")
+    return roms
+
+
+def _cartridge(path, flag):
+    resolved = os.path.abspath(os.path.expanduser(path))
+    if not os.path.isfile(resolved):
+        raise ValueError(f"{flag}: no file at {resolved}")
+    return resolved
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="planiverse-bench",
@@ -74,9 +124,11 @@ def main(argv=None):
                       help="instances per environment; 0 means every one")
     init.add_argument("--no-roms", action="store_true",
                       help="leave out the environments that need a cartridge")
+    add_rom_arguments(init)
     init.add_argument("--rom", action="append", default=[], metavar="ENV=PATH",
-                      help="a cartridge, e.g. --rom puzznic_gb=/path/to/Puzznic.gb. "
-                           "Repeatable. Recorded in the experiment so cluster jobs get it.")
+                      help="the same thing keyed by environment name, e.g. "
+                           "--rom puzznic_gb=/path/to.gb. Repeatable; useful in a loop where "
+                           "the environment is a variable.")
     init.add_argument("--partition", default=None)
     init.add_argument("--account", default=None)
     init.add_argument("--force", action="store_true", help="overwrite an existing experiment")
@@ -137,13 +189,11 @@ def _init(arguments):
     if os.path.exists(details) and not arguments.force:
         print(f"{details} already exists. Pass --force to overwrite it.", file=sys.stderr)
         return 1
-    roms = {}
-    for entry in arguments.rom:
-        name, _, path = entry.partition("=")
-        if not name or not path:
-            print(f"--rom wants ENV=PATH, got {entry!r}", file=sys.stderr)
-            return 2
-        roms[name] = os.path.abspath(os.path.expanduser(path))
+    try:
+        roms = collect_roms(arguments)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
 
     experiment = ExperimentConfig(
         name=arguments.name,
@@ -159,13 +209,14 @@ def _init(arguments):
     print(f"wrote {details}")
     for spec in experiment.planners:
         print(f"  planners/{spec.tag}.json  ({spec.planner})")
-    missing = [spec.name for spec in REGISTRY
-               if spec.needs_rom and not experiment.rom_for(spec)]
+    missing = [(spec.name, flag) for spec, flag in rom_environments()
+               if not experiment.rom_for(spec)]
     if missing and experiment.tasks.include_rom_environments:
-        print(f"\nNo cartridge for {', '.join(missing)}. They will be skipped until you "
-              f"add one:\n  planiverse-bench init --exp-dir {arguments.exp_dir} --force "
-              f"--rom {missing[0]}=/path/to/rom.gb\nor run ./setup_benchmark.sh, which "
-              f"asks for them.")
+        names = ", ".join(name for name, _ in missing)
+        flags = " ".join(f"--rom-{flag} /path/to/rom.gb" for _, flag in missing)
+        print(f"\nNo cartridge for {names}. They will be skipped until you add one:\n"
+              f"  planiverse-bench init --exp-dir {arguments.exp_dir} --force {flags}\n"
+              f"or run ./setup_benchmark.sh, which asks for them.")
     print(f"\nNext: planiverse-bench discover --exp-dir {arguments.exp_dir}")
     return 0
 

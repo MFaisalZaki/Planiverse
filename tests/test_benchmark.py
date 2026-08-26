@@ -1055,6 +1055,92 @@ def test_iterated_width_is_complete_only_on_the_runs_where_it_says_so(tiny, tmp_
     assert stopped["complete"] is False
 
 
+# ---------------------------------------------------------------------------- rom flags
+
+def test_every_cartridge_environment_gets_its_own_flag():
+    """Generated from the registry, so a new Game Boy environment gets a flag by existing."""
+    from planiverse.benchmark.cli import rom_environments
+
+    flags = dict((spec.name, flag) for spec, flag in rom_environments())
+    assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull",
+                     "super_mario_land": "sml"}
+
+
+def test_the_flag_and_the_environment_variable_are_the_same_name():
+    """`PLANIVERSE_PUZZNIC_ROM` is `--rom-puzznic`. Derived rather than stored, so the two
+    spellings cannot drift apart."""
+    from planiverse.benchmark.cli import rom_environments
+
+    for spec, flag in rom_environments():
+        assert spec.rom_variable == f"PLANIVERSE_{flag.replace('-', '_').upper()}_ROM"
+
+
+def test_a_named_flag_records_the_cartridge(tmp_path, capsys):
+    cartridge = tmp_path / "Puzznic.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--rom-puzznic", str(cartridge)) == 0
+    assert ExperimentConfig.load(tmp_path / "exp").roms == \
+        {"puzznic_gb": str(cartridge)}
+
+
+def test_the_mario_alias_reaches_the_same_place(tmp_path, capsys):
+    """`--rom-sml` follows the variable name, but nobody types "sml" first."""
+    cartridge = tmp_path / "Mario.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--rom-mario", str(cartridge)) == 0
+    assert ExperimentConfig.load(tmp_path / "exp").roms == \
+        {"super_mario_land": str(cartridge)}
+
+
+def test_a_relative_path_and_a_tilde_are_resolved(tmp_path, monkeypatch, capsys):
+    """The recorded path has to survive being read on a compute node in another directory."""
+    cartridge = tmp_path / "rom.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    monkeypatch.chdir(tmp_path)
+    assert run_cli("init", "--exp-dir", "exp", "--rom-puzznic", "rom.gb") == 0
+    recorded = ExperimentConfig.load(tmp_path / "exp").roms["puzznic_gb"]
+    assert os.path.isabs(recorded) and os.path.isfile(recorded)
+
+
+def test_a_cartridge_that_is_not_there_is_refused_at_the_flag(tmp_path, capsys):
+    """A typo found while typing costs a second; one found after submitting four thousand
+    jobs costs rather more."""
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--rom-flipull", str(tmp_path / "nope.gb")) == 2
+    assert "no file at" in capsys.readouterr().err
+
+
+def test_the_environment_keyed_form_still_works_for_scripting(tmp_path, capsys):
+    cartridge = tmp_path / "rom.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--rom", f"flipull_gb={cartridge}") == 0
+    assert ExperimentConfig.load(tmp_path / "exp").roms == {"flipull_gb": str(cartridge)}
+
+
+def test_a_malformed_environment_keyed_rom_is_refused(tmp_path, capsys):
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"), "--rom", "nonsense") == 2
+    assert "ENV=PATH" in capsys.readouterr().err
+
+
+def test_several_cartridges_at_once(tmp_path, capsys):
+    first, second = tmp_path / "a.gb", tmp_path / "b.gb"
+    for path in (first, second):
+        path.write_bytes(b"\x00" * 32768)
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--rom-puzznic", str(first), "--rom-flipull", str(second)) == 0
+    assert ExperimentConfig.load(tmp_path / "exp").roms == {
+        "puzznic_gb": str(first), "flipull_gb": str(second)}
+
+
+def test_the_missing_cartridge_hint_names_the_flags(tmp_path, capsys):
+    run_cli("init", "--exp-dir", str(tmp_path / "exp"))
+    printed = capsys.readouterr().out
+    assert "--rom-puzznic" in printed and "--rom-flipull" in printed
+
+
 # ------------------------------------------------------------------------- setup script
 
 SETUP_SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "setup_benchmark.sh"
@@ -1072,10 +1158,37 @@ def test_the_setup_script_is_executable_and_parses():
 def test_the_setup_script_asks_for_every_cartridge():
     """The three copyrighted ones. An experiment that silently skipped them would be
     benchmarking half of what it claims to."""
+    from planiverse.benchmark.cli import rom_environments
+
     body = SETUP_SCRIPT.read_text()
-    for environment in ("puzznic_gb", "flipull_gb", "super_mario_land"):
-        assert environment in body, environment
+    for spec, flag in rom_environments():
+        assert spec.name in body, spec.name
+        assert spec.rom_variable in body, spec.rom_variable
+        assert f"--rom-{flag}" in body or f" {flag} " in body, flag
     assert "ask_rom" in body
+
+
+@pytest.mark.skipif(not SETUP_SCRIPT.is_file(), reason="not a source checkout")
+def test_the_setup_script_takes_the_same_rom_flags(tmp_path):
+    """`--rom-*` is matched by shape and handed to `init`, so the script never holds a second
+    list of cartridge names that could fall out of step with the registry."""
+    import subprocess
+
+    cartridge = tmp_path / "rom.gb"
+    cartridge.write_bytes(b"\x00" * 32768)
+    result = subprocess.run(
+        ["bash", str(SETUP_SCRIPT), "--yes",
+         "--exp-dir", str(tmp_path / "exp"), "--sandbox-dir", str(tmp_path / "sandbox"),
+         "--rom-puzznic", str(cartridge),
+         "--max-instances", "1", "--time", "5s",
+         "--entry-point", "python -m planiverse.benchmark.cli"],
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": str(SETUP_SCRIPT.parent),
+             "PLANIVERSE_PUZZNIC_ROM": "", "PLANIVERSE_FLIPULL_ROM": "",
+             "PLANIVERSE_SML_ROM": ""})
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert "given on the command line" in result.stdout
+    assert ExperimentConfig.load(tmp_path / "exp").roms == {"puzznic_gb": str(cartridge)}
 
 
 @pytest.mark.skipif(not SETUP_SCRIPT.is_file(), reason="not a source checkout")

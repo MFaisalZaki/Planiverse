@@ -354,7 +354,17 @@ planiverse-bench report    --sandbox-dir sandbox
 else can work out: where your Puzznic, Flipull and Super Mario Land cartridges are. They are
 copyrighted and cannot ship here, so supplying them is what lets an emulated environment be
 compared against its pure-Python twin under the same planners and limits; skip one and it is
-reported as skipped rather than quietly dropped. `--yes` takes every default and asks nothing.
+reported as skipped rather than quietly dropped.
+
+Pass them instead of being asked — the same flags work on `planiverse-bench init`:
+
+```bash
+./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
+                     --rom-flipull ~/roms/"Flipull (USA).gb" \
+                     --rom-mario   ~/roms/"Super Mario Land.gb"
+```
+
+`--yes` takes every default and asks nothing.
 
 `generate` writes one **job array per planner** — a benchmark is thousands of short runs, and a
 scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
