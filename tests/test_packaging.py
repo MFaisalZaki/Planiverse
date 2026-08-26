@@ -42,6 +42,7 @@ ENTRY_POINTS = [
     "planiverse.environments.urban_planning.environment",
     "planiverse.environments.network_attack.network_attack",
     "planiverse.environments.manufacturing.mfenv",
+    "planiverse.benchmark.cli",
     "planiverse.simulator.simulator",
     "planiverse.planners.super_mario_planner_gb",
 ]
@@ -115,6 +116,17 @@ def import_closure():
 def test_every_entry_point_exists():
     for module in ENTRY_POINTS:
         assert module_path(module) is not None, f"{module} moved or was renamed"
+
+
+def test_the_console_script_points_at_something_callable(project):
+    """The generated SLURM jobs invoke `planiverse-bench` by name, so a broken entry point
+    fails on the cluster rather than here — after the whole benchmark has been submitted."""
+    import importlib
+
+    scripts = project.get("scripts", {})
+    assert "planiverse-bench" in scripts, "the benchmark CLI has to be installed"
+    module_name, _, attribute = scripts["planiverse-bench"].partition(":")
+    assert callable(getattr(importlib.import_module(module_name), attribute))
 
 
 def test_the_import_closure_is_fully_declared(declared):

@@ -16,6 +16,7 @@ lazily, so listing the catalogue costs nothing even though half of it needs PyBo
 numba to run.
 """
 import importlib
+import os
 from dataclasses import dataclass, field
 
 #: How a state is identified, which is the thing that decides whether search can branch.
@@ -41,20 +42,57 @@ class EnvironmentSpec:
     needs_rom: bool = False          #: needs a copyrighted file the user supplies
     docs: str = ""
     tags: frozenset = field(default_factory=frozenset)
+    #: Constructor keyword arguments, as `(name, value)` pairs, for the environments whose
+    #: `__init__` takes a required argument. Without these `make(name)` works for most of the
+    #: catalogue and raises a `TypeError` for the rest, which makes "build every registered
+    #: environment" — what the benchmark harness does — impossible to write generically.
+    #: Pairs rather than a dict so the spec stays hashable.
+    defaults: tuple = ()
+    #: For a `needs_rom` environment, the environment variable holding the path to the
+    #: cartridge, and the constructor argument to pass it as. The file is copyrighted and
+    #: cannot ship, so the path can only come from the user — and without somewhere to put it
+    #: these environments cannot be constructed by name at all, which makes them invisible to
+    #: anything generic (the benchmark harness, most obviously).
+    rom_variable: str = ""
+    rom_argument: str = "romfile"
 
     def load(self):
         """Import and return the class."""
         module_name, class_name = self.factory.split(":")
         return getattr(importlib.import_module(module_name), class_name)
 
+    def build(self, **kwargs):
+        """Construct the environment, with `defaults` filled in and `kwargs` winning.
+
+        For a ROM environment the cartridge path is read from `rom_variable` unless the
+        caller passes one.
+        """
+        arguments = dict(self.defaults)
+        if self.needs_rom and self.rom_argument not in kwargs:
+            rom = self.rom_path()
+            if rom is None:
+                raise FileNotFoundError(
+                    f"{self.name} needs a cartridge, which cannot ship with this repo. "
+                    f"Point {self.rom_variable} at one, or pass "
+                    f"{self.rom_argument}= yourself.")
+            arguments[self.rom_argument] = rom
+        return self.load()(**{**arguments, **kwargs})
+
+    def rom_path(self):
+        """The cartridge for this environment, or None. Set `rom_variable` to point at one."""
+        if not self.rom_variable:
+            return None
+        path = os.environ.get(self.rom_variable)
+        return path if path and os.path.isfile(path) else None
+
     def available(self):
-        """Are this environment's dependencies importable here?"""
+        """Can this environment run here — dependencies importable, and a ROM if it needs one?"""
         for module_name in self.requires:
             try:
                 importlib.import_module(module_name)
             except ImportError:
                 return False
-        return True
+        return not self.needs_rom or self.rom_path() is not None
 
 
 REGISTRY = (
@@ -77,6 +115,7 @@ REGISTRY = (
         state_identity="snapshot",
         requires=("pyboy",),
         needs_rom=True,
+        rom_variable="PLANIVERSE_PUZZNIC_ROM",
         docs="docs/environments/puzznic-gb.md",
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
@@ -99,6 +138,7 @@ REGISTRY = (
         state_identity="snapshot",
         requires=("pyboy",),
         needs_rom=True,
+        rom_variable="PLANIVERSE_FLIPULL_ROM",
         docs="docs/environments/flipull-gb.md",
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
@@ -121,6 +161,7 @@ REGISTRY = (
         state_identity="snapshot",
         requires=("pyboy",),
         needs_rom=True,
+        rom_variable="PLANIVERSE_SML_ROM",
         docs="docs/environments/super-mario-land.md",
         tags=frozenset({"game", "platformer", "emulator"}),
     ),
@@ -132,6 +173,7 @@ REGISTRY = (
         deterministic=True,
         state_identity="value",
         requires=("numba", "sympy", "numpy"),
+        defaults=(("delay_vaccination_time", 30), ("horizon", 364)),
         docs="docs/environments/epidemic-control.md",
         tags=frozenset({"health", "policy", "continuous-dynamics"}),
     ),
@@ -167,6 +209,7 @@ REGISTRY = (
         requires=("pandas", "networkx"),
         docs="docs/environments/urban-planning.md",
         tags=frozenset({"policy", "operations"}),
+        defaults=(("horizon", 100),),
     ),
     EnvironmentSpec(
         name="water_network",
@@ -234,7 +277,7 @@ def make(name, index=None, **kwargs):
     state, info = env.reset()
     ```
     """
-    environment = get_spec(name).load()(**kwargs)
+    environment = get_spec(name).build(**kwargs)
     if index is not None:
         environment.fix_index(index)
     return environment

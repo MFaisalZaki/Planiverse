@@ -351,6 +351,17 @@ class PuzznicGame(Environment):
         return self.levelsstr[index]
 
     def fix_index(self, index:int):
+        """Select a level. Out of range is refused here, not later.
+
+        It used to be accepted and only rejected at `reset()`, by an assertion inside
+        `_levels_str_` — which `python -O` strips, and which meant anything asking the
+        environment how many levels it has by walking `fix_index` upwards (the benchmark
+        harness does exactly that) got told there was no limit.
+        """
+        if not 0 <= index < len(self.levelsstr):
+            raise IndexError(
+                f"Invalid index: {index}. There are {len(self.levelsstr)} levels, so the "
+                f"index must be 0-{len(self.levelsstr) - 1}.")
         self.index = index
 
     def reset(self):
