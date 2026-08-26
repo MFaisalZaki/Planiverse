@@ -65,11 +65,22 @@ def coverage(records):
         lengths = [entry["plan_length"] for entry in solved
                    if isinstance(entry.get("plan_length"), int)]
         expansions = [entry.get("statistics", {}).get("expansions", 0) for entry in solved]
+        # Completeness is a property of the run, not of the planner: `IteratedWidth` proves
+        # unsolvability on the runs where it exhausted the space and proves nothing on the
+        # ones the budget stopped. So the flag here answers the question the footnote asks —
+        # "can I read this planner's UNSOLVED rows as proofs?" — which is only yes when every
+        # one of them was.
+        unsolved = [entry for entry in entries if entry.get("status") == "UNSOLVED"]
         rows.append({
             "planner": planner,
             "class": entries[0].get("planner_class", ""),
-            "complete": entries[0].get("complete",
-                                       is_complete(entries[0].get("planner_class", ""))),
+            "complete": all(
+                entry.get("complete",
+                          is_complete(entry.get("planner_class", ""),
+                                      entry.get("search_status")))
+                for entry in unsolved),
+            "proofs": sum(1 for entry in unsolved if entry.get("complete")),
+            "unsolved": len(unsolved),
             "total": len(entries),
             "solved": len(solved),
             "coverage": len(solved) / len(entries) if entries else 0.0,

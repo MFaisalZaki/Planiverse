@@ -56,7 +56,8 @@ def _coverage_table(summary):
             "-" if row["mean_plan_length"] is None else f"{row['mean_plan_length']:.1f}",
         ), widths))
     lines.append("")
-    lines.append("* incomplete: a no-plan answer from this planner is not a proof.")
+    lines.append("* at least one UNSOLVED row from this planner is not a proof that there is")
+    lines.append("  no plan — it only means the planner stopped looking.")
     return lines
 
 

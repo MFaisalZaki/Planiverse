@@ -43,7 +43,11 @@ class NoveltyTable:
                 f"which is rarely worth it against a simulator whose successors are already "
                 f"expensive. Pass strict=False if you mean it.")
         self.width = width
-        self.seen = [set() for _ in range(width)]
+        # `{size: set of tuples}`, filled on demand. A list of `width` sets would allocate
+        # one per level whether or not any state has that many atoms, so a width of 1000 —
+        # what `IteratedWidth` is given as a bound — cost a thousand allocations per level
+        # tried, for nine atoms' worth of work.
+        self.seen = {}
         self.evaluations = 0
         self.tuples_enumerated = 0
 
@@ -55,8 +59,11 @@ class NoveltyTable:
         """
         self.evaluations += 1
         atoms = sorted(literals)
-        for size in range(1, self.width + 1):
-            seen = self.seen[size - 1]
+        # A tuple longer than the state has atoms does not exist, so widths above that add
+        # nothing. Capping here is what lets `IteratedWidth` take a bound of 1000 without
+        # spinning through 990 empty combination ranges per state.
+        for size in range(1, self.__ceiling__(atoms) + 1):
+            seen = self.seen.get(size, ())
             for combo in combinations(atoms, size):
                 self.tuples_enumerated += 1
                 if combo not in seen:
@@ -66,8 +73,16 @@ class NoveltyTable:
     def record(self, literals):
         """Remember every tuple of `literals` up to `width`."""
         atoms = sorted(literals)
-        for size in range(1, self.width + 1):
-            self.seen[size - 1].update(combinations(atoms, size))
+        for size in range(1, self.__ceiling__(atoms) + 1):
+            self.seen.setdefault(size, set()).update(combinations(atoms, size))
+
+    def __ceiling__(self, atoms):
+        """The largest tuple size worth looking at for this state.
+
+        A tuple longer than the state has atoms does not exist, so sizes above that are empty
+        ranges — and with a width in the hundreds they are the whole cost.
+        """
+        return min(self.width, len(atoms))
 
     def evaluate_and_record(self, literals):
         """The usual pairing: score the state, then remember it.
@@ -83,7 +98,7 @@ class NoveltyTable:
         return self.evaluate_and_record(literals) <= self.width
 
     def __len__(self):
-        return sum(len(level) for level in self.seen)
+        return sum(len(level) for level in self.seen.values())
 
     def __repr__(self):
         return f"<NoveltyTable(width={self.width}, tuples={len(self)})>"

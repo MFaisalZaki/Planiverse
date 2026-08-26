@@ -122,15 +122,34 @@ class IWSearch:
 
 
 class IteratedWidth:
-    """Run IW(1), IW(2), … until one solves it.
+    """Run IW(1), IW(2), … until one solves it, or until no larger width could help.
 
-    The standard answer to IW(k)'s incompleteness. Note what it costs against a simulator:
-    each width restarts from scratch and re-expands everything the previous one did, and here
-    an expansion is a hydraulic solve or a power-flow solve rather than a bitmask update. The
+    The standard answer to IW(k)'s incompleteness, and the right way to run IW when you do
+    not already know the problem's width. Note what it costs against a simulator: each width
+    restarts from scratch and re-expands everything the previous one did, and here an
+    expansion is a hydraulic solve or a power-flow solve rather than a bitmask update. The
     budget is therefore shared across widths rather than granted afresh to each.
+
+    `max_width` is a **bound, not a plan**. Set it as high as you like: the loop almost never
+    reaches it, because it stops as soon as one of three things happens.
+
+    1. A width solves the problem.
+    2. The budget runs out — the usual outcome above width 2, since IW(k) enumerates every
+       k-tuple of every state's atoms.
+    3. **A width exhausts the reachable space without pruning anything for novelty.** That is
+       the interesting one: if nothing was ever discarded for being unnovel, then IW(k) saw
+       the whole reachable space, and no larger width can see more. The problem has no
+       solution, and iterating further would re-run the identical search. This is what makes
+       `IteratedWidth` complete when it gets that far, and what makes a bound of 1000
+       harmless rather than a thousand wasted restarts.
+
+    Above `strict`'s practical width the tuple enumeration gets expensive fast, so widths
+    beyond 2 need `strict=False` — `NoveltyTable` refuses them otherwise.
     """
 
     def __init__(self, max_width=2, strict=True, novelty_rule="standard"):
+        if max_width < 1:
+            raise ValueError(f"max_width must be at least 1, got {max_width}")
         self.max_width = max_width
         self.strict = strict
         self.novelty_rule = novelty_rule
@@ -147,7 +166,13 @@ class IteratedWidth:
                                 else max(0, budget.max_expansions - totals.expansions)),
                 max_seconds=(None if budget.max_seconds is None
                              else max(0.0, budget.max_seconds - budget.elapsed())))
-            result = search.solve(env, remaining, state)
+            try:
+                result = search.solve(env, remaining, state)
+            except ValueError:
+                # `strict` refused this width. Stop rather than raise: the widths already
+                # tried are a real result, and turning them into an exception would throw
+                # them away.
+                break
             totals.merge(result.statistics)
             last = result
             if result.solved:
@@ -155,10 +180,23 @@ class IteratedWidth:
                 return result
             if result.status == "out_of_budget":
                 break
+            if result.status == "exhausted" and not result.statistics.pruned_novelty:
+                # Nothing was ever discarded for novelty, so this width searched the whole
+                # reachable space. No larger one can reach further, and this is a proof that
+                # there is no plan — reported as `exhausted` to keep it distinguishable from
+                # the widths simply running out.
+                return self.__failed__("exhausted", totals)
 
-        failed = SearchResult(status=last.status if last else "failed")
-        failed.statistics = totals
-        return failed
+        # `last is not None`, not `if last`: SearchResult.__bool__ is `solved`, so a plain
+        # truth test on an unsolved result is always False and this reported "failed" for
+        # every outcome — including a search that had genuinely exhausted the space.
+        return self.__failed__(last.status if last is not None else "failed", totals)
+
+    @staticmethod
+    def __failed__(status, totals):
+        result = SearchResult(status=status)
+        result.statistics = totals
+        return result
 
 
 class SIWSearch:

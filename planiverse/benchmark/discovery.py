@@ -33,7 +33,7 @@ def task_filename(identifier):
     return f"{environment}__{index}"
 
 
-def count_instances(spec, ceiling=PROBE_CEILING):
+def count_instances(spec, ceiling=PROBE_CEILING, rom=None):
     """How many instances an environment offers, by asking it.
 
     Probed rather than declared. The registry's `instances` field is prose written for a
@@ -44,7 +44,7 @@ def count_instances(spec, ceiling=PROBE_CEILING):
     Environments differ in how they refuse — `IndexError`, `AssertionError`, a bare
     `ValueError` — so anything raised counts as the end of the range.
     """
-    environment = spec.build()
+    environment = spec.build(**({spec.rom_argument: rom} if rom else {}))
     try:
         count = 0
         while count < ceiling:
@@ -84,11 +84,15 @@ def choose(count, wanted, strategy="even"):
     return tuple(sorted({int(round(i * step)) for i in range(wanted)}))
 
 
-def eligible(spec, selection):
+def eligible(spec, selection, rom=None):
     """Is this environment in scope, and if not, why not?
 
     Returns `(True, "")` or `(False, reason)`. The reason is kept because "skipped" and
     "skipped because PyBoy is not installed" are different things to read in a report.
+
+    `rom` is the cartridge the experiment has for this environment, if any. Missing
+    dependencies and a missing cartridge are reported separately: one is fixed by installing
+    something, the other by supplying a file only you have.
     """
     if selection.include_environments and spec.name not in selection.include_environments:
         return False, "not in include-environments"
@@ -97,10 +101,13 @@ def eligible(spec, selection):
     if selection.tags and not (spec.tags & set(selection.tags)):
         return False, f"carries none of the tags {sorted(selection.tags)}"
     if spec.needs_rom and not selection.include_rom_environments:
-        return False, "needs a ROM you supply (set include-rom-environments)"
-    if not spec.available():
-        missing = [name for name in spec.requires if not _importable(name)]
-        return False, f"missing {', '.join(missing) or 'dependencies'}"
+        return False, "excluded by include-rom-environments"
+    missing = [name for name in spec.requires if not _importable(name)]
+    if missing:
+        return False, f"missing {', '.join(missing)}"
+    if spec.needs_rom and rom is None:
+        return False, ('no cartridge — add one to the experiment\'s "roms", set '
+                       f"{spec.rom_variable}, or run ./setup_benchmark.sh")
     return True, ""
 
 
@@ -113,22 +120,40 @@ def _importable(module_name):
         return False
 
 
-def discover(selection, registry=REGISTRY):
+def _rom_for(spec, roms):
+    """The cartridge for an environment: the experiment's, else its variable, else None.
+
+    The experiment's copy wins so that a run is reproducible from its config alone, but the
+    path is still checked — one recorded on the machine that wrote the config is a promise
+    about a different filesystem until it is.
+    """
+    if not spec.needs_rom:
+        return None
+    path = (roms or {}).get(spec.name)
+    if path and os.path.isfile(path):
+        return path
+    return spec.rom_path()
+
+
+def discover(selection, registry=REGISTRY, roms=None):
     """The tasks an experiment covers, plus what was left out and why.
 
+    `roms` maps an environment name to a cartridge path, for the Game Boy environments.
     Returns `{"tasks": [...], "environments": [...], "skipped": [...]}`.
     """
+    roms = roms or {}
     if selection.selected_tasks:
         return _explicit(selection, registry)
 
     tasks, environments, skipped = [], [], []
     for spec in registry:
-        ok, reason = eligible(spec, selection)
+        rom = _rom_for(spec, roms)
+        ok, reason = eligible(spec, selection, rom)
         if not ok:
             skipped.append({"environment": spec.name, "reason": reason})
             continue
         try:
-            count = count_instances(spec)
+            count = count_instances(spec, rom=rom)
         except Exception as exc:
             skipped.append({"environment": spec.name,
                             "reason": f"could not be built: {type(exc).__name__}: {exc}"})
