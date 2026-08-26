@@ -15,7 +15,7 @@ PLANNERS = {
     "iterated_width": ("planiverse.planners.width", "IteratedWidth",
                        ("max_width", "strict", "novelty_rule")),
     "siw": ("planiverse.planners.width", "SIWSearch",
-            ("width", "max_rounds", "strict", "avoid_dead_ends")),
+            ("width", "max_width", "max_rounds", "strict", "avoid_dead_ends")),
     "bfws": ("planiverse.planners.width", "BFWSSearch",
              ("width", "strict")),
     "fsx": ("planiverse.planners.fsx", "FSXPlanner",
@@ -40,7 +40,8 @@ RANDOMISED = ("fsx", "mcts")
 #:
 #: - `iw` prunes by novelty at a fixed width, so IW(k) misses any problem of width > k.
 #: - `iterated_width` is complete only for problems of width <= `max_width`.
-#: - `siw` commits irrevocably to the first improvement each leg finds.
+#: - `siw` commits irrevocably to the first improvement each leg finds. Iterating a leg's
+#:   width fixes which states a leg can *see*, not that it commits to the first it likes.
 #: - `fsx` and `mcts` are sampling planners and stop when their own step or iteration count
 #:   runs out, which is not the same as having looked everywhere.
 #:

@@ -462,6 +462,30 @@ def test_site_directives_are_passed_through(tmp_path, experiment):
     assert "#SBATCH --account" not in body, "unset directives are omitted, not left empty"
 
 
+def test_qos_reaches_the_job(tmp_path):
+    """Sites that gate submission on a QoS reject every job without one."""
+    config = ExperimentConfig(
+        name="q", slurm=SlurmConfig(qos="debug", partition="short"),
+        planners=(PlannerSpec(tag="bfws-2", planner="bfws"),))
+    written = slurm.generate(tmp_path / "sandbox", pairs_for(2), config,
+                             tmp_path / "experiment")
+    assert "#SBATCH --qos=debug" in open(written["scripts"][0]).read()
+
+
+def test_setup_commands_run_before_the_job_and_keep_their_order(tmp_path):
+    """`module load` before `source .../activate` is not the same as the other way round."""
+    config = ExperimentConfig(
+        name="s",
+        slurm=SlurmConfig(setup_commands=("module load python/3.11",
+                                          "source /shared/venv/bin/activate")),
+        planners=(PlannerSpec(tag="bfws-2", planner="bfws"),))
+    written = slurm.generate(tmp_path / "sandbox", pairs_for(2), config,
+                             tmp_path / "experiment")
+    body = open(written["scripts"][0]).read()
+    assert body.index("module load python/3.11") < body.index("source /shared/venv")
+    assert body.index("source /shared/venv") < body.index('eval "$COMMAND"')
+
+
 def test_every_path_in_a_job_is_absolute(tmp_path, experiment, monkeypatch):
     """sbatch inherits the submitting shell's cwd, which holds until someone submits from
     somewhere else — and then a relative path fails a thousand array elements at once."""
@@ -914,8 +938,39 @@ def test_the_default_experiment_is_a_spread_of_planners(tmp_path):
     families = {spec.planner for spec in loaded.planners}
     assert {"iterated_width", "siw", "bfws", "fsx", "mcts"} <= families, \
         "one of each, so a report says something"
+    assert not any(spec.planner == "iw" for spec in loaded.planners), \
+        "fixed-width IW is not a default; iterated_width replaces it"
     for spec in loaded.planners:
         assert catalogue.build(spec.planner, spec.params) is not None
+
+
+def test_bfws_is_pinned_and_iw_and_siw_are_not(tmp_path):
+    """Novelty is a filter in IW and SIW, so a width too low loses states outright and the
+    right width is a property of the problem. It is a sort key in BFWS, which discards
+    nothing and is complete at every width — so a failure there is the budget, not the
+    width, and 1 and 2 are two search orders worth comparing rather than a weaker and a
+    stronger one."""
+    run_cli("init", "--exp-dir", str(tmp_path / "exp"))
+    planners = {spec.tag: spec for spec in ExperimentConfig.load(tmp_path / "exp").planners}
+
+    assert planners["iw"].planner == "iterated_width"
+    assert planners["iw"].params["max_width"] >= 1000
+    assert planners["siw"].planner == "siw"
+    assert planners["siw"].params["max_width"] >= 1000
+    assert {"bfws-1", "bfws-2"} <= set(planners)
+    assert "max_width" not in planners["bfws-1"].params
+    assert planners["bfws-1"].params["width"] == 1
+    assert planners["bfws-2"].params["width"] == 2
+
+
+def test_the_qos_and_setup_command_flags_reach_the_experiment(tmp_path, capsys):
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"), "--qos", "debug",
+                   "--setup-command", "module load python",
+                   "--setup-command", "source /shared/venv/bin/activate") == 0
+    slurm_config = ExperimentConfig.load(tmp_path / "exp").slurm
+    assert slurm_config.qos == "debug"
+    assert slurm_config.setup_commands == ("module load python",
+                                           "source /shared/venv/bin/activate")
 
 
 def test_iw_iterates_its_width_rather_than_running_at_one_we_picked(tmp_path):
@@ -926,8 +981,6 @@ def test_iw_iterates_its_width_rather_than_running_at_one_we_picked(tmp_path):
     loaded = ExperimentConfig.load(tmp_path / "exp")
     iterated = [spec for spec in loaded.planners if spec.planner == "iterated_width"]
     assert iterated, "there has to be one"
-    assert not any(spec.planner == "iw" for spec in loaded.planners), \
-        "and no fixed-width IW alongside it"
     assert iterated[0].params["max_width"] >= 1000
     assert iterated[0].params["strict"] is False, \
         "strict refuses widths above 2, so it would stop at the cap we were trying to lift"
