@@ -4,8 +4,8 @@ A from-scratch Python re-implementation of the 1989 Taito block-matching puzzle 
 planning benchmark. 50 hand-written levels, no emulator, no dependencies beyond the standard library.
 
 - **Class:** `PuzznicGame`
-- **Import:** `from planiverse.environments.puzznic import PuzznicGame`
-- **Source:** [`planiverse/environments/puzznic.py`](../../planiverse/environments/puzznic.py)
+- **Import:** `from planiverse.environments.gameboy_py.puzznic import PuzznicGame`
+- **Source:** [`planiverse/environments/gameboy_py/puzznic.py`](../../planiverse/environments/gameboy_py/puzznic.py)
 - **Instances:** 50 levels, indices `0`–`49`
 - **Dependencies:** none
 - **Sibling:** [`PuzznicGBEnv`](puzznic-gb.md) plays the real Game Boy cartridge in an emulator
@@ -25,7 +25,7 @@ interesting for planning rather than reflexes.
 ## Quickstart
 
 ```python
-from planiverse.environments.puzznic import PuzznicGame
+from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
 env = PuzznicGame()
 env.fix_index(0)
@@ -169,7 +169,7 @@ merely fell appeared on both sides of the diff and scored as though it had been 
 
 | Path | What |
 |---|---|
-| [`puzznic.py`](../../planiverse/environments/puzznic.py) | Everything: elements, state, level parser, game |
+| [`puzznic.py`](../../planiverse/environments/gameboy_py/puzznic.py) | Everything: elements, state, level parser, game |
 
 Key classes: `Element`/`Box`/`Cursor`/`Wall`/`EmptySpace` (grid cells), `PuzznicState` (state),
 `Level` (parses a level string), `PuzznicGame` (the environment).

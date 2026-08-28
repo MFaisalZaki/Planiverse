@@ -6,7 +6,7 @@ show it. The level tests then check that every shipped level can actually be fin
 """
 import pytest
 
-from planiverse.environments.platformer import (
+from planiverse.environments.gameboy_py.platformer import (
     ACCEL, ACTION_NAMES, BOUNCE, GRAVITY, JUMP_SPEED, LEVELS, MAX_FALL,
     MEASURED_EXPANSIONS, RUN, TILE, WALK,
     PlatformerAction, PlatformerGame, blocked, parse_level,

@@ -2,7 +2,7 @@
 import pytest
 
 from planiverse.environments.base import Environment, implements_contract
-from planiverse.environments.puzznic import PuzznicGame
+from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.simulator.simulator import Simulator
 from planiverse.simulator.wrappers.base import SimulatorBase
 

@@ -5,8 +5,8 @@ rule set that is written down rather than reverse-engineered. No emulator, no RO
 dependencies beyond the standard library.
 
 - **Class:** `FlipullGame`
-- **Import:** `from planiverse.environments.flipull import FlipullGame`
-- **Source:** [`planiverse/environments/flipull.py`](../../planiverse/environments/flipull.py)
+- **Import:** `from planiverse.environments.gameboy_py.flipull import FlipullGame`
+- **Source:** [`planiverse/environments/gameboy_py/flipull.py`](../../planiverse/environments/gameboy_py/flipull.py)
 - **Instances:** 10 stages, indices `0`–`9`
 - **Dependencies:** none
 - **Sibling:** [`FlipullGBEnv`](flipull-gb.md) plays the real Game Boy cartridge in an emulator
@@ -35,7 +35,7 @@ rightmost block matches your hand can never change again.
 ## Quickstart
 
 ```python
-from planiverse.environments.flipull import FlipullGame
+from planiverse.environments.gameboy_py.flipull import FlipullGame
 
 env = FlipullGame()
 env.fix_index(0)
@@ -145,7 +145,7 @@ dead-end-rich, which is the interesting combination: blind search wanders into p
 never leave, and the useful signal is how many blocks are gone.
 
 ```python
-from planiverse.environments.flipull import FlipullGame
+from planiverse.environments.gameboy_py.flipull import FlipullGame
 from planiverse.planners.width import BFWSSearch, Budget
 
 env = FlipullGame()

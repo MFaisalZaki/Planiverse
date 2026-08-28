@@ -141,7 +141,7 @@ environment; the other modules cover per-environment behaviour.
 Puzznic is the dependency-free environment, so it's the fastest way to see the interface:
 
 ```python
-from planiverse.environments.puzznic import PuzznicGame
+from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
 env = PuzznicGame()
 env.fix_index(0)              # choose the instance *before* reset
@@ -460,6 +460,7 @@ planiverse/environments/
 ├── base.py          # Environment — the six-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── gameboy/         # the PyBoy-backed environments, grouped around their shared gb.py tail
+├── gameboy_py/      # their dependency-free counterparts, so each pair is easy to find
 └── <one module or subpackage per environment>
 ```
 
@@ -511,14 +512,16 @@ planiverse/
 ├── environments/
 │   ├── base.py                         # Environment — the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
-│   ├── puzznic.py                      # PuzznicGame
-│   ├── flipull.py                      # FlipullGame
-│   ├── platformer.py                   # PlatformerGame
 │   ├── gameboy/                        # the PyBoy-backed environments
 │   │   ├── gb.py                       # GBEnv, GBState, GBAction — the shared tail
 │   │   ├── puzznic_gb.py               # PuzznicGBEnv
 │   │   ├── flipull_gb.py               # FlipullGBEnv
 │   │   └── super_mario_land.py         # SuperMarioEnv
+│   ├── gameboy_py/                     # their dependency-free counterparts, no ROM needed
+│   │   ├── puzznic.py                  # PuzznicGame     — twin of puzznic_gb
+│   │   ├── flipull.py                  # FlipullGame     — twin of flipull_gb
+│   │   └── platformer.py               # PlatformerGame  — same genre as super_mario_land,
+│   │                                   #                   deliberately not a twin of it
 │   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── manufacturing/                  # MfgEnv + data/

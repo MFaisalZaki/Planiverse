@@ -1,6 +1,6 @@
 """A side-scrolling platformer in pure Python: no ROM, no emulator, no dependencies.
 
-This is the dependency-free counterpart to [`super_mario_land`](super_mario_land.py), and it
+This is the dependency-free counterpart to [`super_mario_land`](../gameboy/super_mario_land.py), and it
 is a weaker claim than the other two pairs in this library. `puzznic` and `flipull` are twins
 of their cartridges: their rules were derived from the real hardware and reproduce it, exactly
 in one case and partly in the other. **This is not a twin of Super Mario Land.** Nothing here

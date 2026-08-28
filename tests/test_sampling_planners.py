@@ -5,7 +5,7 @@ and should not be asserted on.
 """
 import pytest
 
-from planiverse.environments.puzznic import PuzznicGame
+from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.planners.fsx import FSXPlanner, option_count
 from planiverse.planners.mcts import MCTSPlanner
 from planiverse.planners.width.result import Budget
