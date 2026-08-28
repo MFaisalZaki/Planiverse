@@ -396,7 +396,7 @@ There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
 | `--rom-flipull PATH` | `flipull_gb` | `PLANIVERSE_FLIPULL_ROM` |
 | `--rom-boxxle2 PATH` | `boxxle2_gb` | `PLANIVERSE_BOXXLE2_ROM` |
 | `--rom-lolo PATH` | `lolo_gb` | `PLANIVERSE_LOLO_ROM` |
-| `--rom-sml PATH`, `--rom-mario PATH` | `super_mario_land` | `PLANIVERSE_SUPER_MARIO_LAND_ROM` |
+| `--rom-super-mario-land PATH`, `--rom-mario PATH` | `super_mario_land_gb` | `PLANIVERSE_SUPER_MARIO_LAND_ROM` |
 
 ```bash
 ./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
@@ -420,7 +420,8 @@ planiverse-bench init --exp-dir experiment --force \
 
 The flags are generated from the registry, so a new Game Boy environment gets one by existing,
 and each is the same name as its environment variable in a different spelling — which is where
-`--rom-sml` comes from. `--rom-mario` is an alias, because nobody types "sml" first. A path
+`--rom-super-mario-land` comes from. `--rom-mario` is a shorter alias, and `--rom-sml` is kept
+for anyone still typing the old abbreviation. A path
 that does not exist is refused there and then: a typo caught while typing costs a second, and
 one caught after submitting four thousand jobs costs rather more.
 
@@ -431,7 +432,7 @@ Environment variables still work as a fallback, but they are the weaker option f
 run: a variable exported in your shell is not there on the compute node unless you also put it
 in `setup-commands`. The recorded path travels with the experiment.
 
-Each of these has a pure-Python counterpart — `puzznic`, `flipull`, `platformer` — so
+Each of these has a pure-Python counterpart — `puzznic`, `flipull`, `super_mario_land` — so
 supplying a cartridge is what lets you compare an emulated environment against an implemented
 one under the same planners and the same limits. Skip one and it is reported as skipped, with
 the reason, rather than quietly dropped.
@@ -484,7 +485,7 @@ environment       bfws-1  bfws-2  fsx   iw    mcts  siw-1  siw-2
 crop_management   2/2     2/2     0/2   2/2   2/2   1/2    1/2
 flipull           2/2     2/2     0/2   1/2   1/2   1/2    1/2
 manufacturing †   2/2     2/2     2/2   2/2   2/2   2/2    2/2
-platformer        2/2     2/2     0/2   2/2   1/2   0/2    0/2
+super_mario_land  2/2     2/2     0/2   2/2   1/2   0/2    0/2
 power_grid        2/2     2/2     0/2   2/2   1/2   1/2    0/2
 puzznic           1/2     1/2     0/2   1/2   0/2   0/2    1/2
 puzznic_gb        1/2     1/2     0/2   1/2   0/2   0/2    1/2
