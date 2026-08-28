@@ -52,6 +52,47 @@ def flipull_rom_path():
     return None
 
 
+def boxxle2_rom_path():
+    """Path to a Boxxle II (USA, Europe) Game Boy ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_BOXXLE2_ROM. Unlike Puzznic
+    and Flipull there is no synthetic cartridge standing in for it: almost everything the
+    Boxxle II environment does is a pure function of bytes — the level decoder, the board
+    decoder, the deadlock test — and those are tested against synthetic RAM and a synthetic
+    ROM image instead, which is cheaper and covers more.
+    """
+    rom = os.environ.get("PLANIVERSE_BOXXLE2_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def amazing_tater_rom_path():
+    """Path to an `Amazing Tater (U).gb` ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_AMAZING_TATER_ROM. The
+    pure-Python twin needs no ROM at all; the tests that compare the two against each other,
+    and the ones that replay a plan on the cartridge, skip without it.
+    """
+    rom = os.environ.get("PLANIVERSE_AMAZING_TATER_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def lolo_rom_path():
+    """Path to an `Adventures of Lolo (U) [S][!].gb` ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_LOLO_ROM. The pure-Python
+    twin needs no ROM at all; the tests that compare the two against each other, and the ones
+    that replay a plan on the cartridge, skip without it.
+    """
+    rom = os.environ.get("PLANIVERSE_LOLO_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
 def assert_state_contract(state):
     """Every Planiverse state exposes `literals` as a frozenset.
 
