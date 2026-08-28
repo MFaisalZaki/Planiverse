@@ -6,7 +6,7 @@ planning benchmark. 50 hand-written levels, no emulator, no dependencies beyond 
 - **Class:** `PuzznicGame`
 - **Import:** `from planiverse.environments.gameboy_py.puzznic import PuzznicGame`
 - **Source:** [`planiverse/environments/gameboy_py/puzznic.py`](../../planiverse/environments/gameboy_py/puzznic.py)
-- **Instances:** 50 levels, indices `0`–`49`
+- **Instances:** 128 levels, indices `0`–`127` — one per Game Boy round
 - **Dependencies:** none
 - **Sibling:** [`PuzznicGBEnv`](puzznic-gb.md) plays the real Game Boy cartridge in an emulator
 
