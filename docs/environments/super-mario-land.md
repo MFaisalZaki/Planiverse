@@ -1,60 +1,74 @@
-# Platformer
+# Super Mario Land
 
-A side-scrolling run-and-jump environment in pure Python, with physics that are chosen and
-written down rather than reverse-engineered. No emulator, no ROM, no dependencies beyond the
-standard library.
+A side-scrolling platformer in pure Python whose movement constants were fitted to
+frame-by-frame measurements of the real cartridge. No emulator, no ROM, no dependencies
+beyond the standard library.
 
 - **Class:** `SuperMarioLandGame`
 - **Import:** `from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame`
 - **Source:** [`planiverse/environments/gameboy_py/super_mario_land.py`](../../planiverse/environments/gameboy_py/super_mario_land.py)
 - **Instances:** 8 levels, indices `0`–`7`, plus any you supply yourself
 - **Dependencies:** none
-- **Counterpart:** [`SuperMarioLandGBEnv`](super-mario-land.md) plays the real Game Boy cartridge
+- **Counterpart:** [`SuperMarioLandGBEnv`](super-mario-land-gb.md) plays the real Game Boy cartridge
 
 ## What this is, and what it is not
 
-This is the dependency-free counterpart to `super_mario_land`, and it makes a **weaker claim**
-than the other two pairs in this library.
+This is the dependency-free counterpart to `super_mario_land_gb`, and it makes a **weaker
+claim** than the other cartridge pairs in this library.
 
 [`puzznic`](puzznic.md) and [`flipull`](flipull.md) are twins of their cartridges: their rules
 were derived from the real hardware and reproduce it — exactly in Puzznic's case, partly in
-Flipull's. **This is not a twin of Super Mario Land.** Nothing here was read off that
-cartridge. It is a platformer of the same shape — run, jump, gaps, patrolling enemies, a flag
-at the end — with physics picked to be simple, integral and stated.
+Flipull's. **This is not a twin of Super Mario Land.** The levels are original, the enemies
+are simplified, and there is no timer, score, power-up, dash button or press-length jump
+control.
 
-Modelling a physics platformer faithfully is a far larger job than modelling a turn-based
-puzzle, and a half-reverse-engineered one would be worse than none: it would look like a
-prediction of the cartridge without being one. So this does not try, and says so here rather
-than leaving you to find out.
+What it does share with the cartridge is the movement. The constants were fitted to
+frame-by-frame measurements of `Super Mario Land (World) (Rev 1).gb` — the same dump the
+[emulator environment](super-mario-land-gb.md)'s memory map was derived from — recording
+Mario's screen position (`$C201`/`$C202`) and the on-ground flag (`$C20A`) once per frame
+while driving scripted input. Two of the cartridge's mechanics are deliberately left out,
+and the arc is fitted around their absence: press-length jump control (on the hardware, how
+long `a` is held shapes the climb) and the `b` dash. Here a jump is one fixed arc — the
+cartridge's full moving jump — and there is one horizontal speed, the cartridge's walk.
 
 ## The physics
 
-Positions are in units, `TILE` (8) units to a tile, the way the Game Boy itself counts. Mario
-is one tile square. Each tick, in this order:
+Positions are in units, `TILE` (8) units to a tile — one unit is one Game Boy pixel, and one
+tick is four Game Boy frames, which is what lets the measured values stay integral. Mario is
+one tile square. Each tick, in this order:
 
-1. **Horizontal.** `left`/`right` accelerate towards a target speed — `WALK` (2), or `RUN` (4)
-   while `b` is held — by `ACCEL` (1) a tick, and `FRICTION` slows you when nothing is held.
-   Speed carries: what you are travelling at when you leave a ledge is what you cross the gap
-   at. Running into a wall takes your speed away.
-2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED` (−12). Holding it keeps the
-   rise; releasing while still rising cuts the climb to `JUMP_CUT` (−4).
-3. **Gravity.** `vy += GRAVITY` (2), capped at `MAX_FALL` (12).
+1. **Horizontal.** `left`/`right` accelerate towards `SPEED` (4) by `ACCEL` (2) a tick, and
+   `FRICTION` (2) slows you when nothing is held. The cartridge walks at a steady 1 pixel a
+   frame and reaches it within about six frames of the press — 4 units a tick, inside two
+   ticks. Speed still carries: what you are travelling at when you leave a ledge is what you
+   cross the gap at, and running into a wall takes your speed away.
+2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED` (−12). That is the whole
+   jump: no press-length control, by design.
+3. **Gravity.** `vy += GRAVITY` (2), capped at `MAX_FALL` (12) — the measured terminal fall
+   of about 3 pixels a frame.
 4. **Collision.** Resolved one axis at a time — horizontal, then vertical — so a corner never
    lets you through.
 
-The measured consequences, which is what you actually design levels against:
+The arc against the cartridge, measured on the same four-frames-a-tick clock:
+
+| | Cartridge (full moving jump) | This model |
+|---|---|---|
+| Rise | 33 px in 22 frames | 30 units in 5 ticks (20 frames) |
+| Airborne | 49 frames | ~10 ticks (40 frames) |
+| Horizontal carry | 46 px | ~40 units |
+
+And the consequences, which is what you actually design levels against:
 
 | | |
 |---|---|
 | Full jump | 3.75 tiles up |
-| Short hop (`a,2` then release) | 2.25 tiles up |
 | Widest gap clearable | 6 tiles |
-| Runway needed to reach `RUN` | 2 tiles |
 | Tallest step up | 3 tiles |
+| Runway to full speed | under 1 tile |
 
-Momentum is why the levels are levels. Without it a run-up is free, every gap is either always
-or never jumpable, and a level collapses into "hold run and jump" — which is exactly what the
-first draft of this environment did, until momentum was added.
+The cartridge's standing jump is lower than its moving jump (24 px against 33). The model
+keeps one arc, fitted to the moving jump, because that is the one that decides what is
+reachable.
 
 ## Death, and what counts as a stomp
 
@@ -69,23 +83,21 @@ plainly landed on.
 
 ## Actions
 
-The vocabulary mirrors `super_mario_land`'s `button,ticks` actions, minus `down` — there is no
-ducking in this model. 21 actions: six button combinations held for 2, 6 or 12 ticks, plus
-`nop`, `left` and `right` for 4.
+The vocabulary mirrors `super_mario_land_gb`'s `button,ticks` actions, minus `down` — there is
+no ducking in this model — and minus `b` — there is no dash. 13 actions: four button
+combinations held for 2, 6 or 12 ticks, plus `nop` for 4.
 
 ```
-a+right,2   a+left,2   b+right,2   b+left,2   a+b+right,2   a+b+left,2
-a+right,6   ...                                             a+b+left,6
-a+right,12  ...                                             a+b+left,12
-nop,4       right,4    left,4
+a+right,2   a+left,2   right,2   left,2
+a+right,6   a+left,6   right,6   left,6
+a+right,12  a+left,12  right,12  left,12
+nop,4
 ```
 
-The short hold has to be genuinely short or the jump cut never fires: `vy` climbs past
-`JUMP_CUT` three ticks into a jump, so releasing later than that changes nothing. A first draft
-used holds of `(4, 8, 12)` and all three `a` actions produced an identical arc, which made two
-thirds of the action set dead weight and a hop impossible.
+The jump is one fixed arc, so a hold length decides how long a *direction* is held: the short
+one is for fine positioning, the long one for covering ground.
 
-`SuperMarioLandAction.cost()` charges 2 per tick for `a` and `b` and 1 for a direction, so a plan
+`SuperMarioLandAction.cost()` charges 2 per tick for `a` and 1 for a direction, so a plan
 can be scored by effort rather than by length.
 
 ## Quickstart
@@ -98,9 +110,9 @@ env.fix_index(3)
 state, info = env.reset()
 
 print(state)
-print(info)     # {'level': 3, 'width': 38, 'enemies': 3, 'goal': (36, 5)}
+print(info)     # {'level': 3, 'width': 32, 'enemies': 3, 'goal': (30, 5)}
 
-state, gained = env.step("b+right,12")     # returns tiles of ground gained
+state, gained = env.step("right,12")     # returns tiles of ground gained
 ```
 
 ## Levels
@@ -115,13 +127,16 @@ order:
 
 | Level | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|---|
-| Expansions | 4 | 7 | 7 | 66 | 385 | 468 | 482 | 1302 |
+| Expansions | 5 | 6 | 7 | 15 | 16 | 17 | 92 | 406 |
 
-That is data, not a promise — change a physics constant and the numbers move. It is there so
-the ramp is written down where it can be checked, and the tests re-derive a route through every
-level, so one that stops being finishable fails the suite instead of quietly wasting a
-planner's budget. Several candidates were dropped at exactly that gate: tightening the stomp
-rule made three previously-solvable levels unreachable, and they were cut rather than shipped.
+That is data, not a promise — change a physics constant and the numbers move, which is
+exactly what happened when the physics were refitted to the cartridge: the set was re-measured
+and re-ordered, and one level whose route had depended on the removed short hop was reworked.
+The numbers are there so the ramp is written down where it can be checked, and the tests
+re-derive a route through every level, so one that stops being finishable fails the suite
+instead of quietly wasting a planner's budget. Several candidates were dropped at exactly that
+gate: tightening the stomp rule made three previously-solvable levels unreachable, and they
+were cut rather than shipped.
 
 Level strings use this alphabet:
 
@@ -178,11 +193,11 @@ dead()                 only in a dead state
 match, because he moves up to `MAX_FALL` units in a tick and a test on tile coordinates alone
 would let a fast fall drop straight past the flag and count as a miss.
 
-`is_terminal` is **exact about death**. [`SuperMarioLandGBEnv`](super-mario-land.md) cannot tell you
-whether Mario died on contact: it has a proximity test over the object array, and whether
-contact is fatal depends on a power-up byte the memory map never confirmed, so it deliberately
-reports only the music track changing. Here death is defined, so a planner prunes the moment it
-happens rather than playing on into a position that no longer exists.
+`is_terminal` is **exact about death**. [`SuperMarioLandGBEnv`](super-mario-land-gb.md) cannot
+tell you whether Mario died on contact: it has a proximity test over the object array, and
+whether contact is fatal depends on a power-up byte the memory map never confirmed, so it
+deliberately reports only the music track changing. Here death is defined, so a planner prunes
+the moment it happens rather than playing on into a position that no longer exists.
 
 It is **not** a test for whether the level is still winnable, and nothing here claims to be.
 Mario can be alive in a pit he cannot jump out of, and no environment in this library detects
@@ -208,5 +223,6 @@ print(result.status, len(result.plan))
 `progress` on Mario's column is what makes this tractable, and it is worth being clear that it
 is doing most of the work: a level whose only demand is "go right" is close to trivial for
 BFWS. The shipped levels were selected for costing more than that — towers to climb, gaps that
-need speed, enemies in the lane — but a run-and-jump level with a distance-to-goal heuristic is
-an easier problem than Flipull, and the expansion counts show it.
+need a well-timed jump from the very edge, enemies in the lane — but a run-and-jump level with
+a distance-to-goal heuristic is an easier problem than Flipull, and the expansion counts show
+it.

@@ -1,4 +1,4 @@
-# Super Mario Land
+# Super Mario Land (Game Boy)
 
 Planning directly against a Game Boy. This environment drives the real Super Mario Land ROM inside
 the [PyBoy](https://github.com/Baekalfen/PyBoy) emulator, and reads game facts straight out of the
@@ -9,6 +9,7 @@ console's RAM. States are emulator save-states, so search can branch by rewindin
 - **Source:** [`planiverse/environments/gameboy/super_mario_land_gb.py`](../../planiverse/environments/gameboy/super_mario_land_gb.py)
 - **Dependencies:** `pyboy` + a `SuperMarioLand.gb` ROM you supply (`pillow` for screenshots)
 - **Planner:** [`planiverse/planners/super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py)
+- **Counterpart:** [`SuperMarioLandGame`](super-mario-land.md) is the dependency-free pure-Python model with cartridge-fitted physics
 
 ## The ROM
 
@@ -280,5 +281,5 @@ starting point, not a working agent.
 
 | Path | What |
 |---|---|
-| [`super_mario_bros_gb.py`](../../planiverse/environments/gameboy/super_mario_land_gb.py) | `SuperMarioLandGBEnv`, `SuperMarioLandGBState`, `SuperMarioLandGBAction` |
+| [`super_mario_land_gb.py`](../../planiverse/environments/gameboy/super_mario_land_gb.py) | `SuperMarioLandGBEnv`, `SuperMarioLandGBState`, `SuperMarioLandGBAction` |
 | [`super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py) | `TreeSearchPlanner`, `SuperMarioPlanner` |

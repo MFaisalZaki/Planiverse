@@ -508,6 +508,15 @@ M   ##^########                  ###   E  G
 
 
 
+                 #####
+      ###     E
+M   E ### E####               G
+#################    ####   ####
+#################    ####   ####""",
+    """\
+
+
+
 
 
 M   E                      E    E   G
@@ -525,15 +534,6 @@ M          E                    E #####   G
     """\
 
 
-       ####
-         ####          ^#
-            ####       ##
-M      ####E           ##   E             G
-#############     ############   ###########
-#############     ############   ###########""",
-    """\
-
-
       #####
      ###  ##
                     ####
@@ -543,15 +543,17 @@ M  ####^#           #### E      EE        G
     """\
 
 
-      ###
-                 #####
-      ###     E
-M   E ### E####               G
-#################    ####   ####
-#################    ####   ####""",
+       ####
+         ####          ^#
+            ####       ##
+M      ####E           ##   E             G
+#############     ############   ###########
+#############     ############   ###########""",
 )
 
 #: BFWS(w=2) expansions when each level was accepted, in the same order — the ramp,
-#: recorded rather than asserted. `tests/test_platformer.py` re-derives a route
+#: recorded rather than asserted. `tests/test_super_mario_land.py` re-derives a route
 #: through every one of them, so a level that stops being finishable fails the suite.
-MEASURED_EXPANSIONS = (4, 7, 7, 66, 385, 468, 482, 1302)
+#: Re-measured when the physics were refitted to the cartridge, which is also when the
+#: levels were re-ordered: one horizontal speed and one jump arc redistributed the search.
+MEASURED_EXPANSIONS = (5, 6, 7, 15, 16, 17, 92, 406)

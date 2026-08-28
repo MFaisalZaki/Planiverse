@@ -33,8 +33,8 @@ Every environment answers the same four questions:
 | Adventures of Lolo (Game Boy) | `lolo_gb` | 163 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/lolo-gb.md) |
 | Amazing Tater | `amazing_tater` | 105 rooms | game | [docs](docs/environments/amazing-tater.md) |
 | Amazing Tater (Game Boy) | `amazing_tater_gb` | 105 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/amazing-tater-gb.md) |
-| Platformer | `platformer` | 8 levels | game, platformer | [docs](docs/environments/platformer.md) |
-| Super Mario Land | `super_mario_land` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land.md) |
+| Super Mario Land | `super_mario_land` | 8 levels | game, platformer | [docs](docs/environments/super-mario-land.md) |
+| Super Mario Land (Game Boy) | `super_mario_land_gb` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land-gb.md) |
 
 ```python
 from planiverse.environments import list_environments, make
@@ -130,7 +130,7 @@ runnable from a partial install. The tests that need a copyrighted ROM are opt-i
 matching environment variable at one to run them:
 
 ```bash
-PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
+PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario_land_gb.py
 PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
 PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" pytest tests/test_flipull_gb.py
 PLANIVERSE_BOXXLE2_ROM="/path/to/Boxxle II (USA, Europe).gb" pytest tests/test_boxxle2_gb.py
@@ -542,15 +542,15 @@ planiverse/
 │   │   ├── boxxle2_gb.py               # Boxxle2GBEnv
 │   │   ├── lolo_gb.py                  # LoloGBEnv
 │   │   ├── amazing_tater_gb.py         # AmazingTaterGBEnv
-│   │   └── super_mario_land.py         # SuperMarioLandGBEnv
+│   │   └── super_mario_land_gb.py      # SuperMarioLandGBEnv
 │   ├── gameboy_py/                     # their dependency-free counterparts, no ROM needed
 │   │   ├── puzznic.py                  # PuzznicGame     — twin of puzznic_gb
 │   │   ├── flipull.py                  # FlipullGame     — twin of flipull_gb
 │   │   ├── boxxle2.py                  # Boxxle2Game     — twin of boxxle2_gb
 │   │   ├── lolo.py                     # LoloGame        — twin of lolo_gb
 │   │   ├── amazing_tater.py            # AmazingTaterGame — twin of amazing_tater_gb
-│   │   └── platformer.py               # SuperMarioLandGame  — same genre as super_mario_land,
-│   │                                   #                   deliberately not a twin of it
+│   │   └── super_mario_land.py         # SuperMarioLandGame — same genre as super_mario_land_gb,
+│   │                                   #                  cartridge-fitted physics, not a twin
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── manufacturing/                  # MfgEnv + data/
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
@@ -654,12 +654,14 @@ is referenced as a planned addition but is not yet in the tree.
       than the way a player would
 - [ ] Solutions for the rest of Boxxle II. 42 of 120 levels have one; the tail runs to 59 boxes
       and is beyond what any planner here solves at a sane budget
-- [x] A dependency-free platformer (`SuperMarioLandGame`) to stand where a pure-Python Super
-      Mario Land would. It is a genre counterpart with stated physics, **not** a twin of the
-      cartridge — nothing in it was read off that ROM, and the docs lead with that
-- [ ] An actual pure-Python Super Mario Land. Deliberately not attempted: reverse-engineering
-      a physics platformer is a far larger job than a turn-based puzzle, and a half-modelled
-      one would look like a prediction of the cartridge without being one
+- [x] A dependency-free Super Mario Land counterpart (`SuperMarioLandGame`) whose movement
+      constants were fitted to frame-by-frame measurements of the cartridge: one speed (the
+      measured walk) and one fixed jump arc (the measured full moving jump), with
+      press-length jump control and the `b` dash deliberately left out. Still **not** a
+      twin — the levels are original and the enemies simplified, and the docs lead with that
+- [ ] A full pure-Python Super Mario Land twin. Deliberately not attempted: reverse-engineering
+      a physics platformer move for move is a far larger job than a turn-based puzzle, and a
+      half-modelled one would look like a prediction of the cartridge without being one
 - [ ] Flipull's second stage table at `$3A4E`, reached through the RNG — a bonus course, unexplored
 
 ## License
