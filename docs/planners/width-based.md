@@ -42,7 +42,7 @@ a full hydraulic and transport solve. Every search takes a `Budget` and returns
 `SearchStatistics`, because "found nothing" and "ran out of budget after four nodes" are
 different answers and a planner that conflates them is not usable.
 
-**Dead ends are real.** A PDDL benchmark usually has none. Six environments here do, and
+**Dead ends are real.** A PDDL benchmark usually has none. Several environments here do, and
 `is_terminal` states are dropped rather than expanded — see [SIW](#siw-and-the-dead-end-trap)
 for what that is worth.
 

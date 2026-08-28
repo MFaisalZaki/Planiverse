@@ -113,8 +113,8 @@ repeated runs). Three consequences:
   rather than a restatement of it.
 
 `depth` is deliberately *not* part of state identity — with a step counter in there no
-successor could ever equal its parent and the self-loop filter would be dead code, the trap
-the [urban planning](urban-planning.md#known-quirks) environment fell into.
+successor could ever equal its parent and the self-loop filter would be dead code, a trap
+a since-removed environment fell into.
 
 ## State representation
 

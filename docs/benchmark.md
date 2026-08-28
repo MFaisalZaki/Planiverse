@@ -374,10 +374,9 @@ network is. And they are visible — `planiverse-bench environments` prints whic
 have one, so a weak result on an environment without a measure is legible as such instead of
 looking like a weak planner.
 
-Three environments have none, and the reason is recorded next to each: `epidemic` (the goal is
-a threshold on a trajectory, and every monotone stand-in preferred doing nothing),
-`manufacturing` (the objective is a cost over a whole schedule, not a distance) and
-`urban_planning` (multi-objective by construction). Without a measure BFWS becomes
+One environment has none, and the reason is recorded next to it:
+`manufacturing` (the objective is a cost over a whole schedule, not a distance).
+Without a measure BFWS becomes
 breadth-first search ordered by novelty alone and SIW becomes a single IW call. That is a real
 result, not a broken one, but it is a different experiment — and the reports mark the rows with
 `†`.
@@ -463,10 +462,11 @@ solves the same 40 just inside the limit.
 7 planners over 18 tasks — two instances from each environment, a Puzznic cartridge supplied —
 at a 20-second limit, run locally.
 
-This was recorded before SIW was changed to iterate its width and before the two pinned BFWS
-entries were replaced by a single iterated one, so the `siw-1`/`siw-2` and `bfws-1`/`bfws-2`
-rows are the pinned configurations; the default set now has one iterated `siw` and one
-iterated `bfws` in their place. Everything else is current.
+This was recorded before SIW was changed to iterate its width, before the two pinned BFWS
+entries were replaced by a single iterated one, and before the `epidemic` and
+`urban_planning` environments were removed over licensing — so the `siw-1`/`siw-2` and
+`bfws-1`/`bfws-2` rows are the pinned configurations and `urban_planning` no longer exists
+in the tree. Everything else is current.
 
 ```
 Coverage

@@ -192,8 +192,8 @@ Terrain is deliberately *not* in the literals — it is static per stage, and re
 every state would swamp the atoms that actually change. Read `state.grid` for it.
 
 `depth` is also deliberately absent. With a step counter in the literals no successor could ever
-equal its parent, and the self-loop filter in `successors` would be dead code — the trap the
-[urban planning](urban-planning.md#known-quirks) environment fell into.
+equal its parent, and the self-loop filter in `successors` would be dead code — a trap a
+since-removed environment fell into.
 
 Two states are equal when their grid and cursor match, which is the whole position: depth and history
 do not distinguish two ways of reaching the same board, so search can close.

@@ -17,7 +17,7 @@ Adapting this to a simulator rather than a PDDL task changes three things:
   instead, and says plainly what it degrades to without one.
 * **Expansions are expensive** — seconds each in the power grid environment — so every search
   takes a `Budget` and reports what it spent.
-* **Dead ends are real.** A PDDL task usually has none; three environments here do, and
+* **Dead ends are real.** A PDDL task usually has none; several environments here do, and
   `is_terminal` states are dropped rather than expanded.
 """
 from collections import deque

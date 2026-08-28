@@ -29,8 +29,8 @@ here, so the pin is no longer needed at all.
 
 pip has no way to override another package's requirements — `--constraint` can only narrow a
 range, never widen one — so patching from the outside was not an option. The choices were a
-fork or a vendored copy; this repo already vendors EpiPolicy under
-`epidemic_control/epipolicy/`, so it follows that precedent.
+fork or a vendored copy, and a copy keeps the provenance in one place. PDDLGym is MIT
+licensed, so vendoring it (with `LICENSE.md` kept alongside) is permitted.
 
 ## What was changed
 

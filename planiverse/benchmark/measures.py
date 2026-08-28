@@ -169,12 +169,8 @@ MEASURES = {
 #: Environments with no measure. Named rather than merely absent, so that "we have not written
 #: one" is distinguishable from "we forgot this environment exists".
 #:
-#: - `epidemic` — the goal is a threshold on a compartment trajectory, and any monotone
-#:   stand-in we tried preferred doing nothing.
 #: - `manufacturing` — the objective is a cost over a whole schedule, not a distance.
-#: - `urban_planning` — multi-objective by construction; collapsing it to one number is the
-#:   research question, not a benchmark detail.
-WITHOUT_MEASURE = ("epidemic", "manufacturing", "urban_planning")
+WITHOUT_MEASURE = ("manufacturing",)
 
 
 def DEFAULT_MEASURE(state):
