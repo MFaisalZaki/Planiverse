@@ -17,6 +17,18 @@ from planiverse.environments.base import Environment
 
 PERIOD = 7
 
+#: Compartments holding people who are not currently infected. Everyone else is, whatever
+#: the model calls them, which is how `active_infections` stays model-agnostic across the
+#: SIR, SIRV and COVID scenarios.
+NOT_INFECTED = frozenset({'S', 'R', 'V', 'V1', 'V2', 'D'})
+
+#: Active infections at or below which the outbreak counts as contained. Every scenario
+#: starts at exactly 100, so this is a tenfold reduction.
+CONTAINED = 10
+
+#: How long a plan has to get there. Reaching it without containing the outbreak is a
+#: failure, not a success -- see `is_terminal`.
+
 class EpiAction:
     def __init__(self, index, intervention_details):
         self.index         = index
@@ -99,6 +111,12 @@ class EpiState:
         norm2 = np.linalg.norm(s2)
         if norm1 == 0 or norm2 == 0: return 0.0  # No similarity if one vector is all zeros
         return np.dot(s1, s2) / (norm1 * norm2)
+
+    def compartments(self):
+        """Every compartment's headcount, exactly. `__eq__` is deliberately approximate, so
+        anything that needs to know whether two states really differ asks for this."""
+        return tuple(float(np.sum(self.state.obs.current_comp[i]))
+                     for i in range(self.static.compartment_count))
 
     def __eq__(self, other):
         v1 = np.array(list(map(lambda o: int(o[1]), self.__vectorize__())))
@@ -236,21 +254,43 @@ class EpiEnv(Environment):
             index_scenario_map[idx] = data
         assert index in index_scenario_map, f"Scenario {index} not found in index_scenario_map"
         self.scenario = index_scenario_map[index]
+        self.scenario_index = index
+
+    def active_infections(self, state):
+        """How many people are currently infected, whatever the model calls them.
+
+        The scenarios do not share a compartment vocabulary — SIR has a single `I`, while
+        the COVID models spread the same people across `E`, three `I` stages, three `H`
+        stages and four quarantine compartments. Rather than enumerate those per model,
+        count everyone who is *not* accounted for as susceptible, recovered, vaccinated or
+        dead, which is the same quantity in every scenario and needs no per-model table.
+        """
+        names = [self.epi.static.get_property_name('compartment', i)
+                 for i in range(self.epi.static.compartment_count)]
+        return sum(count for name, count in zip(names, state.compartments())
+                   if name not in NOT_INFECTED)
 
     def is_goal(self, state):
-        if state.depth >= self.horizon:
-            pass # for development.
-        return state.depth >= self.horizon
-        sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
-        # I guess a goal state should be if there are no infected people.
-        return sir_model_value['I'] == 0.0
+        """The outbreak has been brought under control: active infections are down to a
+        tenth of the hundred every scenario starts with.
+
+        This used to be `state.depth >= self.horizon` — reaching the end of the year, which
+        every long enough plan does, so there was nothing to search for. The intended test
+        was sitting unreachable underneath it as `sir_model_value['I'] == 0.0`; elimination
+        is too strong, since these models do not drive infections to exactly zero.
+        """
+        return self.active_infections(state) <= CONTAINED
 
     def is_terminal(self, state):
-        # A better terminal state is the tree searched for 356 days.
-        return False
-        sir_model_value = {self.epi.static.get_property_name('compartment', i): np.sum(state.state.obs.current_comp[i]) for i in range(self.epi.static.compartment_count)}
-        # So if all ppls are infected then this is a terminal state.
-        return False # there are stuck states in this environment.
+        """The year is up with the outbreak still running: out of plan, and no action can
+        buy more time. It was hard-coded `False`, so the environment had no failure state
+        at all and search had nothing to prune.
+
+        A capacity ceiling was considered here and rejected: COVID_A's own containment path
+        peaks at 23% of the population, so any ceiling low enough to mean anything would
+        make a scenario that *is* solvable unsolvable.
+        """
+        return state.depth >= self.horizon
     
     def successors(self, state):
         ret = []
@@ -263,7 +303,13 @@ class EpiEnv(Environment):
             if action_str in performed_actions: continue # when vaccination is not applied, then some actions will be repeated.
             if not any([a.value != 0.0 for a in filter(lambda o: isinstance(o, EpiAction), action)] ): continue # avoid actions with no interventions applied.
             successor_state = self.__perform_action__(state, action + self.costs)
-            if successor_state == state: continue
+            # Exactly unchanged, not "close enough". `EpiState.__eq__` compares within a
+            # tolerance — fewer than fifty people between two states makes them the same
+            # one — which is a useful abstraction for closing duplicates during search, but
+            # wrong as a self-loop test: once the outbreak is small every action falls
+            # inside the tolerance, so a controlled epidemic had no successors at all and
+            # search dead-ended precisely when the plan was working.
+            if successor_state.compartments() == state.compartments(): continue
             # we need to stringify the action for _BFS_SEARCH
             ret.append((EpiAppliedInterventions(action, self.costs), successor_state))
             # ret.append((' ^ '.join(map(str, action + self.costs)), successor_state))

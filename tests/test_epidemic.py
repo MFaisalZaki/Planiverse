@@ -177,14 +177,16 @@ def test_vaccination_is_available_once_the_delay_has_passed(sir_env):
 
 # --------------------------------------------------------------------------- goal
 
-def test_goal_is_the_horizon():
+def test_reaching_the_horizon_is_a_dead_end_not_a_win():
+    """Superseded `test_goal_is_the_horizon`, which asserted the defect: one period took
+    the state past `horizon` and that counted as solving the problem."""
     env = EpiEnv(delay_vaccination_time=0, horizon=PERIOD)
     env.fix_index(SIR_A)
     state, _ = env.reset()
     assert not env.is_goal(state)
     _, successor = env.successors(state)[0]
-    assert env.is_goal(successor)          # one period reaches the horizon
-    assert not env.is_terminal(successor)
+    assert not env.is_goal(successor)      # the epidemic is still running
+    assert env.is_terminal(successor)      # and the plan is out of time
 
 
 # --------------------------------------------------------------------------- state
@@ -213,3 +215,51 @@ def test_literals_carry_compartments_and_depth(sir_state):
     literal = next(iter(sir_state.literals))
     assert "depth(0)" in literal
     assert "s(" in literal and "i(" in literal
+
+
+# ------------------------------------------------------------------- controlling it works
+
+@pytest.mark.slow
+def test_suppressing_the_outbreak_does_not_run_out_of_successors():
+    """Bringing infections down must not end the episode.
+
+    `EpiState.__eq__` compares within a tolerance — two states are the same if their I and R
+    counts differ by fewer than fifty people — which is a deliberate abstraction for search.
+    `successors` used it to drop actions that "change nothing", so once the outbreak was
+    small and slow-moving every action fell inside the tolerance and the state had no
+    successors at all. Control the epidemic and the environment declared a dead end, which
+    is exactly backwards, and is why so few of these scenarios were ever solved.
+    """
+    env = EpiEnv(delay_vaccination_time=30, horizon=364)
+    env.fix_index(SIR_B)
+    state, _ = env.reset()
+    for _ in range(6):
+        successors = env.successors(state)
+        assert successors, f"no successors at depth {state.depth} with the outbreak under control"
+        state = min(successors, key=lambda pair: env.active_infections(pair[1]))[1]
+    assert env.active_infections(state) < 100, "the outbreak should be shrinking by now"
+
+
+def test_the_horizon_is_not_the_goal(sir_env, sir_state):
+    """Replaces a test that asserted the opposite. `is_goal` was `depth >= horizon`, so a
+    year passing counted as success however the epidemic went, and the real check sat
+    unreachable underneath it. Containment is the goal now; the horizon is the deadline."""
+    exhausted = EpiState(sir_state.state, sir_env.horizon, sir_env.epi.static)
+    assert not sir_env.is_goal(exhausted), "a year passing is not, by itself, success"
+    assert sir_env.is_terminal(exhausted), "but it is out of time"
+
+
+def test_a_fresh_outbreak_is_neither_won_nor_lost(sir_env, sir_state):
+    assert not sir_env.is_goal(sir_state)
+    assert not sir_env.is_terminal(sir_state)
+    assert sir_env.active_infections(sir_state) == 100
+
+
+def test_active_infections_counts_every_infected_compartment():
+    """Model-agnostic: SIR names one compartment `I`, COVID spreads the same people over
+    eleven, so the measure counts everyone not accounted for as susceptible, recovered,
+    vaccinated or dead."""
+    env = EpiEnv(delay_vaccination_time=30, horizon=364)
+    env.fix_index(COVID_A)
+    state, _ = env.reset()
+    assert env.active_infections(state) == 100
