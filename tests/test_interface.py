@@ -102,32 +102,12 @@ def manufacturing():
     return env
 
 
-def urban_planning():
-    pytest.importorskip("pandas", reason="pandas is not installed")
-    pytest.importorskip("networkx", reason="networkx is not installed")
-    from planiverse.environments.urban_planning.environment import UrbanPlanningEnv
-
-    env = UrbanPlanningEnv(horizon=100)
-    env.fix_index(0)
-    return env
-
-
 def network_attack():
     pytest.importorskip("nasim", reason="nasim is not installed")
     from planiverse.environments.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
     env.fix_index(0)
-    return env
-
-
-def epidemic():
-    pytest.importorskip("numba", reason="numba is not installed")
-    pytest.importorskip("sympy", reason="sympy is not installed")
-    from planiverse.environments.epidemic_control.environment import EpiEnv
-
-    env = EpiEnv(delay_vaccination_time=30, horizon=364)
-    env.fix_index(5)          # SIR_A, the cheapest scenario
     return env
 
 
@@ -142,9 +122,7 @@ ENVIRONMENTS = {
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
     "manufacturing": manufacturing,
-    "urban_planning": urban_planning,
     "network_attack": network_attack,
-    "epidemic": pytest.param(epidemic, marks=pytest.mark.slow),
 }
 
 
@@ -182,8 +160,8 @@ def test_every_registered_environment_is_in_the_catalogue():
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb", "boxxle2", "boxxle2_gb",
             "lolo", "lolo_gb", "amazing_tater", "amazing_tater_gb", "platformer",
-            "super_mario_land", "epidemic", "network_attack", "manufacturing",
-            "urban_planning", "water_network", "power_grid", "crop_management"} == registered
+            "super_mario_land", "network_attack", "manufacturing",
+            "water_network", "power_grid", "crop_management"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():

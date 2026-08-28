@@ -1,8 +1,8 @@
 """Shared fixtures and helpers for the Planiverse test suite.
 
-Environments differ in what they need to run: Puzznic needs nothing, the epidemic
-environment needs numba/sympy, NASim needs the NetworkAttackSimulator fork, and the two
-Game Boy environments need a ROM the user supplies. Tests for an environment whose requirements
+Environments differ in what they need to run: Puzznic needs nothing, NASim needs the
+NetworkAttackSimulator fork, and the Game Boy environments need a ROM the user supplies.
+Tests for an environment whose requirements
 are missing skip rather than fail, so the suite is runnable from a partial install.
 """
 import os

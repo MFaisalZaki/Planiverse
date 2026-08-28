@@ -1,7 +1,7 @@
 """The declared dependencies, checked against what the library actually imports.
 
-Two things went wrong before these existed. `gym` was imported by the simulator facade and
-the epidemic environment but never declared, so it only ever worked because pddlgym happened
+Two things went wrong before these existed. `gym` was imported by the simulator facade but
+never declared, so it only ever worked because pddlgym happened
 to pull it in. And `pddlgym 0.0.7` requires `pillow <10`, which has no Python 3.13 wheels and
 whose 9.5.0 sdist cannot build there — Pillow's `setup.py` reads its own version out of
 `locals()` after an `exec`, which PEP 667 stopped working in 3.13 — so `pip install .` died
@@ -40,8 +40,6 @@ ENTRY_POINTS = [
     "planiverse.environments.crop_management.environment",
     "planiverse.environments.gameboy_py.platformer",
     "planiverse.environments.gameboy.super_mario_land",
-    "planiverse.environments.epidemic_control.environment",
-    "planiverse.environments.urban_planning.environment",
     "planiverse.environments.network_attack.network_attack",
     "planiverse.environments.manufacturing.mfenv",
     "planiverse.benchmark.cli",
@@ -148,7 +146,7 @@ def test_the_import_closure_is_fully_declared(declared):
 
 def test_an_install_covers_every_environment(declared):
     """A single `pip install .` is meant to give you all of them, not a subset."""
-    for requirement in ("pyboy", "nasim", "numba", "pandas", "networkx", "gym"):
+    for requirement in ("pyboy", "nasim", "pandas", "networkx", "gym"):
         assert requirement in declared
 
 

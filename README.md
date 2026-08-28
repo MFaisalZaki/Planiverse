@@ -3,8 +3,8 @@
 A Python library for **planning with simulators**.
 
 Classical planners need a declarative model of the world. Many interesting problems don't have one —
-they have a *simulator*: an epidemic model, a network attack emulator, a Game Boy running Super Mario
-Land. Planiverse wraps those simulators behind one small, uniform interface so that a search-based
+they have a *simulator*: a water distribution network, a network attack emulator, a Game Boy running
+Super Mario Land. Planiverse wraps those simulators behind one small, uniform interface so that a search-based
 planner can expand states, test goals, and validate plans without knowing what is underneath.
 
 Every environment answers the same four questions:
@@ -21,10 +21,8 @@ Every environment answers the same four questions:
 | Water distribution | `water_network` | 9 contamination scenarios | infrastructure | [docs](docs/environments/water-distribution.md) |
 | Power grid | `power_grid` | 9 contingencies | infrastructure | [docs](docs/environments/power-grid.md) |
 | Crop management | `crop_management` | 22 growing seasons | agriculture | [docs](docs/environments/crop-management.md) |
-| Epidemic control | `epidemic` | 7 scenarios (SIR / SIRV / COVID) | health, policy | [docs](docs/environments/epidemic-control.md) |
 | Network attack | `network_attack` | 18 NASim benchmarks | security | [docs](docs/environments/network-attack.md) |
 | Manufacturing | `manufacturing` | 7 demand/capacity instances | operations | [docs](docs/environments/manufacturing.md) |
-| Urban planning | `urban_planning` | 2 cities (Kendall Square, St Andrews) | policy | [docs](docs/environments/urban-planning.md) |
 | Puzznic | `puzznic` | 128 levels | game | [docs](docs/environments/puzznic.md) |
 | Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
 | Flipull | `flipull` | 10 stages | game | [docs](docs/environments/flipull.md) |
@@ -77,8 +75,8 @@ poetry install --extras dev
 One install gets you every environment, on every supported Python.
 
 `tests/test_packaging.py` walks the import graph from each environment's entry point and fails if
-anything it reaches is undeclared. That is how `gym` — imported by the simulator facade and the
-epidemic environment, but declared nowhere, working only because pddlgym happened to pull it in —
+anything it reaches is undeclared. That is how `gym` — imported by the simulator facade, but
+declared nowhere, working only because pddlgym happened to pull it in —
 stopped being able to go missing.
 
 ### PDDLGym is vendored
@@ -96,8 +94,8 @@ KeyError: '__version__'
 That took the whole install down on 3.13, PDDL support or not, and pip has no way to override
 another package's requirements (`--constraint` can only narrow a range, never widen one). So
 PDDLGym is vendored under
-[`planiverse/simulator/wrappers/pddlgym/`](planiverse/simulator/wrappers/pddlgym/), the same
-way EpiPolicy is, with the one-line fix its own `TODO` asked for — `Image.ANTIALIAS` (removed
+[`planiverse/simulator/wrappers/pddlgym/`](planiverse/simulator/wrappers/pddlgym/), with the
+one-line fix its own `TODO` asked for — `Image.ANTIALIAS` (removed
 in Pillow 10) becomes `Image.Resampling.LANCZOS`. The pin is then unnecessary, and every
 supported Python gets the full wrapper.
 
@@ -124,7 +122,7 @@ be distributed with this repo. See their docs: [Super Mario Land](docs/environme
 
 ```bash
 pytest                  # the whole suite
-pytest -m "not slow"    # skip the slow epidemic/search tests
+pytest -m "not slow"    # skip the slow search tests
 ```
 
 Tests for an environment whose dependencies are missing skip rather than fail, so the suite is
@@ -226,9 +224,7 @@ Not every environment implements every method. What is actually there today:
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
-| `EpiEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `MfgEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
-| `UrbanPlanningEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
@@ -265,9 +261,9 @@ sorted(state.literals)[:4]
 This is the bridge back to symbolic planning. Planners use `literals` as the visited-set key, and
 width-based methods (IW and friends) use them as the atoms whose novelty they measure. It is also
 where each environment makes its central modelling decision: what counts as *the same state*. The
-choice differs sharply per environment — Puzznic's literals are exact, while the epidemic
-environment's literals (and `__eq__`) deliberately blur nearby states together so that search over a
-continuous compartmental model terminates. Each environment's doc has a "State representation"
+choice differs sharply per environment — Puzznic's literals are exact, while the water network's
+literals deliberately bucket a continuous contamination level so that search over a
+continuous model terminates. Each environment's doc has a "State representation"
 section spelling out what it chose and what that costs you.
 
 States also commonly expose `depth`, and define `__eq__` (and sometimes `__hash__` and `__lt__`, the
@@ -447,7 +443,7 @@ fsx           2       18   11%       26.8s       13.42s   2.0
 buys you.
 
 The full documentation is in [docs/benchmark.md](docs/benchmark.md), including the progress
-measures SIW and BFWS need per environment, the three environments that have none and why, and
+measures SIW and BFWS need per environment, the one environment that has none and why, and
 how to point the harness at a Game Boy cartridge.
 
 ## Writing a planner
@@ -527,8 +523,7 @@ outside works without inheriting from anything.
 3. Implement `reset`, `fix_index`, `successors`, `is_goal`, `is_terminal`, and `simulate`.
 4. Filter self-loops out of `successors` (`if successor_state == state: continue`) — every bundled
    environment does this, and planners rely on it. Check that it can actually fire: if `literals`
-   include a step counter, no successor ever equals its parent and the filter is dead code (this is
-   what happens in [urban planning](docs/environments/urban-planning.md#known-quirks)).
+   include a step counter, no successor ever equals its parent and the filter is dead code.
 5. Add an `EnvironmentSpec` to `planiverse/environments/registry.py` — that is what puts it
    in the catalogue and in `make()`.
 6. Add a doc under `docs/environments/` and a row to the catalog above.
@@ -556,10 +551,8 @@ planiverse/
 │   │   ├── amazing_tater.py            # AmazingTaterGame — twin of amazing_tater_gb
 │   │   └── platformer.py               # PlatformerGame  — same genre as super_mario_land,
 │   │                                   #                   deliberately not a twin of it
-│   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── manufacturing/                  # MfgEnv + data/
-│   ├── urban_planning/                 # UrbanPlanningEnv + cities/
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
@@ -611,14 +604,18 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 
 | Environment | Upstream |
 |---|---|
-| Epidemic control | [EpiPolicy](https://github.com/huda-lab/RL-Epidemic-Benchmark) (vendored under `epidemic_control/epipolicy/`) |
-| Network attack | [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator) (fork), [PenGym](https://github.com/cyb3rlab/PenGym) |
-| Manufacturing | [mfgrl](https://github.com/torayeff/mfgrl) |
-| Urban planning | *AI Agent as Urban Planner: Steering Stakeholder Dynamics in Urban Planning via Consensus-based Multi-Agent Reinforcement Learning* |
+| Network attack | [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator) (fork, MIT), [PenGym](https://github.com/cyb3rlab/PenGym) |
+| Manufacturing | [mfgrl](https://github.com/torayeff/mfgrl) (Apache-2.0) |
 | Super Mario Land, Puzznic (GB), Flipull (GB), Boxxle II (GB), Adventures of Lolo (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
 | Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
+
+Two environments were removed over licensing: epidemic control vendored
+[EpiPolicy](https://github.com/huda-lab/RL-Epidemic-Benchmark), and urban planning shipped the
+city datasets of [a consensus-MARL paper's repository](https://github.com/mao1207/Steering-Stakeholder-Dynamics-in-Urban-Planning-via-Consensus-based-MARL)
+— neither upstream publishes a license, so neither the simulator nor the data can be
+redistributed here. Both remain in git history should their upstreams ever license them.
 
 The flood/transport environment ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl))
 is referenced as a planned addition but is not yet in the tree.

@@ -258,7 +258,7 @@ def test_a_dead_platformer_state_scores_worse_than_any_live_one():
 
 
 def test_an_environment_without_a_measure_gets_a_flat_one():
-    measure = measure_for("epidemic")
+    measure = measure_for("manufacturing")
     assert measure(object()) == 0
 
 

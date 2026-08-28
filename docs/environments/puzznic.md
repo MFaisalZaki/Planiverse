@@ -78,8 +78,8 @@ is `0 <= pos < shape - 1` on both axes, so the cursor stays strictly inside.
 `PuzznicState` holds the grid (a 2-D list of `Element` objects — `Wall`, `EmptySpace`, `Box`,
 `Cursor`), the cursor, a `score` list, and the `cleared_boxes` accumulated so far.
 
-Literals are exact and fine-grained — there is no abstraction here, unlike the epidemic or urban
-environments:
+Literals are exact and fine-grained — there is no abstraction here, unlike the
+[water network](water-distribution.md), which buckets a continuous quantity:
 
 | Literal | When |
 |---|---|
