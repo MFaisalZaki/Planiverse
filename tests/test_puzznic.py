@@ -42,6 +42,28 @@ def test_every_level_parses_and_resets(index):
     assert not env.is_terminal(state)
 
 
+@pytest.mark.parametrize("index,expected", [
+    # Read out of `Puzznic (J)` at `$DF00` after booting each round, via `PuzznicGBEnv`:
+    # the two cells that are wall on the cartridge, and the four blocks whose transcribed
+    # types were transposed with their neighbour's.
+    (23, {"walls": [(1, 6), (2, 6)]}),
+    (34, {"types": {(5, 2): "1", (5, 3): "8", (10, 1): "8", (10, 2): "7"}}),
+])
+def test_the_levels_match_the_cartridge(index, expected):
+    """The 50 Python levels are transcriptions of the cartridge's first 50 rounds, so a
+    cell that disagrees with the ROM is a transcription slip, not a design choice."""
+    env = PuzznicGame()
+    env.fix_index(index)
+    state, _ = env.reset()
+    for pos in expected.get("walls", []):
+        assert isinstance(state.grid[pos[0]][pos[1]], Wall), \
+            f"{pos} is a wall on the cartridge"
+    for pos, letter in expected.get("types", {}).items():
+        cell = state.grid[pos[0]][pos[1]]
+        assert isinstance(cell, Box) and cell.letter == letter, \
+            f"{pos} is a type-{letter} block on the cartridge"
+
+
 def test_level_parsing_maps_the_alphabet():
     state, _ = Level("####\n#1c#\n#  #\n####").reset()
     assert isinstance(state.grid[0][0], Wall)
