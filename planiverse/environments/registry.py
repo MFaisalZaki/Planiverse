@@ -125,7 +125,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="puzznic_gb",
-        factory="planiverse.environments.puzznic_gb:PuzznicGBEnv",
+        factory="planiverse.environments.gameboy.puzznic_gb:PuzznicGBEnv",
         summary="Puzznic played on the Game Boy cartridge, through PyBoy",
         instances="128 rounds",
         deterministic=True,
@@ -148,7 +148,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="flipull_gb",
-        factory="planiverse.environments.flipull_gb:FlipullGBEnv",
+        factory="planiverse.environments.gameboy.flipull_gb:FlipullGBEnv",
         summary="Flipull (Taito's Plotting) on the Game Boy, through PyBoy",
         instances="32 stages",
         deterministic=True,
@@ -171,7 +171,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="super_mario_land",
-        factory="planiverse.environments.super_mario_land:SuperMarioEnv",
+        factory="planiverse.environments.gameboy.super_mario_land:SuperMarioEnv",
         summary="Super Mario Land on the Game Boy, through PyBoy",
         instances="12 levels",
         deterministic=True,
