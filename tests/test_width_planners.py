@@ -7,8 +7,9 @@ import pytest
 
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.planners.width import (
-    MAX_PRACTICAL_WIDTH, BFWSSearch, Budget, IteratedWidth, IWSearch, NoveltyTable,
-    PartitionedNovelty, SIWSearch, SearchResult, SearchStatistics, path_novelty,
+    MAX_PRACTICAL_WIDTH, BFWSSearch, Budget, IteratedBFWS, IteratedWidth, IWSearch,
+    NoveltyTable, PartitionedNovelty, SIWSearch, SearchResult, SearchStatistics,
+    path_novelty,
 )
 
 
@@ -111,8 +112,13 @@ def test_iterated_width_finds_the_width_it_needs(env):
 
 
 def test_iterated_width_gives_up_when_its_ceiling_is_too_low(env):
+    """And says "failed", not "exhausted": the width-1 round emptied its frontier while
+    still pruning, so a wider round would have seen more — the benchmark reads "exhausted"
+    as a proof of unsolvability (`catalogue.is_complete`), and this is not one. Level 1 is
+    solvable at width 2."""
     result = IteratedWidth(max_width=1).solve(env, Budget(max_expansions=5000))
     assert not result.solved
+    assert result.status == "failed"
     assert result.statistics.widths_tried == (1,)
 
 
@@ -357,6 +363,79 @@ def test_the_progress_measure_partitions_novelty_by_default(env):
 
     bare = BFWSSearch(width=1)
     assert bare.__partition_of__(state) == 0, "a single global partition"
+
+
+# ---------------------------------------------------------------------- iterated BFWS
+
+def test_pruned_bfws_has_iw_reach_and_iw_incompleteness(env):
+    """`prune=True` is k-BFWS: BFWS's ordering inside IW's novelty filter. On level 1 it
+    exhausts at width 1 exactly where IW(1) does, because the filter — not the ordering —
+    is what bounds what it can see."""
+    result = BFWSSearch(width=1, prune=True, progress=boxes).solve(
+        env, Budget(max_expansions=5000))
+    assert result.status == "exhausted"
+    assert result.statistics.pruned_novelty > 0, "the filter is really back on"
+
+    narrow = IWSearch(width=1).solve(env, Budget(max_expansions=5000))
+    assert result.statistics.expansions == narrow.statistics.expansions, \
+        "same filter, same reach"
+
+
+def test_iterated_bfws_escalates_width_only_when_the_filter_bites(env):
+    """The pruned width-1 round exhausts, so the loop pays for a width-2 round, which
+    solves it — the same escalation as IteratedWidth, with BFWS's ordering inside each
+    round."""
+    result = IteratedBFWS(max_width=2, progress=boxes).solve(
+        env, Budget(max_expansions=5000))
+    assert result.solved and result.width == 2
+    assert result.statistics.widths_tried == (1, 2)
+    assert env.validate(result.plan)
+
+
+def test_iterated_bfws_final_round_is_the_safety_net(env):
+    """A ceiling of 1 is too low for every pruned round, and the unpruned final round —
+    plain BFWS(1), which is complete — is what rescues it. Without that round the same
+    search reports "failed", never "exhausted": hitting the ceiling with the filter still
+    biting proves nothing."""
+    result = IteratedBFWS(max_width=1, progress=boxes).solve(
+        env, Budget(max_expansions=5000))
+    assert result.solved
+    assert result.statistics.widths_tried == (1, 1), "the trailing 1 is the unpruned round"
+    assert env.validate(result.plan)
+
+    bare = IteratedBFWS(max_width=1, progress=boxes, final_complete=False).solve(
+        env, Budget(max_expansions=5000))
+    assert bare.status == "failed"
+    assert bare.statistics.widths_tried == (1,)
+
+
+def test_iterated_bfws_stops_when_a_pruned_round_covers_the_space():
+    """If a pruned round empties its frontier without discarding anything, it saw the whole
+    reachable space — the unpruned round would re-run the identical search, so it is
+    skipped and the "exhausted" is a proof that there is no plan."""
+    result = IteratedBFWS(max_width=1000, strict=False).solve(_Chain(), Budget())
+    assert result.status == "exhausted"
+    assert result.statistics.widths_tried == (1,), "no wider round, no final round"
+
+
+def test_iterated_bfws_running_out_of_budget_says_so():
+    result = IteratedBFWS(max_width=1000, strict=False).solve(
+        _Chain(), Budget(max_expansions=1))
+    assert result.status == "out_of_budget"
+
+
+def test_iterated_bfws_survives_a_width_strict_refuses(env):
+    """Widths above 2 are refused under `strict`; the rounds already run are a real result
+    and the loop moves on to the final round rather than raising."""
+    result = IteratedBFWS(max_width=9, strict=True, progress=boxes).solve(
+        env, Budget(max_expansions=5000))
+    assert result.solved
+    assert result.statistics.widths_tried == (1, 2)
+
+
+def test_iterated_bfws_refuses_a_bound_below_one():
+    with pytest.raises(ValueError, match="max_width"):
+        IteratedBFWS(max_width=0)
 
 
 # ------------------------------------------------------------------------- statistics

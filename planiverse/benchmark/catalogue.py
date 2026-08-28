@@ -16,8 +16,13 @@ PLANNERS = {
                        ("max_width", "strict", "novelty_rule")),
     "siw": ("planiverse.planners.width", "SIWSearch",
             ("width", "max_width", "max_rounds", "strict", "avoid_dead_ends")),
+    # `bfws` deliberately does not expose `prune`: the pruned variant is incomplete, and a
+    # config could not be told apart from the complete search the COMPLETE tuple below
+    # vouches for. k-BFWS is benchmarked as the rounds of `iterated_bfws` instead.
     "bfws": ("planiverse.planners.width", "BFWSSearch",
              ("width", "strict")),
+    "iterated_bfws": ("planiverse.planners.width", "IteratedBFWS",
+                      ("max_width", "strict", "final_complete")),
     "fsx": ("planiverse.planners.fsx", "FSXPlanner",
             ("horizon", "walkers", "measure", "max_steps", "seed", "temperature")),
     "mcts": ("planiverse.planners.mcts", "MCTSPlanner",
@@ -27,7 +32,7 @@ PLANNERS = {
 
 #: Planners that take a `progress` callback. The rest ignore one, and passing it would be a
 #: `TypeError` rather than a no-op, so the harness has to know which is which.
-TAKES_PROGRESS = ("siw", "bfws")
+TAKES_PROGRESS = ("siw", "bfws", "iterated_bfws")
 
 #: Planners whose behaviour depends on a random seed. The harness records the seed in every
 #: result so an unseeded run cannot be mistaken for a reproducible one.
@@ -52,9 +57,14 @@ COMPLETE = ("bfws",)
 #: Planners that prove unsolvability only when they say so. `IteratedWidth` reports
 #: `exhausted` when one of its widths covered the whole reachable space without discarding
 #: anything for novelty — at that point no larger width can reach further, and there is no
-#: plan. Any other way it stops (the budget, or reaching `max_width`) proves nothing, so
-#: completeness here is a property of the individual run rather than of the planner.
-COMPLETE_WHEN_EXHAUSTED = ("iterated_width",)
+#: plan. `IteratedBFWS` reserves the word the same way: a pruned round that covered the
+#: space, or the unpruned final round emptying its frontier, and nothing else. Any other way
+#: either stops (the budget, or reaching `max_width` with the filter still biting) proves
+#: nothing, so completeness here is a property of the individual run rather than of the
+#: planner. `iterated_bfws` sits here rather than in COMPLETE because `final_complete` is a
+#: config knob: with it off, the planner is only as complete as its pruned rounds, which is
+#: to say not at all.
+COMPLETE_WHEN_EXHAUSTED = ("iterated_width", "iterated_bfws")
 
 
 def names():

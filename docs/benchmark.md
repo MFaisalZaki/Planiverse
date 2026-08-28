@@ -91,9 +91,9 @@ it and a result can always be traced back to the limits it was obtained under.
 experiment/
 ├── exp-details.json          limits, task selection, SLURM directives
 └── planners/
-    ├── bfws-1.json
-    ├── bfws-2.json
+    ├── bfws.json
     ├── iw.json
+    ├── siw.json
     └── ...
 ```
 
@@ -142,9 +142,9 @@ A planner file:
 
 ```json
 {
-    "tag": "bfws-2",
-    "planner": "bfws",
-    "params": { "width": 2 },
+    "tag": "bfws",
+    "planner": "iterated_bfws",
+    "params": { "max_width": 1000 },
     "tags": [],
     "exclude-environments": [],
     "enabled": true
@@ -174,11 +174,13 @@ nothing downstream can tell.
 `tags` and `exclude-environments` narrow one planner's task list, so a single experiment can run
 a cheap planner over everything and an expensive one over a subset.
 
-### Why `iw` and `siw` have no width, and `bfws` does
+### Why no default planner has a pinned width
 
 Because IW does not have one. IW(k) is a family, and which member you need is a property of the
 problem, not a setting — so the default experiment runs `iterated_width`, which tries IW(1),
-IW(2), … up to `max_width`, set to 1000.
+IW(2), … up to `max_width`, set to 1000. Every width planner in the default spread is the
+iterated version of itself, for reasons that differ per planner; the sampling planners `fsx`
+and `mcts` have no width to iterate and run as themselves.
 
 That bound is a bound, not a plan. The loop stops as soon as any of three things happens: a
 width solves the problem; the budget runs out (the usual outcome above width 2, since IW(k)
@@ -200,9 +202,9 @@ cannot spend more than a leg that succeeded immediately. `statistics.widths_trie
 the widths the legs actually needed — a problem whose hardest leg needed IW(2) is a different
 problem from one every leg solved at IW(1), and pinning the width hid that.
 
-**`bfws` does not iterate, and that is not an inconsistency.** BFWS uses novelty as a *sort
-key* rather than as a filter: nothing is ever discarded, so no width can make it miss anything.
-Measured over a few tasks at a 3000-expansion budget:
+**`bfws` iterates for a different reason than either.** Plain BFWS uses novelty as a *sort
+key* rather than as a filter: nothing is ever discarded, so no width can make it miss anything,
+and iterating *it* would be pointless. Measured over a few tasks at a 3000-expansion budget:
 
 ```
 task              w status           exp  pruned_novelty  plan
@@ -218,21 +220,33 @@ flipull@9         2 out_of_budget   3000               0     -
 IW(1) puzznic@1: exhausted, pruned_novelty=47
 ```
 
-Three things follow. `pruned_novelty` is zero at every width — BFWS discards nothing, where
-IW(1) threw away 47 states on the same task. There is no "the width was too small" outcome to
-escalate from: BFWS(1) ends solved, `exhausted` (it covered the reachable space, which is a
-proof there is no plan), or `out_of_budget`, and all three are stop conditions — so an iterated
-BFWS sharing one budget would spend it at width 1 and never reach width 2. It would be *exactly*
-BFWS(1) with extra machinery.
+Three things follow. `pruned_novelty` is zero at every width — plain BFWS discards nothing,
+where IW(1) threw away 47 states on the same task. There is no "the width was too small"
+outcome to escalate from: BFWS(1) ends solved, `exhausted` (it covered the reachable space,
+which is a proof there is no plan), or `out_of_budget`, and all three are stop conditions — so
+iterating *unpruned* BFWS under one budget would spend it at width 1 and never reach width 2.
+It would be exactly BFWS(1) with extra machinery.
+
+What the default runs instead is `iterated_bfws`, whose rounds are the **pruned** variant —
+k-BFWS: IW's novelty filter with BFWS's ordering inside it. A pruned round has IW's bounded
+frontier, so it is cheap, and unlike unpruned BFWS it *can* run out of width, so escalating it
+means something. The rounds run at widths 1 and 2, and whatever budget they leave goes to one
+unpruned round, which is complete — the polynomial-first, complete-last shape of Dual-BFWS
+(Lipovetzky and Geffner, 2017). The bound is the same 1000 as the others', but `strict` is
+deliberately left **on**, unlike theirs: here escalation competes with the final complete
+round for the same budget, and pruned rounds above width 2 would spend it enumerating tuples
+instead — so the strict refusal at width 3 is what hands the leftover budget to the complete
+round.
 
 And wider is not stronger: on `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and
 above run out of budget. A higher width discriminates more finely and so changes the search
-*order*, and on those tasks the coarser order is the better one. Width in BFWS is a dial, not a
-ladder, which is why `bfws-1` and `bfws-2` are two entries to compare rather than one to climb.
+*order*, and on those tasks the coarser order is the better one. Width in BFWS is a dial, not
+a ladder — which is why the final complete round runs at width 1, the cheapest member of a
+family whose members are all complete.
 
 For IW and SIW novelty is a filter, so a width too low genuinely loses states and climbing is
-the only way to find out what the problem needs. That asymmetry is the whole reason the two are
-configured differently.
+the only way to find out what the problem needs. That asymmetry is the whole reason `iw` and
+`siw` climb with `strict: false` while `bfws` keeps the strict guard and stops climbing at 2.
 
 ## The sandbox
 
@@ -258,12 +272,12 @@ a scheduler handling them as thousands of jobs spends longer scheduling than com
 what lets a failed element be re-run by hand.
 
 ```bash
-#SBATCH --job-name=planiverse-bench-bfws-2
+#SBATCH --job-name=planiverse-bench-bfws
 #SBATCH --array=0-15%50
 #SBATCH --time=00:35:00
 #SBATCH --mem=9216M
 ...
-COMMANDS=/abs/path/sandbox/cmds/bfws-2.txt
+COMMANDS=/abs/path/sandbox/cmds/bfws.txt
 INDEX=$(( ${SLURM_ARRAY_TASK_ID:-0} + OFFSET ))
 COMMAND=$(sed -n "$(( INDEX + 1 ))p" "$COMMANDS")
 eval "$COMMAND"
@@ -381,11 +395,15 @@ There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
 |---|---|---|
 | `--rom-puzznic PATH` | `puzznic_gb` | `PLANIVERSE_PUZZNIC_ROM` |
 | `--rom-flipull PATH` | `flipull_gb` | `PLANIVERSE_FLIPULL_ROM` |
+| `--rom-boxxle2 PATH` | `boxxle2_gb` | `PLANIVERSE_BOXXLE2_ROM` |
+| `--rom-lolo PATH` | `lolo_gb` | `PLANIVERSE_LOLO_ROM` |
 | `--rom-sml PATH`, `--rom-mario PATH` | `super_mario_land` | `PLANIVERSE_SML_ROM` |
 
 ```bash
 ./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
                      --rom-flipull ~/roms/"Flipull (USA).gb" \
+                     --rom-boxxle2 ~/roms/"Boxxle II (USA, Europe).gb" \
+                     --rom-lolo    ~/roms/"Adventures of Lolo (U) [S][!].gb" \
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
 
@@ -396,6 +414,8 @@ The same flags work on `init` directly:
 planiverse-bench init --exp-dir experiment --force \
     --rom-puzznic "/path/to/Puzznic (J).gb" \
     --rom-flipull "/path/to/Flipull (USA).gb" \
+    --rom-boxxle2 "/path/to/Boxxle II (USA, Europe).gb" \
+    --rom-lolo    "/path/to/Adventures of Lolo (U) [S][!].gb" \
     --rom-mario   "/path/to/Super Mario Land.gb"
 ```
 
@@ -443,9 +463,10 @@ solves the same 40 just inside the limit.
 7 planners over 18 tasks — two instances from each environment, a Puzznic cartridge supplied —
 at a 20-second limit, run locally.
 
-This was recorded before SIW was changed to iterate its width, so the `siw-1` and `siw-2` rows
-are the pinned configurations; the default set now has a single iterated `siw` in their place.
-Everything else is current.
+This was recorded before SIW was changed to iterate its width and before the two pinned BFWS
+entries were replaced by a single iterated one, so the `siw-1`/`siw-2` and `bfws-1`/`bfws-2`
+rows are the pinned configurations; the default set now has one iterated `siw` and one
+iterated `bfws` in their place. Everything else is current.
 
 ```
 Coverage

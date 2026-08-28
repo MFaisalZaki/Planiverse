@@ -195,15 +195,21 @@ def test_progress_only_goes_to_the_planners_that_take_one():
     sentinel = lambda state: 0
     assert catalogue.build("bfws", {}, progress=sentinel).progress is sentinel
     assert catalogue.build("siw", {}, progress=sentinel).progress is sentinel
+    assert catalogue.build("iterated_bfws", {}, progress=sentinel).progress is sentinel
     assert catalogue.build("iw", {}, progress=sentinel) is not None
 
 
 def test_only_bfws_claims_completeness():
     """`UNSOLVED` means "no plan found". Reading it as "unsolvable" is only sound for a
-    complete planner, and among these that is BFWS alone."""
+    complete planner, and among these that is BFWS alone. The iterated planners earn it
+    per run, when they report "exhausted" — the word they reserve for having covered the
+    reachable space."""
     assert catalogue.is_complete("bfws")
-    for name in ("iw", "iterated_width", "siw", "fsx", "mcts"):
+    for name in ("iw", "iterated_width", "iterated_bfws", "siw", "fsx", "mcts"):
         assert not catalogue.is_complete(name), f"{name} is not complete"
+    assert catalogue.is_complete("iterated_width", "exhausted")
+    assert catalogue.is_complete("iterated_bfws", "exhausted")
+    assert not catalogue.is_complete("iterated_bfws", "failed")
 
 
 def test_the_randomised_planners_are_the_ones_taking_a_seed():
@@ -952,20 +958,23 @@ def test_the_default_experiment_is_a_spread_of_planners(tmp_path):
     run_cli("init", "--exp-dir", str(tmp_path / "exp"))
     loaded = ExperimentConfig.load(tmp_path / "exp")
     families = {spec.planner for spec in loaded.planners}
-    assert {"iterated_width", "siw", "bfws", "fsx", "mcts"} <= families, \
+    assert {"iterated_width", "siw", "iterated_bfws", "fsx", "mcts"} <= families, \
         "one of each, so a report says something"
-    assert not any(spec.planner == "iw" for spec in loaded.planners), \
-        "fixed-width IW is not a default; iterated_width replaces it"
+    assert not any(spec.planner in ("iw", "bfws") for spec in loaded.planners), \
+        "fixed-width planners are not defaults; their iterated versions replace them"
     for spec in loaded.planners:
         assert catalogue.build(spec.planner, spec.params) is not None
 
 
-def test_bfws_is_pinned_and_iw_and_siw_are_not(tmp_path):
-    """Novelty is a filter in IW and SIW, so a width too low loses states outright and the
-    right width is a property of the problem. It is a sort key in BFWS, which discards
-    nothing and is complete at every width — so a failure there is the budget, not the
-    width, and 1 and 2 are two search orders worth comparing rather than a weaker and a
-    stronger one."""
+def test_every_default_width_planner_is_the_iterated_version(tmp_path):
+    """No default runs at a width we picked. IW and SIW iterate because novelty is a filter
+    in both — a width too low loses states outright, and the right width is a property of
+    the problem, so their ceiling is a bound that is never reached. BFWS iterates for a
+    different reason: it is complete at every width, so its rounds are a budget strategy —
+    cheap pruned rounds first, one complete round last. Its bound is the same 1000, but
+    `strict` stays on, unlike the others': the strict refusal stops the pruned rounds at
+    width 2, which is what hands the leftover budget to the complete round instead of
+    spending it on tuple enumeration."""
     run_cli("init", "--exp-dir", str(tmp_path / "exp"))
     planners = {spec.tag: spec for spec in ExperimentConfig.load(tmp_path / "exp").planners}
 
@@ -973,10 +982,11 @@ def test_bfws_is_pinned_and_iw_and_siw_are_not(tmp_path):
     assert planners["iw"].params["max_width"] >= 1000
     assert planners["siw"].planner == "siw"
     assert planners["siw"].params["max_width"] >= 1000
-    assert {"bfws-1", "bfws-2"} <= set(planners)
-    assert "max_width" not in planners["bfws-1"].params
-    assert planners["bfws-1"].params["width"] == 1
-    assert planners["bfws-2"].params["width"] == 2
+    assert planners["bfws"].planner == "iterated_bfws"
+    assert planners["bfws"].params["max_width"] >= 1000
+    assert planners["bfws"].params.get("strict", True) is True, \
+        "strict stops the pruned rounds at width 2, saving budget for the complete round"
+    assert "width" not in planners["bfws"].params, "no pinned width anywhere"
 
 
 def test_the_qos_and_setup_command_flags_reach_the_experiment(tmp_path, capsys):
@@ -1131,7 +1141,8 @@ def test_every_cartridge_environment_gets_its_own_flag():
     from planiverse.benchmark.cli import rom_environments
 
     flags = dict((spec.name, flag) for spec, flag in rom_environments())
-    assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull",
+    assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull", "boxxle2_gb": "boxxle2",
+                     "lolo_gb": "lolo", "amazing_tater_gb": "amazing-tater",
                      "super_mario_land": "sml"}
 
 

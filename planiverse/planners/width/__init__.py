@@ -1,13 +1,14 @@
 """Width-based planners for simulators.
 
-Four searches, all against the `successors()` / `literals` contract and nothing else:
+Five searches, all against the `successors()` / `literals` contract and nothing else:
 
 | Planner | Novelty is used as | Complete? |
 |---|---|---|
 | `IWSearch` | a filter — fails the test, gets discarded | no, for fixed width |
 | `IteratedWidth` | the same, at width 1, then 2, … | up to `max_width` |
 | `SIWSearch` | the same, in short legs that each make progress | no |
-| `BFWSSearch` | a sort key — nothing is discarded | yes |
+| `BFWSSearch` | a sort key — nothing is discarded | yes (unless `prune`) |
+| `IteratedBFWS` | a filter in cheap rounds, then a sort key in the last | yes |
 
 What changes when the task is a simulator rather than a PDDL model:
 
@@ -21,7 +22,7 @@ What changes when the task is a simulator rather than a PDDL model:
 * **The atoms are whatever `literals` says.** How coarsely an environment spells its state is
   what fixes its width — see `novelty`.
 """
-from planiverse.planners.width.bfws import BFWSSearch
+from planiverse.planners.width.bfws import BFWSSearch, IteratedBFWS
 from planiverse.planners.width.iw import IteratedWidth, IWSearch, SIWSearch
 from planiverse.planners.width.novelty import (
     MAX_PRACTICAL_WIDTH, NoveltyTable, PartitionedNovelty, path_novelty,
@@ -29,7 +30,7 @@ from planiverse.planners.width.novelty import (
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
 
 __all__ = [
-    "BFWSSearch", "Budget", "IWSearch", "IteratedWidth", "MAX_PRACTICAL_WIDTH",
-    "NoveltyTable", "PartitionedNovelty", "SIWSearch", "SearchResult", "SearchStatistics",
-    "path_novelty",
+    "BFWSSearch", "Budget", "IWSearch", "IteratedBFWS", "IteratedWidth",
+    "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "SIWSearch",
+    "SearchResult", "SearchStatistics", "path_novelty",
 ]

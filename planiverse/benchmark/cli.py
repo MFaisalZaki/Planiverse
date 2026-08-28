@@ -39,22 +39,25 @@ MAX_WIDTH = 1000
 #: What `init` writes. A spread rather than a single planner: the point of the harness is
 #: comparison, and one of each family makes the first report say something.
 #:
-#: `iw` and `siw` both iterate their width, for the same reason: novelty is a *filter* in
-#: both, so a width too low loses states outright and which width is enough is a property of
-#: the problem. `bfws` is pinned at 1 and 2 deliberately — see the note below.
+#: Every width planner runs as its **iterated** version — a fixed width reports the planner
+#: at a configuration we chose rather than at the one the algorithm defines — joined by the
+#: two sampling planners, `fsx` and `mcts`. `iw` and `siw` iterate because novelty is a
+#: *filter* in both, so a width too low loses states outright and which width is enough is a
+#: property of the problem.
 DEFAULT_PLANNERS = (
     PlannerSpec(tag="iw", planner="iterated_width",
                 params={"max_width": MAX_WIDTH, "strict": False}),
     PlannerSpec(tag="siw", planner="siw",
                 params={"width": 1, "max_width": MAX_WIDTH, "strict": False}),
-    # BFWS is *not* iterated, and that is not an oversight. It uses novelty as a sort key
-    # rather than as a filter, so nothing is ever discarded and BFWS(k) is complete at every
-    # width: a BFWS(1) that fails ran out of budget, it did not run out of width. Restarting
-    # at a wider one would re-expand everything and split the same budget across the attempts,
-    # which is strictly worse. What the width changes is the *ordering*, so 1 and 2 are two
-    # different search strategies worth comparing side by side — not a weaker and a stronger.
-    PlannerSpec(tag="bfws-1", planner="bfws", params={"width": 1}),
-    PlannerSpec(tag="bfws-2", planner="bfws", params={"width": 2}),
+    # BFWS iterates for a different reason than IW does. Plain BFWS is complete at every
+    # width, so escalation is not a cure for a too-low width — it is a budget strategy:
+    # cheap pruned rounds (k-BFWS, IW's frontier with BFWS's ordering inside it) first,
+    # then one unpruned, complete round on whatever budget is left — the Dual-BFWS shape.
+    # The bound is MAX_WIDTH like the others', but `strict` is deliberately left on, unlike
+    # theirs: here escalation competes with the final complete round for the same budget,
+    # and pruned rounds above width 2 would spend it enumerating tuples instead — so the
+    # strict refusal is what hands the leftover budget to the complete round.
+    PlannerSpec(tag="bfws", planner="iterated_bfws", params={"max_width": MAX_WIDTH}),
     PlannerSpec(tag="fsx", planner="fsx",
                 params={"horizon": 6, "walkers": 8, "seed": 0}),
     PlannerSpec(tag="mcts", planner="mcts",
