@@ -187,10 +187,17 @@ class IteratedWidth:
                 # the widths simply running out.
                 return self.__failed__("exhausted", totals)
 
-        # `last is not None`, not `if last`: SearchResult.__bool__ is `solved`, so a plain
-        # truth test on an unsolved result is always False and this reported "failed" for
-        # every outcome — including a search that had genuinely exhausted the space.
-        return self.__failed__(last.status if last is not None else "failed", totals)
+        if last is None:
+            return self.__failed__("failed", totals)
+        # A width that emptied its frontier *while pruning* proves nothing: a wider one
+        # would have seen more, and the loop only stopped trying because `max_width` (or
+        # `strict`) said so. Passing that width's "exhausted" through would collide with
+        # the completeness proof above — which the benchmark reads as "there is no plan"
+        # (`catalogue.is_complete`) — so hitting the ceiling reports "failed" instead.
+        # (`last is not None`, not `if last`: SearchResult.__bool__ is `solved`, so a plain
+        # truth test on an unsolved result is always False.)
+        return self.__failed__("failed" if last.status == "exhausted" else last.status,
+                               totals)
 
     @staticmethod
     def __failed__(status, totals):

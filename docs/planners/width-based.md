@@ -1,6 +1,6 @@
 # Width-based planners
 
-Four searches built on **novelty**, against the `successors()` / `literals` contract and
+Five searches built on **novelty**, against the `successors()` / `literals` contract and
 nothing else.
 
 The novelty of a state is the size of the smallest tuple of its atoms that has not appeared
@@ -12,7 +12,8 @@ all been seen individually but which combines two of them in a new way has novel
 | `IWSearch` | a **filter** — fail the test, get discarded | no, for fixed width |
 | `IteratedWidth` | the same, at width 1, then 2, … | up to `max_width` |
 | `SIWSearch` | the same, in short legs that each make progress | no |
-| `BFWSSearch` | a **sort key** — nothing is discarded | yes |
+| `BFWSSearch` | a **sort key** — nothing is discarded | yes (unless `prune=True`) |
+| `IteratedBFWS` | a filter in cheap early rounds, a sort key in the last | yes |
 
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
@@ -91,6 +92,34 @@ SIWSearch(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # solved,
 
 `avoid_dead_ends` defaults to `True`. Set it `False` for the classical behaviour.
 
+## Iterated BFWS: polynomial first, complete last
+
+Plain BFWS is already complete, so `IteratedBFWS` is not `IteratedWidth`'s cure for
+incompleteness — it is a **budget** strategy, after the Dual-BFWS shape in Lipovetzky and
+Geffner's 2017 paper.
+
+Its rounds run **k-BFWS**: `BFWSSearch(prune=True)`, which keeps BFWS's
+`<novelty, progress, heuristic>` ordering but discards states whose novelty exceeds the
+width, the way IW does. That gives each round IW's bounded frontier — cheap — while the
+ordering inside it heads for the goal instead of sweeping breadth-first. On Puzznic level 1
+the pruned width-1 round exhausts at exactly IW(1)'s 32 expansions (same filter, same
+reach), and the width-2 round solves it.
+
+The rounds escalate width only while the filter is actually discarding something, and if
+every allowed width fails, the last of the budget goes to **one unpruned round** — plain
+BFWS(1), which is complete:
+
+```python
+IteratedBFWS(max_width=2, progress=boxes).solve(env, Budget(max_expansions=500))
+```
+
+One word is treated carefully. `IteratedBFWS` reports `exhausted` only when it *proved*
+there is no plan: a pruned round that emptied its frontier without discarding anything saw
+the whole reachable space, and the unpruned round discards nothing by construction. Hitting
+`max_width` with the filter still biting proves nothing and reports `failed` —
+`IteratedWidth` draws the same line — because the benchmark reads `exhausted` as
+unsolvability (`catalogue.is_complete`).
+
 ## Two notes on novelty itself
 
 **Width 2 costs O(n²) per state, width 3 costs O(n³).** With a hundred atoms that is 5,000
@@ -119,6 +148,6 @@ The standard definition is the default here. The other is available as
 |---|---|
 | [`novelty.py`](../../planiverse/planners/width/novelty.py) | `NoveltyTable`, `PartitionedNovelty`, `path_novelty` |
 | [`iw.py`](../../planiverse/planners/width/iw.py) | `IWSearch`, `IteratedWidth`, `SIWSearch` |
-| [`bfws.py`](../../planiverse/planners/width/bfws.py) | `BFWSSearch` |
+| [`bfws.py`](../../planiverse/planners/width/bfws.py) | `BFWSSearch`, `IteratedBFWS` |
 | [`result.py`](../../planiverse/planners/width/result.py) | `SearchResult`, `SearchStatistics`, `Budget` |
 | [`tests/test_width_planners.py`](../../tests/test_width_planners.py) | Tests, including the IW(1)/IW(2) and SIW dead-end results above |

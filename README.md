@@ -29,6 +29,12 @@ Every environment answers the same four questions:
 | Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
 | Flipull | `flipull` | 10 stages | game | [docs](docs/environments/flipull.md) |
 | Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |
+| Boxxle II | `boxxle2` | 120 levels | game | [docs](docs/environments/boxxle2.md) |
+| Boxxle II (Game Boy) | `boxxle2_gb` | 120 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/boxxle2-gb.md) |
+| Adventures of Lolo | `lolo` | 163 rooms | game | [docs](docs/environments/lolo.md) |
+| Adventures of Lolo (Game Boy) | `lolo_gb` | 163 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/lolo-gb.md) |
+| Amazing Tater | `amazing_tater` | 105 rooms | game | [docs](docs/environments/amazing-tater.md) |
+| Amazing Tater (Game Boy) | `amazing_tater_gb` | 105 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/amazing-tater-gb.md) |
 | Platformer | `platformer` | 8 levels | game, platformer | [docs](docs/environments/platformer.md) |
 | Super Mario Land | `super_mario_land` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land.md) |
 
@@ -105,10 +111,14 @@ Only the Game Boy environments need anything extra. The water, power grid and cr
 environments ship their benchmark data inside their dependencies, so they run offline with
 nothing to supply.
 
-The three Game Boy environments additionally need a ROM each — `SuperMarioLand.gb`,
-`Puzznic (J).gb` and `Flipull (USA).gb` — which are **not** and cannot be distributed with this repo.
-See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
-[Puzznic (Game Boy)](docs/environments/puzznic-gb.md), [Flipull (Game Boy)](docs/environments/flipull-gb.md).
+The six Game Boy environments additionally need a ROM each — `SuperMarioLand.gb`,
+`Puzznic (J).gb`, `Flipull (USA).gb`, `Boxxle II (USA, Europe).gb`,
+`Adventures of Lolo (U) [S][!].gb` and `Amazing Tater (U).gb` — which are **not** and cannot
+be distributed with this repo. See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
+[Puzznic (Game Boy)](docs/environments/puzznic-gb.md), [Flipull (Game Boy)](docs/environments/flipull-gb.md),
+[Boxxle II (Game Boy)](docs/environments/boxxle2-gb.md),
+[Adventures of Lolo (Game Boy)](docs/environments/lolo-gb.md),
+[Amazing Tater (Game Boy)](docs/environments/amazing-tater-gb.md).
 
 ## Tests
 
@@ -125,13 +135,20 @@ matching environment variable at one to run them:
 PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
 PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
 PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" pytest tests/test_flipull_gb.py
+PLANIVERSE_BOXXLE2_ROM="/path/to/Boxxle II (USA, Europe).gb" pytest tests/test_boxxle2_gb.py
+PLANIVERSE_LOLO_ROM="/path/to/Adventures of Lolo (U) [S][!].gb" pytest tests/test_lolo_gb.py
+PLANIVERSE_AMAZING_TATER_ROM="/path/to/Amazing Tater (U).gb" pytest tests/test_amazing_tater_gb.py
 ```
 
 The two Taito environments are still covered without one:
 [`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py) and
 [`tests/fake_flipull_rom.py`](tests/fake_flipull_rom.py) assemble synthetic cartridges that reproduce
 each game's memory layout, so booting, stage selection, field decoding, calibration and settling are
-all tested against a real emulator.
+all tested against a real emulator. Boxxle II and Amazing Tater take the other route and need no
+cartridge at all: their level decoders, board decoders and — for Boxxle II — the deadlock test are
+pure functions of bytes, and [`tests/test_boxxle2_gb.py`](tests/test_boxxle2_gb.py) and
+[`tests/test_amazing_tater_gb.py`](tests/test_amazing_tater_gb.py) exercise them against synthetic
+ROM images and synthetic work RAM.
 
 [`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
 environment; the other modules cover per-environment behaviour.
@@ -199,6 +216,10 @@ Not every environment implements every method. What is actually there today:
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `Boxxle2Game` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `Boxxle2GBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `LoloGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PlatformerGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -211,10 +232,14 @@ Not every environment implements every method. What is actually there today:
 | `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
-detecting them is left to the planner. The two Puzznics, `FlipullGame` and Super Mario Land are the
-ones that really compute a positional dead end — and `FlipullGame`'s is *exact*, because the rules
-are known in Python and it can ask outright whether any throw would connect. `FlipullGBEnv` computes
-one too, but only the clock running out: the emulator does not know what a throw hits.
+detecting them is left to the planner. The two Puzznics, `FlipullGame`, both Boxxle IIs and Super
+Mario Land are the ones that really compute a positional dead end — and `FlipullGame`'s is *exact*,
+because the rules are known in Python and it can ask outright whether any throw would connect.
+`FlipullGBEnv` computes one too, but only the clock running out: the emulator does not know what a
+throw hits. The two Boxxle IIs compute the *same* test as each other, which is unusual for a twin
+pair: that cartridge keeps its walls in work RAM in plain form, so the emulator can reason about a
+cornered box exactly as well as the Python version can. It is sound rather than complete — a box
+wedged in a corner is certainly stuck, and the subtler Sokoban deadlocks are not claimed.
 The three simulator-backed environments compute real ones too: a water network whose service has
 collapsed, a blacked-out grid, and a growing season whose water budget is spent.
 
@@ -351,7 +376,7 @@ planiverse-bench report    --sandbox-dir sandbox
 ```
 
 `setup_benchmark.sh` runs `init`, `discover` and `generate`, and asks the one thing nothing
-else can work out: where your Puzznic, Flipull and Super Mario Land cartridges are. They are
+else can work out: where your Puzznic, Flipull, Boxxle II, Adventures of Lolo and Super Mario Land cartridges are. They are
 copyrighted and cannot ship here, so supplying them is what lets an emulated environment be
 compared against its pure-Python twin under the same planners and limits; skip one and it is
 reported as skipped rather than quietly dropped.
@@ -360,6 +385,8 @@ Pass them instead of being asked — the same flags work on `planiverse-bench in
 
 ```bash
 ./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
+                     --rom-boxxle2 ~/roms/"Boxxle II (USA, Europe).gb" \
+                     --rom-lolo ~/roms/"Adventures of Lolo (U) [S][!].gb" \
                      --rom-flipull ~/roms/"Flipull (USA).gb" \
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
@@ -387,19 +414,20 @@ expected set of runs comes from `tasks.json`, so a job that never ran is counted
 rather than quietly improving a planner's coverage.
 
 By default the benchmark covers **every instance of every environment it can run**, cartridge
-ones included. `iw` and `siw` both run at an iterated width up to a bound of 1000 rather than at
-a width someone picked: novelty is a *filter* in both, so a width too low loses states outright,
-and which width is enough is a property of the problem. The loop stops when a width solves it,
-the budget runs out, or a width covers the reachable space without pruning anything for novelty
-— which for IW is also a proof that there is no plan. `bfws` is pinned at 1 and 2 on purpose:
-it uses novelty as a *sort key*, so nothing is discarded and no width can make it miss anything
-— it ends solved, exhausted, or out of budget, all stop conditions, so an iterated BFWS would
-spend the whole budget at width 1 and never reach width 2. Measured, a wider BFWS is often
-*worse*: on `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and above time out.
-Width there is a dial that changes the search order, not a ladder — so 1 and 2 are two
-strategies to compare. [docs/benchmark.md](docs/benchmark.md) has the numbers.
+ones included, and every width planner runs as its **iterated** version, joined by the two
+sampling planners `fsx` and `mcts`. `iw` and `siw` iterate up to a bound of 1000 rather than
+at a width someone picked: novelty is a *filter* in both, so a width too low loses states
+outright, and which width is enough is a property of the problem. The loop stops when a width
+solves it, the budget runs out, or a width covers the reachable space without pruning anything
+for novelty — which for IW is also a proof that there is no plan. `bfws` iterates for a
+different reason: plain BFWS uses novelty as a *sort key*, so nothing is discarded, no width
+can make it miss anything, and iterating *it* would spend the whole budget at width 1. Its
+iterated version instead runs cheap **pruned** rounds — k-BFWS, IW's filter with BFWS's
+ordering inside it — at widths 1 and 2, then one unpruned, complete round on whatever budget
+is left: the Dual-BFWS shape. [docs/benchmark.md](docs/benchmark.md) has the numbers.
 
-A real run — 7 planners over 18 tasks, a Puzznic cartridge supplied, 20-second limit:
+A real run — 7 planners over 18 tasks, a Puzznic cartridge supplied, 20-second limit,
+recorded when `siw` and `bfws` still ran as pinned-width entries:
 
 ```
 planner       solved  of   coverage  total time  median   plan len
@@ -516,10 +544,16 @@ planiverse/
 │   │   ├── gb.py                       # GBEnv, GBState, GBAction — the shared tail
 │   │   ├── puzznic_gb.py               # PuzznicGBEnv
 │   │   ├── flipull_gb.py               # FlipullGBEnv
+│   │   ├── boxxle2_gb.py               # Boxxle2GBEnv
+│   │   ├── lolo_gb.py                  # LoloGBEnv
+│   │   ├── amazing_tater_gb.py         # AmazingTaterGBEnv
 │   │   └── super_mario_land.py         # SuperMarioEnv
 │   ├── gameboy_py/                     # their dependency-free counterparts, no ROM needed
 │   │   ├── puzznic.py                  # PuzznicGame     — twin of puzznic_gb
 │   │   ├── flipull.py                  # FlipullGame     — twin of flipull_gb
+│   │   ├── boxxle2.py                  # Boxxle2Game     — twin of boxxle2_gb
+│   │   ├── lolo.py                     # LoloGame        — twin of lolo_gb
+│   │   ├── amazing_tater.py            # AmazingTaterGame — twin of amazing_tater_gb
 │   │   └── platformer.py               # PlatformerGame  — same genre as super_mario_land,
 │   │                                   #                   deliberately not a twin of it
 │   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
@@ -581,7 +615,7 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Network attack | [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator) (fork), [PenGym](https://github.com/cyb3rlab/PenGym) |
 | Manufacturing | [mfgrl](https://github.com/torayeff/mfgrl) |
 | Urban planning | *AI Agent as Urban Planner: Steering Stakeholder Dynamics in Urban Planning via Consensus-based Multi-Agent Reinforcement Learning* |
-| Super Mario Land, Puzznic (GB), Flipull (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
+| Super Mario Land, Puzznic (GB), Flipull (GB), Boxxle II (GB), Adventures of Lolo (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
 | Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
@@ -613,6 +647,16 @@ is referenced as a planned addition but is not yet in the tree.
 - [ ] Work out what a Flipull throw actually hits — every row connects, so it is not simply the
       first block in the player's row. Until it is settled, `FlipullGame` is a Flipull-*like*
       environment with a stated rule set rather than a clone of the cartridge
+- [x] Boxxle II via PyBoy (`Boxxle2GBEnv`), reading the cartridge's three board planes out of
+      work RAM, with all 120 levels reachable through a hook on `LoadLevelHeader`
+- [x] A pure-Python Boxxle II twin (`Boxxle2Game`) whose 120 levels were decoded from the ROM
+      rather than transcribed, and which agrees with the cartridge move for move over 3,000
+      random moves
+- [ ] Boxxle II's passkey encoding. Four characters from a 35-glyph alphabet, and nothing in
+      the disassembly maps them to a level — so levels are reached by poking the loader rather
+      than the way a player would
+- [ ] Solutions for the rest of Boxxle II. 42 of 120 levels have one; the tail runs to 59 boxes
+      and is beyond what any planner here solves at a sane budget
 - [x] A dependency-free platformer (`PlatformerGame`) to stand where a pure-Python Super
       Mario Land would. It is a genre counterpart with stated physics, **not** a twin of the
       cartridge — nothing in it was read off that ROM, and the docs lead with that
