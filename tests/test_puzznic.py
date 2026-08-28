@@ -27,11 +27,13 @@ def build(levelstr):
 
 # --------------------------------------------------------------------------- levels
 
-def test_fifty_levels_available():
-    assert len(PuzznicGame().levelsstr) == 50
+def test_every_cartridge_round_has_a_level():
+    """One level per Game Boy round. The first 50 were transcribed by hand; the rest were
+    read out of the cartridge, which is also how the hand-typed ones were checked."""
+    assert len(PuzznicGame().levelsstr) == 128
 
 
-@pytest.mark.parametrize("index", range(50))
+@pytest.mark.parametrize("index", range(128))
 def test_every_level_parses_and_resets(index):
     env = PuzznicGame()
     env.fix_index(index)

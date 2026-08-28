@@ -313,7 +313,7 @@ def test_instance_counts_are_probed_from_the_environment():
 
     assert discovery.count_instances(get_spec("flipull")) == 10
     assert discovery.count_instances(get_spec("platformer")) == 8
-    assert discovery.count_instances(get_spec("puzznic")) == 50
+    assert discovery.count_instances(get_spec("puzznic")) == 128
 
 
 def fake_spec(name, **kwargs):

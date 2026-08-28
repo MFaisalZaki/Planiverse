@@ -25,7 +25,7 @@ Every environment answers the same four questions:
 | Network attack | `network_attack` | 18 NASim benchmarks | security | [docs](docs/environments/network-attack.md) |
 | Manufacturing | `manufacturing` | 7 demand/capacity instances | operations | [docs](docs/environments/manufacturing.md) |
 | Urban planning | `urban_planning` | 2 cities (Kendall Square, St Andrews) | policy | [docs](docs/environments/urban-planning.md) |
-| Puzznic | `puzznic` | 50 levels | game | [docs](docs/environments/puzznic.md) |
+| Puzznic | `puzznic` | 128 levels | game | [docs](docs/environments/puzznic.md) |
 | Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
 | Flipull | `flipull` | 10 stages | game | [docs](docs/environments/flipull.md) |
 | Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |

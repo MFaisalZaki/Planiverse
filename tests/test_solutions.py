@@ -70,10 +70,14 @@ def test_puzznic_solution_coverage_does_not_shrink():
     unsolved = sorted(set(range(50)) - set(PUZZNIC_SOLUTIONS))
     assert unsolved == [15, 17, 28, 34, 35, 42, 46, 47, 49], \
         "the set of Puzznic levels without a stored solution changed"
+    # Levels 50-127 were added from the cartridge after the benchmark ran, so none of them
+    # has been solved yet. They are listed here rather than silently uncovered.
+    assert not set(range(50, 128)) & set(PUZZNIC_SOLUTIONS), \
+        "levels 50-127 now have solutions; record them and update this test"
 
 
 @pytest.mark.parametrize("name,count", [
-    ("puzznic", 50), ("flipull", len(STAGES)), ("puzznic_gb", 128), ("flipull_gb", 32),
+    ("puzznic", 128), ("flipull", len(STAGES)), ("puzznic_gb", 128), ("flipull_gb", 32),
 ])
 def test_solution_indices_are_in_range(name, count):
     for index in solutions(name):
