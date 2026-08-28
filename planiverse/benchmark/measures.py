@@ -38,6 +38,29 @@ def flipull(state):
     return max(0, state.blocks_remaining - state.clear_target)
 
 
+def boxxle2(state):
+    """Boxes not yet on a goal.
+
+    Exactly the distance in one sense — the goal is every box home — and a poor guide in
+    another: the last box is often the one that needs the other fifty moves, and this measure
+    cannot see that. It is still much better than nothing, which is what BFWS gets otherwise.
+    """
+    return len(state.boxes) - state.boxes_home
+
+
+def lolo(state):
+    """Heart framers still to collect, plus one while Lolo is not on the door.
+
+    Collecting the last heart opens the door but does not clear the room, so a measure that
+    stopped at the heart count would call every position with the door still to reach equally
+    finished. Dying is not "far from the goal" but "not going to arrive", so it is pinned above
+    any live distance rather than left to compare as a number.
+    """
+    if getattr(state, "dead", False) or getattr(state, "died", False):
+        return 99
+    return state.hearts_left + (0 if getattr(state, "solved", False) else 1)
+
+
 def platformer(state):
     """Columns between Mario and the flag. Dead states score worst.
 
@@ -79,6 +102,40 @@ def flipull_gb(state):
     return state.blocks_remaining
 
 
+def boxxle2_gb(state):
+    """The same measure as its Python twin, off the cartridge's own plane buffers."""
+    return len(state.boxes) - state.boxes_home
+
+
+def lolo_gb(state):
+    """The same measure as its Python twin, off the cartridge's own heart counter."""
+    return lolo(state)
+
+
+def amazing_tater(state):
+    """Taters still out, plus how far the one under the controls has to walk.
+
+    The tater count alone is a poor guide and in most rooms a useless one: it is 1 until the
+    single tater steps onto the flag, and then it is 0. The straight-line distance breaks that
+    plateau up without pretending to be admissible — turnstiles and pits mean the real route is
+    often much longer, and it is a search guide, not a heuristic with a proof attached.
+    """
+    if not state.taters:
+        return 0
+    where = dict(state.taters)[state.active]
+    flag = state.level.exit
+    return 2 * len(state.taters) + abs(where[0] - flag[0]) + abs(where[1] - flag[1])
+
+
+def amazing_tater_gb(state):
+    """The same measure as its Python twin, off the board the cartridge composed."""
+    if not state.taters or state.exit is None:
+        return 0
+    where = state.taters.get(state.active) or next(iter(state.taters.values()))
+    return (2 * len(state.taters)
+            + abs(where.row - state.exit.row) + abs(where.col - state.exit.col))
+
+
 def super_mario_land(state):
     """Distance still to run. `level_progress` counts up, and this counts down."""
     return -state.level_progress
@@ -95,6 +152,12 @@ MEASURES = {
     "puzznic_gb": puzznic_gb,
     "flipull": flipull,
     "flipull_gb": flipull_gb,
+    "boxxle2": boxxle2,
+    "boxxle2_gb": boxxle2_gb,
+    "lolo": lolo,
+    "lolo_gb": lolo_gb,
+    "amazing_tater": amazing_tater,
+    "amazing_tater_gb": amazing_tater_gb,
     "platformer": platformer,
     "super_mario_land": super_mario_land,
     "water_network": water_network,

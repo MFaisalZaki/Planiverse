@@ -1,0 +1,204 @@
+# Amazing Tater (Game Boy)
+
+Amazing Tater played on the cartridge. This environment drives the real Game Boy ROM inside
+[PyBoy](https://github.com/Baekalfen/PyBoy) and reads the board straight out of the console's
+work RAM, so the transition function is the game's own code rather than a reconstruction of its
+rules. States are emulator save-states, so search can branch by rewinding the machine.
+
+The sibling [`amazing_tater.py`](amazing-tater.md) re-implements the same game in pure Python
+over the same 105 rooms. Use that one if you want a dependency-free benchmark; use this one if
+you want the cartridge's actual behaviour.
+
+Every address this environment reads is catalogued in the
+[memory map](amazing-tater-gb-memory-map.md), including how each one was established.
+
+- **Class:** `AmazingTaterGBEnv`
+- **Import:** `from planiverse.environments.gameboy.amazing_tater_gb import AmazingTaterGBEnv, AmazingTaterGBAction`
+- **Source:** [`planiverse/environments/gameboy/amazing_tater_gb.py`](../../planiverse/environments/gameboy/amazing_tater_gb.py)
+- **Dependencies:** `pyboy` + an `Amazing Tater (U).gb` ROM you supply (`pillow` for screenshots)
+
+## The ROM
+
+**Not included, and cannot be.** Amazing Tater is Atlus's copyrighted work; the repo ships no
+ROM and none will be added. Supply your own legally-obtained dump and pass its path:
+
+```python
+env = AmazingTaterGBEnv("Amazing Tater (U).gb")
+```
+
+Every address below was read from one specific dump:
+
+| | |
+|---|---|
+| File | `Amazing Tater (U).gb`, 65,536 bytes |
+| MD5 | `53b746bff74c50cd3ebcf41161c66cf3` |
+| Cartridge | MBC1, 64 KiB, **no** cartridge RAM — all state is in work RAM |
+
+Because the addresses are revision-specific, the constructor hashes the file and raises a
+`UserWarning` when it is not that dump. Pass `verify_rom=False` to silence it.
+
+## Quickstart
+
+```python
+from planiverse.environments.gameboy.amazing_tater_gb import AmazingTaterGBEnv
+
+env = AmazingTaterGBEnv("Amazing Tater (U).gb", render=False)  # render=True opens a window
+env.fix_index(0)                                               # choose the room before reset
+state, info = env.reset()
+
+print(state)
+#       #####
+#  ### #.....# ###
+# #...##o+.+.##...#
+# #.E...+++o....1.#
+# #...##.o+..##...#
+#  ### #.....# ###
+#       #####
+
+print(info)
+# {'level_index': 0, 'level': 'A-01', 'mode': 0, 'size': (15, 5), 'taters': 1,
+#  'block_squares': 0, 'pits': 0, 'intro_ticks': 60,
+#  'calibration': Calibration(press_ticks=5, hold_window=(1, 9))}
+
+for action, successor in env.successors(state):
+    print(action, action.cost(), successor.taters_left)
+# up_for_5 1 1
+# right_for_5 1 1
+# down_for_5 1 1
+# left_for_5 1 1
+```
+
+The rules, the glyphs and the level numbering are all documented once, on the
+[twin](amazing-tater.md); they are the same game.
+
+## Actions
+
+Actions are `"button,ticks"` strings, and `AmazingTaterGBAction` parses them. The vocabulary is
+the d-pad plus `switch`:
+
+| Action | Console button | Cost |
+|---|---|---|
+| `up`, `right`, `down`, `left` | d-pad | 1 |
+| `switch` | SELECT | 0 |
+
+`A` is deliberately absent. It opens the pause menu with its RETRY and QUIT, and a planner that
+can retry can escape a block it has sunk into the wrong pit — which is precisely the thing
+being planned around.
+
+`env.get_actions()` returns the strings; `successors` builds them, applies each one and drops
+the ones that change nothing.
+
+## Choosing a room
+
+`fix_index(n)` selects one of 105 rooms: 0–40 are PUZZLE MODE's `A-01`–`A-41`, and 41–104 are
+BEGINNER and ACTION MODE's `C-01`–`C-64`. The same index selects the same room on the twin.
+`env.label_for()` gives the cartridge's own name for it.
+
+Selection works by hooking the level loader at `$08C0` and writing `HL`, which is the register
+it is entered with. The alternative — reverse the stage arithmetic and write the stage counters
+— does not survive contact with the cartridge: the arithmetic does not divide either set evenly,
+and there is a `+2` fudge in the middle of set C.
+
+`env.levels()` boots the cartridge to each of the 105 rooms in turn and returns the decoded
+boards. It is slow — a minute or two — and it is where the twin's stored rooms came from.
+
+## Booting
+
+The front end is the title screen, then `SELECT MODE`, then either a tutor with several screens
+of advice or an `ENTER PASSWORD` grid, depending on the mode. START advances all of them; only
+`SELECT MODE` needs the d-pad, and `boot` uses `$D37D` to know when it is looking at it.
+
+That byte holds `$80` while the title is up and a small number wherever a cursor exists —
+**including the password grid, whose row cursor it also is**. A d-pad press aimed at the mode
+menu but landing on the password grid walks the alphabet instead of choosing a mode, so `boot`
+stops touching the d-pad the moment the mode is chosen. This is the part that was written the
+wrong way round first, and the symptom was a boot that reliably reached PUZZLE MODE's password
+screen and typed into it forever.
+
+## Settling, and the two things that are measured
+
+**The settle predicate watches the board buffer and nothing else.** Every other Game Boy
+environment here also watches the shadow OAM, because in those games the piece in motion is a
+sprite and work RAM says nothing while it slides. Here the opposite is true twice over: the
+board buffer is written for every part of a move, and the tater's idle bob rewrites the OAM
+every eight frames for as long as the game is running, so a predicate that included it would
+never fire.
+
+Twenty frames of stillness is measured, not guessed. Nothing observed takes longer than sixteen
+frames of board writes, and the longest still spell *inside* an unfinished move is eight — which
+is a block that has been shoved onto pits, dissolving into them.
+
+**`switch` waits out a lockout the board cannot show it.** The cartridge ignores anything
+pressed within thirty-three frames of a SELECT. Handing the controls over changes no cell, so
+the ordinary settle predicate is satisfied instantly and the next action would arrive inside
+the lockout and be dropped: two switches in a row became one, and the plan and the game ended up
+with different taters under the controls. `AmazingTaterGBAction.__settle__` ticks past it.
+
+**`reset` waits for the room to start listening.** The loader fills the board buffer before the
+room has finished announcing itself, so for about sixty frames the board is fully readable, and
+settled, while every button is ignored. `wait_until_interactive` probes a snapshot at increasing
+offsets until something answers and then replays only the waiting, so the state handed back is
+still the one the loader built. SELECT counts as an answer, and has to: room `A-14` opens with
+its first tater walled in on all four sides.
+
+## Calibration
+
+`reset` measures how the cartridge wants to be driven, once, and reports it in `info`:
+
+```python
+Calibration(press_ticks=5, hold_window=(1, 9))
+```
+
+`hold_window` is the closed range of hold lengths that move a tater exactly one cell. The upper
+end is one frame short of the d-pad's auto-repeat, past which a single action walks two cells —
+and in a game where a block shoved into the wrong pit is gone for good, that is not a longer
+plan but a different one. `press_ticks` is the middle of the window. Pass `calibrate=False` to
+skip the couple of dozen probe presses and take the documented default.
+
+## States
+
+`AmazingTaterGBState` carries the emulator save-state plus what was read out of work RAM at the
+moment it was snapshotted: the decoded board, where each tater is, which one has the controls,
+how many are still out, and where the blocks and open pits are.
+
+- `state.rows` — the board in the exact alphabet, the same tuple of strings the twin's
+  `board()` returns. This is what the tests compare.
+- `str(state)` — the friendly view, the same one the twin prints.
+- `state.literals` — a frozenset of strings, for planners.
+- `state.is_consistent()` — do `$C2AD`'s bits and the taters drawn on the board name the same
+  characters? A position where they disagree means an address has drifted, or the board was read
+  in the middle of a step.
+
+Equality is on the board and who holds the controls. Depth and history are not part of it, so a
+position reached two ways compares equal and search closes.
+
+## Goals and dead ends
+
+`is_goal` reads `$C2AD`, the cartridge's own record of which taters are still out, and is exact.
+
+It cannot read the board instead, and that is worth saying plainly: a tater in mid-step is taken
+*off* the board map and drawn as a sprite until it arrives, so for a dozen frames after every
+press the board shows no tater at all — which is indistinguishable from a solved room if the
+board is all you look at. That mistake made `settle` return immediately after every move and
+hand back garbage positions.
+
+`is_terminal` is always False. Amazing Tater has real dead ends, but recognising them needs
+reachability under moving turnstiles, which the board buffer does not answer; and the twin's
+test — "no move changes anything" — is not available here, because finding that out means
+expanding the state and expanding calls back through `is_terminal`. A position with nothing left
+in it expands to no successors, which search treats as a dead end anyway.
+
+## Cost
+
+One action is one save-state load, one press and up to 180 emulator frames. On a laptop that is
+a few hundred expansions a second; the twin does the same work about four orders of magnitude
+faster. Search the twin, then replay the plan here if you want the cartridge's word for it —
+`tests/test_amazing_tater.py` does exactly that.
+
+## Agreement with the twin
+
+The two were walked forward in lockstep — the same random press, then a cell-by-cell comparison
+of the whole board — for three runs of two hundred presses in every one of the 105 rooms.
+Sixty-three thousand transitions, no disagreements. Four of the twin's eight rules exist in the
+form they do because that comparison rejected a simpler guess; the table is in
+[amazing-tater.md](amazing-tater.md).

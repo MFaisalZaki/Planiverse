@@ -35,9 +35,7 @@ a solved position as absorbing.
 """
 from collections import namedtuple
 
-from planiverse.environments.gameboy.gb import (
-    GBAction, GBEnv, GBState, load_state, sprites as _oam_sprites,
-)
+from planiverse.environments.gameboy.gb import GBAction, GBEnv, GBState, load_state
 
 # --------------------------------------------------------------------------- the ROM
 
@@ -340,11 +338,6 @@ def shadow_oam(pyboy):
     return bytes(pyboy.memory[OAM_BUFFER_ADDR:OAM_BUFFER_ADDR + 160])
 
 
-def sprites(pyboy):
-    """The OAM DMA buffer as `(y, x, tile)` for every visible sprite."""
-    return _oam_sprites(pyboy, OAM_BUFFER_ADDR, visible_only=True)
-
-
 #: Board sizes the cartridge actually ships, from `$4E18`: 6x5 at the smallest, 16x16 at the
 #: largest. `level_is_loaded` uses them to tell a decompressed board from whatever `$C120`
 #: and `$C121` happen to hold on a menu screen.
@@ -373,6 +366,11 @@ def level_is_loaded(pyboy):
 
 SETTLE_MAX_TICKS = 240           # four seconds; a single step animates for sixteen frames
 SETTLE_STABLE_TICKS = 3          # frames the board and the sprites must both hold still
+SETTLE_MIN_TICKS = 22            # ... but never call it settled before the frame the d-pad
+                                 # would have repeated on. The slide runs sixteen frames and
+                                 # the repeat fires on the twentieth; a board that stops
+                                 # changing earlier than that has either paused mid-slide or
+                                 # is about to move again, and both read as "settled".
 PRESS_TICKS = 10                 # frames a d-pad press is held. A fallback only: `calibrate`
                                  # measures the real window off the cartridge.
 PROBE_MAX_HOLD = 40              # longest hold `calibrate` will try. The cartridge repeats
@@ -380,6 +378,10 @@ PROBE_MAX_HOLD = 40              # longest hold `calibrate` will try. The cartri
 BOOT_MAX_TICKS = 4000            # the story cutscene alone runs about 970 frames
 BOOT_PRESS_TICKS = 4
 BOOT_STEP_TICKS = 20
+
+#: Frames the emulator is run after a rewind and before the button is pressed. See
+#: `Boxxle2GBAction.__press__`; two is what the cartridge needs, and one is not enough.
+LEAD_IN_TICKS = 2
 
 DIRECTIONS = {"left": (0, -1), "up": (-1, 0), "down": (1, 0), "right": (0, 1)}
 
@@ -398,7 +400,8 @@ def button_actions(calibration=None):
     return [f"{button},{ticks}" for button in DIRECTIONS]
 
 
-def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_STABLE_TICKS):
+def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_STABLE_TICKS,
+           min_ticks=SETTLE_MIN_TICKS):
     """Run the emulator until the game stops moving, and report whether it did.
 
     The plane buffers are updated the frame the button is read, so watching them alone would
@@ -409,19 +412,25 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
     no flag, no direction byte moves while it runs. So the settle predicate is the planes
     *and* the sprite buffer holding still together.
 
+    Stability alone is still not enough, which cost a long afternoon: the slide pauses for a
+    frame or two partway through, and — worse — a hold long enough to trip the d-pad's
+    auto-repeat looks perfectly settled in the gap between the first move and the second. So
+    `min_ticks` holds the settle open until the frame the repeat would have fired on. It costs
+    nothing: the slide plus its stable frames already take about that long.
+
     The early exit is not an optimisation. Once every box is home the cartridge starts its
     congratulation sequence and redraws the plane buffers with something that is not a
     Sokoban position, so a solved board has to be snapshotted while it still exists.
     """
     previous, stable = None, 0
-    for _ in range(max_ticks):
+    for elapsed in range(1, max_ticks + 1):
         pyboy.tick(1, render)
         if is_solved(read_board(pyboy)):
             return True
         current = (player_offset(pyboy), read_planes(pyboy), shadow_oam(pyboy))
         if current == previous:
             stable += 1
-            if stable >= stable_ticks:
+            if stable >= stable_ticks and elapsed >= min_ticks:
                 return True
         else:
             previous, stable = current, 0
@@ -475,29 +484,29 @@ def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS):
 def _press(pyboy, state, button, hold, render=False, **settle_kwargs):
     """Rewind to `state`, hold `button` for `hold` frames, and read back the settled board."""
     load_state(pyboy, state.gb_state, render)
+    pyboy.tick(LEAD_IN_TICKS, render)
     pyboy.button(button, hold)
     pyboy.tick(hold + 1, render)
     settle(pyboy, render, **settle_kwargs)
     return player_offset(pyboy)
 
 
-def _open_direction(pyboy, state, render, settle_kwargs, max_hold):
-    """A direction with two clear cells of room, so a repeat has somewhere to show itself.
+def open_direction(grid, player):
+    """A direction with two clear cells of walkable room ahead, or None.
 
-    Picking the first direction that moves at all is not enough: with a wall one cell away
-    every hold looks identical and the window comes back as wide as the probe. Two cells is
-    also the least that distinguishes "moved once" from "repeated", which is the whole point
-    of the measurement.
+    Read off the board rather than found by pressing. Two cells is the least that can tell
+    "moved once" from "repeated", and a probe with only one cell of room reports every hold
+    as a single move — which is how a cartridge whose d-pad repeats on frame 20 came back
+    claiming a window of `(1, 40)`. Where the board offers no such direction, nothing here can
+    be measured and `calibrate` says so rather than inventing a number.
     """
-    fallback = None
+    height, width = len(grid), len(grid[0]) if grid else 0
     for direction, (row_step, col_step) in DIRECTIONS.items():
-        offset = _press(pyboy, state, direction, max_hold, render, **settle_kwargs)
-        moved = _cells_moved(state.player, offset_to_position(offset), (row_step, col_step))
-        if moved >= 2:
+        ahead = [(player.row + row_step * n, player.col + col_step * n) for n in (1, 2)]
+        if all(0 <= row < height and 0 <= col < width and grid[row][col] in (FLOOR, GOAL)
+               for row, col in ahead):
             return direction
-        if moved >= 1 and fallback is None:
-            fallback = direction
-    return fallback
+    return None
 
 
 def _cells_moved(before, after, step):
@@ -514,11 +523,17 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
     The lower end is where a press starts registering at all; the upper end is one frame short
     of the d-pad's auto-repeat, past which one action walks two cells — and in a Sokoban that
     is not a longer plan, it is a box pushed somewhere nobody asked for. Neither bound is in
-    the memory map, so both are measured here. `Boxxle II (USA, Europe)` reports `(1, 19)`.
+    the memory map, so both are measured here.
 
-    Returns `(low, high)`, or None if no hold moves the player exactly one cell.
+    Both ends move by two or three frames depending on which board it is measured on, because
+    the phase between a save-state and the frame the main loop next samples the pad is not
+    fixed: `Boxxle II (USA, Europe)` reports anything from `(1, 18)` to `(3, 24)`. That jitter
+    is why `calibrate` takes the *middle* of the window rather than anything near an end, and
+    why the number to distrust is a window as wide as the probe — see `open_direction`.
+
+    Returns `(low, high)`, or None if the board offers nowhere to measure it.
     """
-    direction = _open_direction(pyboy, state, render, settle_kwargs, max_hold)
+    direction = open_direction(state.grid, state.player)
     if direction is None:
         return None
     step = DIRECTIONS[direction]
@@ -541,8 +556,9 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
     """
     window = measure_hold_window(pyboy, state, render, max_hold, **settle_kwargs)
     if window is None:
-        # The player never moved. Rather than drive the game with a made-up hold, fall back
-        # to the documented default and say the window is unknown.
+        # Nowhere on this board to measure it — the keeper starts boxed in. Rather than drive
+        # the game with a made-up hold, fall back to the documented default and say the
+        # window is unknown.
         return Calibration(PRESS_TICKS, None)
     low, high = window
     # Middle of the window: far enough above `low` to survive a frame of jitter in when the
@@ -614,6 +630,24 @@ class Boxxle2GBAction(GBAction):
     """A d-pad press held for a number of frames, spelled `"button,ticks"`."""
 
     cost_map = action_cost_map
+
+    def __press__(self, pyboy, render):
+        """Let the machine run a couple of frames after the rewind, then press.
+
+        `apply` rewinds to the parent state before pressing, and `load_state` ticks exactly
+        one frame afterwards. On some states that one frame is not enough: the press lands
+        before the main loop next samples the pad, `ReadJoypad` never sees the edge, and the
+        move is silently dropped — the successor comes back equal to its parent and
+        `successors` deletes the action as a no-op. It is not every state, which is the worst
+        kind of bug to have: replaying a 500-move plan on the cartridge failed at move 19 and
+        the same move applied on its own worked.
+
+        Two idle frames is what it takes; the constant is here rather than in the shared
+        `GBAction` because the other cartridges do not need it and paying for it everywhere
+        would be a tax on them.
+        """
+        pyboy.tick(LEAD_IN_TICKS, render)
+        super().__press__(pyboy, render)
 
     def __settle__(self, pyboy, render, **settle_kwargs):
         return settle(pyboy, render, **settle_kwargs)
@@ -721,7 +755,8 @@ def _report(romfile, index=None, render=False):
         state, info = env.reset()
         print(f"level {info['level']} (index {info['level_index']}): "
               f"{info['size'][0]}x{info['size'][1]}, {info['boxes']} boxes\n")
-        print(state, "\n")
+        print(state)
+        print()
         calibration = info["calibration"]
         if calibration.hold_window is None:
             print("  hold window  not measurable — the player never moved")

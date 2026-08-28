@@ -33,6 +33,8 @@ ENTRY_POINTS = [
     "planiverse.environments.gameboy.puzznic_gb",
     "planiverse.environments.gameboy_py.flipull",
     "planiverse.environments.gameboy.flipull_gb",
+    "planiverse.environments.gameboy_py.boxxle2",
+    "planiverse.environments.gameboy.boxxle2_gb",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",

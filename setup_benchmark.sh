@@ -232,9 +232,10 @@ if [ "$ASSUME_YES" != "1" ] && [ -t 0 ]; then
 fi
 
 echo "Game Boy cartridges."
-echo "  Puzznic, Flipull and Super Mario Land are copyrighted and are not in this repo, so"
-echo "  their paths have to come from you. Each one you give is benchmarked alongside its"
-echo "  pure-Python twin; each one you skip is reported as skipped rather than silently"
+echo "  Puzznic, Flipull, Boxxle II, Adventures of Lolo, Amazing Tater and Super Mario Land are"
+echo "  copyrighted and are not in this"
+echo "  repo, so their paths have to come from you. Each one you give is benchmarked alongside"
+echo "  its pure-Python twin; each one you skip is reported as skipped rather than silently"
 echo "  dropped. Paths are recorded in the experiment, so cluster jobs get them too."
 echo
 
@@ -244,6 +245,9 @@ echo
 ROM_ENTRIES=(
     puzznic_gb        PLANIVERSE_PUZZNIC_ROM  puzznic  "Puzznic"
     flipull_gb        PLANIVERSE_FLIPULL_ROM  flipull  "Flipull"
+    boxxle2_gb        PLANIVERSE_BOXXLE2_ROM  boxxle2  "Boxxle II"
+    lolo_gb           PLANIVERSE_LOLO_ROM     lolo     "Adventures of Lolo"
+    amazing_tater_gb  PLANIVERSE_AMAZING_TATER_ROM  amazing-tater  "Amazing Tater"
     super_mario_land  PLANIVERSE_SML_ROM      sml      "Super Mario Land"
 )
 
