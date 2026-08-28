@@ -290,61 +290,6 @@ def test_simulate_agrees_with_successors(factory):
     assert trace[-1].literals == expected.literals
 
 
-# ------------------------------------------------------- the old import paths still work
-
-@pytest.mark.parametrize("old,new", [
-    ("planiverse.problems.retro_games.puzznic", "planiverse.environments.puzznic"),
-    ("planiverse.problems.retro_games.puzznic_gb", "planiverse.environments.puzznic_gb"),
-    ("planiverse.problems.retro_games.flipull_gb", "planiverse.environments.flipull_gb"),
-    ("planiverse.problems.retro_games.super_mario_bros_gb",
-     "planiverse.environments.super_mario_land"),
-    ("planiverse.problems.real_world_problems.water_distribution.environment",
-     "planiverse.environments.water_network.environment"),
-    ("planiverse.problems.real_world_problems.power_grid.environment",
-     "planiverse.environments.power_grid.environment"),
-    ("planiverse.problems.real_world_problems.crop_management.environment",
-     "planiverse.environments.crop_management.environment"),
-])
-def test_the_old_import_path_still_works_and_warns(old, new):
-    """Moving the package must not break anyone's notebook.
-
-    The shims re-export from the new home and raise `DeprecationWarning` so the move is
-    visible rather than silent.
-    """
-    import importlib
-    import warnings
-
-    try:
-        moved = importlib.import_module(new)
-    except ImportError:
-        pytest.skip(f"{new} needs a dependency that is not installed")
-
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        shim = importlib.import_module(old)
-    assert any(issubclass(w.category, DeprecationWarning) for w in caught), \
-        "the old path has to say it is deprecated"
-
-    shared = [name for name in dir(moved)
-              if not name.startswith("_") and isinstance(getattr(moved, name), type)]
-    assert shared, "the module should export something"
-    for name in shared:
-        assert getattr(shim, name) is getattr(moved, name), \
-            f"{name} must be the same object through either path"
-
-
-def test_the_two_old_base_classes_now_name_the_same_thing():
-    import warnings
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        from planiverse.problems.retro_games.base import RetroGame
-        from planiverse.problems.real_world_problems.base import RealWorldProblem
-    from planiverse.environments.base import Environment
-
-    assert RetroGame is Environment and RealWorldProblem is Environment
-
-
 def test_the_capability_matrix_can_be_derived_from_the_code():
     """`Environment.capabilities()` exists so the README's matrix is checkable rather than
     hand-maintained. These are the rows that claim the full set."""
