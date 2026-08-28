@@ -21,7 +21,7 @@ def puzznic():
 def puzznic_gb():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from fake_puzznic_rom import synthetic_rom
-    from planiverse.environments.puzznic_gb import PuzznicGBEnv
+    from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv
 
     # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
     # in `fake_puzznic_rom.py` rather than the real one.
@@ -41,7 +41,7 @@ def flipull():
 def flipull_gb():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from fake_flipull_rom import synthetic_rom
-    from planiverse.environments.flipull_gb import FlipullGBEnv
+    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
 
     # Flipull is copyrighted too, so the contract is checked against the synthetic
     # cartridge in `fake_flipull_rom.py`.
@@ -319,7 +319,7 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     assert "get_actions" not in Environment.capabilities()
 
     pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from planiverse.environments.flipull_gb import FlipullGBEnv
+    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
 
     assert FlipullGBEnv.validate is Environment.validate, "inherited, not rewritten"
     assert "validate" in FlipullGBEnv.capabilities(), "and still offered"

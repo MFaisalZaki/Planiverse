@@ -459,6 +459,7 @@ One flat package, one base class, and a registry.
 planiverse/environments/
 ├── base.py          # Environment — the six-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
+├── gameboy/         # the PyBoy-backed environments, grouped around their shared gb.py tail
 └── <one module or subpackage per environment>
 ```
 
@@ -511,11 +512,13 @@ planiverse/
 │   ├── base.py                         # Environment — the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── puzznic.py                      # PuzznicGame
-│   ├── puzznic_gb.py                   # PuzznicGBEnv (PyBoy)
 │   ├── flipull.py                      # FlipullGame
-│   ├── flipull_gb.py                   # FlipullGBEnv (PyBoy)
 │   ├── platformer.py                   # PlatformerGame
-│   ├── super_mario_land.py             # SuperMarioEnv (PyBoy)
+│   ├── gameboy/                        # the PyBoy-backed environments
+│   │   ├── gb.py                       # GBEnv, GBState, GBAction — the shared tail
+│   │   ├── puzznic_gb.py               # PuzznicGBEnv
+│   │   ├── flipull_gb.py               # FlipullGBEnv
+│   │   └── super_mario_land.py         # SuperMarioEnv
 │   ├── epidemic_control/               # EpiEnv + vendored EpiPolicy + jsons/
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── manufacturing/                  # MfgEnv + data/

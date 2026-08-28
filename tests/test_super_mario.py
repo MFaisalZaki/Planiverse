@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
-from planiverse.environments.super_mario_land import (  # noqa: E402
+from planiverse.environments.gameboy.super_mario_land import (  # noqa: E402
     DIRECTIONS, FACING_LEFT, MARIO_X_SATURATES_AT, OBJECT_EMPTY, OBJECT_SLOTS, OBJECT_STRIDE,
     ROM_MD5, SuperMarioAction, SuperMarioEnv, action_cost_map, action_list, decode_objects,
     decode_timer, position, SuperMarioState,

@@ -30,7 +30,7 @@ carry what the cartridge said instead.
 import os
 from collections import Counter, namedtuple
 
-from planiverse.environments.gb import (
+from planiverse.environments.gameboy.gb import (
     GBAction, GBEnv, GBState, create_pyboy, load_state, save_state,
     sprites as _oam_sprites,
 )

@@ -21,7 +21,7 @@ garbage, which is why `PuzznicGBEnv` checks the ROM's MD5 and warns when it diff
 import os
 from collections import Counter, deque, namedtuple
 
-from planiverse.environments.gb import (
+from planiverse.environments.gameboy.gb import (
     GBAction, GBEnv, GBState, create_pyboy, load_state, save_state,
     sprites as _oam_sprites,
 )

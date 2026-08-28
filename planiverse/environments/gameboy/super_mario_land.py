@@ -9,7 +9,7 @@ and the constants below carry that grading rather than pretending to it.
 from itertools import product, chain
 from collections import namedtuple
 from pyboy.utils import bcd_to_dec
-from planiverse.environments.gb import (
+from planiverse.environments.gameboy.gb import (
     GBAction, GBEnv, GBState, create_pyboy, load_state,
 )
 

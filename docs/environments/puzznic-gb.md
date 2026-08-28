@@ -14,8 +14,8 @@ Every address this environment reads is catalogued in the
 verified against live RAM rather than read off a disassembly.
 
 - **Class:** `PuzznicGBEnv`
-- **Import:** `from planiverse.environments.puzznic_gb import PuzznicGBEnv, PuzznicGBAction`
-- **Source:** [`planiverse/environments/puzznic_gb.py`](../../planiverse/environments/puzznic_gb.py)
+- **Import:** `from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv, PuzznicGBAction`
+- **Source:** [`planiverse/environments/gameboy/puzznic_gb.py`](../../planiverse/environments/gameboy/puzznic_gb.py)
 - **Dependencies:** `pyboy` + a `Puzznic (J).gb` ROM you supply (`pillow` for screenshots)
 
 ## The ROM
@@ -41,7 +41,7 @@ Because the addresses are revision-specific, the constructor hashes the file and
 ## Quickstart
 
 ```python
-from planiverse.environments.puzznic_gb import PuzznicGBEnv, PuzznicGBAction
+from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv, PuzznicGBAction
 
 env = PuzznicGBEnv("Puzznic (J).gb", render=False)   # render=True opens an SDL2 window
 env.fix_index(0)                                     # choose the stage *before* reset
@@ -277,7 +277,7 @@ like one press and reads like one action in a plan — moves two.
 or, without writing any code:
 
 ```bash
-python -m planiverse.environments.puzznic_gb "Puzznic (J).gb" --stage 0
+python -m planiverse.environments.gameboy.puzznic_gb "Puzznic (J).gb" --stage 0
 ```
 
 `measure_hold_window` presses a direction for 1, 2, 3… frames and watches `$D012`/`$D013`,
@@ -555,7 +555,7 @@ PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" poetry run pytest tests/test_pu
 
 | Path | What |
 |---|---|
-| [`puzznic_gb.py`](../../planiverse/environments/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBAction`, the calibration, and the RAM decoders |
+| [`puzznic_gb.py`](../../planiverse/environments/gameboy/puzznic_gb.py) | `PuzznicGBEnv`, `PuzznicGBState`, `PuzznicGBAction`, the calibration, and the RAM decoders |
 | [`tests/test_puzznic_gb.py`](../../tests/test_puzznic_gb.py) | Tests, against the synthetic cartridge and the real one |
 | [`tests/fake_puzznic_rom.py`](../../tests/fake_puzznic_rom.py) | The synthetic cartridge |
 | [`tests/sm83.py`](../../tests/sm83.py) | The assembler that builds it |

@@ -30,8 +30,8 @@ comes from. It is also where four things the map said turned out to mean somethi
 [What the cartridge corrected](#what-the-cartridge-corrected).
 
 - **Class:** `FlipullGBEnv`
-- **Import:** `from planiverse.environments.flipull_gb import FlipullGBEnv, FlipullGBAction`
-- **Source:** [`planiverse/environments/flipull_gb.py`](../../planiverse/environments/flipull_gb.py)
+- **Import:** `from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv, FlipullGBAction`
+- **Source:** [`planiverse/environments/gameboy/flipull_gb.py`](../../planiverse/environments/gameboy/flipull_gb.py)
 - **Dependencies:** `pyboy` + a `Flipull (USA).gb` ROM you supply (`pillow` for screenshots)
 
 ## The ROM
@@ -60,7 +60,7 @@ Because the addresses are revision-specific, the constructor hashes the file and
 ## Quickstart
 
 ```python
-from planiverse.environments.flipull_gb import FlipullGBEnv, FlipullGBAction
+from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv, FlipullGBAction
 
 env = FlipullGBEnv("Flipull (USA).gb", render=False)   # render=True opens an SDL2 window
 state, info = env.reset()
@@ -100,7 +100,7 @@ print(env.is_goal(trace[-1]))
 or, without writing any code:
 
 ```bash
-python -m planiverse.environments.flipull_gb "Flipull (USA).gb"
+python -m planiverse.environments.gameboy.flipull_gb "Flipull (USA).gb"
 ```
 
 which prints the field, the measurements and the action set.
@@ -123,7 +123,7 @@ info["stage"], state.blocks_remaining, state.clear_target
 or from the command line:
 
 ```bash
-python -m planiverse.environments.flipull_gb "Flipull (USA).gb" --stage 7
+python -m planiverse.environments.gameboy.flipull_gb "Flipull (USA).gb" --stage 7
 ```
 
 ### The stage number is two decimal digits
@@ -672,7 +672,7 @@ PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" poetry run pytest tests/test_
 
 | Path | What |
 |---|---|
-| [`flipull_gb.py`](../../planiverse/environments/flipull_gb.py) | `FlipullGBEnv`, `FlipullGBState`, `FlipullGBAction`, the calibration, and the RAM decoders |
+| [`flipull_gb.py`](../../planiverse/environments/gameboy/flipull_gb.py) | `FlipullGBEnv`, `FlipullGBState`, `FlipullGBAction`, the calibration, and the RAM decoders |
 | [`flipull-gb-memory-map.md`](flipull-gb-memory-map.md) | Every address, and how each was established |
 | [`tests/test_flipull_gb.py`](../../tests/test_flipull_gb.py) | Tests, against the synthetic cartridge and the real one |
 | [`tests/fake_flipull_rom.py`](../../tests/fake_flipull_rom.py) | The synthetic cartridge |

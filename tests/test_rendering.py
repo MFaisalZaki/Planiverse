@@ -157,7 +157,7 @@ def test_a_game_boy_state_screenshots_the_actual_console():
     never filled and every screenshot came out a blank white rectangle. It had always done
     that; nothing looked at the pixels until now."""
     pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from planiverse.environments.puzznic_gb import PuzznicGBEnv
+    from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv
 
     rom = puzznic_rom_path()
     game = PuzznicGBEnv(rom)
