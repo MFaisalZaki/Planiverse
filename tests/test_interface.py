@@ -11,7 +11,7 @@ from conftest import assert_string_literals, assert_successors_contract
 
 
 def puzznic():
-    from planiverse.environments.puzznic import PuzznicGame
+    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
     env = PuzznicGame()
     env.fix_index(0)
@@ -31,7 +31,7 @@ def puzznic_gb():
 
 
 def flipull():
-    from planiverse.environments.flipull import FlipullGame
+    from planiverse.environments.gameboy_py.flipull import FlipullGame
 
     env = FlipullGame()
     env.fix_index(0)
@@ -51,7 +51,7 @@ def flipull_gb():
 
 
 def platformer():
-    from planiverse.environments.platformer import PlatformerGame
+    from planiverse.environments.gameboy_py.platformer import PlatformerGame
 
     env = PlatformerGame()
     env.fix_index(0)

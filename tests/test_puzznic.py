@@ -1,7 +1,7 @@
 """Tests for the Puzznic environment."""
 import pytest
 
-from planiverse.environments.puzznic import (
+from planiverse.environments.gameboy_py.puzznic import (
     Box, Cursor, EmptySpace, Level, PuzznicGame, PuzznicState, Wall,
 )
 

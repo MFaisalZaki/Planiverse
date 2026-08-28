@@ -115,7 +115,7 @@ class EnvironmentSpec:
 REGISTRY = (
     EnvironmentSpec(
         name="puzznic",
-        factory="planiverse.environments.puzznic:PuzznicGame",
+        factory="planiverse.environments.gameboy_py.puzznic:PuzznicGame",
         summary="Sliding block puzzle, re-implemented in pure Python",
         instances="50 levels",
         deterministic=True,
@@ -138,7 +138,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="flipull",
-        factory="planiverse.environments.flipull:FlipullGame",
+        factory="planiverse.environments.gameboy_py.flipull:FlipullGame",
         summary="Flipull-like throwing puzzle, re-implemented in pure Python",
         instances="10 stages",
         deterministic=True,
@@ -161,7 +161,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="platformer",
-        factory="planiverse.environments.platformer:PlatformerGame",
+        factory="planiverse.environments.gameboy_py.platformer:PlatformerGame",
         summary="Run-and-jump platformer with stated physics, in pure Python",
         instances="8 levels",
         deterministic=True,

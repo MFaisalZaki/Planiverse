@@ -224,7 +224,7 @@ def test_every_registered_environment_is_measured_or_declared_unmeasured():
 
 
 def test_a_measure_is_a_number_that_falls_as_the_goal_nears():
-    from planiverse.environments.flipull import FlipullGame
+    from planiverse.environments.gameboy_py.flipull import FlipullGame
 
     env = FlipullGame()
     env.fix_index(0)
@@ -240,7 +240,7 @@ def test_a_measure_is_a_number_that_falls_as_the_goal_nears():
 
 def test_a_dead_platformer_state_scores_worse_than_any_live_one():
     """Being dead is not "far from the goal", it is "not going to arrive"."""
-    from planiverse.environments.platformer import PlatformerGame
+    from planiverse.environments.gameboy_py.platformer import PlatformerGame
 
     env = PlatformerGame()
     env.fix_index(0)

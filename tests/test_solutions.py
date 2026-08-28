@@ -20,8 +20,8 @@ import os
 
 import pytest
 
-from planiverse.environments.flipull import STAGES, FlipullGame
-from planiverse.environments.puzznic import PuzznicGame
+from planiverse.environments.gameboy_py.flipull import STAGES, FlipullGame
+from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
 from conftest import flipull_rom_path, puzznic_rom_path
 

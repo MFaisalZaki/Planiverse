@@ -29,14 +29,14 @@ pytestmark = pytest.mark.skipif(
 # One module per environment, plus the facade and the planner: whatever these reach is what
 # an install has to provide.
 ENTRY_POINTS = [
-    "planiverse.environments.puzznic",
+    "planiverse.environments.gameboy_py.puzznic",
     "planiverse.environments.gameboy.puzznic_gb",
-    "planiverse.environments.flipull",
+    "planiverse.environments.gameboy_py.flipull",
     "planiverse.environments.gameboy.flipull_gb",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
-    "planiverse.environments.platformer",
+    "planiverse.environments.gameboy_py.platformer",
     "planiverse.environments.gameboy.super_mario_land",
     "planiverse.environments.epidemic_control.environment",
     "planiverse.environments.urban_planning.environment",
@@ -199,7 +199,7 @@ def test_the_vendoring_is_documented():
 
 def test_the_simulator_facade_wraps_a_native_environment():
     """Wrapping a native environment must not drag in the PDDL machinery."""
-    from planiverse.environments.puzznic import PuzznicGame
+    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
     from planiverse.simulator.simulator import Simulator
 
     env = PuzznicGame()

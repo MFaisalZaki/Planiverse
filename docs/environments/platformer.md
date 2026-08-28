@@ -5,8 +5,8 @@ written down rather than reverse-engineered. No emulator, no ROM, no dependencie
 standard library.
 
 - **Class:** `PlatformerGame`
-- **Import:** `from planiverse.environments.platformer import PlatformerGame`
-- **Source:** [`planiverse/environments/platformer.py`](../../planiverse/environments/platformer.py)
+- **Import:** `from planiverse.environments.gameboy_py.platformer import PlatformerGame`
+- **Source:** [`planiverse/environments/gameboy_py/platformer.py`](../../planiverse/environments/gameboy_py/platformer.py)
 - **Instances:** 8 levels, indices `0`–`7`, plus any you supply yourself
 - **Dependencies:** none
 - **Counterpart:** [`SuperMarioEnv`](super-mario-land.md) plays the real Game Boy cartridge
@@ -91,7 +91,7 @@ can be scored by effort rather than by length.
 ## Quickstart
 
 ```python
-from planiverse.environments.platformer import PlatformerGame
+from planiverse.environments.gameboy_py.platformer import PlatformerGame
 
 env = PlatformerGame()
 env.fix_index(3)
@@ -194,7 +194,7 @@ There is no timer and no score. The cartridge has both; this does not model them
 ## Planning with it
 
 ```python
-from planiverse.environments.platformer import PlatformerGame
+from planiverse.environments.gameboy_py.platformer import PlatformerGame
 from planiverse.planners.width import BFWSSearch, Budget
 
 env = PlatformerGame()

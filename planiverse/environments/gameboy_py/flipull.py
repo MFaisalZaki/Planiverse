@@ -1,6 +1,6 @@
 """Flipull in pure Python: no ROM, no emulator, no dependencies.
 
-The sibling [`flipull_gb`](flipull_gb.py) drives the real cartridge. This one implements the
+The sibling [`flipull_gb`](../gameboy/flipull_gb.py) drives the real cartridge. This one implements the
 rules directly, the way [`puzznic`](puzznic.py) stands beside `puzznic_gb`. Use this one for a
 dependency-free benchmark; use that one for the cartridge's actual behaviour.
 
