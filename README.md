@@ -130,7 +130,7 @@ runnable from a partial install. The tests that need a copyrighted ROM are opt-i
 matching environment variable at one to run them:
 
 ```bash
-PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
+PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario.py
 PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
 PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" pytest tests/test_flipull_gb.py
 PLANIVERSE_BOXXLE2_ROM="/path/to/Boxxle II (USA, Europe).gb" pytest tests/test_boxxle2_gb.py
@@ -218,11 +218,11 @@ Not every environment implements every method. What is actually there today:
 | `Boxxle2GBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `LoloGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `PlatformerGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `SuperMarioLandGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SuperMarioEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `SuperMarioLandGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `MfgEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
@@ -542,14 +542,14 @@ planiverse/
 │   │   ├── boxxle2_gb.py               # Boxxle2GBEnv
 │   │   ├── lolo_gb.py                  # LoloGBEnv
 │   │   ├── amazing_tater_gb.py         # AmazingTaterGBEnv
-│   │   └── super_mario_land.py         # SuperMarioEnv
+│   │   └── super_mario_land.py         # SuperMarioLandGBEnv
 │   ├── gameboy_py/                     # their dependency-free counterparts, no ROM needed
 │   │   ├── puzznic.py                  # PuzznicGame     — twin of puzznic_gb
 │   │   ├── flipull.py                  # FlipullGame     — twin of flipull_gb
 │   │   ├── boxxle2.py                  # Boxxle2Game     — twin of boxxle2_gb
 │   │   ├── lolo.py                     # LoloGame        — twin of lolo_gb
 │   │   ├── amazing_tater.py            # AmazingTaterGame — twin of amazing_tater_gb
-│   │   └── platformer.py               # PlatformerGame  — same genre as super_mario_land,
+│   │   └── platformer.py               # SuperMarioLandGame  — same genre as super_mario_land,
 │   │                                   #                   deliberately not a twin of it
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── manufacturing/                  # MfgEnv + data/
@@ -654,7 +654,7 @@ is referenced as a planned addition but is not yet in the tree.
       than the way a player would
 - [ ] Solutions for the rest of Boxxle II. 42 of 120 levels have one; the tail runs to 59 boxes
       and is beyond what any planner here solves at a sane budget
-- [x] A dependency-free platformer (`PlatformerGame`) to stand where a pure-Python Super
+- [x] A dependency-free platformer (`SuperMarioLandGame`) to stand where a pure-Python Super
       Mario Land would. It is a genre counterpart with stated physics, **not** a twin of the
       cartridge — nothing in it was read off that ROM, and the docs lead with that
 - [ ] An actual pure-Python Super Mario Land. Deliberately not attempted: reverse-engineering

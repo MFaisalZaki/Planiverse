@@ -53,7 +53,7 @@ Options:
   --rom-boxxle2 PATH    Boxxle II cartridge
   --rom-lolo PATH       Adventures of Lolo cartridge
   --rom-amazing-tater PATH  Amazing Tater cartridge
-  --rom-sml PATH        Super Mario Land cartridge (--rom-mario works too)
+  --rom-super-mario-land PATH  Super Mario Land cartridge (--rom-mario and --rom-sml work too)
   --exp-dir DIR         where to write the experiment  (default: experiment)
   --sandbox-dir DIR     where results will go          (default: sandbox)
   --name NAME           experiment name, used in job names
@@ -77,7 +77,7 @@ SUPPLIED_ROMS=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        # --rom-puzznic, --rom-flipull, --rom-sml (--rom-mario), and whatever a future Game
+        # --rom-puzznic, --rom-flipull, --rom-super-mario-land (--rom-mario), and whatever a future Game
         # Boy environment adds. Matched by shape and handed straight to `init`, which
         # generates the real flags from the registry — so this script never holds a second
         # list of them that could fall out of step.
@@ -251,15 +251,15 @@ ROM_ENTRIES=(
     boxxle2_gb        PLANIVERSE_BOXXLE2_ROM  boxxle2  "Boxxle II"
     lolo_gb           PLANIVERSE_LOLO_ROM     lolo     "Adventures of Lolo"
     amazing_tater_gb  PLANIVERSE_AMAZING_TATER_ROM  amazing-tater  "Amazing Tater"
-    super_mario_land  PLANIVERSE_SML_ROM      sml      "Super Mario Land"
+    super_mario_land_gb  PLANIVERSE_SUPER_MARIO_LAND_ROM  super-mario-land  "Super Mario Land"
 )
 
 supplied() {
     # Was this cartridge already given as a --rom-<flag> on the command line?
     local flag="$1" given
     for given in ${SUPPLIED_ROMS[@]+"${SUPPLIED_ROMS[@]}"}; do
-        # --rom-mario is an alias for --rom-sml; accept either spelling here.
-        if [ "$given" = "$flag" ] || { [ "$flag" = "sml" ] && [ "$given" = "mario" ]; }; then
+        # --rom-mario and --rom-sml are aliases for --rom-super-mario-land; accept all three.
+        if [ "$given" = "$flag" ] || { [ "$flag" = "super-mario-land" ] && { [ "$given" = "mario" ] || [ "$given" = "sml" ]; }; }; then
             return 0
         fi
     done

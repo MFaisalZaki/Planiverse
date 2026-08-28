@@ -125,7 +125,7 @@ action_cost_map = {
 # The emulator plumbing (`create_pyboy`, `load_state`, save-states) comes from the
 # shared `gb` module.
 
-class SuperMarioState(GBState):
+class SuperMarioLandGBState(GBState):
     def __init__(self, pyboy, depth):
         super().__init__(pyboy, depth)
         self.__update__(pyboy)
@@ -211,7 +211,7 @@ class SuperMarioState(GBState):
         return self.literals == other.literals and abs(self.timeleft - other.timeleft) < 5
 
     def __repr__(self):
-        return (f'<SuperMarioState(depth={self.depth}, mario_position={self.mario_position}, '
+        return (f'<SuperMarioLandGBState(depth={self.depth}, mario_position={self.mario_position}, '
                 f'progress={self.level_progress}, enemies={self.enemies_on_screen})>')
     
     @staticmethod
@@ -242,7 +242,7 @@ class SuperMarioState(GBState):
         """
         return super().save(gamerom, file, scale=scale)
 
-class SuperMarioAction(GBAction):
+class SuperMarioLandGBAction(GBAction):
     cost_map = action_cost_map
 
     def __cost__(self):
@@ -261,13 +261,13 @@ class SuperMarioAction(GBAction):
     # not changed here.
 
     def __next_state__(self, pyboy, state):
-        return SuperMarioState(pyboy, state.depth + 1)
+        return SuperMarioLandGBState(pyboy, state.depth + 1)
 
 
-class SuperMarioEnv(GBEnv):
+class SuperMarioLandGBEnv(GBEnv):
     rom_md5 = ROM_MD5
     rom_name = "Super Mario Land (World) (Rev 1)"
-    action_class = SuperMarioAction
+    action_class = SuperMarioLandGBAction
 
     def __init__(self, romfile, render=False, verify_rom=True):
         self.romfile = romfile
@@ -293,7 +293,7 @@ class SuperMarioEnv(GBEnv):
         self.game.set_lives_left(0) # to avoid replays
         self.pyboy.tick() # To render screen after `.start_game`
         self.game.post_tick()
-        self.state = SuperMarioState(self.pyboy, 0)
+        self.state = SuperMarioLandGBState(self.pyboy, 0)
         self.state_history = [self.state]
         return self.state, {}
 
@@ -328,5 +328,5 @@ class SuperMarioEnv(GBEnv):
         deferred rather than slipped in.
         """
         if isinstance(action, str):
-            action = SuperMarioAction(action)
+            action = SuperMarioLandGBAction(action)
         return action.apply(self.pyboy, state)

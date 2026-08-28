@@ -1,9 +1,9 @@
 """Tests for the Super Mario Land environment.
 
 Super Mario Land is copyrighted and no ROM ships with the repo, so the tests that need to
-boot the emulator are opt-in: point PLANIVERSE_SML_ROM at a ROM to run them.
+boot the emulator are opt-in: point PLANIVERSE_SUPER_MARIO_LAND_ROM at a ROM to run them.
 
-    PLANIVERSE_SML_ROM=/path/to/SuperMarioLand.gb poetry run pytest tests/test_super_mario.py
+    PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/SuperMarioLand.gb poetry run pytest tests/test_super_mario.py
 
 Everything that does not need the ROM (the action model, level indexing) always runs.
 """
@@ -11,23 +11,23 @@ import pytest
 
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
-from planiverse.environments.gameboy.super_mario_land import (  # noqa: E402
+from planiverse.environments.gameboy.super_mario_land_gb import (  # noqa: E402
     DIRECTIONS, FACING_LEFT, MARIO_X_SATURATES_AT, OBJECT_EMPTY, OBJECT_SLOTS, OBJECT_STRIDE,
-    ROM_MD5, SuperMarioAction, SuperMarioEnv, action_cost_map, action_list, decode_objects,
-    decode_timer, position, SuperMarioState,
+    ROM_MD5, SuperMarioLandGBAction, SuperMarioLandGBEnv, action_cost_map, action_list, decode_objects,
+    decode_timer, position, SuperMarioLandGBState,
 )
 
 from conftest import assert_state_contract, assert_successors_contract, sml_rom_path  # noqa: E402
 
 needs_rom = pytest.mark.skipif(
     sml_rom_path() is None,
-    reason="set PLANIVERSE_SML_ROM to a Super Mario Land ROM to run emulator tests",
+    reason="set PLANIVERSE_SUPER_MARIO_LAND_ROM to a Super Mario Land ROM to run emulator tests",
 )
 
 
 @pytest.fixture
 def env():
-    return SuperMarioEnv(sml_rom_path(), render=False)
+    return SuperMarioLandGBEnv(sml_rom_path(), render=False)
 
 
 # --------------------------------------------------------------------------- actions
@@ -42,27 +42,27 @@ def test_action_list_is_button_combinations_by_tick_count():
 
 
 def test_action_parsing():
-    action = SuperMarioAction("a+right,10")
+    action = SuperMarioLandGBAction("a+right,10")
     assert action.actions_tick_list == [("a", 10), ("right", 10)]
 
 
 def test_action_cost_charges_each_button_per_tick():
     # a=2, right=1 -> 3 per tick, held for 10 ticks
-    assert SuperMarioAction("a+right,10").cost() == 30
-    assert SuperMarioAction("right,3").cost() == 3
-    assert SuperMarioAction("nop,3").cost() == 0
+    assert SuperMarioLandGBAction("a+right,10").cost() == 30
+    assert SuperMarioLandGBAction("right,3").cost() == 3
+    assert SuperMarioLandGBAction("nop,3").cost() == 0
 
 
 def test_jumping_costs_more_than_running():
-    assert SuperMarioAction("a+right,5").cost() > SuperMarioAction("right,3").cost()
+    assert SuperMarioLandGBAction("a+right,5").cost() > SuperMarioLandGBAction("right,3").cost()
 
 
 def test_action_string_is_filename_safe():
-    assert str(SuperMarioAction("a+right,10")) == "a_with_right_for_10"
+    assert str(SuperMarioLandGBAction("a+right,10")) == "a_with_right_for_10"
 
 
 def test_actions_order_by_tick_count():
-    assert SuperMarioAction("a+right,5") < SuperMarioAction("a+right,15")
+    assert SuperMarioLandGBAction("a+right,5") < SuperMarioLandGBAction("a+right,15")
 
 
 # ----------------------------------------------------------------- reading RAM
@@ -114,8 +114,8 @@ def test_touching_compares_screen_coordinates():
     mario = position(x=0x40, y=0x88)
     close = decode_objects(bytes([0x00, 0x01, 0x88, 0x42]) + b"\xff" * 156)[0]
     far = decode_objects(bytes([0x00, 0x01, 0x88, 0x70]) + b"\xff" * 156)[0]
-    assert SuperMarioState.touching(mario, close)
-    assert not SuperMarioState.touching(mario, far)
+    assert SuperMarioLandGBState.touching(mario, close)
+    assert not SuperMarioLandGBState.touching(mario, far)
 
 
 def test_direction_is_a_code_not_a_velocity():
@@ -135,20 +135,20 @@ def test_a_foreign_rom_warns_because_the_addresses_are_revision_specific(tmp_pat
     rom = tmp_path / "not-mario.gb"
     rom.write_bytes(b"\x00" * 32768)
     with pytest.warns(UserWarning, match=ROM_MD5):
-        SuperMarioEnv(str(rom))
+        SuperMarioLandGBEnv(str(rom))
 
 
 def test_verification_can_be_turned_off(tmp_path):
     rom = tmp_path / "not-mario.gb"
     rom.write_bytes(b"\x00" * 32768)
-    SuperMarioEnv(str(rom), verify_rom=False)
+    SuperMarioLandGBEnv(str(rom), verify_rom=False)
 
 
 # --------------------------------------------------------------------------- levels
 
 def test_world_level_map_is_four_worlds_of_three_levels():
     """Super Mario Land has worlds 1-4 with 3 levels each, both 1-indexed."""
-    env = SuperMarioEnv("unused.gb", verify_rom=False)
+    env = SuperMarioLandGBEnv("unused.gb", verify_rom=False)
     assert len(env.world_level_map) == 12
     assert env.world_level_map[0] == (1, 1)
     assert env.world_level_map[11] == (4, 3)
@@ -159,14 +159,14 @@ def test_world_level_map_is_four_worlds_of_three_levels():
 def test_fix_index_selects_the_world_and_level():
     """fix_index used to set world_level and reset() never read it, so the level
     selection silently did nothing."""
-    env = SuperMarioEnv("unused.gb", verify_rom=False)
+    env = SuperMarioLandGBEnv("unused.gb", verify_rom=False)
     assert env.world_level is None
     env.fix_index(4)
     assert env.world_level == (2, 2)
 
 
 def test_fix_index_rejects_unknown_index():
-    env = SuperMarioEnv("unused.gb", verify_rom=False)
+    env = SuperMarioLandGBEnv("unused.gb", verify_rom=False)
     with pytest.raises(AssertionError, match="Invalid index"):
         env.fix_index(12)
 
@@ -200,8 +200,8 @@ def test_state_reads_mario_out_of_ram(env):
 def test_facing_and_direction_follow_the_input(env):
     """$C205 is $20 facing left, $C20D is $10 right / $20 left — both graded verified."""
     state, _ = env.reset()
-    left = SuperMarioAction("left,10").apply(env.pyboy, state)
-    right = SuperMarioAction("right,10").apply(env.pyboy, state)
+    left = SuperMarioLandGBAction("left,10").apply(env.pyboy, state)
+    right = SuperMarioLandGBAction("right,10").apply(env.pyboy, state)
     assert left.mario_facing == "left"
     assert right.mario_facing == "right"
     assert {left.mario_direction, right.mario_direction} <= {"still", "left", "right"}
@@ -212,7 +212,7 @@ def test_the_ground_flag_clears_for_a_jump(env):
     """$C20A: $01 grounded, $00 airborne."""
     state, _ = env.reset()
     assert state.on_ground, "Mario starts standing"
-    airborne = SuperMarioAction("a+right,5").apply(env.pyboy, state)
+    airborne = SuperMarioLandGBAction("a+right,5").apply(env.pyboy, state)
     assert airborne.airborne is not airborne.on_ground
 
 
@@ -221,7 +221,7 @@ def test_speed_is_a_magnitude(env):
     """$C20C is a magnitude, so it never goes negative however Mario is moving."""
     state, _ = env.reset()
     for action in ("left,10", "right,10", "a+right,10"):
-        assert SuperMarioAction(action).apply(env.pyboy, state).mario_speed >= 0
+        assert SuperMarioLandGBAction(action).apply(env.pyboy, state).mario_speed >= 0
 
 
 @needs_rom
@@ -249,7 +249,7 @@ def test_mario_x_saturates_but_progress_does_not(env):
     """The distinction the planner's goal window depends on."""
     state = env.reset()[0]
     for _ in range(12):
-        state = SuperMarioAction("right,15").apply(env.pyboy, state)
+        state = SuperMarioLandGBAction("right,15").apply(env.pyboy, state)
     assert state.mario_position.x <= MARIO_X_SATURATES_AT
     assert state.level_progress > env.reset()[0].level_progress
 
@@ -263,7 +263,7 @@ def test_successors_contract(env):
 @needs_rom
 def test_moving_right_advances_level_progress(env):
     state, _ = env.reset()
-    after = SuperMarioAction("right,3").apply(env.pyboy, state)
+    after = SuperMarioLandGBAction("right,3").apply(env.pyboy, state)
     assert after.level_progress >= state.level_progress
     assert after.depth == state.depth + 1
 
@@ -273,8 +273,8 @@ def test_applying_an_action_restores_the_parent_state(env):
     """Every action reloads its parent's save-state, so siblings expand from the same
     machine regardless of what the previous sibling did."""
     state, _ = env.reset()
-    first = SuperMarioAction("right,3").apply(env.pyboy, state)
-    second = SuperMarioAction("right,3").apply(env.pyboy, state)
+    first = SuperMarioLandGBAction("right,3").apply(env.pyboy, state)
+    second = SuperMarioLandGBAction("right,3").apply(env.pyboy, state)
     assert first.mario_position == second.mario_position
     assert first.level_progress == second.level_progress
 
@@ -290,7 +290,7 @@ def test_goal_and_terminal_read_the_state_not_live_memory(env):
     # Advance the emulator well past `state`, then ask about `state` again.
     advanced = state
     for _ in range(5):
-        advanced = SuperMarioAction("a+right,10").apply(env.pyboy, advanced)
+        advanced = SuperMarioLandGBAction("a+right,10").apply(env.pyboy, advanced)
     assert env.is_goal(state) is False
     assert env.is_terminal(state) is False
     assert isinstance(env.is_goal(advanced), bool)
@@ -305,7 +305,7 @@ def test_state_equality_tolerates_a_small_time_difference(env):
 @needs_rom
 def test_simulate_returns_state_trace(env):
     env.reset()
-    plan = [SuperMarioAction("right,3")] * 3
+    plan = [SuperMarioLandGBAction("right,3")] * 3
     trace = env.simulate(plan)
     assert len(trace) == len(plan) + 1
     assert [s.depth for s in trace] == [0, 1, 2, 3]

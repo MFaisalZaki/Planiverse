@@ -61,7 +61,7 @@ def lolo(state):
     return state.hearts_left + (0 if getattr(state, "solved", False) else 1)
 
 
-def platformer(state):
+def super_mario_land(state):
     """Columns between Mario and the flag. Dead states score worst.
 
     Being dead is not "far from the goal", it is "not going to arrive", so it is pinned above
@@ -136,7 +136,7 @@ def amazing_tater_gb(state):
             + abs(where.row - state.exit.row) + abs(where.col - state.exit.col))
 
 
-def super_mario_land(state):
+def super_mario_land_gb(state):
     """Distance still to run. `level_progress` counts up, and this counts down."""
     return -state.level_progress
 
@@ -158,8 +158,8 @@ MEASURES = {
     "lolo_gb": lolo_gb,
     "amazing_tater": amazing_tater,
     "amazing_tater_gb": amazing_tater_gb,
-    "platformer": platformer,
     "super_mario_land": super_mario_land,
+    "super_mario_land_gb": super_mario_land_gb,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,

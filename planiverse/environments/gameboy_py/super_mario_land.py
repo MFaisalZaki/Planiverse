@@ -1,29 +1,33 @@
 """A side-scrolling platformer in pure Python: no ROM, no emulator, no dependencies.
 
-This is the dependency-free counterpart to [`super_mario_land`](../gameboy/super_mario_land.py), and it
-is a weaker claim than the other two pairs in this library. `puzznic` and `flipull` are twins
-of their cartridges: their rules were derived from the real hardware and reproduce it, exactly
-in one case and partly in the other. **This is not a twin of Super Mario Land.** Nothing here
-was read off the cartridge. It is a platformer in the same genre, with physics chosen to be
-simple, integral and stated, built so that there is a dependency-free environment of that
-*shape* — run, jump, gaps, patrolling enemies, a flag at the end — to plan in.
+This is the dependency-free counterpart to [`super_mario_land_gb`](../gameboy/super_mario_land_gb.py),
+and it makes a weaker claim than the other cartridge pairs in this library. `puzznic` and
+`flipull` are twins: their rules were derived from the real hardware and reproduce it, exactly
+in one case and partly in the other. **This is not a twin of Super Mario Land** — the levels
+are original, the enemies are simplified, and there is no timer, score, power-up, run button
+or press-length jump control.
 
-Modelling a physics platformer faithfully is a much larger job than modelling a turn-based
-puzzle, and a half-reverse-engineered one would be worse than none: it would look like a
-prediction of the cartridge without being one. So this does not try, and says so.
+What it does share with the cartridge is the movement. The constants below were fitted to
+frame-by-frame measurements of `Super Mario Land (World) (Rev 1).gb` (the same dump the
+emulator environment's memory map was derived from), recording Mario's screen position
+($C201/$C202) and the on-ground flag ($C20A) once per frame while driving scripted input.
+Two of the cartridge's mechanics are deliberately left out, and the arc is fitted around
+their absence: press-length jump control (on the hardware, how long `a` is held shapes the
+climb) and the `b` dash. Here a jump is one fixed arc — the cartridge's full moving jump —
+and there is one horizontal speed, the cartridge's walk.
 
-## The physics, stated
+## The physics, measured
 
-Positions are in units, `TILE` units to a tile, the way the Game Boy itself counts. Mario is
-one tile square. Each tick, in this order:
+Positions are in units, `TILE` (8) units to a tile — one unit is one Game Boy pixel. A tick
+is four Game Boy frames. Mario is one tile square. Each tick, in this order:
 
-1. **Horizontal.** `left`/`right` accelerate towards a target speed — `WALK`, or `RUN` while
-   `b` is held — by `ACCEL` a tick, and `FRICTION` slows you when nothing is held. Speed
-   carries: what you are travelling at when you leave a ledge is what you cross the gap at,
-   so where you start running from decides whether you make it.
-2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED`. Holding it keeps the rise;
-   releasing it while still rising cuts the climb to `JUMP_CUT`, which is what makes a short
-   hop and a full jump different actions rather than the same one.
+1. **Horizontal.** `left`/`right` accelerate towards `SPEED` by `ACCEL` a tick, and
+   `FRICTION` slows you when nothing is held. The cartridge walks at 1 pixel a frame and
+   reaches that within about six frames of the press, which is `SPEED` (4) and `ACCEL` (2)
+   at this granularity. Speed still carries: what you are travelling at when you leave a
+   ledge is what you cross the gap at.
+2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED`. That is the whole jump:
+   there is no press-length control, by design.
 3. **Gravity.** `vy += GRAVITY`, capped at `MAX_FALL`.
 4. **Collision.** Resolved on one axis at a time — horizontal first, then vertical — so a
    corner never lets you through.
@@ -33,7 +37,7 @@ the side. Landing on an enemy from above kills the *enemy* and bounces you.
 
 ## What this has that the emulator environment does not
 
-`is_terminal` is **exact about death**. `SuperMarioEnv` cannot tell you whether Mario died on
+`is_terminal` is **exact about death**. `SuperMarioLandGBEnv` cannot tell you whether Mario died on
 contact: it has a proximity test over the object array, and whether contact is fatal depends on
 a power-up byte the memory map never confirmed, so it deliberately reports only the music track
 changing. Here death is defined, so a planner prunes the moment it happens rather than playing
@@ -48,38 +52,38 @@ There is no timer, and no score. The cartridge has both; this does not model the
 """
 from planiverse.environments.base import Environment
 
-#: Units to a tile — the Game Boy's own granularity, and enough for jump arcs to have shape.
+#: Units to a tile — the Game Boy's own granularity. One unit is one pixel; one tick is
+#: four Game Boy frames, which is what lets the measured values below stay integral.
 TILE = 8
 
-#: Horizontal speeds, in units per tick. `b` selects the faster one.
-WALK, RUN = 2, 4
+#: The one horizontal speed, in units per tick. The cartridge walks at a steady 1 pixel a
+#: frame — 4 units a tick — and that is the speed here. There is no `b` dash, by design.
+SPEED = 4
 
-#: How fast you reach that speed, and how fast you lose it with nothing held. Momentum is
-#: what makes position matter: reaching `RUN` from a standstill takes four ticks and ten
-#: units of runway, and the speed you are carrying when you leave a ledge is the speed you
-#: cross the gap at. Without it a run-up is free, every gap is either always or never
-#: jumpable, and the levels collapse into "hold run and jump" — which is exactly what the
-#: first draft of this file did.
-ACCEL, FRICTION = 1, 1
+#: How fast you reach that speed, and how fast you lose it with nothing held. The cartridge
+#: reaches full walking speed within about six frames of the press — under two ticks — so
+#: `ACCEL` is 2. Momentum still matters at the margin: the speed you are carrying when you
+#: leave a ledge is the speed you cross the gap at.
+ACCEL, FRICTION = 2, 2
 
-#: Vertical. A jump from `JUMP_SPEED` rises for five ticks and 3.75 tiles, and the whole arc
-#: lasts about eleven — far enough at `RUN` to clear a five-tile gap, and not at `WALK`. That
-#: difference is the entire reason a run button exists.
-GRAVITY, MAX_FALL, JUMP_SPEED, JUMP_CUT, BOUNCE = 2, 12, -12, -4, -8
+#: Vertical, fitted to the cartridge's full moving jump: measured 33 pixels up in 22 frames
+#: with 49 frames airborne, carrying 46 pixels horizontally. This arc rises 30 units in 5
+#: ticks, is airborne for about 10, and carries about 40 units at `SPEED` — close on every
+#: axis, and integral. The cap of 12 units a tick is the measured terminal fall of about 3
+#: pixels a frame.
+GRAVITY, MAX_FALL, JUMP_SPEED, BOUNCE = 2, 12, -12, -8
 
 #: `#` solid, ` ` air, `^` hazard, `E` an enemy's starting tile, `M` Mario's, `G` the flag.
 SOLID, AIR, HAZARD, ENEMY, START, GOAL = "#", " ", "^", "E", "M", "G"
 
-#: Buttons and how long to hold them. The vocabulary mirrors `super_mario_land`'s
-#: `button,ticks` actions, minus `down`: there is no ducking in this model.
-#:
-#: The short hold has to be genuinely short or the jump cut never fires. `vy` climbs past
-#: `JUMP_CUT` three ticks into a jump, so releasing any later than that changes nothing — a
-#: first draft used `(4, 8, 12)` and all three `a` actions produced the same arc, which made
-#: two thirds of the action set dead weight and a hop impossible.
-BUTTON_SETS = ("a+right", "a+left", "b+right", "b+left", "a+b+right", "a+b+left")
+#: Buttons and how long to hold them. The vocabulary mirrors `super_mario_land_gb`'s
+#: `button,ticks` actions, minus `down` (there is no ducking in this model) and minus `b`
+#: (there is no dash — the model has the cartridge's walk and nothing above it). The jump
+#: is one fixed arc, so a hold length decides how long a *direction* is held: the short one
+#: is for fine positioning, the long one for covering ground.
+BUTTON_SETS = ("a+right", "a+left", "right", "left")
 HOLD_TICKS = (2, 6, 12)
-SHORT_BUTTONS = ("nop", "right", "left")
+SHORT_BUTTONS = ("nop",)
 SHORT_TICKS = 4
 
 #: Enemies step one unit per tick and turn at a wall or a ledge.
@@ -91,7 +95,7 @@ def _actions():
     return tuple(held + [f"{buttons},{SHORT_TICKS}" for buttons in SHORT_BUTTONS])
 
 
-#: The full action vocabulary: 21 held-button combinations.
+#: The full action vocabulary: 13 held-button combinations.
 ACTION_NAMES = _actions()
 
 
@@ -168,11 +172,11 @@ def _settle(tiles, x, y):
     return x, y
 
 
-class PlatformerAction:
+class SuperMarioLandAction:
     """A set of buttons held for a number of ticks, spelled `"a+right,8"`."""
 
     #: What each button costs, so that a plan can be scored by effort rather than by length.
-    COSTS = {"a": 2, "b": 2, "left": 1, "right": 1, "nop": 0}
+    COSTS = {"a": 2, "left": 1, "right": 1, "nop": 0}
 
     def __init__(self, name):
         if name not in ACTION_NAMES:
@@ -186,7 +190,7 @@ class PlatformerAction:
         return sum(self.COSTS[button] for button in self.buttons) * self.ticks
 
     def __eq__(self, other):
-        return isinstance(other, PlatformerAction) and self.name == other.name
+        return isinstance(other, SuperMarioLandAction) and self.name == other.name
 
     def __hash__(self):
         return hash(self.name)
@@ -200,7 +204,7 @@ class PlatformerAction:
     __repr__ = __str__
 
 
-class PlatformerState:
+class SuperMarioLandState:
     """Mario's position and velocity, and where the living enemies are.
 
     Enemy positions are carried in the state rather than derived from a tick counter. It
@@ -241,7 +245,7 @@ class PlatformerState:
         return (self.x, self.y, self.vx, self.vy, self.on_ground, self.enemies, self.dead)
 
     def __eq__(self, other):
-        return isinstance(other, PlatformerState) and self.key() == other.key()
+        return isinstance(other, SuperMarioLandState) and self.key() == other.key()
 
     def __hash__(self):
         return hash(self.key())
@@ -266,11 +270,11 @@ class PlatformerState:
             f"vx {self.vx} vy {self.vy}  enemies: {len(self.enemies)}"
 
     def __repr__(self):
-        return (f"<PlatformerState(x={self.tile_x}, y={self.tile_y}, vx={self.vx}, "
+        return (f"<SuperMarioLandState(x={self.tile_x}, y={self.tile_y}, vx={self.vx}, "
                 f"vy={self.vy}, enemies={len(self.enemies)}, dead={self.dead})>")
 
 
-class PlatformerGame(Environment):
+class SuperMarioLandGame(Environment):
     """A run-and-jump level as a planning problem. Needs nothing installed."""
 
     def __init__(self, levels=None):
@@ -280,7 +284,7 @@ class PlatformerGame(Environment):
         boards built for the purpose rather than on whichever shipped level happens to have
         the right shape.
         """
-        super().__init__("platformer")
+        super().__init__("super_mario_land")
         self.levels = tuple(levels) if levels is not None else LEVELS
         self.index = 0
         self.state = None
@@ -299,7 +303,7 @@ class PlatformerGame(Environment):
         tiles, start, enemies, goal = parse_level(self.levels[self.index])
         placed = tuple((x, y, 1) for x, y in enemies)
         x, y = _settle(tiles, *start)
-        self.state = PlatformerState(tiles, x, y, 0, 0, True, placed, goal)
+        self.state = SuperMarioLandState(tiles, x, y, 0, 0, True, placed, goal)
         self.state_history = [self.state]
         return self.state, {"level": self.index,
                             "width": len(tiles[0]),
@@ -320,7 +324,7 @@ class PlatformerGame(Environment):
     def is_terminal(self, state):
         """Mario died — fell out of the level, touched a hazard, or was hit by an enemy.
 
-        Exact about death, unlike `SuperMarioEnv.is_terminal`, which cannot tell a fatal touch
+        Exact about death, unlike `SuperMarioLandGBEnv.is_terminal`, which cannot tell a fatal touch
         from a survivable one and so reports only the death music. It is not a test for
         whether the level is still winnable: Mario can be alive in a pit he cannot leave, and
         deciding that in general means solving the level.
@@ -332,7 +336,7 @@ class PlatformerGame(Environment):
             return []
         successors = []
         for name in ACTION_NAMES:
-            action = PlatformerAction(name)
+            action = SuperMarioLandAction(name)
             successor = self.__advance__(state, action)
             if successor == state:
                 continue
@@ -355,7 +359,7 @@ class PlatformerGame(Environment):
         return self.state, self.state.tile_x - before
 
     def get_actions(self):
-        return [PlatformerAction(name) for name in ACTION_NAMES]
+        return [SuperMarioLandAction(name) for name in ACTION_NAMES]
 
     def render(self):
         rendered = [str(state) for state in self.state_history]
@@ -371,16 +375,15 @@ class PlatformerGame(Environment):
         if state.dead or self.is_goal(state):
             return state
         if isinstance(action, str):
-            action = PlatformerAction(action)
+            action = SuperMarioLandAction(action)
 
         tiles = state.tiles
         x, y, vx, vy = state.x, state.y, state.vx, state.vy
         on_ground = state.on_ground
         enemies = list(state.enemies)
         jumping = "a" in action.buttons
-        speed = RUN if "b" in action.buttons else WALK
         heading = 1 if "right" in action.buttons else -1 if "left" in action.buttons else 0
-        target = speed * heading
+        target = SPEED * heading
 
         for _ in range(action.ticks):
             # 1. Horizontal. Accelerate towards the target, or coast down to a stop, then
@@ -397,11 +400,10 @@ class PlatformerGame(Environment):
                 else:
                     x = stepped
 
-            # 2. Jump, and the cut that makes a hop different from a full jump.
+            # 2. Jump — one fixed arc, the cartridge's full moving jump. There is no
+            #    press-length control, by design.
             if jumping and on_ground:
                 vy, on_ground = JUMP_SPEED, False
-            elif not jumping and vy < JUMP_CUT:
-                vy = JUMP_CUT
 
             # 3. Gravity.
             vy = min(MAX_FALL, vy + GRAVITY)
@@ -430,25 +432,25 @@ class PlatformerGame(Environment):
                                for ex, ey, facing in enemies]
                 resolved = self.__resolve__(tiles, x, y, was_y, vy, falling, enemies)
                 if resolved is None:
-                    return PlatformerState(tiles, x, y, vx, vy, on_ground, enemies,
+                    return SuperMarioLandState(tiles, x, y, vx, vy, on_ground, enemies,
                                            state.goal, dead=True, depth=state.depth + 1)
                 x, y, vy, stomped, enemies = resolved
                 if stomped:
                     on_ground = False
 
             if y // TILE > len(tiles):
-                return PlatformerState(tiles, x, y, vx, vy, False, enemies, state.goal,
+                return SuperMarioLandState(tiles, x, y, vx, vy, False, enemies, state.goal,
                                        dead=True, depth=state.depth + 1)
             if covers(tiles, x, y, (HAZARD,)):
-                return PlatformerState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
+                return SuperMarioLandState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
                                        dead=True, depth=state.depth + 1)
 
-            reached = PlatformerState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
+            reached = SuperMarioLandState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
                                       depth=state.depth + 1)
             if self.is_goal(reached):
                 return reached
 
-        return PlatformerState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
+        return SuperMarioLandState(tiles, x, y, vx, vy, on_ground, enemies, state.goal,
                                depth=state.depth + 1)
 
     def __resolve__(self, tiles, x, y, was_y, vy, falling, enemies):

@@ -65,9 +65,10 @@ DEFAULT_PLANNERS = (
 )
 
 
-#: A friendlier spelling for a cartridge whose variable is an abbreviation. `--rom-sml`
-#: follows PLANIVERSE_SML_ROM and stays for that reason, but nobody types "sml" first.
-ROM_ALIASES = {"sml": ("--rom-mario",)}
+#: Shorter spellings for the one flag whose derived name is a mouthful. `--rom-super-mario-land`
+#: follows PLANIVERSE_SUPER_MARIO_LAND_ROM; `--rom-mario` is what people type, and `--rom-sml`
+#: is kept for anyone still using the old abbreviated spelling.
+ROM_ALIASES = {"super-mario-land": ("--rom-mario", "--rom-sml")}
 
 
 def rom_environments():
