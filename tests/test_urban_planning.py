@@ -9,7 +9,7 @@ pytest.importorskip("networkx", reason="networkx is not installed")
 from planiverse.environments.urban_planning.environment import (  # noqa: E402
     CHANGE_RATIO, ConvertCommercialAction, ConvertEmptyAction, ConvertFacilitiesAction,
     ConvertGreenSpaceAction, ConvertOfficesAction, LandUseType, RemoveResidentialAction,
-    UrbanPlanningEnv, landuse_map,
+    UrbanEnvState, UrbanPlanningEnv, landuse_map,
 )
 
 from conftest import assert_state_contract, assert_successors_contract  # noqa: E402
@@ -108,15 +108,18 @@ def test_simulate_returns_state_trace(kendall):
         assert_state_contract(st)
 
 
-def test_goal_is_the_horizon():
+def test_running_out_of_plan_periods_is_a_dead_end_not_a_win():
+    """Replaces a test that asserted the opposite. `is_goal` was `depth >= horizon`, so
+    exhausting the horizon counted as success and every sufficiently long plan solved the
+    problem; the targets in `PLAN_TARGETS` are the goal now, and the horizon is the budget."""
     env = UrbanPlanningEnv(horizon=3)
     env.fix_index(KENDALL)
     state, _ = env.reset()
     assert not env.is_goal(state)
     for _ in range(3):
         state = env.successors(state)[0][1]
-    assert env.is_goal(state)
-    assert not env.is_terminal(state)
+    assert not env.is_goal(state)
+    assert env.is_terminal(state)
 
 
 # --------------------------------------------------------------------------- no-op filtering
@@ -330,3 +333,33 @@ def test_literals_break_parcel_symmetry(kendall):
     state, _ = kendall.reset()
     assert not any(lit.startswith("land_") for lit in state.literals)
     assert len(state.literals) == len(LandUseType) + 1      # one per type, plus depth
+
+
+# --------------------------------------------------------------------------- the goal
+
+def test_the_horizon_is_not_the_goal(kendall):
+    """Running out of time is not success. `is_goal` used to return `depth >= horizon`,
+    which made every plan long enough a solution and left nothing to search for."""
+    state, _ = kendall.reset()
+    exhausted = UrbanEnvState(state.urban_graph, kendall.horizon)
+    assert not kendall.is_goal(exhausted), \
+        "reaching the horizon without meeting the plan's targets is not a goal"
+    assert kendall.is_terminal(exhausted), "but it is a dead end: no actions remain"
+
+
+@pytest.mark.parametrize("index", [KENDALL, ST_ANDREWS])
+def test_a_city_does_not_start_at_its_targets(index):
+    """Each city's targets are an improvement on what it starts as, or there would be
+    nothing to plan."""
+    env = UrbanPlanningEnv(horizon=100)
+    env.fix_index(index)
+    state, _ = env.reset()
+    assert not env.is_goal(state)
+
+
+def test_the_goal_needs_both_targets_met(kendall):
+    """Sustainability and diversity both have to hold, so a plan cannot trade one away
+    for the other — the same reason the water network goal is two-sided."""
+    state, _ = kendall.reset()
+    sustainability, diversity = kendall.targets
+    assert state.diversity_score < diversity or state.sustainability_score < sustainability

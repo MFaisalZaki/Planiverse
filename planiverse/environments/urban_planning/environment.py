@@ -27,6 +27,23 @@ from planiverse.environments.base import Environment
 # Share of a land-use class rezoned by a single action.
 CHANGE_RATIO = 0.05
 
+#: What each city's plan has to achieve, as `(sustainability, diversity)`.
+#:
+#: These are per-city because the two start nowhere near each other: St Andrews is already
+#: 0.9 sustainable and barely mixed (0.3), while Kendall Square is thoroughly mixed (0.4)
+#: and only 0.1 sustainable — a business district of offices and flats with little green
+#: space. A single global threshold would be trivial for one and impossible for the other.
+#:
+#: Both targets were measured rather than chosen: each is reachable by breadth-first search
+#: from the city's own initial state, and neither is met at the start. Kendall Square is the
+#: more interesting of the two — no single rezoning improves either score, so a planner has
+#: to cross a four-action plateau before anything moves at all, and greedy search stalls
+#: immediately.
+PLAN_TARGETS = {
+    0: (0.1, 0.5),      # Kendall Square: hold sustainability, raise the land-use mix
+    1: (0.9, 0.6),      # St Andrews: hold sustainability, raise the mix further
+}
+
 class LandUseType(Enum):
     RESIDENTIAL = 'r'
     OFFICE      = 'o'
@@ -240,11 +257,30 @@ class UrbanPlanningEnv(Environment):
         self.node_info  = pd.read_csv(os.path.join(urban_info, 'node_info.csv'))
         self.node_pairs = pd.read_csv(os.path.join(urban_info, 'node_pairs_knn4.csv'))
 
+    @property
+    def targets(self):
+        """The `(sustainability, diversity)` this city's plan has to reach."""
+        return PLAN_TARGETS[self.index]
+
     def is_goal(self, state):
-        return state.depth >= self.horizon
-    
+        """The plan's targets are met: a more mixed city that is no less sustainable.
+
+        Both halves are needed, for the same reason the water network's goal is two-sided.
+        Diversity alone is maximised by flattening every class to equal size, which on
+        Kendall Square means rezoning green space and facilities into offices — more
+        *mixed*, and worse to live in. Requiring sustainability not to fall rules that out.
+
+        This used to be `state.depth >= self.horizon`, which is not a goal at all: it made
+        every plan of that length a solution and gave search nothing to aim at.
+        """
+        sustainability, diversity = self.targets
+        return (state.sustainability_score >= sustainability
+                and state.diversity_score >= diversity)
+
     def is_terminal(self, state):
-        return False
+        """Out of plan periods. Not a dead end anyone can act out of, so search can close
+        it — but reaching it is a failure, not a success."""
+        return state.depth >= self.horizon
     
     # Returns a list of [action, successor_state]
     def successors(self, state):
