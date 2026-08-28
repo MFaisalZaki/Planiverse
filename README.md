@@ -489,13 +489,6 @@ at all, and it now has a name.
 `Simulator` dispatches structurally (`implements_contract`), so an environment brought from
 outside works without inheriting from anything.
 
-**Old import paths still work**, via shims that raise `DeprecationWarning`:
-
-```python
-from planiverse.problems.retro_games.puzznic import PuzznicGame   # works, warns
-from planiverse.environments.puzznic import PuzznicGame           # the new home
-```
-
 ## Adding an environment
 
 1. Subclass `Environment` (`planiverse/environments/base.py`) and implement the six methods.
@@ -530,7 +523,6 @@ planiverse/
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
-├── problems/                           # deprecated shims for the old import paths
 ├── planners/
 │   ├── width/                          # IW, Iterated Width, SIW, BFWS
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
