@@ -50,6 +50,9 @@ Options:
   --python BIN          interpreter to build the venv with          (default: python3)
   --rom-puzznic PATH    Puzznic cartridge; skips the question for it
   --rom-flipull PATH    Flipull cartridge
+  --rom-boxxle2 PATH    Boxxle II cartridge
+  --rom-lolo PATH       Adventures of Lolo cartridge
+  --rom-amazing-tater PATH  Amazing Tater cartridge
   --rom-sml PATH        Super Mario Land cartridge (--rom-mario works too)
   --exp-dir DIR         where to write the experiment  (default: experiment)
   --sandbox-dir DIR     where results will go          (default: sandbox)
