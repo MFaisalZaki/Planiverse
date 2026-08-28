@@ -396,7 +396,7 @@ There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
 | `--rom-flipull PATH` | `flipull_gb` | `PLANIVERSE_FLIPULL_ROM` |
 | `--rom-boxxle2 PATH` | `boxxle2_gb` | `PLANIVERSE_BOXXLE2_ROM` |
 | `--rom-lolo PATH` | `lolo_gb` | `PLANIVERSE_LOLO_ROM` |
-| `--rom-sml PATH`, `--rom-mario PATH` | `super_mario_land` | `PLANIVERSE_SML_ROM` |
+| `--rom-sml PATH`, `--rom-mario PATH` | `super_mario_land` | `PLANIVERSE_SUPER_MARIO_LAND_ROM` |
 
 ```bash
 ./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \

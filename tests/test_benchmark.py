@@ -246,12 +246,12 @@ def test_a_measure_is_a_number_that_falls_as_the_goal_nears():
 
 def test_a_dead_platformer_state_scores_worse_than_any_live_one():
     """Being dead is not "far from the goal", it is "not going to arrive"."""
-    from planiverse.environments.gameboy_py.platformer import PlatformerGame
+    from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
 
-    env = PlatformerGame()
+    env = SuperMarioLandGame()
     env.fix_index(0)
     state, _ = env.reset()
-    measure = measure_for("platformer")
+    measure = measure_for("super_mario_land")
     dead = type(state)(state.tiles, state.x, state.y, 0, 0, False, state.enemies,
                        state.goal, dead=True)
     assert measure(dead) > measure(state)
@@ -318,7 +318,7 @@ def test_instance_counts_are_probed_from_the_environment():
     from planiverse.environments import get_spec
 
     assert discovery.count_instances(get_spec("flipull")) == 10
-    assert discovery.count_instances(get_spec("platformer")) == 8
+    assert discovery.count_instances(get_spec("super_mario_land")) == 8
     assert discovery.count_instances(get_spec("puzznic")) == 128
 
 
@@ -1143,7 +1143,7 @@ def test_every_cartridge_environment_gets_its_own_flag():
     flags = dict((spec.name, flag) for spec, flag in rom_environments())
     assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull", "boxxle2_gb": "boxxle2",
                      "lolo_gb": "lolo", "amazing_tater_gb": "amazing-tater",
-                     "super_mario_land": "sml"}
+                     "super_mario_land_gb": "super-mario-land"}
 
 
 def test_the_flag_and_the_environment_variable_are_the_same_name():
@@ -1165,13 +1165,13 @@ def test_a_named_flag_records_the_cartridge(tmp_path, capsys):
 
 
 def test_the_mario_alias_reaches_the_same_place(tmp_path, capsys):
-    """`--rom-sml` follows the variable name, but nobody types "sml" first."""
+    """`--rom-mario` stays as the short spelling of `--rom-super-mario-land`."""
     cartridge = tmp_path / "Mario.gb"
     cartridge.write_bytes(b"\x00" * 32768)
     assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
                    "--rom-mario", str(cartridge)) == 0
     assert ExperimentConfig.load(tmp_path / "exp").roms == \
-        {"super_mario_land": str(cartridge)}
+        {"super_mario_land_gb": str(cartridge)}
 
 
 def test_a_relative_path_and_a_tilde_are_resolved(tmp_path, monkeypatch, capsys):
@@ -1265,7 +1265,7 @@ def test_the_setup_script_takes_the_same_rom_flags(tmp_path):
         capture_output=True, text=True,
         env={**os.environ, "PYTHONPATH": str(SETUP_SCRIPT.parent),
              "PLANIVERSE_PUZZNIC_ROM": "", "PLANIVERSE_FLIPULL_ROM": "",
-             "PLANIVERSE_SML_ROM": ""})
+             "PLANIVERSE_SUPER_MARIO_LAND_ROM": ""})
     assert result.returncode == 0, result.stderr[-2000:]
     assert "given on the command line" in result.stdout
     assert ExperimentConfig.load(tmp_path / "exp").roms == {"puzznic_gb": str(cartridge)}

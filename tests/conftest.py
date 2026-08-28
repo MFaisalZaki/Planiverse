@@ -19,9 +19,9 @@ def sml_rom_path():
     """Path to a Super Mario Land ROM, or None.
 
     The ROM is copyrighted and cannot ship with the repo, so it is opt-in via the
-    PLANIVERSE_SML_ROM environment variable.
+    PLANIVERSE_SUPER_MARIO_LAND_ROM environment variable.
     """
-    rom = os.environ.get("PLANIVERSE_SML_ROM")
+    rom = os.environ.get("PLANIVERSE_SUPER_MARIO_LAND_ROM")
     if rom and os.path.isfile(rom):
         return rom
     return None

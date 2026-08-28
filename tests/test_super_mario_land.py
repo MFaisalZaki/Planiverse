@@ -1,4 +1,4 @@
-"""Tests for the pure-Python platformer.
+"""Tests for the pure-Python Super Mario Land counterpart.
 
 The physics tests build their own one-off levels rather than leaning on whichever shipped
 level happens to have the right shape, so that a rule can be pinned to a board designed to
@@ -6,10 +6,10 @@ show it. The level tests then check that every shipped level can actually be fin
 """
 import pytest
 
-from planiverse.environments.gameboy_py.platformer import (
+from planiverse.environments.gameboy_py.super_mario_land import (
     ACCEL, ACTION_NAMES, BOUNCE, GRAVITY, JUMP_SPEED, LEVELS, MAX_FALL,
-    MEASURED_EXPANSIONS, RUN, TILE, WALK,
-    PlatformerAction, PlatformerGame, blocked, parse_level,
+    MEASURED_EXPANSIONS, SPEED, TILE,
+    SuperMarioLandAction, SuperMarioLandGame, blocked, parse_level,
 )
 from planiverse.planners.width import BFWSSearch, Budget
 
@@ -20,7 +20,7 @@ FLAT = "\n".join([" " * 20, " " * 20, " " * 20, "M" + " " * 18 + "G", "#" * 20])
 
 
 def game_on(text):
-    game = PlatformerGame(levels=[text])
+    game = SuperMarioLandGame(levels=[text])
     game.fix_index(0)
     state, _ = game.reset()
     return game, state
@@ -34,7 +34,7 @@ def play(game, state, *actions):
 
 @pytest.fixture
 def env():
-    game = PlatformerGame()
+    game = SuperMarioLandGame()
     game.fix_index(0)
     return game
 
@@ -50,26 +50,27 @@ def test_mario_starts_standing_on_the_floor():
     assert state.tile_y == 3
 
 
-def test_running_covers_more_ground_than_walking():
+def test_there_is_one_speed_and_no_dash_button():
+    """The cartridge's walk is the model's only speed: no `b`, no run, by design."""
     game, state = game_on(FLAT)
-    walked = play(game, state, "right,4", "right,4")
-    ran = play(game, state, "b+right,6", "b+right,6")
-    assert ran.x > walked.x
-    assert ran.vx == RUN and walked.vx == WALK
+    walked = play(game, state, "right,6")
+    assert walked.vx == SPEED
+    assert not any("b" in name.split(",")[0].split("+") for name in ACTION_NAMES)
 
 
 def test_speed_builds_up_rather_than_appearing():
-    """Momentum. Reaching `RUN` takes four ticks, so the first tick of a run is slow."""
+    """Momentum. The first tick of a walk is slower than the rest, the way the cartridge
+    takes about six frames to reach full speed."""
     game, state = game_on(FLAT)
-    after_two = play(game, state, "b+right,2")
-    assert after_two.vx == 2 * ACCEL < RUN
-    assert play(game, after_two, "b+right,6").vx == RUN
+    after_two = play(game, state, "right,2")
+    assert after_two.vx == SPEED
+    assert after_two.x - state.x == ACCEL + SPEED < 2 * SPEED
 
 
 def test_letting_go_coasts_to_a_stop_rather_than_stopping_dead():
     game, state = game_on(FLAT)
-    running = play(game, state, "b+right,6")
-    assert running.vx == RUN
+    running = play(game, state, "right,6")
+    assert running.vx == SPEED
     coasting = play(game, running, "nop,4")
     assert coasting.vx == 0
     assert coasting.x > running.x, "he kept moving while slowing down"
@@ -86,29 +87,27 @@ def test_a_jump_goes_up_and_comes_back_down():
 def peak_of(game, state, launch):
     """The highest point of a jump, sampled every two ticks.
 
-    Sampled with `b+right,2` because it is the shortest action that does *not* hold `a`, so
-    it lets the jump cut apply while still reading the arc finely. Comparing where a jump
-    ends instead of where it peaks measures nothing: both arcs are already falling by then.
+    Comparing where a jump ends instead of where it peaks measures nothing: both arcs are
+    already falling by then.
     """
     node, peak = game.__advance__(state, launch), None
     peak = node.y
     for _ in range(6):
-        node = game.__advance__(node, "b+right,2")
+        node = game.__advance__(node, "right,2")
         peak = min(peak, node.y)
         if node.on_ground or node.dead:
             break
     return peak
 
 
-def test_a_short_hold_hops_and_a_long_one_jumps():
-    """The jump cut. If these came out the same, two thirds of the action set would be dead
-    weight — which is exactly what happened when the shortest hold was four ticks, because
-    `vy` is already past `JUMP_CUT` by then."""
+def test_the_jump_is_one_fixed_arc():
+    """No press-length control, by design: releasing `a` early and holding it produce the
+    same arc, and its height is the fitted rise of the cartridge's full moving jump."""
     game, state = game_on(FLAT)
-    hop = peak_of(game, state, "a+right,2")
-    full = peak_of(game, state, "a+right,6")
-    assert full < hop, "holding the button longer must go higher"
-    assert hop < state.y, "and a hop still leaves the ground"
+    released_early = peak_of(game, state, "a+right,2")
+    held = peak_of(game, state, "a+right,6")
+    assert released_early == held, "hold length must not shape the jump"
+    assert state.y - held == 30, "the arc rises 30 units, the fitted measured height"
 
 
 def test_gravity_is_capped():
@@ -124,7 +123,7 @@ def test_a_wall_stops_you_and_takes_your_speed():
     because Mario had won."""
     walled = "\n".join(["      G", "   #   ", "M  #   ", "#######"])
     game, state = game_on(walled)
-    against = play(game, state, "b+right,12", "b+right,12")
+    against = play(game, state, "right,12", "right,12")
     assert not game.is_goal(against), "he did not reach the flag"
     assert against.vx == 0, "running into a wall does not leave you running"
     assert against.tile_x == 2, "and he is stopped beside it, not inside it"
@@ -133,7 +132,7 @@ def test_a_wall_stops_you_and_takes_your_speed():
 
 def test_you_cannot_walk_off_the_left_edge():
     game, state = game_on(FLAT)
-    assert play(game, state, "b+left,12", "b+left,12").x == 0
+    assert play(game, state, "left,12", "left,12").x == 0
 
 
 def test_a_ceiling_stops_a_jump():
@@ -148,7 +147,7 @@ def test_a_ceiling_stops_a_jump():
 def test_falling_into_a_pit_kills():
     pit = "\n".join([" " * 12, " " * 12, "M" + " " * 10 + "G", "####    ####"])
     game, state = game_on(pit)
-    fallen = play(game, state, "b+right,12", "nop,4", "nop,4", "nop,4")
+    fallen = play(game, state, "right,12", "nop,4", "nop,4", "nop,4")
     assert fallen.dead
     assert game.is_terminal(fallen)
     assert game.successors(fallen) == []
@@ -157,7 +156,7 @@ def test_falling_into_a_pit_kills():
 def test_spikes_kill():
     spiky = "\n".join([" " * 10, "M" + " " * 8 + "G", "###^^#####"])
     game, state = game_on(spiky)
-    walked = play(game, state, "b+right,12")
+    walked = play(game, state, "right,12")
     assert walked.dead
 
 
@@ -165,7 +164,7 @@ def test_walking_into_an_enemy_kills():
     corridor = "\n".join([" " * 12, "M  E      G", "############"])
     game, state = game_on(corridor)
     assert len(state.enemies) == 1
-    assert play(game, state, "b+right,12").dead
+    assert play(game, state, "right,12").dead
 
 
 def dropping_onto_the_enemy(game, state, speed):
@@ -198,15 +197,15 @@ def test_a_fast_fall_can_still_stomp():
 def test_a_dead_state_is_absorbing():
     pit = "\n".join([" " * 12, " " * 12, "M" + " " * 10 + "G", "####    ####"])
     game, state = game_on(pit)
-    dead = play(game, state, "b+right,12", "nop,4", "nop,4", "nop,4")
+    dead = play(game, state, "right,12", "nop,4", "nop,4", "nop,4")
     assert dead.dead
-    assert play(game, dead, "b+left,12") == dead, "nothing moves a dead Mario"
+    assert play(game, dead, "left,12") == dead, "nothing moves a dead Mario"
 
 
 def test_death_is_not_the_goal():
     pit = "\n".join([" " * 12, " " * 12, "M" + " " * 10 + "G", "####    ####"])
     game, state = game_on(pit)
-    dead = play(game, state, "b+right,12", "nop,4", "nop,4", "nop,4")
+    dead = play(game, state, "right,12", "nop,4", "nop,4", "nop,4")
     assert not game.is_goal(dead)
 
 
@@ -275,7 +274,7 @@ def test_every_shipped_level_starts_mario_over_solid_ground():
     """`_settle` drops him until something stops him. Over a pit nothing does, so he would
     begin the level already falling out of it."""
     for index in range(len(LEVELS)):
-        game = PlatformerGame()
+        game = SuperMarioLandGame()
         game.fix_index(index)
         state, _ = game.reset()
         assert state.on_ground, f"level {index} starts Mario in mid-air"
@@ -288,7 +287,7 @@ def test_every_shipped_level_can_be_finished(index):
     """The bar every environment in this library has to clear. The levels are generated and
     then measured for exactly this reason: a level whose flag cannot be reached is not a
     benchmark, it is a budget sink."""
-    game = PlatformerGame()
+    game = SuperMarioLandGame()
     game.fix_index(index)
     _, info = game.reset()
     width = info["width"]
@@ -318,7 +317,7 @@ def test_fix_index_rejects_a_level_that_does_not_exist(env):
 
 
 def test_a_custom_level_set_replaces_the_shipped_one():
-    game = PlatformerGame(levels=["M  G\n####"])
+    game = SuperMarioLandGame(levels=["M  G\n####"])
     game.fix_index(0)
     with pytest.raises(IndexError):
         game.fix_index(1)
@@ -364,7 +363,7 @@ def test_simulate_and_step_agree(env):
         action, node = successors[0]
         plan.append(action)
 
-    stepped = PlatformerGame()
+    stepped = SuperMarioLandGame()
     stepped.fix_index(0)
     stepped.reset()
     for action in plan:
@@ -381,12 +380,12 @@ def test_replaying_the_same_plan_gives_the_same_trace(env):
 
 def test_step_reports_the_ground_gained(env):
     env.reset()
-    _, gained = env.step("b+right,12")
+    _, gained = env.step("right,12")
     assert gained >= 0
 
 
 def test_step_before_reset_is_an_error():
-    game = PlatformerGame()
+    game = SuperMarioLandGame()
     game.fix_index(0)
     with pytest.raises(ValueError, match="reset"):
         game.step("nop,4")
@@ -398,7 +397,7 @@ def test_reaching_the_flag_ends_the_level():
     for _ in range(6):
         if game.is_goal(node):
             break
-        node = game.__advance__(node, "b+right,6")
+        node = game.__advance__(node, "right,6")
     assert game.is_goal(node)
     assert game.successors(node) == [], "there is nothing left to do"
     assert not game.is_terminal(node), "the flag is not a death"
@@ -411,27 +410,27 @@ def test_the_flag_is_caught_even_at_speed():
     game, state = game_on(drop)
     node = state
     for _ in range(8):
-        node = game.__advance__(node, "b+right,6")
+        node = game.__advance__(node, "right,6")
         if game.is_goal(node) or node.dead:
             break
     assert game.is_goal(node) or node.dead, "he either got there or died trying"
 
 
 def test_actions_parse_compare_and_cost(env):
-    assert PlatformerAction("nop,4") == PlatformerAction("nop,4")
-    assert PlatformerAction("nop,4") != PlatformerAction("right,4")
-    assert str(PlatformerAction("a+right,6")) == "a+right,6"
-    assert len({PlatformerAction("nop,4"), PlatformerAction("nop,4")}) == 1
-    assert PlatformerAction("nop,4").cost() == 0
-    assert PlatformerAction("a+b+right,6").cost() > PlatformerAction("right,4").cost()
-    assert sorted([PlatformerAction("a+right,6"), PlatformerAction("nop,4")])[0].name == "nop,4"
+    assert SuperMarioLandAction("nop,4") == SuperMarioLandAction("nop,4")
+    assert SuperMarioLandAction("nop,4") != SuperMarioLandAction("right,2")
+    assert str(SuperMarioLandAction("a+right,6")) == "a+right,6"
+    assert len({SuperMarioLandAction("nop,4"), SuperMarioLandAction("nop,4")}) == 1
+    assert SuperMarioLandAction("nop,4").cost() == 0
+    assert SuperMarioLandAction("a+right,6").cost() > SuperMarioLandAction("right,2").cost()
+    assert sorted([SuperMarioLandAction("a+right,6"), SuperMarioLandAction("nop,4")])[0].name == "nop,4"
 
 
 def test_an_action_that_does_not_exist_is_refused():
     with pytest.raises(ValueError, match="unknown action"):
-        PlatformerAction("up,4")
+        SuperMarioLandAction("up,4")
     with pytest.raises(ValueError, match="unknown action"):
-        PlatformerAction("a+right,7"), "a hold length that is not offered"
+        SuperMarioLandAction("a+right,7"), "a hold length that is not offered"
 
 
 def test_get_actions_lists_the_whole_vocabulary(env):
@@ -441,7 +440,7 @@ def test_get_actions_lists_the_whole_vocabulary(env):
 
 def test_render_prints_the_history(env, capsys):
     env.reset()
-    env.step("b+right,6")
+    env.step("right,6")
     rendered = env.render()
     assert len(rendered) == 2
     assert "mario:" in capsys.readouterr().out

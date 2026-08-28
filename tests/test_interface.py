@@ -58,10 +58,10 @@ def boxxle2():
     return env
 
 
-def platformer():
-    from planiverse.environments.gameboy_py.platformer import PlatformerGame
+def super_mario_land():
+    from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
 
-    env = PlatformerGame()
+    env = SuperMarioLandGame()
     env.fix_index(0)
     return env
 
@@ -117,7 +117,7 @@ ENVIRONMENTS = {
     "flipull": flipull,
     "flipull_gb": flipull_gb,
     "boxxle2": boxxle2,
-    "platformer": platformer,
+    "super_mario_land": super_mario_land,
     "water_network": water_network,
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
@@ -159,8 +159,8 @@ def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb", "boxxle2", "boxxle2_gb",
-            "lolo", "lolo_gb", "amazing_tater", "amazing_tater_gb", "platformer",
-            "super_mario_land", "network_attack", "manufacturing",
+            "lolo", "lolo_gb", "amazing_tater", "amazing_tater_gb", "super_mario_land",
+            "super_mario_land_gb", "network_attack", "manufacturing",
             "water_network", "power_grid", "crop_management"} == registered
 
 
@@ -283,7 +283,7 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
     from planiverse.environments import get_spec
 
     full = {"step", "validate", "get_actions", "render", "close"}
-    for name in ("puzznic_gb", "flipull_gb", "boxxle2_gb", "super_mario_land",
+    for name in ("puzznic_gb", "flipull_gb", "boxxle2_gb", "super_mario_land_gb",
                  "water_network", "power_grid", "crop_management"):
         spec = get_spec(name)
         if not spec.available():
