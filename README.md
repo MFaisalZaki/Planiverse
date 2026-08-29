@@ -51,9 +51,6 @@ What used to be two package trees — `real_world_problems` and `retro_games` �
 field on a registry entry, because that split recorded where an environment came from rather
 than what a planner could do with it. See [Architecture](#architecture).
 
-PDDL domains are also supported, through a [PDDLGym](https://github.com/tomsilver/pddlgym) wrapper —
-see [The Simulator facade](#the-simulator-facade).
-
 ## Installation
 
 Requires Python **≥ 3.11, < 3.14** — numba and scipy have no 3.14 wheels yet, and building them from
@@ -75,33 +72,8 @@ poetry install --extras dev
 One install gets you every environment, on every supported Python.
 
 `tests/test_packaging.py` walks the import graph from each environment's entry point and fails if
-anything it reaches is undeclared. That is how `gym` — imported by the simulator facade, but
-declared nowhere, working only because pddlgym happened to pull it in —
-stopped being able to go missing.
-
-### PDDLGym is vendored
-
-`pddlgym 0.0.7` — the last release — requires `pillow <10`, and Pillow published no wheels
-for Python 3.13. Building Pillow 9.5.0 from source there fails inside its own `setup.py`,
-which reads the version by `exec`-ing a file and pulling `__version__` back out of
-`locals()` — something [PEP 667](https://peps.python.org/pep-0667/) stopped working in 3.13:
-
-```
-File "<string>", line 26, in get_version
-KeyError: '__version__'
-```
-
-That took the whole install down on 3.13, PDDL support or not, and pip has no way to override
-another package's requirements (`--constraint` can only narrow a range, never widen one). So
-PDDLGym is vendored under
-[`planiverse/simulator/wrappers/pddlgym/`](planiverse/simulator/wrappers/pddlgym/), with the
-one-line fix its own `TODO` asked for — `Image.ANTIALIAS` (removed
-in Pillow 10) becomes `Image.Resampling.LANCZOS`. The pin is then unnecessary, and every
-supported Python gets the full wrapper.
-
-[`VENDORING.md`](planiverse/simulator/wrappers/pddlgym/VENDORING.md) records the source
-version, every edit, and how to re-sync. `matplotlib`, `imageio` and `scikit-image` are
-declared on its behalf.
+anything it reaches is undeclared — a dependency that only works because another package happens
+to pull it in cannot go missing silently.
 
 ### ROMs
 
@@ -225,7 +197,6 @@ Not every environment implements every method. What is actually there today:
 | `SuperMarioLandGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
 | `MfgEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
-| `PDDLGymEnv` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | ✅ | — |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
 detecting them is left to the planner. The two Puzznics, `FlipullGame`, both Boxxle IIs and Super
@@ -249,9 +220,8 @@ and `capabilities()` asks whether the method would actually do something.
 
 ### States and `literals`
 
-Every state object carries a `literals` attribute: a `frozenset` of facts about the state. Native
-environments spell them as predicate-like strings; the PDDLGym wrapper passes pddlgym `Literal`
-objects straight through, so only "frozenset" is common to both.
+Every state object carries a `literals` attribute: a `frozenset` of predicate-like strings —
+facts about the state.
 
 ```python
 sorted(state.literals)[:4]
@@ -284,33 +254,25 @@ wants. The mapping from index to instance is listed in each environment's doc.
 
 ### The Simulator facade
 
-`Simulator` is a thin adapter that lets a planner accept either a native Planiverse environment or a
-PDDLGym environment without caring which:
+`Simulator` is a thin adapter that gives a planner one object to call, whatever the environment:
 
 ```python
-import pddlgym
 from planiverse.simulator.simulator import Simulator
 
-sim = Simulator(pddlgym.make("PDDLEnvBlocks-v0"))   # wrapped in PDDLGymEnv
-sim.simulator.fix_index(0)                          # pick one of the domain's problem files
+sim = Simulator(env)
 state, info = sim.reset()
 for action, successor in sim.successors(state):
     ...
 ```
 
-It dispatches on type: a gym `OrderEnforcing` object is wrapped in
-[`PDDLGymEnv`](planiverse/simulator/wrappers/pddlgymenv.py), while a `RetroGame` or
-`RealWorldProblem` is used as-is. Anything else raises an assertion.
-
-A PDDL domain ships several problem files, and PDDLGym picks one *at random* on every reset. The
-wrapper pins problem `0` on construction so that `reset()` is repeatable like every other
-environment's; `fix_index(i)` selects a different one.
+It accepts an `Environment` subclass or anything that satisfies the contract structurally
+(`implements_contract`), so an environment brought from outside works without inheriting from
+anything. Anything else raises an assertion.
 
 Passing a native environment through `Simulator` adds nothing but delegation — and because it
 forwards `step`/`validate`/`get_actions` that most environments don't implement, calling those
-through the facade will raise `AttributeError`/`NotImplementedError` rather than fail gracefully. Use
-it when you need PDDL and simulator environments behind one interface; use the environment directly
-otherwise.
+through the facade will raise `AttributeError`/`NotImplementedError` rather than fail gracefully.
+Use the environment directly unless you want the single entry point.
 
 ## Rendering a trace
 
@@ -573,11 +535,7 @@ planiverse/
 │   ├── analysis.py                     # coverage, head to head, IPC scores, CSV
 │   └── report.py                       # text and LaTeX tables, cactus and scatter plots
 └── simulator/
-    ├── simulator.py                    # Simulator facade
-    └── wrappers/
-        ├── base.py                     # SimulatorBase interface
-        ├── pddlgymenv.py               # PDDLGym adapter
-        └── pddlgym/                    # vendored PDDLGym 0.0.7 — see its VENDORING.md
+    └── simulator.py                    # Simulator facade
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark harness
 setup_benchmark.sh                      # interactive benchmark setup; asks for the cartridges
@@ -595,8 +553,7 @@ imported names that no longer exist (`SuperMario`, `super_mario_bros_grid`,
 interface. Both are recoverable from git history if the port is ever picked up.
 
 `chex`, `flax`, `jaxmarl` and `dill` were declared as required dependencies but are imported nowhere
-in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them. The
-`gym` they were sitting next to went the other way — it was imported and never declared.
+in the library, so they are gone too; nothing outside `epipolicy/**/deprecated/` referenced them.
 
 ## Attribution
 
@@ -632,7 +589,6 @@ is referenced as a planned addition but is not yet in the tree.
       `real_world_problems` / `retro_games` split
 - [ ] Flood application
 - [ ] Optional dependency groups, so one environment doesn't pull in all of them
-- [ ] Replace `pddlgym` (unmaintained, pins `pillow <10`, caps the PDDL wrapper at Python 3.12)
 - [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
 - [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
 - [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop

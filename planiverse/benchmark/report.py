@@ -177,6 +177,15 @@ def _escape(text):
     return str(text).replace("_", "\\_")
 
 
+def _subplots(**kwargs):
+    # The Agg selection at the top of this module is process-global state that any import
+    # can overwrite — nasim switches the process to TkAgg, which segfaults headless — so
+    # it is re-asserted at every figure creation rather than trusted.
+    if matplotlib.get_backend().lower() != "agg":
+        pyplot.switch_backend("Agg")
+    return pyplot.subplots(**kwargs)
+
+
 def cactus_plot(records, path):
     """Tasks solved against time: the standard way to see who is fast and who is thorough.
 
@@ -195,7 +204,7 @@ def cactus_plot(records, path):
     if not series:
         return None
 
-    figure, axes = pyplot.subplots(figsize=(7, 4.5))
+    figure, axes = _subplots(figsize=(7, 4.5))
     for planner in sorted(series):
         times = sorted(series[planner])
         axes.plot(times, range(1, len(times) + 1), marker=".", label=planner)
@@ -238,7 +247,7 @@ def scatter_plot(records, left, right, path):
     if not points:
         return None
 
-    figure, axes = pyplot.subplots(figsize=(5, 5))
+    figure, axes = _subplots(figsize=(5, 5))
     for solved, marker, face in ((True, "o", "tab:blue"), (False, "o", "none")):
         chosen = [(x, y) for x, y, both in points if both is solved]
         if chosen:

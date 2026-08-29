@@ -1,19 +1,11 @@
-from gym.wrappers.order_enforcing import OrderEnforcing
-
 from planiverse.environments.base import Environment, implements_contract
 
-# The idea of the simulator is to give it an env: ppdlgym, pyboy, ... etc. And it provides a
-# single interface for the planner to use.
+# The idea of the simulator is to give it an env and it provides a single interface for the
+# planner to use.
 class Simulator:
     def __init__(self, envobj):
         self.simulator = None
-        if isinstance(envobj, OrderEnforcing):
-            # Imported here rather than at module scope: PDDLGym registers ~100 gym
-            # environments and parses their domain files on import, which is a lot of work
-            # to do for a caller that only wants to wrap a Game Boy.
-            from planiverse.simulator.wrappers.pddlgymenv import PDDLGymEnv
-            self.simulator = PDDLGymEnv(f"{envobj.env.domain.domain_name}", envobj)
-        elif isinstance(envobj, Environment) or implements_contract(envobj):
+        if isinstance(envobj, Environment) or implements_contract(envobj):
             # Structural, not nominal. This used to be two isinstance checks against two
             # base classes whose only difference was which directory the environment lived
             # in, and which therefore did exactly the same thing. What matters is whether

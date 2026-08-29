@@ -129,7 +129,7 @@ def main(argv=None):
     init.add_argument("--name", default="planiverse-bench")
     init.add_argument("--time", default="30m", help="per-run wall-clock limit")
     init.add_argument("--memory", default="8GB", help="per-run memory limit")
-    init.add_argument("--max-expansions", type=int, default=100000)
+    init.add_argument("--max-expansions", type=int, default=1000000)
     init.add_argument("--max-instances", type=int, default=0,
                       help="instances per environment; 0 means every one")
     init.add_argument("--environments", default=None, metavar="ENV[,ENV...]",

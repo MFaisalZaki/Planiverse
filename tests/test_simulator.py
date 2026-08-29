@@ -1,10 +1,9 @@
-"""Tests for the Simulator facade and the PDDLGym wrapper."""
+"""Tests for the Simulator facade."""
 import pytest
 
 from planiverse.environments.base import Environment, implements_contract
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.simulator.simulator import Simulator
-from planiverse.simulator.wrappers.base import SimulatorBase
 
 from conftest import assert_state_contract
 
@@ -61,20 +60,6 @@ def test_validate_resets_before_checking(puzznic_env):
 
 # --------------------------------------------------------------------------- base classes
 
-def test_simulator_base_is_an_unimplemented_interface():
-    base = SimulatorBase("name", None)
-    assert base.name == "name"
-    for call in (lambda: base.reset(),
-                 lambda: base.step("a"),
-                 lambda: base.successors(None),
-                 lambda: base.is_goal(None),
-                 lambda: base.is_terminal(None),
-                 lambda: base.simulate([]),
-                 lambda: base.validate([])):
-        with pytest.raises(NotImplementedError):
-            call()
-
-
 def test_one_base_class_and_a_structural_check():
     """`RetroGame` and `RealWorldProblem` were merged into `Environment`.
 
@@ -91,152 +76,3 @@ def test_one_base_class_and_a_structural_check():
 
     assert not isinstance(Outsider(), Environment)
     assert implements_contract(Outsider()), "duck typing is enough for the facade"
-
-
-# --------------------------------------------------------------------------- pddlgym
-# PDDLGym is vendored, not installed -- see
-# planiverse/simulator/wrappers/pddlgym/VENDORING.md for why.
-
-
-@pytest.fixture
-def blocks_sim():
-    from planiverse.simulator.wrappers.pddlgym import make
-
-    return Simulator(make("PDDLEnvBlocks-v0"))
-
-
-def test_pddlgym_env_is_wrapped(blocks_sim):
-    from planiverse.simulator.wrappers.pddlgymenv import PDDLGymEnv
-
-    assert isinstance(blocks_sim.simulator, PDDLGymEnv)
-    assert blocks_sim.simulator.name == "blocks"
-
-
-def test_pddlgym_reset_and_successors(blocks_sim):
-    state, info = blocks_sim.reset()
-    assert_state_contract(state)
-    successors = blocks_sim.successors(state)
-    assert len(successors) > 0
-    for action, next_state in successors:
-        assert_state_contract(next_state)
-
-
-def test_pddlgym_reset_is_repeatable(blocks_sim):
-    """PDDLGym draws a random problem on every reset unless the index is pinned, which
-    made reset() non-repeatable and let a plan be validated against another problem."""
-    goals = [blocks_sim.reset()[0].goal for _ in range(4)]
-    assert all(goal == goals[0] for goal in goals)
-    states = [blocks_sim.reset()[0].literals for _ in range(4)]
-    assert all(literals == states[0] for literals in states)
-
-
-def test_pddlgym_fix_index_selects_a_problem(blocks_sim):
-    """The wrapper follows the same fix_index convention as every other environment."""
-    wrapper = blocks_sim.simulator
-    wrapper.fix_index(0)
-    first, _ = blocks_sim.reset()
-    wrapper.fix_index(2)
-    third, _ = blocks_sim.reset()
-    assert first.goal != third.goal
-    # And it is still repeatable once pinned.
-    assert blocks_sim.reset()[0].goal == third.goal
-
-
-def test_pddlgym_fix_index_rejects_unknown_problem(blocks_sim):
-    with pytest.raises(AssertionError, match="not found"):
-        blocks_sim.simulator.fix_index(999)
-
-
-def test_pddlgym_successors_are_sorted(blocks_sim):
-    """Expansion order is deterministic: ground actions are sorted by their string."""
-    state, _ = blocks_sim.reset()
-    actions = [str(a) for a, _ in blocks_sim.successors(state)]
-    assert actions == sorted(actions)
-
-
-def test_pddlgym_initial_state_is_not_a_goal(blocks_sim):
-    state, _ = blocks_sim.reset()
-    assert not blocks_sim.is_goal(state)
-
-
-def test_pddlgym_is_goal_reads_the_state_goal(blocks_sim):
-    """is_goal used to test a goal cached at construction. PDDLGym cycles problems, so
-    after a reset that goal belonged to a different problem -- sometimes over objects
-    that no longer exist -- and could never be satisfied."""
-    state, _ = blocks_sim.reset()
-    goal_state = build_goal_tower(blocks_sim, state)
-    assert all(literal in goal_state.literals for literal in state.goal.literals)
-    assert blocks_sim.is_goal(goal_state)
-
-
-def test_pddlgym_simulate_returns_state_trace(blocks_sim):
-    state, _ = blocks_sim.reset()
-    plan = [action for action, _ in blocks_sim.successors(state)][:2]
-    trace = blocks_sim.simulate(plan)
-    assert len(trace) == len(plan) + 1
-
-
-def test_pddlgym_validate_accepts_a_real_plan(blocks_sim):
-    """validate used to return is_terminal(last state), which is hard-coded False, so it
-    rejected every plan including correct ones."""
-    plan = find_plan(blocks_sim, max_expansions=2000)
-    assert plan is not None, "BFS should solve the pinned Blocks problem"
-    assert blocks_sim.validate(plan) is True
-    assert blocks_sim.is_goal(blocks_sim.simulate(plan)[-1])
-
-
-def test_pddlgym_validate_rejects_a_bad_plan(blocks_sim):
-    state, _ = blocks_sim.reset()
-    assert blocks_sim.validate([]) is False
-    assert blocks_sim.validate([blocks_sim.successors(state)[0][0]]) is False
-
-
-def test_pddlgym_no_terminal_states(blocks_sim):
-    state, _ = blocks_sim.reset()
-    assert not blocks_sim.is_terminal(state)
-
-
-def build_goal_tower(sim, state):
-    """Stack the pinned Blocks problem into its goal tower by hand."""
-    plan = ["pickup(b:block)", "stack(b:block,a:block)",
-            "pickup(c:block)", "stack(c:block,b:block)",
-            "pickup(d:block)", "stack(d:block,c:block)"]
-    for name in plan:
-        state = next(ns for a, ns in sim.successors(state) if str(a) == name)
-    return state
-
-
-def find_plan(sim, max_expansions):
-    """Breadth-first search for a goal, returning the action list or None."""
-    state, _ = sim.reset()
-    frontier, visited = [(state, [])], {state.literals}
-    for _ in range(max_expansions):
-        if not frontier:
-            return None
-        current, plan = frontier.pop(0)
-        if sim.is_goal(current):
-            return plan
-        for action, successor in sim.successors(current):
-            if successor.literals in visited:
-                continue
-            visited.add(successor.literals)
-            frontier.append((successor, plan + [action]))
-    return None
-
-
-def find_plan(sim, max_expansions):
-    """Breadth-first search for a goal, returning the action list or None."""
-    state, _ = sim.reset()
-    frontier, visited = [(state, [])], {state.literals}
-    for _ in range(max_expansions):
-        if not frontier:
-            return None
-        current, plan = frontier.pop(0)
-        if sim.is_goal(current):
-            return plan
-        for action, successor in sim.successors(current):
-            if successor.literals in visited:
-                continue
-            visited.add(successor.literals)
-            frontier.append((successor, plan + [action]))
-    return None
