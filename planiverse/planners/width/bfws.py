@@ -182,7 +182,7 @@ class IteratedBFWS:
     same at every width and the tuple enumeration does not.
     """
 
-    def __init__(self, max_width=2, progress=None, heuristic=None, partition=None,
+    def __init__(self, max_width=1000, progress=None, heuristic=None, partition=None,
                  strict=True, final_complete=True):
         """`final_complete` is the unpruned round. Turning it off leaves only the pruned
         rounds — cheaper, and incomplete the way IW is."""
