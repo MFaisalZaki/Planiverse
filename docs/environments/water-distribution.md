@@ -1,7 +1,7 @@
 # Water distribution (contamination containment)
 
 A contaminant enters a drinking-water network at one junction. Every node downstream of it
-drinks a share, and which nodes those are depends on where the water is flowing — which is
+drinks a share, and which nodes those are depends on where the water is flowing, which is
 the solution of a nonlinear system over the whole network. The operator's move is to close
 pipes. Closing a pipe reroutes the flow, so it changes the answer everywhere at once.
 
@@ -12,7 +12,7 @@ service.
 - **Class:** `WaterNetworkEnv`
 - **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
-- **Dependencies:** `wntr` — and nothing else. The benchmark networks ship inside it, so
+- **Dependencies:** `wntr`, and nothing else. The benchmark networks ship inside it, so
   unlike the Game Boy environments there is nothing to supply.
 
 ## Why this is not a PDDL domain
@@ -24,13 +24,13 @@ Not "PDDL would be verbose here". Two properties, both measured on the shipped n
 "re-solve the hydraulics and the transport, and see what happens".
 
 **Effects are not monotone.** On `Net1` with the source at node 12, closing pipe `110` makes
-the contamination **worse** — it pushes flow down a path that reaches more customers. A
+the contamination **worse**: it pushes flow down a path that reaches more customers. A
 delete-list cannot express that, and neither can a planner that assumes closing more pipes
 contains more.
 
 There is a third, softer one: which pipes matter is not readable off the topology. On `Net3`
 the source has four pipes on it; two carry essentially all the contamination and two do
-nothing at all. Nothing structural distinguishes them — only the solve does.
+nothing at all. Nothing structural distinguishes them; only the solve does.
 
 ## Quickstart
 
@@ -72,7 +72,7 @@ ordered by how deep a solution is:
 | 7 | Net1 | 22 | 28.7% | 4 |
 | 8 | Net1 | 11 | 80.1% | **7** |
 
-**`solved_at` is a measurement, not an estimate** — the shallowest depth at which a solution
+**`solved_at` is a measurement, not an estimate**: the shallowest depth at which a solution
 was actually found. It is recorded because an instance whose goal nobody has reached is a
 poor benchmark entry: a planner cannot tell "unreachable" from "not found yet". Every
 scenario here has been solved.
@@ -90,7 +90,7 @@ re-derived rather than taken on trust.
 ### Index 8 is the interesting one
 
 `Net1` with the source at node 11 contaminates 80% of everything delivered. It is
-**solvable** — proved exhaustively over the full powerset of its 12 pipes, with exactly
+**solvable**: proved exhaustively over the full powerset of its 12 pipes, with exactly
 three feasible closures at depth 7, one of which reaches zero contamination at **100%**
 service. And a width-16 beam search to depth 8 does not find it.
 
@@ -109,10 +109,10 @@ repeated runs). Three consequences:
   shut *are* the same state, so `__eq__` and `__hash__` are on the closed set alone and
   search can close over them.
 - **Results are memoised** on the closed set, which is only sound because of the above.
-- **`simulate` re-runs from scratch** and is therefore an independent check on `successors`
+- **`simulate` re-runs from scratch**, so it is an independent check on `successors`
   rather than a restatement of it.
 
-`depth` is deliberately *not* part of state identity — with a step counter in there no
+`depth` is deliberately *not* part of state identity: with a step counter in there no
 successor could ever equal its parent and the self-loop filter would be dead code, a trap
 a since-removed environment fell into.
 
@@ -120,7 +120,7 @@ a since-removed environment fell into.
 
 | Field | Meaning |
 |---|---|
-| `closed` | frozenset of closed pipe names — the whole state |
+| `closed` | frozenset of closed pipe names; the whole state |
 | `contaminated` | share of all delivered water that came from the source |
 | `service` | share of expected demand actually delivered |
 | `pressure_deficit` | mean shortfall below the required pressure |
@@ -147,24 +147,24 @@ would look free and there would be no trade-off to plan against.
 One wrinkle this surfaced: a junction may have a **negative** demand, which is an injection
 into the network rather than a customer drawing from it. `Net2` has one, and counted as
 written it drags the network's total expected demand to −0.02 and makes the service ratio
-meaningless — it came out at −1791%. Both sides of the ratio are clipped at zero.
+meaningless: it came out at −1791%. Both sides of the ratio are clipped at zero.
 
 ## Actions
 
-`WaterNetworkAction(pipe)` — close one pipe. That is the entire action set, and the entire
+`WaterNetworkAction(pipe)` closes one pipe. That is the entire action set, and the entire
 operator interface. Cost is 1 each.
 
 The candidate pipes default to those within `radius=2` hops of the source. The full pipe
 list is a branching factor of 117 on `Net3`, nearly all of it nowhere near the incident.
 `WaterNetworkEnv(radius=None)` offers every pipe, which is the honest setting and a slow
-one — and it is what the `Net2` investigation above used, so the restriction is not what
+one. It is what the `Net2` investigation above used, so the restriction is not what
 made those instances unsolvable.
 
 ## Goal and terminal
 
-- **Goal** — contaminated ≤ 2% **and** service ≥ 80%. Both halves are needed: closing every
+- **Goal**: contaminated ≤ 2% **and** service ≥ 80%. Both halves are needed: closing every
   pipe at the source contains perfectly and is not a solution.
-- **Terminal** — service < 50%. Sound because service is **monotone** in the closed set: a
+- **Terminal**: service < 50%. Sound because service is **monotone** in the closed set: a
   network cannot deliver more water with more pipes shut, so a collapsed state can never
   recover. Note that contamination is *not* monotone, which is why only one of the two can
   be used this way.
@@ -175,7 +175,7 @@ Both are absorbing: `successors` returns `[]`, so a plan cannot wander past the 
 
 The shape to know before pointing a planner at this: branching factor 6–22, solution depths
 2–7, and about 0.03–0.05 s per expansion (each one is a full hydraulic and transport solve).
-Caching on the closed set does most of the work — the same configuration is reached by many
+Caching on the closed set does most of the work: the same configuration is reached by many
 orderings.
 
 The heuristic to write is not "minimise contamination". That fails on index 8, as above. It

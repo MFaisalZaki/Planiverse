@@ -2,7 +2,7 @@
 
 Almost none of these run a real planner on a real environment: that is what the harness is
 *for*, and a test suite that did it would take an hour. What is tested here is the harness's
-own job — resolving a task list, writing jobs a cluster will accept, classifying an outcome,
+own job: resolving a task list, writing jobs a cluster will accept, classifying an outcome,
 and accounting for results that never arrived.
 """
 import json
@@ -123,7 +123,7 @@ def test_two_planner_files_cannot_share_a_tag(tmp_path):
 def test_the_defaults_cover_every_instance_and_both_versions_of_a_game():
     """A benchmark that samples a tenth of each environment is reporting on a sample it
     chose, and one that leaves out the cartridge-backed environments cannot compare a Game
-    Boy environment against its pure-Python twin — which is most of the point of having
+    Boy environment against its pure-Python twin, which is most of the point of having
     both."""
     selection = TaskSelection()
     assert selection.max_instances_per_environment == 0, "0 means every instance"
@@ -202,7 +202,7 @@ def test_progress_only_goes_to_the_planners_that_take_one():
 def test_only_bfws_claims_completeness():
     """`UNSOLVED` means "no plan found". Reading it as "unsolvable" is only sound for a
     complete planner, and among these that is BFWS alone. The iterated planners earn it
-    per run, when they report "exhausted" — the word they reserve for having covered the
+    per run, when they report "exhausted", the word they reserve for having covered the
     reachable space."""
     assert catalogue.is_complete("bfws")
     for name in ("iw", "iterated_width", "iterated_bfws", "siw", "fsx", "mcts"):
@@ -293,7 +293,7 @@ def test_a_rom_environment_finds_its_cartridge_through_an_environment_variable(m
                                                                               tmp_path):
     """The cartridges are copyrighted and cannot ship, so the path can only come from the
     user. Without somewhere to put it these environments cannot be constructed by name at
-    all, which makes them invisible to anything generic — the harness included."""
+    all, which makes them invisible to anything generic, the harness included."""
     from planiverse.environments import get_spec
 
     spec = get_spec("puzznic_gb")
@@ -317,7 +317,7 @@ def test_instance_counts_are_probed_from_the_environment():
     """Probed rather than declared, so the count cannot drift out of step with the code."""
     from planiverse.environments import get_spec
 
-    assert discovery.count_instances(get_spec("flipull")) == 10
+    assert discovery.count_instances(get_spec("flipull")) == 32
     assert discovery.count_instances(get_spec("super_mario_land")) == 8
     assert discovery.count_instances(get_spec("puzznic")) == 128
 
@@ -494,7 +494,7 @@ def test_setup_commands_run_before_the_job_and_keep_their_order(tmp_path):
 
 def test_every_path_in_a_job_is_absolute(tmp_path, experiment, monkeypatch):
     """sbatch inherits the submitting shell's cwd, which holds until someone submits from
-    somewhere else — and then a relative path fails a thousand array elements at once."""
+    somewhere else, and then a relative path fails a thousand array elements at once."""
     monkeypatch.chdir(tmp_path)
     written = slurm.generate("sandbox", pairs_for(3), experiment, "experiment")
     body = open(written["scripts"][0]).read()
@@ -671,7 +671,7 @@ def test_a_crash_becomes_a_row_with_a_traceback(tiny, tmp_path):
 
 
 def test_an_environment_that_breaks_during_search_is_an_error(tiny, tmp_path):
-    """It was built, so it is not UNSUPPORTED — it is broken, and that is a bug to fix
+    """It was built, so it is not UNSUPPORTED: it is broken, and that is a bug to fix
     rather than a platform it cannot run on."""
     tiny("explodes")
     record = runner.solve(bfws_spec(), "tiny@0", Limits(time="30s"), sandbox_dir=tmp_path)
@@ -968,9 +968,9 @@ def test_the_default_experiment_is_a_spread_of_planners(tmp_path):
 
 def test_every_default_width_planner_is_the_iterated_version(tmp_path):
     """No default runs at a width we picked. IW and SIW iterate because novelty is a filter
-    in both — a width too low loses states outright, and the right width is a property of
+    in both: a width too low loses states outright, and the right width is a property of
     the problem, so their ceiling is a bound that is never reached. BFWS iterates for a
-    different reason: it is complete at every width, so its rounds are a budget strategy —
+    different reason: it is complete at every width, so its rounds are a budget strategy,
     cheap pruned rounds first, one complete round last. Its bound is the same 1000, but
     `strict` stays on, unlike the others': the strict refusal stops the pruned rounds at
     width 2, which is what hands the leftover budget to the complete round instead of

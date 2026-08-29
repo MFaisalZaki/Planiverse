@@ -1,6 +1,6 @@
 """Contamination containment in a drinking-water distribution network.
 
-A contaminant enters the network at one junction. It spreads by being *carried* — every
+A contaminant enters the network at one junction. It spreads by being *carried*: every
 node downstream of the source drinks a share of it, and which nodes those are depends on
 where the water is flowing, which depends on the pressures, which are the solution of a
 nonlinear system over the whole network. The operator's move is to close pipes. Closing a
@@ -14,7 +14,7 @@ PDDL action:
 * **Effects are global.** On `Net3`, closing one pipe changes the pressure at 94 of the 97
   nodes.
 * **Effects are not monotone.** On `Net1`, closing pipe `110` makes the contamination
-  *worse* — it pushes flow down a path that reaches more customers. A delete-list cannot
+  *worse*: it pushes flow down a path that reaches more customers. A delete-list cannot
   say that, and neither can a planner that assumes closing more pipes helps more.
 
 The trade-off is the problem: every closed pipe contains a little more contamination and
@@ -58,7 +58,7 @@ SERVICE_FLOOR = 0.50
 
 #: How far from the source a pipe may be and still be worth closing, in hops. The full pipe
 #: list is a branching factor of 117 on Net3, nearly all of it nowhere near the incident.
-#: `None` means "every pipe" and is honest but slow — see `WaterNetworkEnv.__init__`.
+#: `None` means "every pipe" and is honest but slow (see `WaterNetworkEnv.__init__`).
 DEFAULT_RADIUS = 2
 
 
@@ -72,7 +72,7 @@ def network_library():
 #: The scenarios `fix_index` chooses between: a shipped network and the junction the
 #: contaminant enters at.
 #:
-#: The sources are not arbitrary — they were measured with `rank_sources` below, which runs
+#: The sources are not arbitrary: they were measured with `rank_sources` below, which runs
 #: every junction of a network as the source and reports how much of the delivered water
 #: ends up contaminated. A source that poisons a few percent of the network is not a
 #: planning problem; these each reach 40-80% of everything delivered. Two networks appear
@@ -80,7 +80,7 @@ def network_library():
 #: topology.
 #: `solved_at` is the shallowest depth a solution was actually found at, not an estimate.
 #: It is recorded because an instance whose goal nobody has reached is a poor benchmark
-#: entry — a planner cannot tell "no solution" from "not yet". Every scenario below has been
+#: entry, since a planner cannot tell "no solution" from "not yet". Every scenario below has been
 #: solved; `Net2` was dropped for exactly this reason (see the module tests).
 Scenario = namedtuple("Scenario", ["network", "source", "baseline", "solved_at"])
 
@@ -150,7 +150,7 @@ class WaterNetworkAction:
 class WaterNetworkState:
     """A set of closed pipes, and what the network does as a result.
 
-    The closed set is the whole state. That is not a simplification — the hydraulic and
+    The closed set is the whole state. That is not a simplification: the hydraulic and
     transport solves are deterministic functions of the network and its controls, verified
     by running the same configuration twice and comparing pressures (identical to the last
     bit). So two states with the same pipes closed *are* the same state, and search can
@@ -295,7 +295,7 @@ class WaterNetworkEnv(Environment):
         """Run the network with `closed` shut, and measure containment and service.
 
         Memoised on the closed set, which is sound precisely because the solve is
-        deterministic — the same configuration cannot produce two different answers.
+        deterministic: the same configuration cannot produce two different answers.
         """
         import wntr
 
@@ -359,7 +359,7 @@ class WaterNetworkEnv(Environment):
         """Contained, and the customers still have water.
 
         Both halves are needed. Closing every pipe at the source contains the contamination
-        perfectly and is not a solution — on Net1 it costs 14% of all service.
+        perfectly and is not a solution: on Net1 it costs 14% of all service.
         """
         return (state.contaminated <= self.contamination_goal
                 and state.service >= self.service_goal)

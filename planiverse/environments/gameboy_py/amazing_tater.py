@@ -7,15 +7,15 @@ cartridge's own transition function.
 
 ## The rules, stated
 
-A tater — a potato with legs — walks the four directions one cell at a time and has to reach
+A tater (a potato with legs) walks the four directions one cell at a time and has to reach
 the exit flag. Some rooms hold more than one tater; SELECT hands the controls to the next one,
 and the room is not finished until every one of them has reached the flag.
 
 1. **Walls** and the area outside the room refuse a step.
 2. A **pit** refuses a step. Pits are crossed by filling them, not by walking over them.
 3. A step into a **block** shoves the whole block one cell, and it moves only if every square
-   it would land on is clear. Blocks come in every shape the cartridge felt like drawing —
-   1x1, 1x5, 4x3, L-shapes — and a shape moves as one piece. Two different blocks may sit
+   it would land on is clear. Blocks come in every shape the cartridge felt like drawing
+   (1x1, 1x5, 4x3, L-shapes), and a shape moves as one piece. Two different blocks may sit
    flush against each other and still be two blocks: which squares belong together is
    recorded per square, not inferred from what touches what.
 4. A block square that comes to rest over a pit has **settled into it**. You cannot shove
@@ -31,7 +31,7 @@ and the room is not finished until every one of them has reached the flag.
    through on its way there. Arms may swing over pits; taters may not walk on them.
 7. Where the pusher ends up depends on whether they are shut into a compartment. If another
    arm swings into the square you pushed, you were standing between two arms and the
-   turnstile carries you round with it — your position rotates about the pivot, exactly like
+   turnstile carries you round with it: your position rotates about the pivot, exactly like
    a revolving door. If nothing swings in behind it, the square you pushed is now empty and
    you simply step into it.
 8. The **pivot** at the centre of a turnstile is solid and never moves.
@@ -42,8 +42,8 @@ board, and the controls pass to whoever is left.
 ## Where this differs from the cartridge
 
 Nowhere that has been found, and the search was not casual: the rules above were established
-by walking this module and the cartridge forward in lockstep — the same random press, then a
-cell-by-cell comparison of the board — across every one of the 105 rooms below.
+by walking this module and the cartridge forward in lockstep (the same random press, then a
+cell-by-cell comparison of the board) across every one of the 105 rooms below.
 `tests/test_amazing_tater.py` replays the stored solutions here and, when a ROM is available,
 on the cartridge too.
 
@@ -59,7 +59,7 @@ over the top of a cleared one. Here a solved room is simply terminal.
 ## Where the levels came from
 
 All 105 were read out of `Amazing Tater (U).gb` by booting it and dumping the board the
-cartridge itself composes in work RAM — `amazing_tater_gb.AmazingTaterGBEnv.levels` — at
+cartridge itself composes in work RAM (`amazing_tater_gb.AmazingTaterGBEnv.levels`) at
 matching indices, so `fix_index(7)` here and there are the same room. Nothing was transcribed
 by hand.
 
@@ -86,8 +86,8 @@ half of these rooms, and a `$` for all of them would quietly weld them together.
                       joined to: `a` is joined to nothing, `p` to all four
     'A'-'V' (see `SETTLED_GLYPHS`)   the same sixteen, for a square settled into a pit
 
-`str(state)` prints a friendlier version of the same board — `$` for every block square, `+`
-for every arm, `o` for every pivot — which is what the docs show. `board(level, state)` is
+`str(state)` prints a friendlier version of the same board (`$` for every block square, `+`
+for every arm, `o` for every pivot), which is what the docs show. `board(level, state)` is
 the exact one, and it is what the tests compare.
 """
 from collections import deque
@@ -106,7 +106,7 @@ ARM_GLYPHS = "^>v<"
 ARM_OVER_PIT_GLYPHS = "URDL"
 
 #: A block square, by which of its neighbours belong to the same block. The index into these
-#: is a mask with 1 right, 2 down, 4 left and 8 up — the cartridge's own encoding.
+#: is a mask with 1 right, 2 down, 4 left and 8 up: the cartridge's own encoding.
 BLOCK_GLYPHS = "abcdefghijklmnop"
 #: The same sixteen for a square that has settled into a pit. Not a contiguous run because
 #: `E`, `O` and the four `ARM_OVER_PIT_GLYPHS` are spoken for.
@@ -125,7 +125,7 @@ BIT_ARM = {bit: offset for offset, bit in ARM_BIT.items()}
 #: numbering from the arms above, and that is the cartridge's doing, not a slip here.
 BLOCK_BIT = {RIGHT: 1, DOWN: 2, LEFT: 4, UP: 8}
 
-#: Handing the controls to the next tater. Not a direction, and free — it moves nobody.
+#: Handing the controls to the next tater. Not a direction, and free: it moves nobody.
 SWITCH = "switch"
 
 ACTIONS = tuple(DIRECTIONS) + (SWITCH,)
@@ -1480,7 +1480,7 @@ def parse_level(rows):
     turnstile's arms. A block's squares each say which neighbours they are joined to, so the
     squares group into blocks by following those links and never by mere adjacency. A
     turnstile's arms each say which way they stick out, so an arm names its own pivot even
-    where two pivots are close enough to share a neighbour — which happens in thirty-six
+    where two pivots are close enough to share a neighbour, which happens in thirty-six
     places across these rooms, and is why the arms carry a direction at all.
     """
     height, width = len(rows), max(len(row) for row in rows)
@@ -1579,7 +1579,7 @@ class Level:
     """The part of a room that never moves, worked out once when it is loaded.
 
     Only the walls and the exit are truly fixed. The pits are here too because the *set of
-    squares that were ever pits* is fixed — which of them a dissolved block has since filled
+    squares that were ever pits* is fixed; which of them a dissolved block has since filled
     is carried by the state, not by the level.
     """
 
@@ -1605,7 +1605,7 @@ class Level:
 
 # ------------------------------------------------------------------------------- the rules
 # Free functions over `(level, state)` rather than methods, so the two halves that were hard
-# to get right — `push` and `turn` — can be tested on their own.
+# to get right (`push` and `turn`) can be tested on their own.
 
 def is_pit(level, state, cell):
     """An open pit: one nothing has filled in. Filled ones are floor and stay floor."""
@@ -1615,7 +1615,7 @@ def is_pit(level, state, cell):
 def clear_for_object(level, state, cell, moving_block=None, turning_pivot=None):
     """Can a block square or a turnstile arm come to rest here?
 
-    Pits do not stop either of them — a block settles into one and an arm swings over it.
+    Pits do not stop either of them: a block settles into one and an arm swings over it.
     Everything else on the board does, including the exit flag, which is scenery a block
     cannot be shoved onto.
     """
@@ -1640,8 +1640,9 @@ def walkable(level, state, cell):
 def push(level, state, block, target, offset):
     """Shove `block` one cell along `offset`. Returns `(blocks, filled)` or None if refused.
 
-    Two things beyond "is there room". A square that has settled into a pit cannot be shoved
-    — `target` is the square the tater's hands are on, and it has to be standing on floor.
+    Two things beyond "is there room". A square that has settled into a pit cannot be
+    shoved: `target` is the square the tater's hands are on, and it has to be standing on
+    floor.
     And a block whose every square ends up over a pit dissolves into it, filling those pits
     for good; that is the only thing in the game that changes the terrain.
     """
@@ -1720,7 +1721,7 @@ class AmazingTaterState:
     """A position: where the taters, blocks and turnstiles are, and which pits are gone.
 
     The level carries the walls, the exit and the set of squares that were ever pits, so none
-    of that is repeated here. What is here is everything a move can change — which is more
+    of that is repeated here. What is here is everything a move can change, which is more
     than in most of the twins in this package, because a turnstile's arms and a dissolved
     block's pits both belong to the position rather than to the board.
     """
@@ -1831,7 +1832,7 @@ def advance(level, state, action):
 # -------------------------------------------------------------------------------- output
 
 def board(level, state):
-    """The position in the alphabet the levels are written in — the exact one.
+    """The position in the alphabet the levels are written in: the exact one.
 
     A board printed by this and a board dumped out of the emulator by
     `amazing_tater_gb.read_board` are the same tuple of strings, which is what lets the two
@@ -1884,7 +1885,7 @@ def render(level, state):
 class AmazingTaterAction:
     """One press: a direction, or SELECT to hand the controls to the next tater."""
 
-    #: What each press costs. SELECT moves nobody, so it is free — otherwise the cheapest
+    #: What each press costs. SELECT moves nobody, so it is free; otherwise the cheapest
     #: plan for a two-tater room would be measured partly in how often you swapped.
     cost_map = {"up": 1, "right": 1, "down": 1, "left": 1, SWITCH: 0}
 
@@ -1952,8 +1953,8 @@ class AmazingTaterGame(Environment):
         """A position with no move left in it, and no tater home.
 
         Sound but weak, and deliberately so. Amazing Tater has dead ends this does not catch
-        — a block settled into the one pit that had to be crossed somewhere else is gone for
-        good, and so is the room — but recognising those needs reachability under moving
+        (a block settled into the one pit that had to be crossed somewhere else is gone for
+        good, and so is the room), but recognising those needs reachability under moving
         turnstiles, and a wrong `is_terminal` prunes a solvable branch, which is a much worse
         failure than missing a dead one.
         """

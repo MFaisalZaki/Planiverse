@@ -2,7 +2,7 @@
 
 `SIWSearch` and `BFWSSearch` take a `progress(state)` callback standing in for the unachieved
 -goal count that classical width-based planners lean on. Against a simulator that count does
-not exist — `is_goal` is a black-box predicate — so the measure has to be supplied per
+not exist (`is_goal` is a black-box predicate), so the measure has to be supplied per
 environment, and a benchmark that omits it is not measuring BFWS so much as BFWS with its main
 input removed.
 
@@ -19,7 +19,7 @@ follow from putting them in the benchmark rather than in the environments:
 `DEFAULT_MEASURE` is what an environment without an entry gets, and it is worth being blunt
 about what it does: nothing. It returns 0 everywhere, which turns BFWS into breadth-first
 search ordered by novelty alone and turns SIW into a single IW call. That is a real result, not
-a broken one — but it is a different experiment from the ones with a measure, and the reports
+a broken one, but it is a different experiment from the ones with a measure, and the reports
 mark it.
 """
 
@@ -41,7 +41,7 @@ def flipull(state):
 def boxxle2(state):
     """Boxes not yet on a goal.
 
-    Exactly the distance in one sense — the goal is every box home — and a poor guide in
+    Exactly the distance in one sense (the goal is every box home) and a poor guide in
     another: the last box is often the one that needs the other fifty moves, and this measure
     cannot see that. It is still much better than nothing, which is what BFWS gets otherwise.
     """
@@ -117,7 +117,7 @@ def amazing_tater(state):
 
     The tater count alone is a poor guide and in most rooms a useless one: it is 1 until the
     single tater steps onto the flag, and then it is 0. The straight-line distance breaks that
-    plateau up without pretending to be admissible — turnstiles and pits mean the real route is
+    plateau up without pretending to be admissible: turnstiles and pits mean the real route is
     often much longer, and it is a search guide, not a heuristic with a proof attached.
     """
     if not state.taters:
@@ -169,7 +169,7 @@ MEASURES = {
 #: Environments with no measure. Named rather than merely absent, so that "we have not written
 #: one" is distinguishable from "we forgot this environment exists".
 #:
-#: - `manufacturing` — the objective is a cost over a whole schedule, not a distance.
+#: - `manufacturing`: the objective is a cost over a whole schedule, not a distance.
 WITHOUT_MEASURE = ("manufacturing",)
 
 

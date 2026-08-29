@@ -1,7 +1,7 @@
 """Tests for the water distribution environment.
 
 Everything here runs against the benchmark networks WNTR ships, so there is nothing to
-download and nothing to supply — unlike the Game Boy environments, the "real thing" is
+download and nothing to supply; unlike the Game Boy environments, the "real thing" is
 already in the package.
 """
 import pytest
@@ -104,7 +104,7 @@ def test_the_scenarios_span_easy_and_hard():
 
 
 def test_every_scenario_has_a_known_solution_depth():
-    """No instance ships whose goal nobody has reached — a planner cannot tell an
+    """No instance ships whose goal nobody has reached: a planner cannot tell an
     unreachable goal from one it has not found yet, and `Net2` was dropped for that."""
     assert all(isinstance(s, Scenario) and s.solved_at >= 1 for s in SCENARIOS)
     assert not any(s.network.startswith("Net2") for s in SCENARIOS)

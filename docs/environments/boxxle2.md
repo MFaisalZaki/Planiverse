@@ -13,7 +13,7 @@ Sokoban, implemented rather than emulated: no ROM, no emulator, no dependencies.
 A warehouse keeper walks a grid one cell at a time:
 
 1. A step into a **wall** is refused, and the position does not change.
-2. A step into a **box** pushes it one cell in the same direction — but only if the cell
+2. A step into a **box** pushes it one cell in the same direction, but only if the cell
    *behind* the box is empty floor. A box cannot be pulled, and no chain of boxes can be pushed
    at once.
 3. Any other step just moves the keeper.
@@ -53,7 +53,7 @@ for action, successor in env.successors(state):
 # right 0
 ```
 
-`#` wall, `$` box, `o` goal, `*` box on a goal, `@` keeper, `+` keeper on a goal, space floor —
+`#` wall, `$` box, `o` goal, `*` box on a goal, `@` keeper, `+` keeper on a goal, space floor;
 the same alphabet [`boxxle2_gb`](boxxle2-gb.md) prints, so a board from either module reads
 the same.
 
@@ -80,8 +80,8 @@ env.reset()[1]["level"]    # '4-08'
 
 They were **decoded out of the ROM**, not transcribed: `boxxle2_gb.read_levels` implements the
 cartridge's two-stage level decompressor, and the 120 boards it produced are what
-`LEVELS` holds. The decoder is verified two independent ways — every record's computed size
-matches its pointer-table delta, and every level has as many goals as boxes — and the boards
+`LEVELS` holds. The decoder is verified two independent ways (every record's computed size
+matches its pointer-table delta, and every level has as many goals as boxes), and the boards
 were then loaded on the cartridge and compared cell for cell, with no mismatches.
 
 That matters because the failure mode of transcribed level data is silent. A wall in the wrong
@@ -126,7 +126,7 @@ env.is_terminal(state)    # a box on a square it can never be pushed off again
 
 `dead_squares` marks every non-goal cell with a wall on one of its vertical sides *and* one of
 its horizontal sides. A box there is stuck for good, so the level is lost. The test is
-**sound** — it never calls a solvable position dead — and deliberately **not complete**: frozen
+**sound** (it never calls a solvable position dead) and deliberately **not complete**: frozen
 pairs of boxes, and rows that hug a wall with no goal along them, are dead too and are not
 claimed. A wrong dead end prunes a solvable branch, which is much worse than letting a doomed
 one run.
@@ -159,11 +159,11 @@ loads the next one over the top of it. Here a solved position is simply terminal
 keeping apart:
 
 **Most are human.** ASchultz's Boxxle II FAQ on GameFAQs writes each level's solution as a list
-of box pushes — `0 2D 4U 3R, 2 1R 4U 2R, ...`, "box 0 down two, up four, right three" — against
+of box pushes (`0 2D 4U 3R, 2 1R 4U 2R, ...`, "box 0 down two, up four, right three") against
 a map that labels the boxes. Those were parsed, aligned against the ROM's own board, and turned
 back into keeper moves by walking the keeper into place before each push. The FAQ has typos in
 its labels (the author flags one himself), so the labels are treated as a preference rather
-than a fact and the push *shapes* — which carry the information — drive a small backtracking
+than a fact and the push *shapes*, which carry the information, drive a small backtracking
 search. **Nothing is taken on trust:** a reconstructed plan is kept only after it has been
 replayed here and seen to solve the level, and the plans in
 `tests/data/boxxle2_gb_solutions.json` were replayed on the cartridge too.

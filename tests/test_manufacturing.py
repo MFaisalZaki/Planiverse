@@ -14,7 +14,7 @@ from planiverse.environments.manufacturing.mfenv import (  # noqa: E402
 from conftest import assert_state_contract, assert_successors_contract
 
 # Derived from the module rather than spelled out, so moving the package cannot leave a
-# stale path behind — which is exactly what the flat `planiverse.environments` layout did.
+# stale path behind, which is exactly what the flat `planiverse.environments` layout did.
 DATA_DIR = os.path.join(os.path.dirname(mfenv.__file__), "data")
 
 

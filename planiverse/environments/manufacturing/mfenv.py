@@ -96,7 +96,7 @@ class MfgState:
         reward = -1.0 * ret_state['configuration_costs'][cfg_id]["market_incurring_costs"]
 
         # buy new configuration
-        # update inucrred costs
+        # update incurred costs
         ret_state["configuration_costs"][cfg_id]["incurred_costs"] = ret_state['configuration_costs'][cfg_id]["market_incurring_costs"]
 
         # update recurring costs
@@ -319,7 +319,7 @@ class MfgEnv(Environment):
     def _check_problem_feasibility(self) -> bool:
         """Checks whether the problem is feasible.
         The problem is not feasible if the solution does not exist
-        using the manufacturing configuration with highes capacity.
+        using the manufacturing configuration with highest capacity.
 
         Returns:
             bool: Feasibility of the problem.

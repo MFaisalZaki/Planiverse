@@ -5,7 +5,7 @@ implements the rules directly, so it is the dependency-free way to plan in this 
 
 ## Where the levels came from
 
-All 128 of them are the cartridge's 128 rounds, at matching indices — `fix_index(7)` here
+All 128 of them are the cartridge's 128 rounds, at matching indices: `fix_index(7)` here
 and on `puzznic_gb` are the same board. The first 50 were transcribed by hand; the rest
 were read out of `Puzznic (J)` at `$DF00` by booting each round through `PuzznicGBEnv`.
 
@@ -22,11 +22,11 @@ Two known gaps, neither yet resolved:
 1. **The cursor starts in the wrong place.** The cartridge starts it on a block in 127 of
    the 128 rounds; a `c` in a level string marks an *empty* cell, so it cannot be written
    down. Every level here starts the cursor on the nearest empty cell instead. Harmless
-   for solvability — the cursor moves freely — but plans do not transfer move-for-move.
+   for solvability (the cursor moves freely), but plans do not transfer move-for-move.
 2. **Matching is more eager than the cartridge's.** `_check_and_remove_matches_` rescans
    the whole board after every step and clears *every* adjacent same-type pair, while the
    cartridge will leave such a pair sitting untouched. Replaying cartridge-validated plans
-   here clears 30 of 39; the 9 failures are all this, and always in the same direction —
+   here clears 30 of 39; the 9 failures are all this, and always in the same direction:
    this version clearing blocks the cartridge keeps.
 """
 from itertools import chain
@@ -114,7 +114,7 @@ class PuzznicState:
         return self.grid == value.grid and self.cursor == value.cursor
 
     def __update__(self):
-        # this function update the boolean predicates of the state.
+        # this function updates the boolean predicates of the state.
         # the representation is simple for now,
         self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
         
@@ -145,7 +145,7 @@ class PuzznicState:
         if hold and not isinstance(marked_cell, Box):  return False
         new_x, new_y = self.cursor + self.action_map[action]
         if not self.inbound_check((new_x, new_y)): return False
-        # don't allow the cursor to move to a wall cell.
+        # do not allow the cursor to move to a wall cell.
         # if isinstance(self.grid[new_x][new_y], Wall): return False
         # move box if we are holding it and the next cell is empty
         if hold and \
@@ -162,7 +162,7 @@ class PuzznicState:
         self.__update__()
 
     def is_goal(self):
-        # check that we dont have any boxes left.
+        # check that we do not have any boxes left.
         # return not any([isinstance(item, Box) for sublist in self.grid for item in sublist])
         return not any([isinstance(item, Box) for item in chain.from_iterable(self.grid)])
     
@@ -438,7 +438,7 @@ class PuzznicGame(Environment):
         self.state_history += [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
     
     def _compute_successor_state_(self, state:PuzznicState, action:str):
-        # don't generate successors for goal/terminal states.
+        # do not generate successors for goal/terminal states.
         successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
         if state.is_goal() or state.is_terminal(): return successor_state
         successor_state.apply_action(action)
@@ -463,7 +463,7 @@ class PuzznicGame(Environment):
         """Select a level. Out of range is refused here, not later.
 
         It used to be accepted and only rejected at `reset()`, by an assertion inside
-        `_levels_str_` — which `python -O` strips, and which meant anything asking the
+        `_levels_str_`, which `python -O` strips, and which meant anything asking the
         environment how many levels it has by walking `fix_index` upwards (the benchmark
         harness does exactly that) got told there was no limit.
         """

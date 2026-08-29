@@ -7,8 +7,8 @@ for a dependency-free benchmark; use that one for the cartridge's actual behavio
 ## The rules, stated
 
 Lolo walks the four directions, one cell at a time, on an 8x8 board. Every rule below was
-measured on the cartridge — the probes are listed in
-`docs/environments/lolo-gb-memory-map.md` §9 — rather than taken from a manual.
+measured on the cartridge (the probes are listed in
+`docs/environments/lolo-gb-memory-map.md` §9) rather than taken from a manual.
 
 1. A step into a **rock**, a **tree**, a **river** or the edge is refused.
 2. A step into a **one-way pass** is refused if it goes against the arrow, and allowed from
@@ -16,8 +16,8 @@ measured on the cartridge — the probes are listed in
 3. A step into an **Emerald Framer** or an **egg** pushes it one cell the same way, but only
    if the cell behind is empty walkable ground. Nothing can be pulled, and no chain of two
    can be pushed at once.
-4. A step onto a **heart framer** collects it. A *magic* heart framer — the cartridge stores
-   two heart codes and this is the second — also gives Lolo **two magic shots**; a plain one
+4. A step onto a **heart framer** collects it. A *magic* heart framer (the cartridge stores
+   two heart codes and this is the second) also gives Lolo **two magic shots**; a plain one
    gives none.
 5. A step into an **enemy** is refused. Enemies never move on their own: left alone, the
    board is completely still.
@@ -36,7 +36,7 @@ In one place, and it is worth stating plainly rather than burying.
 
 **Six of the eight enemies are frozen here.** Snakey and Medusa never move on the cartridge
 either, so rooms holding only those two are modelled exactly; `EXACT_ROOMS` lists the 26 of
-them. The other six — Leeper, Rocky, Alma, Gol, Skull and Don Medusa — do move on the
+them. The other six (Leeper, Rocky, Alma, Gol, Skull and Don Medusa) do move on the
 cartridge, in lock-step with Lolo, and this module leaves them where they started. For the
 137 rooms that contain one, a plan found here is a plan against a *strictly easier* puzzle,
 and it may well die on the cartridge. That is the wrong direction for an approximation to
@@ -44,24 +44,24 @@ err in, so it is flagged rather than smoothed over: `Room.exact` says which room
 is faithful for, and `lolo_gb` is the authority for the rest.
 
 **Rafts are refused.** On the cartridge an egg shoved into a river floats, and Lolo can step
-onto it and ride across — that is how int 1-3 is cleared. Five of the six river codes accept
+onto it and ride across; that is how int 1-3 is cleared. Five of the six river codes accept
 one; two of them then *carry* the raft, one cell every few frames, in a direction the code
 picks. Modelling a moving raft means modelling time, which nothing else here needs, so this
 module refuses to push an egg into a river at all. Rooms that need a raft cannot be cleared
 here; `lolo_gb` clears them.
 
 Two smaller divergences, both in the safe direction. Medusa's shot is modelled as instant,
-where the cartridge gives one move of grace — but that move cannot be used to escape, so no
+where the cartridge gives one move of grace, but that move cannot be used to escape, so no
 plan is lost. And an Emerald Framer is not pushed onto a heart framer, a door or a marker
 here, which was never tested on the cartridge and is refused rather than guessed.
 
-**The hammer is not modelled.** A few rooms start with one in the status bar's PWR meter —
-int 1-5 does, and cannot be cleared without it — and what it breaks was not established.
+**The hammer is not modelled.** A few rooms start with one in the status bar's PWR meter
+(int 1-5 does, and cannot be cleared without it), and what it breaks was not established.
 
 ## Where the rooms came from
 
 All 163 of them were decoded out of `Adventures of Lolo (U) [S][!].gb` by
-`lolo_gb.read_rooms`, at matching indices — `fix_index(38)` here and on `lolo_gb` are the
+`lolo_gb.read_rooms`, at matching indices: `fix_index(38)` here and on `lolo_gb` are the
 same room. Nothing was transcribed by hand. `tests/test_lolo.py` re-decodes the ROM and
 compares, when a ROM is available, so a room cannot drift away from the cartridge unnoticed.
 
@@ -75,7 +75,7 @@ from planiverse.environments.base import Environment
 # Declared here rather than imported from `lolo_gb`, which needs PyBoy: this module promises
 # to need nothing, and a twin that drags in an emulator to spell "#" would not be one. The two
 # copies are pinned against each other by `tests/test_lolo.py`, which fails if they drift.
-# The names are the cartridge's own — the object list at `$2CA9` is plain ASCII and reads
+# The names are the cartridge's own: the object list at `$2CA9` is plain ASCII and reads
 # "EMERALD FRAMERS / TREES / ROCKS / DESERTS / ENEMY HOLES / RIVERS / BREAK TILE /
 # FLOWER BEDS / AND JEWEL BOXES", then "BRIDGE / ONE-WAY PASS / HAMMER".
 
@@ -101,8 +101,8 @@ PRO_START = 158
 def room_label(index):
     """How the game itself numbers a room.
 
-    The tutorial stores each of its 19 puzzles twice — the demonstration the game plays for
-    you, then the same room to try — so its labels carry which half of the pair a slot is.
+    The tutorial stores each of its 19 puzzles twice (the demonstration the game plays for
+    you, then the same room to try), so its labels carry which half of the pair a slot is.
     """
     if index < TUTORIAL_END:
         pair, half = divmod(index, 2)
@@ -116,7 +116,7 @@ def room_label(index):
     return f"pro {index - PRO_START + 1}"
 
 
-#: An enemy that has been shot. Not a cell code — the cartridge draws it as a sprite — but it
+#: An enemy that has been shot. Not a cell code (the cartridge draws it as a sprite), but it
 #: needs a glyph to render and a name to reason about.
 EGG = "e"
 
@@ -125,8 +125,8 @@ EGG = "e"
 WALKABLE = frozenset({FLOOR, BRIDGE, DESERT, BREAK_TILE, FLOWER_BED, MARKER, DOOR})
 
 #: Where an Emerald Framer or an egg may be pushed to. Measured one destination at a time: a
-#: Framer goes onto floor, desert, a flower bed and a one-way pass — the arrow does not stop a
-#: push, only a walk — and is refused by a river, a heart framer and the door.
+#: Framer goes onto floor, desert, a flower bed and a one-way pass (the arrow does not stop a
+#: push, only a walk), and is refused by a river, a heart framer and the door.
 PUSHABLE_ONTO = frozenset({FLOOR, BRIDGE, DESERT, BREAK_TILE, FLOWER_BED, MARKER}) \
     | frozenset(ONE_WAY)
 
@@ -481,7 +481,7 @@ ROOMS = (
 def parse_room(text):
     """One room's text into `(terrain, hearts, framers, enemies, lolo, door)`.
 
-    The static half — terrain and the door — is separated from the parts that move, because
+    The static half (terrain and the door) is separated from the parts that move, because
     the terrain never changes and copying it into every state would make every state far
     bigger than the position it describes. Objects are lifted out of the grid and the ground
     under them left as floor, so `terrain[r][c]` always answers "what would Lolo be standing
@@ -546,7 +546,7 @@ class Room:
         self.medusas = frozenset(cell for cell, glyph in enemies.items() if glyph == MEDUSA)
         self.enemy_cells = frozenset(enemies)
         #: Enemy kinds this room holds that this module does not move. Empty means the model
-        #: is faithful — see the module docstring.
+        #: is faithful; see the module docstring.
         self.unmodelled = frozenset(set(enemies.values()) - {SNAKEY, MEDUSA})
 
     @property
@@ -704,7 +704,7 @@ def move(state, direction):
     """One step. Returns the successor, or None when the step changes nothing.
 
     None rather than an unchanged position, so a caller can tell "Lolo walked somewhere" from
-    "Lolo walked into a rock" without comparing states — which is what `successors` needs to
+    "Lolo walked into a rock" without comparing states, which is what `successors` needs to
     drop the actions that do nothing. A bump does turn him, though, and that is a real change
     when the next action is a shot, so a refused *move* is still a successor when the facing
     it leaves behind is new.
@@ -800,7 +800,7 @@ class LoloGame(Environment):
         super().__init__("lolo")
         #: Magic shots Lolo starts a room with. Zero, like the cartridge on a cold boot: the
         #: meter belongs to the player, not to the room, and on a real playthrough whatever
-        #: was left over from the room before comes with you. A few rooms — int 1-5 is one —
+        #: was left over from the room before comes with you. A few rooms (int 1-5 is one)
         #: need a shot they cannot earn in-room and can only be cleared with this set.
         #: `lolo_gb.LoloGBEnv` takes the same argument and means the same thing by it.
         self.magic_shots = magic_shots

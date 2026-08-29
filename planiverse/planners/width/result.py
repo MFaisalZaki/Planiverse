@@ -1,7 +1,7 @@
 """What a width-based search hands back.
 
-Reporting is not decoration here. Against a simulator one expansion can cost seconds — the
-power grid environment spends 8 to 19 of them per node — so "it found nothing" and "it ran
+Reporting is not decoration here. Against a simulator one expansion can cost seconds (the
+power grid environment spends 8 to 19 of them per node), so "it found nothing" and "it ran
 out of budget having looked at four nodes" are completely different answers and a planner
 that cannot tell them apart is not usable.
 """

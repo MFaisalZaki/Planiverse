@@ -2,7 +2,7 @@
 
 Three outputs, because three audiences: `results.txt` to read in a terminal, `coverage.tex` to
 paste into a paper, and two plots. The plots are the conventional pair from the planning
-literature — a survival ("cactus") plot and a runtime scatter — and they are conventional for
+literature, a survival ("cactus") plot and a runtime scatter, and they are conventional for
 a good reason: coverage alone cannot distinguish a planner that solves 40 tasks quickly from
 one that solves the same 40 just inside the limit.
 """
@@ -179,7 +179,7 @@ def _escape(text):
 
 def _subplots(**kwargs):
     # The Agg selection at the top of this module is process-global state that any import
-    # can overwrite — nasim switches the process to TkAgg, which segfaults headless — so
+    # can overwrite (nasim switches the process to TkAgg, which segfaults headless), so
     # it is re-asserted at every figure creation rather than trusted.
     if matplotlib.get_backend().lower() != "agg":
         pyplot.switch_backend("Agg")

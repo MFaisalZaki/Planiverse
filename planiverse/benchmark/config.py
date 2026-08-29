@@ -3,7 +3,7 @@
 Modelled on [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit): an experiment is a
 directory holding one `exp-details.json` and one file per planner under `planners/`, and every
 later stage reads that directory rather than command-line flags. Keeping the definition on disk
-is what makes a run reproducible — the sandbox records which experiment produced it, so a
+is what makes a run reproducible: the sandbox records which experiment produced it, so a
 result can always be traced back to the limits it was obtained under.
 """
 import json
@@ -80,7 +80,7 @@ class SlurmConfig:
     time_headroom: str = "00:05:00"
     memory_headroom: str = "1GB"
     extra_directives: tuple = ()
-    #: Prepended to every job body — `module load`, `conda activate`, and so on.
+    #: Prepended to every job body: `module load`, `conda activate`, and so on.
     setup_commands: tuple = ()
 
 
@@ -99,10 +99,10 @@ class TaskSelection:
     #: is the default because instance 0 of most of these environments is a tutorial.
     selection: str = "even"
     #: Environments whose dependencies are missing are skipped rather than recorded as
-    #: failures — running half a catalogue and saying so beats refusing to run at all.
+    #: failures; running half a catalogue and saying so beats refusing to run at all.
     skip_unavailable: bool = True
     #: Environments needing a ROM the user supplies. On, so that a cartridge-backed
-    #: environment and its pure-Python twin are benchmarked side by side — which is most of
+    #: environment and its pure-Python twin are benchmarked side by side, which is most of
     #: the point of having both. Without a cartridge they are skipped with a reason, so
     #: leaving this on costs nothing when the files are absent.
     include_rom_environments: bool = True
@@ -134,8 +134,8 @@ class Limits:
 class PlannerSpec:
     """One planner entry, as `planners/<tag>.json`.
 
-    `tag` names it everywhere afterwards — in filenames, in the sbatch job name, and in every
-    table — so it has to be filesystem-safe and stable.
+    `tag` names it everywhere afterwards (in filenames, in the sbatch job name, and in every
+    table), so it has to be filesystem-safe and stable.
     """
 
     tag: str

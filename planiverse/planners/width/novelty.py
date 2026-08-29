@@ -17,7 +17,7 @@ here bucket deliberately for this reason.
 
 **Width 2 costs O(n²) per state and width 3 costs O(n³).** With a hundred atoms that is
 5,000 pairs and 160,000 triples, per state, and a simulator's successor is already
-expensive. `NoveltyTable` therefore refuses widths above `MAX_PRACTICAL_WIDTH` unless asked
+expensive, so `NoveltyTable` refuses widths above `MAX_PRACTICAL_WIDTH` unless asked
 explicitly, and reports what it cost.
 """
 from itertools import combinations
@@ -44,8 +44,8 @@ class NoveltyTable:
                 f"expensive. Pass strict=False if you mean it.")
         self.width = width
         # `{size: set of tuples}`, filled on demand. A list of `width` sets would allocate
-        # one per level whether or not any state has that many atoms, so a width of 1000 —
-        # what `IteratedWidth` is given as a bound — cost a thousand allocations per level
+        # one per level whether or not any state has that many atoms, so a width of 1000
+        # (what `IteratedWidth` is given as a bound) cost a thousand allocations per level
         # tried, for nine atoms' worth of work.
         self.seen = {}
         self.evaluations = 0
@@ -80,14 +80,14 @@ class NoveltyTable:
         """The largest tuple size worth looking at for this state.
 
         A tuple longer than the state has atoms does not exist, so sizes above that are empty
-        ranges — and with a width in the hundreds they are the whole cost.
+        ranges, and with a width in the hundreds they are the whole cost.
         """
         return min(self.width, len(atoms))
 
     def evaluate_and_record(self, literals):
         """The usual pairing: score the state, then remember it.
 
-        Kept as one call because doing them in the other order always yields `width + 1` —
+        Kept as one call because doing them in the other order always yields `width + 1`:
         a state is never novel with respect to itself.
         """
         novelty = self.evaluate(literals)
@@ -108,8 +108,8 @@ class PartitionedNovelty:
     """One novelty table per partition, which is what makes BFWS work.
 
     Plain novelty runs out: once every atom has been seen somewhere, nothing is novel again
-    and the search stalls. Partitioning by something that measures progress — how many goals
-    are left, how deep the plan is — gives each partition its own budget, so reaching a new
+    and the search stalls. Partitioning by something that measures progress (how many goals
+    are left, how deep the plan is) gives each partition its own budget, so reaching a new
     partition renews exploration instead of ending it.
     """
 
@@ -146,7 +146,7 @@ def path_novelty(literals, seen_on_path):
 
     It counts how many atoms of the state are new **relative to the path taken to it**, and
     IW(k) keeps the state when that count is at least k. That is not the standard measure and
-    the reference's own source flags it as unverified. At k=1 the two agree — "has a new
+    the reference's own source flags it as unverified. At k=1 the two agree: "has a new
     atom". At k=2 they diverge: this asks for *two* new atoms, while standard novelty asks
     for one new *pair*, and a state can satisfy either without the other.
 

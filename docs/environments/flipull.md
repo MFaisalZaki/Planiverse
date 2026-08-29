@@ -7,7 +7,12 @@ dependencies beyond the standard library.
 - **Class:** `FlipullGame`
 - **Import:** `from planiverse.environments.gameboy_py.flipull import FlipullGame`
 - **Source:** [`planiverse/environments/gameboy_py/flipull.py`](../../planiverse/environments/gameboy_py/flipull.py)
-- **Instances:** 10 stages, indices `0`–`9`
+- **Instances:** 32 stages, indices `0`–`31`, matching the cartridge's own stage table: the
+  same board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6), stage for
+  stage. The arrangements are generated and verified rather than copied, because the
+  cartridge stores none: it draws each stage's layout from an RNG seeded by boot timing.
+  Each board here is kept only when the fewest blocks it can be reduced to under the stated
+  rules is exactly the cartridge's target.
 - **Dependencies:** none
 - **Sibling:** [`FlipullGBEnv`](flipull-gb.md) plays the real Game Boy cartridge in an emulator
 
@@ -18,7 +23,7 @@ holding one block, and throws it leftward along whichever row they are standing 
 
 1. The thrown block **destroys** every block of its own type it meets, and keeps going.
 2. The first block of a **different** type takes the thrown block's place, and comes back into
-   the player's hand — a swap.
+   the player's hand, a swap.
 3. If the *very first* block it meets is a different type, **nothing happens at all**. The
    throw is refused and the position is unchanged.
 4. Every destroyed cell **collapses its column**: the run of blocks stacked directly above it
@@ -28,7 +33,7 @@ A stage is cleared when few enough blocks are left.
 
 Rule 3 is the one that makes this a puzzle rather than a shuffling exercise. Only the
 *rightmost* block of a row is reachable, so a throw is legal only where that block matches what
-the player is holding — and what the player is holding is decided by the previous throw. Choosing
+the player is holding, and what the player is holding is decided by the previous throw. Choosing
 which row to stand on is the whole game, and choosing wrong strands you: a board where no row's
 rightmost block matches your hand can never change again.
 
@@ -71,7 +76,7 @@ handed a self-loop to close.
 
 ## Stages
 
-`fix_index(i)` selects stage `i`. Indices are `0`–`9` and stable — `STAGES` is a literal tuple of
+`fix_index(i)` selects stage `i`. Indices are `0`–`9` and stable: `STAGES` is a literal tuple of
 `(ascii, clear_target)` pairs in the module.
 
 Stage strings use this alphabet:
@@ -83,8 +88,8 @@ Stage strings use this alphabet:
 | `1`–`4` | A block; the digit is its type |
 
 The stages were **generated and then measured**, not drawn by hand. Hand-drawn boards kept
-turning out to have unreachable targets — symmetric patterns in particular create parity traps
-where the last few blocks can never be matched — so each shipped stage was produced randomly,
+turning out to have unreachable targets (symmetric patterns in particular create parity traps
+where the last few blocks can never be matched), so each shipped stage was produced randomly,
 explored exhaustively, and kept only if its target is provably reachable. The tests re-derive a
 solution for every stage, so a stage whose goal drifts out of reach fails the suite.
 
@@ -92,7 +97,7 @@ solution for every stage, so a stage whose goal drifts out of reach fails the su
 
 `FlipullState` holds the grid (a tuple of tuples of single characters), the row the player is on,
 the block in hand, the clear target, and a depth counter. Equality and hashing are over
-`(grid, row, held)` only — depth is bookkeeping, and two identical boards reached by different
+`(grid, row, held)` only; depth is bookkeeping, and two identical boards reached by different
 routes must be the same state or search never closes anything.
 
 `literals` is a `frozenset` of strings:
@@ -110,22 +115,22 @@ remaining(7)           blocks left on the board
 
 `is_terminal` is **exact**, and this is the one place where the Python twin is strictly better
 than the cartridge one. Because the rules are known here, a position is a dead end exactly when
-no throw from any row would connect — `state.any_throw_connects()` decides it outright.
+no throw from any row would connect; `state.any_throw_connects()` decides it outright.
 [`FlipullGBEnv`](flipull-gb.md) cannot compute that: it does not know what a throw hits, so all
 it can report is that the clock ran out. Dead-end detection is most of what makes a puzzle
-searchable, so this is not a small difference — a planner on the Python environment prunes a
+searchable, so this is not a small difference: a planner on the Python environment prunes a
 doomed branch the moment it enters one, and on the cartridge it does not.
 
 ## How faithful is this to the cartridge?
 
 Partly, and the honest answer is worth more than the claim. The rules above were derived by
 driving a real `Flipull (USA)` cartridge and predicting what it would do next. They reproduce it
-**exactly** — field and hand, cell for cell — for throws taken level with the wall in the
+**exactly** (field and hand, cell for cell) for throws taken level with the wall in the
 positions checked. Over a longer automated comparison they agreed on about half of the level
-throws and four in five of the throws from above the wall, so something further is going on that
+throws and four in five of the throws from above the wall, so something more is going on that
 has not been pinned down: the staircase, a bounce, or a fall the model does not have.
 
-So this is a Flipull-*like* environment with a stated rule set, not a clone — the same posture as
+So this is a Flipull-*like* environment with a stated rule set, not a clone, the same posture as
 the synthetic test cartridge in [`tests/fake_flipull_rom.py`](../../tests/fake_flipull_rom.py).
 What it is good for is a well-defined, dependency-free planning problem. What it is *not* good
 for is predicting the cartridge, which is what [`FlipullGBEnv`](flipull-gb.md) is there to do.
@@ -140,7 +145,7 @@ Two deliberate simplifications follow from that:
 
 ## Planning with it
 
-The state space is small — hundreds to a few thousand reachable states per stage — but
+The state space is small (hundreds to a few thousand reachable states per stage) but
 dead-end-rich, which is the interesting combination: blind search wanders into positions it can
 never leave, and the useful signal is how many blocks are gone.
 

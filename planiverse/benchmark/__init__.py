@@ -1,7 +1,7 @@
 """Benchmarking Planiverse planners, with SLURM job generation.
 
 An experiment is a directory of JSON, a sandbox is a directory of results, and the stages
-between them run independently — prepare on a laptop, run on a cluster, analyse anywhere:
+between them run independently (prepare on a laptop, run on a cluster, analyse anywhere):
 
     planiverse-bench init --exp-dir experiment
     planiverse-bench discover --exp-dir experiment --sandbox-dir sandbox

@@ -1,14 +1,15 @@
 """What each environment is, as data rather than as a package path.
 
-The old layout encoded one fact about an environment — "real world problem" or "retro game" —
+The old layout encoded one fact about an environment ("real world problem" or "retro game")
 in the directory it lived in, which meant the fact could not be queried, could not be
 combined with any other fact, and could not be wrong without moving files. Everything a
-planner might actually select on is here instead, and the old distinction survives as one
-tag among several.
+planner might actually select on is here instead, and the old distinction survives as
+family tags, alongside finer ones: `game`, `operational` (an agent running a system it is
+responsible for), and `security`.
 
     >>> from planiverse.environments import list_environments, make
-    >>> [spec.name for spec in list_environments(tag="infrastructure")]
-    ['power_grid', 'water_network']
+    >>> [spec.name for spec in list_environments(tag="operational")]
+    ['crop_management', 'manufacturing', 'power_grid', 'water_network']
     >>> env = make("puzznic")
 
 Nothing here imports an environment module. The specs are declarative and `make` imports
@@ -21,10 +22,10 @@ from dataclasses import dataclass, field
 
 #: How a state is identified, which is the thing that decides whether search can branch.
 #:
-#: - `value`    — the state carries its own contents; expanding is pure.
-#: - `path`     — the state is the decision sequence, replayed on demand. Sound only because
-#:                the simulator is deterministic.
-#: - `snapshot` — the state carries a serialised simulator image (a Game Boy save-state).
+#: - `value`:    the state carries its own contents; expanding is pure.
+#: - `path`:     the state is the decision sequence, replayed on demand. Sound only because
+#:               the simulator is deterministic.
+#: - `snapshot`: the state carries a serialised simulator image (a Game Boy save-state).
 STATE_IDENTITIES = ("value", "path", "snapshot")
 
 
@@ -45,12 +46,12 @@ class EnvironmentSpec:
     #: Constructor keyword arguments, as `(name, value)` pairs, for the environments whose
     #: `__init__` takes a required argument. Without these `make(name)` works for most of the
     #: catalogue and raises a `TypeError` for the rest, which makes "build every registered
-    #: environment" — what the benchmark harness does — impossible to write generically.
+    #: environment" (what the benchmark harness does) impossible to write generically.
     #: Pairs rather than a dict so the spec stays hashable.
     defaults: tuple = ()
     #: For a `needs_rom` environment, the environment variable holding the path to the
     #: cartridge, and the constructor argument to pass it as. The file is copyrighted and
-    #: cannot ship, so the path can only come from the user — and without somewhere to put it
+    #: cannot ship, so the path can only come from the user. Without somewhere to put it
     #: these environments cannot be constructed by name at all, which makes them invisible to
     #: anything generic (the benchmark harness, most obviously).
     rom_variable: str = ""
@@ -103,7 +104,7 @@ class EnvironmentSpec:
         return name.lower().replace("_", "-")
 
     def available(self):
-        """Can this environment run here — dependencies importable, and a ROM if it needs one?"""
+        """Can this environment run here (dependencies importable, and a ROM if it needs one)?"""
         for module_name in self.requires:
             try:
                 importlib.import_module(module_name)
@@ -140,7 +141,7 @@ REGISTRY = (
         name="flipull",
         factory="planiverse.environments.gameboy_py.flipull:FlipullGame",
         summary="Flipull-like throwing puzzle, re-implemented in pure Python",
-        instances="10 stages",
+        instances="32 stages, matching the cartridge's sizes and CLEAR targets",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/flipull.md",
@@ -271,7 +272,7 @@ REGISTRY = (
         state_identity="value",
         requires=("numpy",),
         docs="docs/environments/manufacturing.md",
-        tags=frozenset({"operations", "scheduling"}),
+        tags=frozenset({"operational", "scheduling"}),
     ),
     EnvironmentSpec(
         name="water_network",
@@ -282,7 +283,7 @@ REGISTRY = (
         state_identity="value",
         requires=("wntr",),
         docs="docs/environments/water-distribution.md",
-        tags=frozenset({"infrastructure", "solver-in-the-loop"}),
+        tags=frozenset({"operational", "infrastructure", "solver-in-the-loop"}),
     ),
     EnvironmentSpec(
         name="power_grid",
@@ -293,7 +294,7 @@ REGISTRY = (
         state_identity="path",
         requires=("grid2op",),
         docs="docs/environments/power-grid.md",
-        tags=frozenset({"infrastructure", "solver-in-the-loop"}),
+        tags=frozenset({"operational", "infrastructure", "solver-in-the-loop"}),
     ),
     EnvironmentSpec(
         name="crop_management",
@@ -304,7 +305,7 @@ REGISTRY = (
         state_identity="path",
         requires=("pcse",),
         docs="docs/environments/crop-management.md",
-        tags=frozenset({"agriculture", "continuous-dynamics"}),
+        tags=frozenset({"operational", "agriculture", "continuous-dynamics"}),
     ),
 )
 
@@ -314,8 +315,8 @@ _BY_NAME = {spec.name: spec for spec in REGISTRY}
 def list_environments(tag=None, available_only=False):
     """The catalogue, optionally filtered.
 
-    `tag` selects on the tags that used to be package directories — `game`, `infrastructure`,
-    and so on — but also on properties that never had a home, like `continuous-dynamics`.
+    `tag` selects on the family tags (`game`, `operational`, `security`), but also on
+    properties that never had a home, like `continuous-dynamics` or `solver-in-the-loop`.
     `available_only` drops the ones whose dependencies are not installed here.
     """
     specs = [spec for spec in REGISTRY if tag is None or tag in spec.tags]

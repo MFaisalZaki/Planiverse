@@ -1,10 +1,10 @@
 """Tests for the pure-Python Amazing Tater environment.
 
 Four parts. The first pins the *rules* down on hand-made rooms, because a rule set only ever
-exercised through the shipped levels is a rule set nobody can argue with — and four of these
+exercised through the shipped levels is a rule set nobody can argue with, and four of these
 rules exist in the form they do only because the cartridge disagreed with a simpler guess.
 The second checks the 105 rooms themselves. The third checks the environment contract. The
-fourth replays stored solutions, and — when a ROM is around — re-dumps the cartridge to check
+fourth replays stored solutions, and, when a ROM is around, re-dumps the cartridge to check
 the rooms have not drifted and replays a solution on the cartridge itself.
 """
 import pytest
@@ -169,7 +169,7 @@ def test_a_block_partly_over_pits_is_still_a_block():
 def test_a_settled_square_cannot_be_shoved():
     """Rule 4, and the cartridge's, not a guess: room `A-36` refuses exactly this push.
 
-    `b` and `G` are the two halves of a horizontal pair — `G` is the right half, already
+    `b` and `G` are the two halves of a horizontal pair: `G` is the right half, already
     settled into a pit. The first push is aimed at the half on floor and moves the block; the
     second is aimed at the half that is now in the pit, and does not.
     """
@@ -243,7 +243,7 @@ def test_a_turnstile_with_nowhere_to_swing_does_not_turn():
 def test_a_turnstile_blocked_on_the_swept_diagonal_does_not_turn():
     """Rule 6's other half: the corner an arm passes through has to be clear as well.
 
-    Everything the arm *lands* on here is free — only the diagonal between where it starts and
+    Everything the arm *lands* on here is free; only the diagonal between where it starts and
     where it stops is occupied. The cartridge refuses this, in room `A-01`.
     """
     rows = ("######",

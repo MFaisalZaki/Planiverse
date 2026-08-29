@@ -3,7 +3,7 @@
 Split in two. The first half pins the *rules* down on hand-made boards, because a rule set
 that is only ever exercised through the shipped stages is a rule set nobody can argue with.
 The second half checks the environment contract and that every stage's goal is actually
-reachable — a benchmark whose goals cannot be met is worse than no benchmark.
+reachable; a benchmark whose goals cannot be met is worse than no benchmark.
 """
 import pytest
 
@@ -104,7 +104,7 @@ def test_destroying_a_block_drops_the_stack_above_it():
 
 def test_the_collapse_never_drags_the_border_into_the_board():
     """It used to shift whatever was above, which walked the top wall down into the play
-    area one throw at a time — quietly, because the board still looked plausible."""
+    area one throw at a time, quietly, because the board still looked plausible."""
     grid = grid_of("#####", "# 1 #", "# 2 #", "#####")
     collapse(grid, 2, 2)
     assert text_of(grid)[0] == "#####", "the border stays put"
@@ -169,10 +169,22 @@ def test_every_stage_can_actually_be_solved(index):
     assert game.validate(result.plan), "and the plan replays to a goal"
 
 
-def test_the_stages_get_harder():
-    """A ramp, not eight variations of the same board."""
-    sizes = [count_blocks(parse_stage(text)) for text, _ in STAGES]
-    assert sizes[-1] > sizes[0], "the last stage is bigger than the first"
+def test_the_stages_match_the_cartridge_contract():
+    """Stage for stage, the board size and CLEAR target of `Flipull (USA)`'s own table.
+
+    The cartridge stores no arrangements (it draws them from an RNG seeded by boot
+    timing), so the contract, not the layout, is what a twin can replicate. The ramp is
+    the cartridge's: the targets tighten from 9 to 6 while the boards cycle through the
+    three sizes.
+    """
+    contract = [(count_blocks(parse_stage(text)), target) for text, target in STAGES]
+    assert contract == [
+        (25, 9), (25, 9), (25, 8), (30, 8), (30, 8), (30, 7), (30, 7), (36, 7),
+        (36, 8), (36, 8), (36, 8), (30, 7), (30, 7), (36, 7), (36, 7), (30, 7),
+        (30, 7), (30, 7), (30, 7), (30, 7), (30, 7), (30, 6), (30, 6), (36, 6),
+        (36, 6), (36, 6), (36, 6), (36, 6), (36, 6), (25, 6), (25, 6), (25, 6),
+    ]
+    assert contract[-1][1] < contract[0][1], "the targets tighten across the game"
 
 
 # ---------------------------------------------------------------------- the environment

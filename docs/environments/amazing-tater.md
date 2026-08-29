@@ -1,7 +1,7 @@
 # Amazing Tater (pure Python)
 
 Amazing Tater's rules, implemented rather than emulated. No ROM, no emulator, no dependencies
-beyond the standard library — the whole environment is one module and the 105 rooms it ships
+beyond the standard library: the whole environment is one module and the 105 rooms it ships
 are in it.
 
 The sibling [`amazing_tater_gb.py`](amazing-tater-gb.md) plays the real cartridge inside PyBoy.
@@ -44,7 +44,7 @@ arms. `$` would be a block and `O` a pit; this room has neither.
 
 ## The game
 
-A tater — a potato with legs — walks the four directions one cell at a time and has to reach
+A tater (a potato with legs) walks the four directions one cell at a time and has to reach
 the exit flag. Some rooms hold more than one tater; `switch` (SELECT on the console) hands the
 controls to the next one, and the room is not finished until every one of them has reached the
 flag.
@@ -52,8 +52,8 @@ flag.
 1. **Walls** and the area outside the room refuse a step.
 2. A **pit** refuses a step. Pits are crossed by filling them, not by walking over them.
 3. A step into a **block** shoves the whole block one cell, and it moves only if every square
-   it would land on is clear. Blocks come in every shape the cartridge felt like drawing —
-   1×1, 1×5, 4×3, L-shapes — and a shape moves as one piece. Two different blocks may sit
+   it would land on is clear. Blocks come in every shape the cartridge felt like drawing
+   (1×1, 1×5, 4×3, L-shapes), and a shape moves as one piece. Two different blocks may sit
    flush against each other and still be two blocks.
 4. A block square that comes to rest over a pit has **settled into it**. You cannot shove that
    square: a push has to be aimed at a square of the block that is standing on floor. The rest
@@ -68,7 +68,7 @@ flag.
    there. Arms may swing over pits; taters may not walk on them.
 7. Where the pusher ends up depends on whether they are shut into a compartment. If another arm
    swings into the square you pushed, you were standing between two arms and the turnstile
-   carries you round with it — your position rotates about the pivot, exactly like a revolving
+   carries you round with it: your position rotates about the pivot, exactly like a revolving
    door. If nothing swings in behind it, the square you pushed is now empty and you simply step
    into it.
 8. The **pivot** at the centre of a turnstile is solid and never moves.
@@ -91,7 +91,7 @@ position. In a one-tater room `switch` is never offered.
 
 ## States
 
-`AmazingTaterState` carries everything a move can change — where the taters are, which of them
+`AmazingTaterState` carries everything a move can change: where the taters are, which of them
 have got home, which one has the controls, where the blocks are, how each turnstile is turned,
 and which pits a dissolved block has filled. The level carries the walls, the flag and the set
 of squares that were ever pits.
@@ -99,17 +99,17 @@ of squares that were ever pits.
 Equality is on the position and who holds the controls; depth and history are deliberately not
 part of it, so a position reached two ways compares equal and search closes.
 
-`state.literals` is a frozenset of strings — `at(tater1, 8, 14)`, `at(block, 3, 7)`,
+`state.literals` is a frozenset of strings: `at(tater1, 8, 14)`, `at(block, 3, 7)`,
 `turnstile(7, 7, 6)`, `pit(9, 11)`, `taters-home(1)`, `goal-reached`.
 
 `str(state)` prints the friendly board above. `board(level, state)` prints the exact one, in
-the alphabet the levels are stored in, and that is the one the tests compare — see below.
+the alphabet the levels are stored in, and that is the one the tests compare; see below.
 
 ## Goals and dead ends
 
 `is_goal` is every tater home. `is_terminal` is a position with no move left in it and no tater
-home: sound, and no more than that. Amazing Tater has dead ends this does not catch — a block
-settled into the one pit that had to be crossed somewhere else is lost, and so is the room —
+home: sound, and no more than that. Amazing Tater has dead ends this does not catch (a block
+settled into the one pit that had to be crossed somewhere else is lost, and so is the room),
 but recognising them needs reachability under moving turnstiles, and a wrong `is_terminal`
 prunes a solvable branch, which is the worse failure of the two.
 
@@ -119,7 +119,7 @@ prunes a solvable branch, which is the worse failure of the two.
 and ACTION MODE (`C-01` to `C-64`). `fix_index(n)` here and on `amazing_tater_gb` select the
 same room.
 
-The cartridge has a third set — the 96 rooms behind PRACTICE MODE — and it is deliberately
+The cartridge has a third set (the 96 rooms behind PRACTICE MODE), and it is deliberately
 absent. That mode is a timed climb through ten floors: its board buffer holds the corridors of
 the neighbouring floors as well as the room, and the tater starts outside the room. It is a
 different game, not a different level.
@@ -156,7 +156,7 @@ and a board dumped out of the emulator are the same string:
 | `ABCFGHIJKMNPQSTV` | the same sixteen, for a square settled into a pit |
 
 Blocks are letters rather than a single `$` because the cartridge records, for every block
-square, which of its neighbours belong to the same block — and two *different* blocks are flush
+square, which of its neighbours belong to the same block, and two *different* blocks are flush
 against each other in half of these rooms. A `$` for all of them would quietly weld them into
 one piece that the cartridge would never move as one, which is a bug this had before it was a
 paragraph.
@@ -171,8 +171,8 @@ one, `+` and `*` for arms, `o` for a pivot.
 ## Where this differs from the cartridge
 
 Nowhere that has been found, and the search was not casual. The rules above were established by
-walking this module and the cartridge forward in lockstep — the same random press, then a
-cell-by-cell comparison of the whole board — for three runs of two hundred presses in every one
+walking this module and the cartridge forward in lockstep (the same random press, then a
+cell-by-cell comparison of the whole board) for three runs of two hundred presses in every one
 of the 105 rooms. Sixty-three thousand transitions, no disagreements.
 
 Four of the eight rules are worded the way they are *because* that comparison rejected a
@@ -202,6 +202,6 @@ print(len(plan), plan[:6])
 # 38 ['left', 'left', 'left', 'left', 'up', 'up']
 ```
 
-It searches the full position — every block, every turnstile angle, every tater — so it exhausts
+It searches the full position (every block, every turnstile angle, every tater), so it exhausts
 its default four-hundred-thousand-state budget on most of the later rooms. That is the point of
 shipping them.

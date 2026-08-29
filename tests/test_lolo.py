@@ -8,7 +8,7 @@ one-way passes, magic shots and Medusa's line of sight are all tested directly.
 The second needs a ROM, and is the one that keeps the 163 rooms honest. They were decoded
 out of the cartridge rather than transcribed, and this re-decodes and compares, so a room
 cannot drift away from the cartridge unnoticed. It also pins the two modules' shared
-alphabet against each other — `lolo.py` declares its own copy so that it needs no PyBoy, and
+alphabet against each other: `lolo.py` declares its own copy so that it needs no PyBoy, and
 a silent divergence between the copies would make the two environments describe different
 games in the same letters.
 
@@ -44,7 +44,7 @@ def game(index, magic_shots=0):
 def board(rows, magic_shots=0):
     """A LoloGame on a hand-written room, for testing one rule at a time.
 
-    Goes through `reset` so that the initial state gets the same treatment a real room's does —
+    Goes through `reset` so that the initial state gets the same treatment a real room's does,
     including the Medusa check, which can kill Lolo before he has pressed anything.
     """
     instance = LoloGame(magic_shots=magic_shots)
@@ -82,7 +82,7 @@ def test_the_cartridges_163_rooms_are_all_here():
 
 
 def test_every_room_has_exactly_one_lolo_and_one_door():
-    """The invariant that told us where the room table ends — see the memory map §2."""
+    """The invariant that told us where the room table ends (see the memory map §2)."""
     for index, text in enumerate(ROOMS):
         assert text.count("@") == 1, f"room {index} has {text.count('@')} Lolos"
         assert text.count("D") == 1, f"room {index} has {text.count('D')} doors"
@@ -122,7 +122,7 @@ def test_the_tutorial_stores_each_puzzle_twice_but_not_identically():
 
 
 def test_exact_rooms_are_the_ones_with_only_the_two_immobile_enemies():
-    """26 of them. The rest hold an enemy this module leaves standing still — see the docs."""
+    """26 of them. The rest hold an enemy this module leaves standing still (see the docs)."""
     assert len(EXACT_ROOMS) == 26
     for index in EXACT_ROOMS:
         assert Room(index, ROOMS[index]).exact
@@ -315,7 +315,7 @@ def test_shooting_before_the_first_move_does_nothing():
 
 
 def test_an_egg_is_not_pushed_into_a_river():
-    """Rafts are refused rather than modelled — see the docs. This pins that choice."""
+    """Rafts are refused rather than modelled (see the docs). This pins that choice."""
     _, state = board(room_with(**{"4_1": "@", "4_3": "S", "4_4": "~"}), magic_shots=1)
     state = shoot(move(state, "right"))
     assert move(state, "right") is None, "the egg was pushed into the river"
@@ -368,7 +368,7 @@ def test_pushing_the_framer_that_was_shielding_lolo_kills_him():
 
 def test_a_medusa_shot_into_an_egg_stops_firing():
     _, state = board(room_with(**{"4_1": "@", "4_3": "M"}), magic_shots=1)
-    state = move(state, "right")                 # to (4, 2) — already in the line, and dead
+    state = move(state, "right")                 # to (4, 2): already in the line, and dead
     assert state.dead
     assert blocked_by_medusa(state.room, state.framers, state.eggs, state.hearts,
                              frozenset(), (4, 2)) is False, \
