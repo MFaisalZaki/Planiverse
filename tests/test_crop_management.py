@@ -73,7 +73,7 @@ def test_the_reference_and_rainfed_yields_reproduce(env):
 
 
 def test_every_season_has_a_witness():
-    """The reference schedule is what proves each instance is solvable — the target is
+    """The reference schedule is what proves each instance is solvable: the target is
     measured off it, so no scenario ships whose goal nobody has reached."""
     assert all(isinstance(s, Scenario) for s in SCENARIOS)
     assert all(s.reference >= s.rainfed for s in SCENARIOS), "irrigation never hurts here"
@@ -208,7 +208,7 @@ def test_doing_nothing_misses_the_target_in_a_dry_year(env):
 
 def test_doing_nothing_is_enough_in_a_wet_year():
     """1980's reference schedule gains exactly nothing, so the right plan applies no water
-    at all — knowing when *not* to act is part of the problem."""
+    at all; knowing when *not* to act is part of the problem."""
     game = CropEnv()
     try:
         game.fix_index(4)                      # 1980
@@ -223,7 +223,7 @@ def test_doing_nothing_is_enough_in_a_wet_year():
 def test_an_actions_effect_is_not_visible_when_it_is_taken(env):
     """Why this is not a PDDL domain, part one.
 
-    Water applied at the first decision point changes nothing measurable by the second —
+    Water applied at the first decision point changes nothing measurable by the second:
     the crop has not had time to respond. The effect is a change to the trajectory of a
     growth equation, and it only becomes a yield at harvest eighty days later.
     """
@@ -234,7 +234,7 @@ def test_an_actions_effect_is_not_visible_when_it_is_taken(env):
 
 
 def test_the_same_action_is_worth_anything_from_nothing_to_the_crop(env):
-    """Why this is not a PDDL domain, part two — and the sharpest version of it.
+    """Why this is not a PDDL domain, part two, and the sharpest version of it.
 
     One 4 cm application, the identical action, is worth between nothing and +2544 kg/ha
     on the same field in the same season depending *only* on which day it lands. Early on

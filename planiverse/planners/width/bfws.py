@@ -5,20 +5,20 @@ frontier beautifully and makes IW(k) incomplete. BFWS uses novelty as a **sort k
 is discarded, so completeness is kept, and the search still goes where the novelty is.
 
 The other half of the idea is that novelty is measured *within a partition* of the state
-space rather than globally. Plain novelty runs out — once every atom has been seen somewhere,
+space rather than globally. Plain novelty runs out: once every atom has been seen somewhere,
 no state is ever novel again and the ordering goes flat. Partitioning by something that
 measures progress gives each partition its own novelty budget, so arriving somewhere new
 renews exploration instead of ending it.
 
 Classically the partition is the number of unachieved goals, giving the evaluation function
-`f5 = <w_{#g}, #g>`. **A simulator has no goal conjunction to count** — `is_goal` is a black
-box — so `#g` has to come from somewhere else. `BFWS` takes a `progress` callback for it, and
+`f5 = <w_{#g}, #g>`. **A simulator has no goal conjunction to count** (`is_goal` is a black
+box), so `#g` has to come from somewhere else. `BFWS` takes a `progress` callback for it, and
 degrades to `<w, h>` without one, which is a weaker search rather than a broken one.
 
 There is also a **pruned variant**, k-BFWS in Lipovetzky and Geffner's 2017 paper: keep the
 ordering but discard states whose novelty exceeds the width, the way IW does. That trades
 completeness back for IW's bounded frontier, and it is the round `IteratedBFWS` runs at
-width 1, then 2, …, before falling back on one unpruned — complete — round. The result is
+width 1, then 2, …, before falling back on one unpruned (complete) round. The result is
 the polynomial-first, complete-last shape of the paper's Dual-BFWS.
 """
 from heapq import heappop, heappush
@@ -42,17 +42,17 @@ class BFWSSearch:
 
     Both callbacks are optional and both are worth supplying. With neither, the key is
     novelty alone and ties break FIFO, which is a breadth-first search that prefers novel
-    states — respectable, but it has no idea which way the goal is.
+    states: respectable, but it has no idea which way the goal is.
     """
 
     def __init__(self, width=1, progress=None, heuristic=None, partition=None, strict=True,
                  prune=False):
         """
-        - `progress(state)` — lower is better; stands in for the unachieved-goal count.
-        - `heuristic(state)` — lower is better; breaks ties among equally-progressed states.
-        - `partition(state)` — what novelty is measured within. Defaults to `progress`, which
+        - `progress(state)`: lower is better; stands in for the unachieved-goal count.
+        - `heuristic(state)`: lower is better; breaks ties among equally-progressed states.
+        - `partition(state)`: what novelty is measured within. Defaults to `progress`, which
           is the classical choice; pass something else to partition on more than progress.
-        - `prune` — discard states whose novelty exceeds `width` instead of merely sorting
+        - `prune`: discard states whose novelty exceeds `width` instead of merely sorting
           them last. This is k-BFWS: IW's bounded frontier with BFWS's ordering inside it,
           and IW's incompleteness back with it. It exists to be a round of `IteratedBFWS`;
           leave it False for the complete search this class is named after.
@@ -125,7 +125,7 @@ class BFWSSearch:
                     continue
 
                 # Novelty orders; it never discards. That is the whole difference from IW,
-                # and it is why BFWS stays complete at any width — unless `prune` was asked
+                # and it is why BFWS stays complete at any width, unless `prune` was asked
                 # for, which turns this back into a filter (k-BFWS) and gives IW's
                 # incompleteness back with IW's bounded frontier.
                 score = novelty.evaluate_and_record(self.__partition_of__(successor),
@@ -151,7 +151,7 @@ class IteratedBFWS:
     """Pruned BFWS at width 1, then 2, …, then one unpruned round as the safety net.
 
     Plain `BFWSSearch` is already complete, so this is not `IteratedWidth`'s cure for
-    incompleteness — it is a *budget* strategy. A pruned round (k-BFWS: BFWS's ordering
+    incompleteness: it is a *budget* strategy. A pruned round (k-BFWS: BFWS's ordering
     inside IW's novelty filter) has IW's bounded frontier, so it is cheap, and its ordering
     means it usually finds the goal long before IW(k) would. The rounds escalate width only
     when the filter was genuinely too tight, and if every allowed width fails, the last of
@@ -169,11 +169,11 @@ class IteratedBFWS:
 
     The budget is shared across the rounds, and the loop stops early the same three ways
     `IteratedWidth` does: a round solves it, the budget runs out, or a pruned round empties
-    its frontier **without discarding anything for novelty** — at which point it saw the
+    its frontier **without discarding anything for novelty**, at which point it saw the
     whole reachable space, no wider or unpruned round can see more, and the `exhausted` it
     reports is a proof that there is no plan. The unpruned round's `exhausted` is the same
     proof, because nothing was discarded there by construction. Every other way of stopping
-    proves nothing and is reported as `failed` or `out_of_budget`, never `exhausted` — the
+    proves nothing and is reported as `failed` or `out_of_budget`, never `exhausted`: the
     benchmark reads `exhausted` as unsolvability (`catalogue.is_complete`), so the word is
     reserved for when it is true.
 
@@ -185,7 +185,7 @@ class IteratedBFWS:
     def __init__(self, max_width=1000, progress=None, heuristic=None, partition=None,
                  strict=True, final_complete=True):
         """`final_complete` is the unpruned round. Turning it off leaves only the pruned
-        rounds — cheaper, and incomplete the way IW is."""
+        rounds: cheaper, and incomplete the way IW is."""
         if max_width < 1:
             raise ValueError(f"max_width must be at least 1, got {max_width}")
         self.max_width = max_width

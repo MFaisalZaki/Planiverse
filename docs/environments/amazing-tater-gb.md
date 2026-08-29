@@ -32,7 +32,7 @@ Every address below was read from one specific dump:
 |---|---|
 | File | `Amazing Tater (U).gb`, 65,536 bytes |
 | MD5 | `53b746bff74c50cd3ebcf41161c66cf3` |
-| Cartridge | MBC1, 64 KiB, **no** cartridge RAM — all state is in work RAM |
+| Cartridge | MBC1, 64 KiB, **no** cartridge RAM; all state is in work RAM |
 
 Because the addresses are revision-specific, the constructor hashes the file and raises a
 `UserWarning` when it is not that dump. Pass `verify_rom=False` to silence it.
@@ -82,7 +82,7 @@ the d-pad plus `switch`:
 | `switch` | SELECT | 0 |
 
 `A` is deliberately absent. It opens the pause menu with its RETRY and QUIT, and a planner that
-can retry can escape a block it has sunk into the wrong pit — which is precisely the thing
+can retry can escape a block it has sunk into the wrong pit, which is precisely the thing
 being planned around.
 
 `env.get_actions()` returns the strings; `successors` builds them, applies each one and drops
@@ -95,12 +95,12 @@ BEGINNER and ACTION MODE's `C-01`–`C-64`. The same index selects the same room
 `env.label_for()` gives the cartridge's own name for it.
 
 Selection works by hooking the level loader at `$08C0` and writing `HL`, which is the register
-it is entered with. The alternative — reverse the stage arithmetic and write the stage counters
-— does not survive contact with the cartridge: the arithmetic does not divide either set evenly,
+it is entered with. The alternative (reverse the stage arithmetic and write the stage counters)
+does not survive contact with the cartridge: the arithmetic does not divide either set evenly,
 and there is a `+2` fudge in the middle of set C.
 
 `env.levels()` boots the cartridge to each of the 105 rooms in turn and returns the decoded
-boards. It is slow — a minute or two — and it is where the twin's stored rooms came from.
+boards. It is slow (a minute or two), and it is where the twin's stored rooms came from.
 
 ## Booting
 
@@ -108,7 +108,7 @@ The front end is the title screen, then `SELECT MODE`, then either a tutor with 
 of advice or an `ENTER PASSWORD` grid, depending on the mode. START advances all of them; only
 `SELECT MODE` needs the d-pad, and `boot` uses `$D37D` to know when it is looking at it.
 
-That byte holds `$80` while the title is up and a small number wherever a cursor exists —
+That byte holds `$80` while the title is up and a small number wherever a cursor exists,
 **including the password grid, whose row cursor it also is**. A d-pad press aimed at the mode
 menu but landing on the password grid walks the alphabet instead of choosing a mode, so `boot`
 stops touching the d-pad the moment the mode is chosen. This is the part that was written the
@@ -125,7 +125,7 @@ every eight frames for as long as the game is running, so a predicate that inclu
 never fire.
 
 Twenty frames of stillness is measured, not guessed. Nothing observed takes longer than sixteen
-frames of board writes, and the longest still spell *inside* an unfinished move is eight — which
+frames of board writes, and the longest still spell *inside* an unfinished move is eight, which
 is a block that has been shoved onto pits, dissolving into them.
 
 **`switch` waits out a lockout the board cannot show it.** The cartridge ignores anything
@@ -150,7 +150,7 @@ Calibration(press_ticks=5, hold_window=(1, 9))
 ```
 
 `hold_window` is the closed range of hold lengths that move a tater exactly one cell. The upper
-end is one frame short of the d-pad's auto-repeat, past which a single action walks two cells —
+end is one frame short of the d-pad's auto-repeat, past which a single action walks two cells,
 and in a game where a block shoved into the wrong pit is gone for good, that is not a longer
 plan but a different one. `press_ticks` is the middle of the window. Pass `calibrate=False` to
 skip the couple of dozen probe presses and take the documented default.
@@ -161,11 +161,11 @@ skip the couple of dozen probe presses and take the documented default.
 moment it was snapshotted: the decoded board, where each tater is, which one has the controls,
 how many are still out, and where the blocks and open pits are.
 
-- `state.rows` — the board in the exact alphabet, the same tuple of strings the twin's
+- `state.rows`: the board in the exact alphabet, the same tuple of strings the twin's
   `board()` returns. This is what the tests compare.
-- `str(state)` — the friendly view, the same one the twin prints.
-- `state.literals` — a frozenset of strings, for planners.
-- `state.is_consistent()` — do `$C2AD`'s bits and the taters drawn on the board name the same
+- `str(state)`: the friendly view, the same one the twin prints.
+- `state.literals`: a frozenset of strings, for planners.
+- `state.is_consistent()`: do `$C2AD`'s bits and the taters drawn on the board name the same
   characters? A position where they disagree means an address has drifted, or the board was read
   in the middle of a step.
 
@@ -178,13 +178,13 @@ position reached two ways compares equal and search closes.
 
 It cannot read the board instead, and that is worth saying plainly: a tater in mid-step is taken
 *off* the board map and drawn as a sprite until it arrives, so for a dozen frames after every
-press the board shows no tater at all — which is indistinguishable from a solved room if the
+press the board shows no tater at all, which is indistinguishable from a solved room if the
 board is all you look at. That mistake made `settle` return immediately after every move and
 hand back garbage positions.
 
 `is_terminal` is always False. Amazing Tater has real dead ends, but recognising them needs
 reachability under moving turnstiles, which the board buffer does not answer; and the twin's
-test — "no move changes anything" — is not available here, because finding that out means
+test ("no move changes anything") is not available here, because finding that out means
 expanding the state and expanding calls back through `is_terminal`. A position with nothing left
 in it expands to no successors, which search treats as a dead end anyway.
 
@@ -192,13 +192,13 @@ in it expands to no successors, which search treats as a dead end anyway.
 
 One action is one save-state load, one press and up to 180 emulator frames. On a laptop that is
 a few hundred expansions a second; the twin does the same work about four orders of magnitude
-faster. Search the twin, then replay the plan here if you want the cartridge's word for it —
+faster. Search the twin, then replay the plan here if you want the cartridge's word for it;
 `tests/test_amazing_tater.py` does exactly that.
 
 ## Agreement with the twin
 
-The two were walked forward in lockstep — the same random press, then a cell-by-cell comparison
-of the whole board — for three runs of two hundred presses in every one of the 105 rooms.
+The two were walked forward in lockstep (the same random press, then a cell-by-cell comparison
+of the whole board) for three runs of two hundred presses in every one of the 105 rooms.
 Sixty-three thousand transitions, no disagreements. Four of the twin's eight rules exist in the
 form they do because that comparison rejected a simpler guess; the table is in
 [amazing-tater.md](amazing-tater.md).

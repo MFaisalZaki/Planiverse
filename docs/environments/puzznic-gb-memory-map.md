@@ -1,4 +1,4 @@
-# Puzznic (J) — Game Boy — Memory Map
+# Puzznic (J) Game Boy Memory Map
 
 Reverse-engineering reference for reading live game state: block positions,
 block types, and how many blocks remain. This is the source for every address the
@@ -86,7 +86,7 @@ At boot, `$0150` clears `$C000–$EFFF`, sets `SP = $CAFF`, selects ROM bank 1 v
 
 ---
 
-## 4. The playfield grid — `$DF00`
+## 4. The playfield grid (`$DF00`)
 
 Fixed geometry, identical for every stage: **12 rows × 10 columns, 2 bytes per
 cell**, occupying `$DF00–$DFEF` (240 bytes).
@@ -102,7 +102,7 @@ Row-start addresses (stride 20 = `$14`, so they do not align to a 16-byte hex vi
 | addr | `DF00` | `DF14` | `DF28` | `DF3C` | `DF50` | `DF64` | `DF78` | `DF8C` | `DFA0` | `DFB4` | `DFC8` | `DFDC` |
 
 These come from the row-offset table at ROM `$29E8`:
-`00 14 28 3C 50 64 78 8C A0 B4 C8 DC` — twelve entries, 0 to 220 in steps of 20.
+`00 14 28 3C 50 64 78 8C A0 B4 C8 DC` (twelve entries, 0 to 220 in steps of 20).
 
 ### Cell format
 
@@ -130,7 +130,7 @@ on the cell value, so `$02` and `$03` obstruct exactly as `$06` does.
 
 ### Level shape
 
-There are **no per-level width or height variables** — the dimensions are
+There are **no per-level width or height variables**: the dimensions are
 immediates in the loader (see §7). Every stage fills all 120 cells; a small
 stage is the same array with more `$03` around the edges. Derive the effective
 bounding box instead:
@@ -144,7 +144,7 @@ col_range = (min(c for _, c in occupied), max(c for _, c in occupied))
 
 ---
 
-## 5. Block record array — `$DD00`
+## 5. Block record array (`$DD00`)
 
 Array of 6-byte records, `record_n = $DD00 + n*6`.
 
@@ -158,7 +158,7 @@ Array of 6-byte records, `record_n = $DD00 + n*6`.
 | +5 | Render offset = `(40*row + 5*col + 103) & $FF` |
 
 Fields +4 and +5 feed the drawing path (routine `$2985`, tables `$29B6`/`$29C2`,
-ROM base `$6194`). They are **not** the logic grid — ignore them when reading
+ROM base `$6194`). They are **not** the logic grid; ignore them when reading
 state.
 
 ### Slots are not compacted
@@ -176,7 +176,7 @@ DD18  03 00 09 05 62 E8
 DD1E  04 00 09 04 62 E3
 ```
 
-**Consequence:** do not walk the list until the first `$00` type byte — after any
+**Consequence:** do not walk the list until the first `$00` type byte: after any
 clear that terminates immediately and reports zero blocks. Iterate `$D018` slots
 and skip records whose type is `$00`, or scan the grid.
 
@@ -213,7 +213,7 @@ cursor = (wram[0xD013], wram[0xD012])   # (row, col)
 ```
 
 `len(blocks)` and `len(live)` should both equal `remaining`. If they disagree,
-something in this map has drifted — treat `$D019` and the grid scan as
+something in this map has drifted; treat `$D019` and the grid scan as
 authoritative, since both were checked against live RAM.
 
 ### Block types are randomised per playthrough
@@ -235,7 +235,7 @@ index × 2) to reach the stage's data.
 
 The fill loop at `$0466`:
 
-- Starts at `$DF12` — row 0, column 9 — and fills **right to left**
+- Starts at `$DF12` (row 0, column 9) and fills **right to left**
 - Unpacks **two cells per ROM byte**: high nibble first (`AND $F0` / `SWAP A`),
   then low nibble (`AND $0F`). Each nibble is the raw cell type code from §4.
 - Calls `$04B8` per cell, which returns immediately for terrain (`CP $08` /
@@ -260,7 +260,7 @@ JP NZ,0470h
 ```
 
 `DCE0` and `DCE1` are loader scratch only. Mid-stage they sit at their terminal
-values `$0C` and `$FF` — not live geometry.
+values `$0C` and `$FF`, not live geometry.
 
 ---
 
@@ -313,19 +313,19 @@ Annotated cell-address calculator:
 
 SameBoy's debugger: `Ctrl+C` in the launching terminal (SDL) or the console
 window (macOS) gets you a `(debugger)` prompt; `c` resumes. Use `x $D019` for a
-single address. **Do not write `x $DF00/240`** — SameBoy evaluates that as
+single address. **Do not write `x $DF00/240`**: SameBoy evaluates that as
 arithmetic (`57088 / 240 = 237 = $00ED`) and dumps ROM instead. Run
 `help examine` to see whether your build accepts a length argument. Otherwise
 issue one `x` per row using the table in §4.
 
 Checks worth running:
 
-1. `x $D012` / `x $D013` — tap Right, then Down; each should increment.
-2. `x $D018` and `x $D019` — equal at stage start, both equal to the on-screen
+1. `x $D012` / `x $D013`: tap Right, then Down; each should increment.
+2. `x $D018` and `x $D019`: equal at stage start, both equal to the on-screen
    block count.
 3. Clear a pair: `$D019` drops by 2, `$D018` unchanged. Clear the stage: `$D019`
    reaches `$00`.
-4. `watch w $D019` — should break only when blocks vanish, never on a mere move.
+4. `watch w $D019`: should break only when blocks vanish, never on a mere move.
 5. Park the cursor on a block, compute `$DF00 + 20*row + 2*col` from
    `$D013`/`$D012`, confirm that byte is `$08`–`$0F`. Push the block one square
    and watch the value move two bytes along.
@@ -348,11 +348,11 @@ Round 1, forced a match, observed the result):
 
 **Static analysis only** (read from disassembly, not observed running):
 
-- 12 × 10 dimensions — from loader immediates, so effectively certain, but never
+- 12 × 10 dimensions: from loader immediates, so effectively certain, but never
   seen on a stage other than Round 1
 - `$D003` as stage index
 - Block-type PRNG
-- `$02` as a solid ledge — inferred from blocks resting on it and from the
+- `$02` as a solid ledge: inferred from blocks resting on it and from the
   movement check rejecting non-zero values
 
 **Open / unverified:**
@@ -362,6 +362,6 @@ Round 1, forced a match, observed the result):
   before relying on the counters across stages.
 - The `$D700` 15-byte-struct array is unidentified
 - HRAM `$FFAF` low nibble is a mode selector; when it equals 5 the loader
-  suppresses blocks (`$04C5`). Purpose unknown — possibly demo or 2-player mode.
+  suppresses blocks (`$04C5`). Purpose unknown; possibly demo or 2-player mode.
 - Cell value `$07` is unreachable from the loader (types generate `$08`–`$0F`);
   whether it ever appears at runtime is unknown

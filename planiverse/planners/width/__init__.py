@@ -4,10 +4,10 @@ Five searches, all against the `successors()` / `literals` contract and nothing 
 
 | Planner | Novelty is used as | Complete? |
 |---|---|---|
-| `IWSearch` | a filter — fails the test, gets discarded | no, for fixed width |
+| `IWSearch` | a filter: fails the test, gets discarded | no, for fixed width |
 | `IteratedWidth` | the same, at width 1, then 2, … | up to `max_width` |
 | `SIWSearch` | the same, in short legs that each make progress | no |
-| `BFWSSearch` | a sort key — nothing is discarded | yes (unless `prune`) |
+| `BFWSSearch` | a sort key: nothing is discarded | yes (unless `prune`) |
 | `IteratedBFWS` | a filter in cheap rounds, then a sort key in the last | yes |
 
 What changes when the task is a simulator rather than a PDDL model:
@@ -20,7 +20,7 @@ What changes when the task is a simulator rather than a PDDL model:
   different answers.
 * **Dead ends are real.** `is_terminal` states are dropped rather than expanded.
 * **The atoms are whatever `literals` says.** How coarsely an environment spells its state is
-  what fixes its width — see `novelty`.
+  what fixes its width (see `novelty`).
 """
 from planiverse.planners.width.bfws import BFWSSearch, IteratedBFWS
 from planiverse.planners.width.iw import IteratedWidth, IWSearch, SIWSearch

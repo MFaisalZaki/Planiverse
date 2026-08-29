@@ -81,7 +81,7 @@ class Assembler:
         return self._scope + name if name.startswith(".") else name
 
     def _value(self, expr, line):
-        """Resolve `12`, `$0C`, `LABEL`, `LABEL+3` — or None while a label is unknown."""
+        """Resolve `12`, `$0C`, `LABEL`, `LABEL+3`, or None while a label is unknown."""
         expr = expr.strip()
         match = re.fullmatch(r"([^+\-]+?)\s*(?:([+\-])\s*(.+))?", expr)
         if not match:

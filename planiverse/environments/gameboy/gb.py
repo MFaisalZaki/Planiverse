@@ -1,14 +1,14 @@
 """Shared machinery for driving a Game Boy cartridge through PyBoy, for search.
 
-Three environments play real cartridges — Puzznic, Flipull and Super Mario Land — and they
-share a shape: states carry an emulator save-state so search can branch, actions are button
+Three environments play real cartridges (Puzznic, Flipull and Super Mario Land) and they
+share a shape. States carry an emulator save-state so search can branch, actions are button
 combinations held for a number of frames, and applying an action rewinds the machine to the
 parent state first. This module owns everything that is a property of *driving PyBoy for
 planning* rather than of any particular cartridge:
 
 - the emulator lifecycle and save-state plumbing (`create_pyboy`, `save_state`,
   `load_state`);
-- OAM sprite decoding (`sprites`) — the buffer address stays a per-game fact, because each
+- OAM sprite decoding (`sprites`): the buffer address stays a per-game fact, because each
   cartridge chooses its own OAM DMA source;
 - the ROM revision check (`verify_rom`);
 - the `"buttons,ticks"` action vocabulary with its parse/cost/apply skeleton (`GBAction`);
@@ -21,7 +21,7 @@ What stays in each game module is everything measured off its cartridge: the mem
 and its decoding, the settle predicate (Puzznic watches its grid; Flipull must also watch
 sprites, because a thrown block *is* a sprite), the calibration probes, and the boot route.
 Those differ for real reasons, and homogenising them here would trade fidelity for
-tidiness — the seams below (`__settle__`, `__next_state__`, `__advance__`) are where each
+tidiness; the seams below (`__settle__`, `__next_state__`, `__advance__`) are where each
 game plugs its own answers in.
 """
 import io
@@ -107,8 +107,8 @@ class GBState:
         """Write a PNG of this state by booting a throwaway emulator to it. Needs Pillow.
 
         The `render=True` on the tick is load-bearing and was missing: `load_state` defaults
-        to ticking *without* rendering, which is right everywhere else — search never looks
-        at the screen and drawing it is wasted work — but here it means the frame buffer is
+        to ticking *without* rendering, which is right everywhere else (search never looks
+        at the screen and drawing it is wasted work). Here it means the frame buffer is
         never filled and every screenshot came out a blank white rectangle.
         """
         dummy = create_pyboy(gamerom, False)
@@ -129,7 +129,7 @@ class GBAction:
 
     `apply` is the shared shape: rewind the emulator to the parent state, press the
     buttons, wait for the game to stop moving, and snapshot. Subclasses supply the two
-    per-game halves — `__settle__`, because what "stopped moving" means is a property of
+    per-game halves: `__settle__`, because what "stopped moving" means is a property of
     the cartridge, and `__next_state__`, because each game's state reads its own memory.
     """
 

@@ -17,36 +17,36 @@ This is the dependency-free counterpart to `super_mario_land_gb`, and it makes a
 claim** than the other cartridge pairs in this library.
 
 [`puzznic`](puzznic.md) and [`flipull`](flipull.md) are twins of their cartridges: their rules
-were derived from the real hardware and reproduce it — exactly in Puzznic's case, partly in
+were derived from the real hardware and reproduce it: exactly in Puzznic's case, partly in
 Flipull's. **This is not a twin of Super Mario Land.** The levels are original, the enemies
 are simplified, and there is no timer, score, power-up, dash button or press-length jump
 control.
 
 What it does share with the cartridge is the movement. The constants were fitted to
-frame-by-frame measurements of `Super Mario Land (World) (Rev 1).gb` — the same dump the
-[emulator environment](super-mario-land-gb.md)'s memory map was derived from — recording
+frame-by-frame measurements of `Super Mario Land (World) (Rev 1).gb` (the same dump the
+[emulator environment](super-mario-land-gb.md)'s memory map was derived from), recording
 Mario's screen position (`$C201`/`$C202`) and the on-ground flag (`$C20A`) once per frame
 while driving scripted input. Two of the cartridge's mechanics are deliberately left out,
 and the arc is fitted around their absence: press-length jump control (on the hardware, how
-long `a` is held shapes the climb) and the `b` dash. Here a jump is one fixed arc — the
-cartridge's full moving jump — and there is one horizontal speed, the cartridge's walk.
+long `a` is held shapes the climb) and the `b` dash. Here a jump is one fixed arc (the
+cartridge's full moving jump), and there is one horizontal speed, the cartridge's walk.
 
 ## The physics
 
-Positions are in units, `TILE` (8) units to a tile — one unit is one Game Boy pixel, and one
+Positions are in units, `TILE` (8) units to a tile; one unit is one Game Boy pixel, and one
 tick is four Game Boy frames, which is what lets the measured values stay integral. Mario is
 one tile square. Each tick, in this order:
 
 1. **Horizontal.** `left`/`right` accelerate towards `SPEED` (4) by `ACCEL` (2) a tick, and
    `FRICTION` (2) slows you when nothing is held. The cartridge walks at a steady 1 pixel a
-   frame and reaches it within about six frames of the press — 4 units a tick, inside two
-   ticks. Speed still carries: what you are travelling at when you leave a ledge is what you
+   frame and reaches it within about six frames of the press (4 units a tick, inside two
+   ticks). Speed still carries: what you are travelling at when you leave a ledge is what you
    cross the gap at, and running into a wall takes your speed away.
 2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED` (−12). That is the whole
    jump: no press-length control, by design.
-3. **Gravity.** `vy += GRAVITY` (2), capped at `MAX_FALL` (12) — the measured terminal fall
+3. **Gravity.** `vy += GRAVITY` (2), capped at `MAX_FALL` (12), the measured terminal fall
    of about 3 pixels a frame.
-4. **Collision.** Resolved one axis at a time — horizontal, then vertical — so a corner never
+4. **Collision.** Resolved one axis at a time (horizontal, then vertical), so a corner never
    lets you through.
 
 The arc against the cartridge, measured on the same four-frames-a-tick clock:
@@ -83,8 +83,8 @@ plainly landed on.
 
 ## Actions
 
-The vocabulary mirrors `super_mario_land_gb`'s `button,ticks` actions, minus `down` — there is
-no ducking in this model — and minus `b` — there is no dash. 13 actions: four button
+The vocabulary mirrors `super_mario_land_gb`'s `button,ticks` actions, minus `down` (there is
+no ducking in this model) and minus `b` (there is no dash). 13 actions: four button
 combinations held for 2, 6 or 12 ticks, plus `nop` for 4.
 
 ```
@@ -119,7 +119,7 @@ state, gained = env.step("right,12")     # returns tiles of ground gained
 
 `fix_index(i)` selects level `i`. The shipped levels were **generated and then measured**, the
 same way Flipull's stages were: random terrain, explored by a planner, and kept only if the
-flag can actually be reached — and ranked by how much search that took, so the set is a ramp
+flag can actually be reached, and ranked by how much search that took, so the set is a ramp
 rather than eight variations on one board.
 
 `MEASURED_EXPANSIONS` records what each level cost BFWS(w=2) when it was accepted, in the same
@@ -129,7 +129,7 @@ order:
 |---|---|---|---|---|---|---|---|---|
 | Expansions | 5 | 6 | 7 | 15 | 16 | 17 | 92 | 406 |
 
-That is data, not a promise — change a physics constant and the numbers move, which is
+That is data, not a promise: change a physics constant and the numbers move, which is
 exactly what happened when the physics were refitted to the cartridge: the set was re-measured
 and re-ordered, and one level whose route had depended on the removed short hop was reworked.
 The numbers are there so the ramp is written down where it can be checked, and the tests
@@ -144,14 +144,14 @@ Level strings use this alphabet:
 |---|---|
 | `#` | Solid ground |
 | (space) | Air |
-| `^` | Hazard — fatal to touch |
+| `^` | Hazard; fatal to touch |
 | `E` | An enemy's starting tile |
 | `M` | Mario's starting tile |
 | `G` | The flag |
 
 `M`, `E` and `G` say where things begin, not what the terrain is, so they are stripped out of
 the tile map during parsing. Enemies patrol horizontally and turn at a wall or at the edge of
-whatever they are standing on, so one placed in mid-air just oscillates on the spot — the
+whatever they are standing on, so one placed in mid-air just oscillates on the spot; the
 tests check that none of the shipped levels does that.
 
 You can supply your own:
@@ -189,7 +189,7 @@ dead()                 only in a dead state
 
 ## Goals and dead ends
 
-`is_goal` is Mario's box overlapping the flag tile — an overlap rather than an exact tile
+`is_goal` is Mario's box overlapping the flag tile, an overlap rather than an exact tile
 match, because he moves up to `MAX_FALL` units in a tick and a test on tile coordinates alone
 would let a fast fall drop straight past the flag and count as a miss.
 
@@ -201,7 +201,7 @@ the moment it happens rather than playing on into a position that no longer exis
 
 It is **not** a test for whether the level is still winnable, and nothing here claims to be.
 Mario can be alive in a pit he cannot jump out of, and no environment in this library detects
-that — deciding it in general means solving the level. Dead states are pruned; stuck ones cost
+that; deciding it in general means solving the level. Dead states are pruned; stuck ones cost
 the planner its budget, exactly as they would on the cartridge.
 
 There is no timer and no score. The cartridge has both; this does not model them.
@@ -222,7 +222,7 @@ print(result.status, len(result.plan))
 
 `progress` on Mario's column is what makes this tractable, and it is worth being clear that it
 is doing most of the work: a level whose only demand is "go right" is close to trivial for
-BFWS. The shipped levels were selected for costing more than that — towers to climb, gaps that
-need a well-timed jump from the very edge, enemies in the lane — but a run-and-jump level with
+BFWS. The shipped levels were selected for costing more than that (towers to climb, gaps that
+need a well-timed jump from the very edge, enemies in the lane), but a run-and-jump level with
 a distance-to-goal heuristic is an easier problem than Flipull, and the expansion counts show
 it.

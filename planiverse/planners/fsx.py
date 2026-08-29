@@ -1,12 +1,12 @@
 """Future State Maximization: acting to keep your options open.
 
 Every other planner here is told what it wants. FSX is not. It picks the action that leaves
-the largest space of reachable futures, and nothing else — no goal, no heuristic, no reward.
+the largest space of reachable futures, and nothing else: no goal, no heuristic, no reward.
 That it reaches goals at all is a side effect of the fact that being dead, stuck or cornered
 are all states with very few futures.
 
 The paradigm comes from Wissner-Gross and Freer's *causal entropic forces* (Phys. Rev. Lett.
-110, 168702, 2013), which defines a force along the gradient of **causal path entropy** — the
+110, 168702, 2013), which defines a force along the gradient of **causal path entropy**, the
 entropy over the paths a system could still take within a time horizon τ. Plakolb and
 Strelkovskii's *Applicability of the Future State Maximization Paradigm to Agent-Based
 Modeling* (Systems 11(2), 105, 2023) is the agent-based reading of it, in which agents
@@ -15,8 +15,8 @@ maximization of possible states".
 
 ## What this implementation is, and what is inferred
 
-The paper's full text was not reachable from this machine — the network proxy blocks MDPI,
-the IIASA repository, arXiv and alexwg.org alike — so this is built from the abstract's
+The paper's full text was not reachable from this machine (the network proxy blocks MDPI,
+the IIASA repository, arXiv and alexwg.org alike), so this is built from the abstract's
 description of walkers plus the causal-entropic-forces formulation underneath it. Two things
 follow, and both are stated rather than hidden:
 
@@ -26,14 +26,14 @@ follow, and both are stated rather than hidden:
 * **The scoring function is a choice this module makes.** "Maximization of possible states"
   reads as a count of distinct reachable states; the theory underneath it is an entropy over
   the distribution of futures. They differ when some futures are much likelier than others.
-  Both are implemented — `measure="count"` and `measure="entropy"` — and neither is claimed
+  Both are implemented (`measure="count"` and `measure="entropy"`), and neither is claimed
   to be *the* paper's, because its equations could not be read.
 
 ## Why it suits a simulator
 
 It asks the environment for exactly one thing: `successors`. No goal decomposition, no
-distance-to-goal, no admissible heuristic — the three things a black-box simulator is worst
-at providing. When you have no idea how to write a heuristic, this still runs.
+distance-to-goal, no admissible heuristic, which are the three things a black-box simulator
+is worst at providing. When you have no idea how to write a heuristic, this still runs.
 
 And it avoids dead ends structurally rather than by being told to. A state one move from
 losing has almost no futures, so it scores badly long before it is reached. The other
@@ -67,7 +67,7 @@ class FSXPlanner:
 
     This is a **policy**, not a search: it commits to one action at a time and never
     backtracks. It can wander, and on a problem where the goal is a narrow corridor it will
-    wander away from it — a corridor is, by construction, a place with few futures. Its
+    wander away from it: a corridor is, by construction, a place with few futures. Its
     strength is the opposite case: staying alive and mobile in an environment full of ways
     to get stuck.
     """
@@ -75,14 +75,14 @@ class FSXPlanner:
     def __init__(self, horizon=DEFAULT_HORIZON, walkers=DEFAULT_WALKERS, measure="count",
                  max_steps=200, seed=None, temperature=0.0):
         """
-        - `measure` — `"count"` scores an action by how many distinct states its walkers
+        - `measure`: `"count"` scores an action by how many distinct states its walkers
           reached; `"entropy"` by the Shannon entropy of where they ended up. Count rewards
           breadth; entropy also rewards *evenness*, penalising an action whose futures nearly
           all collapse to the same place.
-        - `temperature` — the causal path temperature. `0.0` takes the best action; above
+        - `temperature`: the causal path temperature. `0.0` takes the best action; above
           zero, actions are sampled in proportion to `exp(score / temperature)`, which is
           closer to the physical formulation and useful when scores tie often.
-        - `seed` — walkers are random, so this is what makes a run reproducible.
+        - `seed`: walkers are random, so this is what makes a run reproducible.
         """
         if measure not in ("count", "entropy"):
             raise ValueError(f"measure must be 'count' or 'entropy', got {measure!r}")
@@ -175,7 +175,7 @@ class FSXPlanner:
 
             scored = []
             for action, successor in successors:
-                # A goal is worth taking whatever its futures look like — and a goal state is
+                # A goal is worth taking whatever its futures look like, and a goal state is
                 # usually absorbing here, so it would otherwise score zero and be the last
                 # thing FSX picks.
                 if env.is_goal(successor):
@@ -200,7 +200,7 @@ class FSXPlanner:
 
 def option_count(env, state, horizon=DEFAULT_HORIZON, walkers=DEFAULT_WALKERS, seed=0,
                  budget=None):
-    """How many distinct futures a state leaves open — FSX's measure, on its own.
+    """How many distinct futures a state leaves open: FSX's measure, on its own.
 
     Useful without the planner. It is a **goal-free difficulty signal**: a state with few
     futures is one move from being stuck, whatever the environment thinks a goal is. That

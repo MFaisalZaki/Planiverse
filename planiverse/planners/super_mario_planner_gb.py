@@ -116,7 +116,7 @@ class SuperMarioPlanner(TreeSearchPlanner):
 		costfn = self.__cost_fn__
 		hfn = self.__hueristic_fn__
 		# hfn = lambda s: 0
-		# Here is is a tricky thing, we need to plan until the window ends,
+		# Here is a tricky thing: we need to plan until the window ends,
 		# execute the plan and then start a new plan.
 		plan = super().search(self.root, env, hfn, costfn)
 		pass

@@ -21,7 +21,7 @@ read garbage, which is why `Boxxle2GBEnv` checks the ROM's MD5 and warns when it
 Two things about this cartridge shape the module.
 
 **The board is already decoded in RAM.** `StartLevel` decompresses each level into three
-360-byte planes — goals, boxes and walls, 20 bytes per row — so the environment reads the
+360-byte planes (goals, boxes and walls, 20 bytes per row), so the environment reads the
 position directly rather than inferring it from tiles. That also means `is_goal` is exact
 (every box on a goal) and, unusually for a cartridge environment, so is a useful part of
 `is_terminal`: the walls are known, so a box shoved into a corner can be recognised as
@@ -73,7 +73,7 @@ LOAD_LEVEL_HEADER = 0x0F53       # bank 0; reads STAGE_ADDR/LEVEL_IN_STAGE_ADDR 
                                  # instructions in, which is what makes it hookable
 
 #: `$C34E` on each screen the boot route walks through. Measured by booting the cartridge and
-#: watching the byte, not read off the dispatch table — the disassembly's numbering and the
+#: watching the byte, not read off the dispatch table: the disassembly's numbering and the
 #: running game's disagree, and the running game is the one being driven.
 STATE_TITLE = 0x04               # "PUSH START KEY"
 STATE_MUSIC = 0x10               # MUSIC: BGM A / B / C
@@ -126,7 +126,7 @@ def expand_record(rom, address, width, height):
 
     A set flag bit takes the next literal, a clear one emits `$00`. The record is a bitmap of
     `ceil(3*W*H/64)` bytes followed by one literal per set bit, and the length is implied by
-    the board's dimensions rather than stored — which is why `record_size` comes back too:
+    the board's dimensions rather than stored, which is why `record_size` comes back too:
     it is the only way to know where the next level begins, and agreeing with the pointer
     table's deltas for all 120 records is what verifies this decoder.
     """
@@ -273,8 +273,8 @@ def boxes_home(grid):
 def is_solved(grid):
     """Every box on a goal, and there is at least one box.
 
-    The box count guard matters: an empty plane buffer — a level that has not loaded, or one
-    the clear sequence has already wiped — satisfies "no box is off a goal" vacuously, and
+    The box count guard matters: an empty plane buffer (a level that has not loaded, or one
+    the clear sequence has already wiped) satisfies "no box is off a goal" vacuously, and
     without this would read as a win.
     """
     return any(glyph in BOX_GLYPHS for row in grid for glyph in row) \
@@ -282,7 +282,7 @@ def is_solved(grid):
 
 
 def stuck_boxes(grid):
-    """Boxes wedged in a corner of walls, off a goal — the position can no longer be solved.
+    """Boxes wedged in a corner of walls, off a goal: the position can no longer be solved.
 
     This is the sound half of Sokoban deadlock detection and no more: a box with a wall on one
     of the vertical sides *and* one of the horizontal sides can never be moved again by
@@ -385,8 +385,8 @@ LEAD_IN_TICKS = 2
 
 DIRECTIONS = {"left": (0, -1), "up": (-1, 0), "down": (1, 0), "right": (0, 1)}
 
-#: Every button worth giving a planner. Boxxle II has no modifier — a direction is the whole
-#: move — so the action set is the d-pad and nothing else. A (undo) and START (pause) both
+#: Every button worth giving a planner. Boxxle II has no modifier (a direction is the whole
+#: move), so the action set is the d-pad and nothing else. A (undo) and START (pause) both
 #: exist on the cartridge and are deliberately absent: undo would let search escape a
 #: deadlock the game itself cannot escape, which is precisely the thing being planned around.
 action_cost_map = {"left": 1, "right": 1, "up": 1, "down": 1, "nop": 0}
@@ -405,16 +405,16 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
     """Run the emulator until the game stops moving, and report whether it did.
 
     The plane buffers are updated the frame the button is read, so watching them alone would
-    call a move finished sixteen frames before the game will accept another one — and the
-    dropped presses that causes look exactly like a planner's action having no effect.  What
+    call a move finished sixteen frames before the game will accept another one, and the
+    dropped presses that causes look exactly like a planner's action having no effect. What
     actually takes those sixteen frames is the player sliding one pixel per frame, and that
     slide is written to the shadow OAM at `$C000` and to nothing else in work RAM: no counter,
     no flag, no direction byte moves while it runs. So the settle predicate is the planes
     *and* the sprite buffer holding still together.
 
     Stability alone is still not enough, which cost a long afternoon: the slide pauses for a
-    frame or two partway through, and — worse — a hold long enough to trip the d-pad's
-    auto-repeat looks perfectly settled in the gap between the first move and the second. So
+    frame or two partway through, and, worse, a hold long enough to trip the d-pad's
+    auto-repeat looks settled in the gap between the first move and the second. So
     `min_ticks` holds the settle open until the frame the repeat would have fired on. It costs
     nothing: the slide plus its stable frames already take about that long.
 
@@ -440,7 +440,7 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
 def _force_level(context):
     """Hook body: pin `$C162` and `$C352` on the way into `LoadLevelHeader`.
 
-    Writing them from outside on a frame boundary is not enough — the menu resets both and
+    Writing them from outside on a frame boundary is not enough: the menu resets both and
     calls the loader within the same frame, and the loader wins. Hooking its entry puts the
     write between the reset and the read at `$0F5D`/`$0F6E`. The demo flag is cleared in the
     same breath: the attract-mode board at `$4F08` is not one of the 120 and would be loaded
@@ -455,8 +455,8 @@ def _force_level(context):
 def boot(pyboy, render=False, max_ticks=BOOT_MAX_TICKS):
     """Get from power-on to a loaded board. True if one appeared.
 
-    The cartridge's front end is three screens deep — title, then a music choice, then
-    PLAY/PASSKEY/CREATE — and START advances all three, so this presses START whenever
+    The cartridge's front end is three screens deep (title, then a music choice, then
+    PLAY/PASSKEY/CREATE), and START advances all three, so this presses START whenever
     `$C34E` says one of them is up and waits everywhere else. Waiting is most of the wall
     clock: the story cutscene between the menu and stage 1 runs about 970 frames and no
     button shortens it.
@@ -496,7 +496,7 @@ def open_direction(grid, player):
 
     Read off the board rather than found by pressing. Two cells is the least that can tell
     "moved once" from "repeated", and a probe with only one cell of room reports every hold
-    as a single move — which is how a cartridge whose d-pad repeats on frame 20 came back
+    as a single move, which is how a cartridge whose d-pad repeats on frame 20 came back
     claiming a window of `(1, 40)`. Where the board offers no such direction, nothing here can
     be measured and `calibrate` says so rather than inventing a number.
     """
@@ -521,7 +521,7 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
     """The closed range of hold lengths that move the player exactly one cell.
 
     The lower end is where a press starts registering at all; the upper end is one frame short
-    of the d-pad's auto-repeat, past which one action walks two cells — and in a Sokoban that
+    of the d-pad's auto-repeat, past which one action walks two cells. In a Sokoban that
     is not a longer plan, it is a box pushed somewhere nobody asked for. Neither bound is in
     the memory map, so both are measured here.
 
@@ -529,7 +529,7 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
     the phase between a save-state and the frame the main loop next samples the pad is not
     fixed: `Boxxle II (USA, Europe)` reports anything from `(1, 18)` to `(3, 24)`. That jitter
     is why `calibrate` takes the *middle* of the window rather than anything near an end, and
-    why the number to distrust is a window as wide as the probe — see `open_direction`.
+    why the number to distrust is a window as wide as the probe; see `open_direction`.
 
     Returns `(low, high)`, or None if the board offers nowhere to measure it.
     """
@@ -556,7 +556,7 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
     """
     window = measure_hold_window(pyboy, state, render, max_hold, **settle_kwargs)
     if window is None:
-        # Nowhere on this board to measure it — the keeper starts boxed in. Rather than drive
+        # Nowhere on this board to measure it: the keeper starts boxed in. Rather than drive
         # the game with a made-up hold, fall back to the documented default and say the
         # window is unknown.
         return Calibration(PRESS_TICKS, None)
@@ -599,7 +599,7 @@ class Boxxle2GBState(GBState):
         self.literals = frozenset(predicates)
 
     def is_consistent(self):
-        """Does the cartridge's own Sokoban invariant hold on this board?
+        """Whether the cartridge's own Sokoban invariant holds on this board.
 
         Every level ships with as many goals as boxes. A position where they disagree means
         one of the three plane addresses has drifted, or the board was read while the clear
@@ -637,7 +637,7 @@ class Boxxle2GBAction(GBAction):
         `apply` rewinds to the parent state before pressing, and `load_state` ticks exactly
         one frame afterwards. On some states that one frame is not enough: the press lands
         before the main loop next samples the pad, `ReadJoypad` never sees the edge, and the
-        move is silently dropped — the successor comes back equal to its parent and
+        move is silently dropped: the successor comes back equal to its parent and
         `successors` deletes the action as a no-op. It is not every state, which is the worst
         kind of bug to have: replaying a 500-move plan on the cartridge failed at move 19 and
         the same move applied on its own worked.
@@ -735,7 +735,7 @@ class Boxxle2GBEnv(GBEnv):
     def is_terminal(self, state):
         """A box wedged in a corner off a goal: nothing anyone presses will move it again.
 
-        Sound but not complete, and deliberately so — see `stuck_boxes`. Absorbing, because
+        Sound but not complete, and deliberately so; see `stuck_boxes`. Absorbing, because
         there is nothing left to plan for; the win side of `__advance__`'s absorbing rule
         matters more here, since a cleared board is overwritten by the cartridge's
         congratulation sequence within a couple of seconds.

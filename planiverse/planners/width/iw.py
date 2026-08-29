@@ -1,7 +1,7 @@
 """IW(k), Iterated Width and Serialised IW, against a simulator.
 
 IW(k) is breadth-first search with one addition: a state is discarded unless its novelty is
-at most `k`. That single filter is what makes it work — it turns an exponential frontier into
+at most `k`. That single filter is what makes it work: it turns an exponential frontier into
 one bounded by the number of atom tuples of size ≤ k, so IW(1) expands at most as many states
 as there are atoms.
 
@@ -15,7 +15,7 @@ Adapting this to a simulator rather than a PDDL task changes three things:
 * **There is no goal decomposition.** `is_goal` is a black-box predicate, so Serialised IW's
   "make one more subgoal true" has nothing to count. `SIWSearch` takes a `progress` callback
   instead, and says plainly what it degrades to without one.
-* **Expansions are expensive** — seconds each in the power grid environment — so every search
+* **Expansions are expensive** (seconds each in the power grid environment), so every search
   takes a `Budget` and reports what it spent.
 * **Dead ends are real.** A PDDL task usually has none; several environments here do, and
   `is_terminal` states are dropped rather than expanded.
@@ -44,7 +44,7 @@ class IWSearch:
 
         `"standard"` is the textbook definition: the smallest tuple of atoms in the state not
         seen anywhere in this search. `"path"` is the rule the pyBehaviourPlanningLTL
-        reference uses — how many atoms are new relative to the path taken to the state — and
+        reference uses (how many atoms are new relative to the path taken to the state), and
         is kept for comparability. The two agree at width 1 and part company above it; see
         `novelty.path_novelty`.
         """
@@ -97,8 +97,8 @@ class IWSearch:
                 successor_plan = plan + [action]
                 successor_trace = trace + [successor]
 
-                # Checked before the terminal test: a goal that is also terminal — which is
-                # every absorbing goal state in this library — must still be reported solved.
+                # Checked before the terminal test: a goal that is also terminal (which is
+                # every absorbing goal state in this library) must still be reported solved.
                 if env.is_goal(successor):
                     return self.__result__("solved", successor_plan, successor_trace,
                                            statistics, budget, table)
@@ -128,13 +128,13 @@ class IteratedWidth:
     not already know the problem's width. Note what it costs against a simulator: each width
     restarts from scratch and re-expands everything the previous one did, and here an
     expansion is a hydraulic solve or a power-flow solve rather than a bitmask update. The
-    budget is therefore shared across widths rather than granted afresh to each.
+    budget is shared across widths rather than granted afresh to each.
 
     `max_width` is a **bound, not a plan**. Set it as high as you like: the loop almost never
     reaches it, because it stops as soon as one of three things happens.
 
     1. A width solves the problem.
-    2. The budget runs out — the usual outcome above width 2, since IW(k) enumerates every
+    2. The budget runs out, the usual outcome above width 2, since IW(k) enumerates every
        k-tuple of every state's atoms.
     3. **A width exhausts the reachable space without pruning anything for novelty.** That is
        the interesting one: if nothing was ever discarded for being unnovel, then IW(k) saw
@@ -144,7 +144,7 @@ class IteratedWidth:
        harmless rather than a thousand wasted restarts.
 
     Above `strict`'s practical width the tuple enumeration gets expensive fast, so widths
-    beyond 2 need `strict=False` — `NoveltyTable` refuses them otherwise.
+    beyond 2 need `strict=False`; `NoveltyTable` refuses them otherwise.
     """
 
     def __init__(self, max_width=2, strict=True, novelty_rule="standard"):
@@ -183,7 +183,7 @@ class IteratedWidth:
             if result.status == "exhausted" and not result.statistics.pruned_novelty:
                 # Nothing was ever discarded for novelty, so this width searched the whole
                 # reachable space. No larger one can reach further, and this is a proof that
-                # there is no plan — reported as `exhausted` to keep it distinguishable from
+                # there is no plan, reported as `exhausted` to keep it distinguishable from
                 # the widths simply running out.
                 return self.__failed__("exhausted", totals)
 
@@ -192,8 +192,8 @@ class IteratedWidth:
         # A width that emptied its frontier *while pruning* proves nothing: a wider one
         # would have seen more, and the loop only stopped trying because `max_width` (or
         # `strict`) said so. Passing that width's "exhausted" through would collide with
-        # the completeness proof above — which the benchmark reads as "there is no plan"
-        # (`catalogue.is_complete`) — so hitting the ceiling reports "failed" instead.
+        # the completeness proof above, which the benchmark reads as "there is no plan"
+        # (`catalogue.is_complete`), so hitting the ceiling reports "failed" instead.
         # (`last is not None`, not `if last`: SearchResult.__bool__ is `solved`, so a plain
         # truth test on an unsolved result is always False.)
         return self.__failed__("failed" if last.status == "exhausted" else last.status,
@@ -210,7 +210,7 @@ class SIWSearch:
     """Serialised IW: chain short IW searches, each ending as soon as progress is made.
 
     Classically "progress" means one more of the goal conjunction is true, and SIW is what
-    makes width-based planning scale — it decomposes a problem no single IW call could reach.
+    makes width-based planning scale: it decomposes a problem no single IW call could reach.
 
     **A simulator has no goal conjunction to count.** `is_goal` is opaque, so there is nothing
     to be one-closer to. Supply `progress(state) -> comparable`, lower being better, and SIW
@@ -220,8 +220,8 @@ class SIWSearch:
     SIWSearch(progress=lambda s: s.blocks_remaining).solve(env)
     ```
 
-    Without one this degrades to plain IW(k) — it says so in `status` rather than pretending
-    otherwise — because every intermediate search would have no stopping condition short of
+    Without one this degrades to plain IW(k) (it says so in `status` rather than pretending
+    otherwise), because every intermediate search would have no stopping condition short of
     the goal itself.
     """
 
@@ -231,13 +231,13 @@ class SIWSearch:
 
         SIW inherits IW's width sensitivity exactly, because each leg *is* an IW search:
         novelty is a filter there, so if no state within IW(k)'s pruned reach improves
-        progress, the leg fails and the whole search fails — even though a wider leg would
-        have found one. Pinning `width` therefore reports SIW at a width someone chose rather
+        progress, the leg fails and the whole search fails, even though a wider leg would
+        have found one. Pinning `width` reports SIW at a width someone chose rather
         than at the width the problem needs, which is the same mistake as pinning IW.
 
         With `max_width` set, a leg tries IW(`width`), then IW(`width` + 1), and so on until
         it makes progress, the budget runs out, or a width covers everything reachable from
-        the leg's start without discarding anything for novelty — at which point no wider leg
+        the leg's start without discarding anything for novelty, at which point no wider leg
         can help either and the search is genuinely stuck. The budget is shared across the
         widths within a leg, so a stubborn leg cannot spend more than its allowance.
 
@@ -248,7 +248,7 @@ class SIWSearch:
         SIW is incomplete because each leg commits irrevocably to the first improvement it
         finds, and greedy progress can be a trap. It really happens here: on Puzznic level 1
         the first leg clears a pair and lands on a board with one block of a colour left,
-        which can never be matched — progress was made and the problem is over. IW(2) and
+        which can never be matched: progress was made and the problem is over. IW(2) and
         BFWS solve that level because they never commit.
 
         A simulator that computes `is_terminal` gives the leg a cheap way to refuse, which is

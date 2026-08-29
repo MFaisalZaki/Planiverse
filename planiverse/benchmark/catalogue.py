@@ -3,7 +3,7 @@
 Each entry says how to build one from a JSON parameter block, so `planners/bfws-2.json` can
 name a planner and set its knobs without the harness importing anything until it has to. The
 signatures are documented here because a planner config is the one place where a typo is
-silent — an unknown parameter would otherwise be accepted and ignored.
+silent: an unknown parameter would otherwise be accepted and ignored.
 """
 import importlib
 
@@ -56,7 +56,7 @@ COMPLETE = ("bfws",)
 
 #: Planners that prove unsolvability only when they say so. `IteratedWidth` reports
 #: `exhausted` when one of its widths covered the whole reachable space without discarding
-#: anything for novelty — at that point no larger width can reach further, and there is no
+#: anything for novelty; at that point no larger width can reach further, and there is no
 #: plan. `IteratedBFWS` reserves the word the same way: a pruned round that covered the
 #: space, or the unpruned final round emptying its frontier, and nothing else. Any other way
 #: either stops (the budget, or reaching `max_width` with the filter still biting) proves

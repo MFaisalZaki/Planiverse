@@ -37,12 +37,12 @@ def count_instances(spec, ceiling=PROBE_CEILING, rom=None):
     """How many instances an environment offers, by asking it.
 
     Probed rather than declared. The registry's `instances` field is prose written for a
-    human — "50 levels", "9 contingencies" — and a second, machine-readable copy would be one
+    human ("50 levels", "9 contingencies"), and a second, machine-readable copy would be one
     more thing that can drift out of step with the code. So this constructs the environment
     once and walks `fix_index` upwards until it refuses.
 
-    Environments differ in how they refuse — `IndexError`, `AssertionError`, a bare
-    `ValueError` — so anything raised counts as the end of the range.
+    Environments differ in how they refuse (`IndexError`, `AssertionError`, a bare
+    `ValueError`), so anything raised counts as the end of the range.
     """
     environment = spec.build(**({spec.rom_argument: rom} if rom else {}))
     try:
@@ -124,7 +124,7 @@ def _rom_for(spec, roms):
     """The cartridge for an environment: the experiment's, else its variable, else None.
 
     The experiment's copy wins so that a run is reproducible from its config alone, but the
-    path is still checked — one recorded on the machine that wrote the config is a promise
+    path is still checked: one recorded on the machine that wrote the config is a promise
     about a different filesystem until it is.
     """
     if not spec.needs_rom:

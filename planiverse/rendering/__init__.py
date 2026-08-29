@@ -3,12 +3,9 @@
     from planiverse.rendering import render_trace
 
     trace = env.simulate(plan)
-    render_trace(trace, "plan.pdf", actions=plan)
-    render_trace(trace, "plan.png", actions=plan)
+    render_trace(trace, "plan.gif")        # an animated GIF
+    render_trace(trace, "plan-frames/")    # one PNG per state
 """
-from planiverse.rendering.trace import (
-    DEFAULT_COLUMNS, contact_sheet, render_state, render_trace, trace_frames,
-)
+from planiverse.rendering.trace import render_state, render_trace
 
-__all__ = ["DEFAULT_COLUMNS", "contact_sheet", "render_state", "render_trace",
-           "trace_frames"]
+__all__ = ["render_state", "render_trace"]

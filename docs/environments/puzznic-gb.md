@@ -33,7 +33,7 @@ Every address below was read from one specific dump:
 |---|---|
 | File | `Puzznic (J).gb`, 65,536 bytes |
 | MD5 | `9a777d82cd7a8913ba1aed2cc854fa50` |
-| Cartridge | MBC1, 64 KiB, **no** cartridge RAM — all state is in work RAM |
+| Cartridge | MBC1, 64 KiB, **no** cartridge RAM; all state is in work RAM |
 
 Because the addresses are revision-specific, the constructor hashes the file and raises a
 `UserWarning` when it is not that dump. Pass `verify_rom=False` to silence it.
@@ -66,7 +66,7 @@ trace = env.simulate([PuzznicGBAction(f"left,{ticks}"), PuzznicGBAction(f"a+righ
 print(env.is_goal(trace[-1]))
 ```
 
-(The board above is illustrative — the stage layouts are in the ROM, and the block *types* are drawn
+(The board above is illustrative: the stage layouts are in the ROM, and the block *types* are drawn
 by a PRNG at load time, so what Round 1 prints is not fixed.)
 
 `reset()` boots the ROM, taps through the title screens until a stage is on the playfield, waits for
@@ -74,7 +74,7 @@ the board to settle, and snapshots it.
 
 ## Stages
 
-`Puzznic (J)` has **128 rounds**, and `fix_index(i)` selects one of them zero-based —
+`Puzznic (J)` has **128 rounds**, and `fix_index(i)` selects one of them zero-based, so
 `fix_index(3)` is round 4. `reset()` reaches it the way a player would: it picks `PASSWORD`
 on the title menu and types the round's password.
 
@@ -91,12 +91,12 @@ info["boot_route"], info["stage_index"]
 They are not transcribed from a guide. The table is in the ROM at `$47FA`: 128 ten-byte
 entries, eight bytes of password in the game's own text encoding, then the round number,
 then a check byte. `read_passwords(romfile)` walks it until an entry stops being a password
-whose round number follows the last one — which is both how the end is found and how the
+whose round number follows the last one, which is both how the end is found and how the
 parse checks itself.
 
 Reading it rather than hard-coding it means the passwords always match the ROM in hand, and
 it is what settles the round count: the table is 128 long, and round 128's password is
-`SAISHUU.` — 最終, "final".
+`SAISHUU.` (最終, "final").
 
 The text encoding is letters from `$0A`, so `A` is `$0A` and `Z` is `$23`, leaving `$00`–`$09`
 for the digits. `.` is `$24` in the ROM and `$8B` on screen.
@@ -107,8 +107,7 @@ The title menu is `1PLAYER / 2PLAYERS / PASSWORD`, and the password screen is a 
 `A`–`Z` and `.` over a row of `NEXT / BACK / END`, with eight slots along the top. Selecting a
 character fills the next slot and advances; `END` confirms and starts the round.
 
-Everything on both screens that matters is a **sprite**, which is what makes this reliable
-rather than hopeful:
+Everything on both screens that matters is a **sprite**, which is what makes this reliable:
 
 | What | Where |
 |---|---|
@@ -119,14 +118,14 @@ rather than hopeful:
 
 So `entry_cursor` reads where the cursor actually is and `entered_password` reads what has
 actually been typed. Every cursor move is checked, and every character is checked against the
-slot it was meant to fill and retried if it did not land — the screen does drop a press now
-and again, and a password one character short is not an error, it is silently the wrong
+slot it was meant to fill and retried if it did not land. The screen does drop a press now
+and again, and a password one character short is not an error; it is silently the wrong
 round.
 
 ### Why not just poke the loader
 
 `$D003` is the stage index, and writing it through a hook on the loader at `0:0430` does
-change the layout — the two routes agree, and `fix_index(3)` produces the same board either
+change the layout; the two routes agree, and `fix_index(3)` produces the same board either
 way. But it swaps the layout underneath a game that still believes it is on round 1, so
 everything the cartridge derives from the round is wrong, and the hook has to keep firing for
 every later load. Typing the password puts the game on the round properly.
@@ -148,8 +147,8 @@ identical machine.
 | `blocks` | `(row, col, type, slot)` for every cell holding a block |
 | `records` | live entries of the 6-byte record array at `$DD00` |
 | `cursor` | `$D013` (row), `$D012` (column) |
-| `total_blocks` | `$D018` — what the stage loaded with; never decremented |
-| `blocks_remaining` | `$D019` — decremented once per block removed |
+| `total_blocks` | `$D018`: what the stage loaded with; never decremented |
+| `blocks_remaining` | `$D019`: decremented once per block removed |
 | `blocks_cleared` | `total_blocks - blocks_remaining` |
 | `stage_types` | the block types present when the stage loaded |
 | `stage_cleared` | sampled here, read by `is_goal` |
@@ -161,14 +160,14 @@ identical machine.
 
 | Value | Meaning |
 |---|---|
-| `$00` | Empty — the only value that permits movement |
+| `$00` | Empty; the only value that permits movement |
 | `$01` | Transient: a block is clearing or in motion |
-| `$02` | Solid ledge — blocks rest on it |
+| `$02` | Solid ledge; blocks rest on it |
 | `$03` | Outside the playfield |
 | `$06` | Wall |
 | `$08`–`$0F` | A block; its type is the value minus 7, so types 1–8 |
 
-There are **no per-stage width or height variables** — every stage fills all 120 cells and a small
+There are **no per-stage width or height variables**: every stage fills all 120 cells and a small
 stage is the same array with more `$03` around it. `state.bounding_box()` derives the shape.
 
 ### Block types are randomised per playthrough
@@ -188,11 +187,11 @@ goal-reached
 terminal-state
 ```
 
-Terrain is deliberately *not* in the literals — it is static per stage, and repeating the walls in
+Terrain is deliberately *not* in the literals: it is static per stage, and repeating the walls in
 every state would swamp the atoms that actually change. Read `state.grid` for it.
 
 `depth` is also deliberately absent. With a step counter in the literals no successor could ever
-equal its parent, and the self-loop filter in `successors` would be dead code — a trap a
+equal its parent, and the self-loop filter in `successors` would be dead code, a trap a
 since-removed environment fell into.
 
 Two states are equal when their grid and cursor match, which is the whole position: depth and history
@@ -201,7 +200,7 @@ do not distinguish two ways of reaching the same board, so search can close.
 ### Cross-checking
 
 The grid and the record array reference each other, so the board can be read from either end.
-`state.is_consistent()` runs the memory map's own check — the grid scan, the record scan and `$D019`
+`state.is_consistent()` runs the memory map's own check: the grid scan, the record scan and `$D019`
 must agree. If they do not, one of the three has drifted; the grid scan and `$D019` are the two that
 were verified against live RAM.
 
@@ -212,7 +211,7 @@ iterates all `$D018` slots and skips the dead ones.
 ## Actions
 
 `PuzznicGBAction` wraps a string of the form `"buttons,ticks"`, where buttons are `+`-joined
-and ticks is how many frames to hold them — the same spelling the
+and ticks is how many frames to hold them, the same spelling the
 [Super Mario Land](super-mario-land.md#actions) environment uses. That is the whole action
 set: what the console has, and nothing above it.
 
@@ -223,15 +222,15 @@ set: what the console has, and nothing above it.
 
 There is no `a+up`/`a+down`: Puzznic slides blocks sideways, it does not lift them. `B` works
 as the modifier as well as `A`, and a direction on its own only walks the cursor off the
-block — both checked on the cartridge.
+block; both checked on the cartridge.
 
 **Cost** is `1` for every action. `a` costs `0` in `action_cost_map` because it is a modifier
 that turns a direction into a push, not a move of its own.
 
 ### The branching is mostly cursor walking
 
-Worth knowing before you point a planner at this. Measured over the synthetic cartridge's
-stages:
+This is worth knowing before you point a planner at it. Measured over the synthetic
+cartridge's stages:
 
 | Stage | Branching factor | Successors that move a block |
 |---|---|---|
@@ -240,13 +239,13 @@ stages:
 | 7 blocks | 4.16 | 5.6% |
 
 Over 90% of every expansion is the cursor travelling, because walking to a block is not a
-decision — it is the overhead of making one. Breadth-first search over the buttons solves the
+decision; it is the overhead of making one. Breadth-first search over the buttons solves the
 2-block stage and does not close the 4-block one inside 25 seconds.
 
 That is a property of the game as the console presents it, and this environment leaves it
 alone: collapsing the walk into the push is a search technique, and search is the planner's
-side of the line. `cursor_path` is exported for a planner that wants to build such macros —
-it is the reachability the cursor really has, walls and all — but the actions this
+side of the line. `cursor_path` is exported for a planner that wants to build such macros
+(it is the reachability the cursor really has, walls and all), but the actions this
 environment hands out are button presses.
 
 ### Ticks are measured, not chosen
@@ -254,8 +253,8 @@ environment hands out are button presses.
 How long to hold a button has two bounds, and neither is in the memory map:
 
 - **Too short** and the press is never sampled.
-- **Too long** and auto-repeat fires, so one action moves the cursor — or the block it is
-  holding — two cells, and the state the planner gets back is not the one its action
+- **Too long** and auto-repeat fires, so one action moves the cursor (or the block it is
+  holding) two cells, and the state the planner gets back is not the one its action
   described.
 
 The failure is quiet. `PuzznicGBAction("a+right,60")` looks like one push and reads like one
@@ -271,17 +270,17 @@ info["calibration"]
 ```
 
 Those are the real cartridge's numbers. **`Puzznic (J)` repeats on frame 31**, so any hold of
-30 frames or fewer moves one cell and `press_ticks` settles on 15. A hold of 60 — which looks
-like one press and reads like one action in a plan — moves two.
+30 frames or fewer moves one cell and `press_ticks` settles on 15. A hold of 60, which looks
+like one press and reads like one action in a plan, moves two.
 
-or, without writing any code:
+Or, without writing any code:
 
 ```bash
 python -m planiverse.environments.gameboy.puzznic_gb "Puzznic (J).gb" --stage 0
 ```
 
 `measure_hold_window` presses a direction for 1, 2, 3… frames and watches `$D012`/`$D013`,
-returning the closed range of holds that move the cursor **exactly one cell** — the lower
+returning the closed range of holds that move the cursor **exactly one cell**: the lower
 end is where presses start registering, the upper end is one frame short of auto-repeat.
 `press_ticks` is the middle of that range, far enough from either edge to survive a frame of
 jitter in when the game samples input. The spare frames cost about 0.07 ms each, so there is
@@ -303,12 +302,12 @@ Measured across the first eight stages of `Puzznic (J)`:
 Stage 6 is the one that shows why the middle of the window is the right choice rather than
 its lower edge: there a single-frame press is not sampled at all. And where the push window
 *could* be measured it matches the cursor's, so on this cartridge one repeat routine serves
-both — which is now a measurement rather than the assumption it used to be.
+both, which is now a measurement rather than the assumption it used to be.
 
 ### The push has its own window
 
 `measure_push_window` does the same for a **held block**, and it is a separate measurement
-because the two need not agree — a cartridge is free to repeat a held block on its own
+because the two need not agree: a cartridge is free to repeat a held block on its own
 schedule. Getting this wrong is worse than getting the cursor wrong: held past the repeat, a
 single `a+right` slides the block two cells, and if the second cell puts it next to its own
 colour the pair clears. The planner is then handed a board two blocks lighter than the action
@@ -317,8 +316,8 @@ it applied ever asked for.
 Probing it needs a block that can be slid two cells and still be *found* afterwards, so
 `push_probe_candidates` rejects any block that would fall down a hole on the way, or land
 next to its own colour and vanish. (These are calibration machinery, not an action model.) On a cramped stage there may be no such block, and then
-`push_window` is `None` and `push_ticks` falls back to `press_ticks` — better than a number
-read off a board that cleared halfway through the measurement.
+`push_window` is `None` and `push_ticks` falls back to `press_ticks`, which is better than a
+number read off a board that cleared halfway through the measurement.
 
 `button_actions` holds each action for its own window:
 
@@ -332,16 +331,16 @@ candidate:
 
 | Scheme | Inputs |
 |---|---|
-| `modifier` | hold A and press a direction — one input |
-| `grab` | press A to pick the block up, then a direction — two inputs |
+| `modifier` | hold A and press a direction; one input |
+| `grab` | press A to pick the block up, then a direction; two inputs |
 | `direct` | a direction alone moves the block under the cursor |
 
 whichever actually moves the block is the one both action models then use. Until this
 existed, `a+left` was an assumption; now it is a measurement, and a cartridge that works
 some other way is handled rather than silently mis-driven.
 
-On `Puzznic (J)` it comes out `modifier`, which is what the environment had always assumed —
-and probing by hand confirms the rest of the picture: `B` works as the modifier too, a
+On `Puzznic (J)` it comes out `modifier`, which is what the environment had always assumed.
+Probing by hand confirms the rest of the picture: `B` works as the modifier too, a
 direction on its own only walks the cursor off the block, and `A` followed by a direction
 does nothing, so there is no pick-up-and-carry mode to model.
 
@@ -352,13 +351,13 @@ falls back to `PRESS_TICKS` and the `modifier` scheme.
 ### The round has to start listening first
 
 The stage loader fills work RAM before the round has finished announcing itself. For **210
-frames** on `Puzznic (J)` the board is completely readable — grid, records, counters, cursor,
-all correct and cross-checking — and every button is ignored. Nothing in RAM says "not yet".
+frames** on `Puzznic (J)` the board is completely readable (grid, records, counters, cursor,
+all correct and cross-checking) and every button is ignored. Nothing in RAM says "not yet".
 
 A state snapshotted in that window is the worst kind of wrong: it looks perfectly normal and
 answers no action, so a planner sees a stage with no legal moves rather than an error. So
 `reset()` calls `wait_until_interactive`, which presses a direction from a snapshot at
-increasing offsets until the cursor answers, then rewinds and replays only the waiting — the
+increasing offsets until the cursor answers, then rewinds and replays only the waiting; the
 state you get back still has the cursor exactly where the loader put it. `info["intro_ticks"]`
 reports how long it took.
 
@@ -367,10 +366,10 @@ running, and the boot sequence taps it while getting through the title screens.
 
 ### Where the cursor may go
 
-The cursor sits on blocks and crosses ledges, and cannot enter a wall or the outside — all
+The cursor sits on blocks and crosses ledges, and cannot enter a wall or the outside, all
 four verified on the cartridge. Stages are not rectangles (Round 1's bottom row is two cells
 narrower than the row above it), so walking the rows and then the columns steps into a wall.
-`cursor_path` is a breadth-first search over the cells the cursor may occupy — exported
+`cursor_path` is a breadth-first search over the cells the cursor may occupy, exported
 because a planner reasoning about which blocks are even reachable needs it.
 
 ### Applying an action, and settling
@@ -400,13 +399,13 @@ env = PuzznicGBEnv(rom, settle_max_ticks=1200, settle_stable_ticks=8)
 
 ## Goal and terminal
 
-- **Goal** (`is_goal`) — `state.stage_cleared`: the stage loaded with blocks, `$D019` is zero and the
-  grid scan agrees.
-- **Terminal** (`is_terminal`) — `state.dead_end`: some type has exactly one block left. Matching is
-  pairwise, so a lone block can never be removed and the stage can no longer be cleared. This is a
-  property of the position that the cartridge does not flag; it is the same rule the pure-Python
-  environment uses, and it is sound — three blocks of a type are *not* a dead end, because Puzznic
-  clears a group of three when they meet.
+- **Goal** (`is_goal`): `state.stage_cleared`, meaning the stage loaded with blocks, `$D019` is zero
+  and the grid scan agrees.
+- **Terminal** (`is_terminal`): `state.dead_end`, meaning some type has exactly one block left.
+  Matching is pairwise, so a lone block can never be removed and the stage can no longer be cleared.
+  This is a property of the position that the cartridge does not flag; it is the same rule the
+  pure-Python environment uses, and it is sound, since three blocks of a type are *not* a dead end,
+  because Puzznic clears a group of three when they meet.
 
 Both read flags captured on the passed `state`, not live memory, which would describe whichever state
 was applied last.
@@ -432,7 +431,7 @@ state would quietly return a position from a *different* stage.
 
 `env.render()` prints the de-duplicated history of `step` calls and returns it as a list of strings,
 the same as the pure-Python environment. `state.save(rom, path)` writes a PNG of the state by booting
-a throwaway emulator to it — it uses the null window, so unlike the Super Mario Land environment it
+a throwaway emulator to it. It uses the null window, so unlike the Super Mario Land environment it
 needs no display, but it does need Pillow.
 
 ## Planning
@@ -464,8 +463,8 @@ env.validate(plan)
 `is_terminal` is worth checking during expansion: stranding a colour is a genuine dead end, and
 pruning those branches is most of what makes this a planning problem rather than a reflex one.
 
-The cursor walking is most of what makes this hard — see
-[Actions](#actions) for the measurements — and a planner that wants to collapse it into
+The cursor walking is most of what makes this hard (see
+[Actions](#actions) for the measurements), and a planner that wants to collapse it into
 macro-actions can, using `cursor_path` for the reachability. The other half is the heuristic:
 Manhattan distance between
 same-typed blocks is a weak proxy, because it ignores whether the two can actually be brought
@@ -487,7 +486,7 @@ through this environment, not read off a disassembly:
   16, 50, 100 and 128 puts `$D003` on each one, and poking the loader agrees with it.
 - **Cell semantics.** Ledges, walls and the outside marker behave as the memory map says, and
   the cursor's freedom of movement matches: on blocks and ledges, never into a wall.
-- **The push scheme and both hold windows** — see [Actions](#actions).
+- **The push scheme and both hold windows**: see [Actions](#actions).
 - **Matching.** `a+right` on Round 1's block at row 8, column 3 slides it onto its own colour
   and clears the pair: `$D019` drops from 6 to 4, records zeroed in place, slots uncompacted.
 - **Search.** Breadth-first over `push` actions solves Round 1 in **4 pushes from 10 states in
@@ -504,10 +503,10 @@ through this environment, not read off a disassembly:
   plans are the case to watch.
 - **Stage transitions are still unobserved.** `settle` stops the moment `$D019` hits zero precisely
   so that a cleared stage is seen before the next round loads over it, and Round 1 does get cleared
-  and validated — but what the cartridge does *after* that, and whether `$D018`/`$D019` are
+  and validated, but what the cartridge does *after* that, and whether `$D018`/`$D019` are
   re-initialised the way the memory map expects, has not been watched.
 - **The push window is not measurable on every stage.** It needs a block that can be slid two cells
-  without falling or matching, and dense boards have none — six of the first eight stages, in fact.
+  without falling or matching, and dense boards have none: six of the first eight stages, in fact.
   There `push_ticks` is `None` and falls back to the cursor hold, which on this cartridge is the same
   number anyway.
 - **Only a handful of rounds have been driven.** Rounds 1, 4, 16, 50, 100 and 128 were selected by
@@ -515,19 +514,19 @@ through this environment, not read off a disassembly:
   length, the hold windows and the push scheme are all measured per-cartridge and not per-stage, so
   a stage that behaved differently would not be noticed.
 - **`successors` shares one emulator.** All expansion runs on `self.pyboy`; correctness relies on
-  each action reloading its parent's save-state first. Don't parallelise expansion over one env.
+  each action reloading its parent's save-state first. Do not parallelise expansion over one env.
 - **`render=True` is for watching, not planning.** It opens an SDL2 window and slows expansion. The
   constructor keeps that flag as `self.render_window`, because `self.render` is the method that
   prints the history.
 - **`load_state` advances a frame** after restoring, mirroring the Super Mario Land environment.
-  Nothing moves on its own in a settled Puzznic position, so it does not shift the state — but it is
+  Nothing moves on its own in a settled Puzznic position, so it does not shift the state, but it is
   not a byte-exact restore.
 
 ## Testing without the cartridge
 
 Everything above would be untestable in CI if it needed a copyrighted ROM, so the test suite builds
 its own. [`tests/fake_puzznic_rom.py`](../../tests/fake_puzznic_rom.py) assembles a small homebrew
-Game Boy cartridge — with [`tests/sm83.py`](../../tests/sm83.py), a minimal SM83 assembler — that
+Game Boy cartridge (with [`tests/sm83.py`](../../tests/sm83.py), a minimal SM83 assembler) that
 puts the same facts at the same addresses: a stage loader at `$0430` that reads `$D003`, a 12×10 grid
 at `$DF00`, records at `$DD00`, counters at `$D018`/`$D019`, a cursor at `$D012`/`$D013`.
 
@@ -537,9 +536,10 @@ rule set. It does model the two things that make driving a Game Boy awkward, bec
 code for them would never run: **cursor auto-repeat** (a direction held more than 16 frames moves the
 cursor again, and every 6 frames after that), so `measure_hold_window` has a real bound to find; and
 a **round intro** of 60 frames during which the board is completely readable and every button is
-ignored, so `wait_until_interactive` has a real wait to discover. What it exercises is the interface between the environment and a Game Boy — booting,
-hooking the loader to force a stage, decoding the grid, waiting for a move to settle, spotting a
-cleared stage — which is the part that otherwise could only be checked by hand.
+ignored, so `wait_until_interactive` has a real wait to discover. What it exercises is the interface
+between the environment and a Game Boy (booting, hooking the loader to force a stage, decoding the
+grid, waiting for a move to settle, spotting a cleared stage), which is the part that otherwise
+could only be checked by hand.
 
 Its title screen deliberately rewrites `$D003` and calls the loader in the same frame, so
 `test_fix_index_selects_the_stage_the_loader_builds` fails if stage selection is ever changed back to

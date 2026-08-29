@@ -3,7 +3,7 @@
 This is the dependency-free counterpart to [`super_mario_land_gb`](../gameboy/super_mario_land_gb.py),
 and it makes a weaker claim than the other cartridge pairs in this library. `puzznic` and
 `flipull` are twins: their rules were derived from the real hardware and reproduce it, exactly
-in one case and partly in the other. **This is not a twin of Super Mario Land** — the levels
+in one case and partly in the other. **This is not a twin of Super Mario Land**: the levels
 are original, the enemies are simplified, and there is no timer, score, power-up, run button
 or press-length jump control.
 
@@ -13,12 +13,12 @@ emulator environment's memory map was derived from), recording Mario's screen po
 ($C201/$C202) and the on-ground flag ($C20A) once per frame while driving scripted input.
 Two of the cartridge's mechanics are deliberately left out, and the arc is fitted around
 their absence: press-length jump control (on the hardware, how long `a` is held shapes the
-climb) and the `b` dash. Here a jump is one fixed arc — the cartridge's full moving jump —
+climb) and the `b` dash. Here a jump is one fixed arc (the cartridge's full moving jump)
 and there is one horizontal speed, the cartridge's walk.
 
 ## The physics, measured
 
-Positions are in units, `TILE` (8) units to a tile — one unit is one Game Boy pixel. A tick
+Positions are in units, `TILE` (8) units to a tile; one unit is one Game Boy pixel. A tick
 is four Game Boy frames. Mario is one tile square. Each tick, in this order:
 
 1. **Horizontal.** `left`/`right` accelerate towards `SPEED` by `ACCEL` a tick, and
@@ -29,7 +29,7 @@ is four Game Boy frames. Mario is one tile square. Each tick, in this order:
 2. **Jump.** Pressing `a` while standing sets `vy = JUMP_SPEED`. That is the whole jump:
    there is no press-length control, by design.
 3. **Gravity.** `vy += GRAVITY`, capped at `MAX_FALL`.
-4. **Collision.** Resolved on one axis at a time — horizontal first, then vertical — so a
+4. **Collision.** Resolved on one axis at a time (horizontal first, then vertical), so a
    corner never lets you through.
 
 Falling below the level kills. So does touching a hazard, and so does touching an enemy from
@@ -45,30 +45,30 @@ on into a position that no longer exists.
 
 It is *not* a test for whether the level is still winnable, and nothing here claims to be.
 Mario can be alive in a pit he cannot jump out of, and no environment in this library detects
-that — deciding it in general means solving the level. Dead states are pruned; stuck ones cost
+that; deciding it in general means solving the level. Dead states are pruned; stuck ones cost
 the planner its budget, the same as they would on the cartridge.
 
 There is no timer, and no score. The cartridge has both; this does not model them.
 """
 from planiverse.environments.base import Environment
 
-#: Units to a tile — the Game Boy's own granularity. One unit is one pixel; one tick is
+#: Units to a tile: the Game Boy's own granularity. One unit is one pixel; one tick is
 #: four Game Boy frames, which is what lets the measured values below stay integral.
 TILE = 8
 
 #: The one horizontal speed, in units per tick. The cartridge walks at a steady 1 pixel a
-#: frame — 4 units a tick — and that is the speed here. There is no `b` dash, by design.
+#: frame (4 units a tick), and that is the speed here. There is no `b` dash, by design.
 SPEED = 4
 
 #: How fast you reach that speed, and how fast you lose it with nothing held. The cartridge
-#: reaches full walking speed within about six frames of the press — under two ticks — so
+#: reaches full walking speed within about six frames of the press (under two ticks), so
 #: `ACCEL` is 2. Momentum still matters at the margin: the speed you are carrying when you
 #: leave a ledge is the speed you cross the gap at.
 ACCEL, FRICTION = 2, 2
 
 #: Vertical, fitted to the cartridge's full moving jump: measured 33 pixels up in 22 frames
 #: with 49 frames airborne, carrying 46 pixels horizontally. This arc rises 30 units in 5
-#: ticks, is airborne for about 10, and carries about 40 units at `SPEED` — close on every
+#: ticks, is airborne for about 10, and carries about 40 units at `SPEED`: close on every
 #: axis, and integral. The cap of 12 units a tick is the measured terminal fall of about 3
 #: pixels a frame.
 GRAVITY, MAX_FALL, JUMP_SPEED, BOUNCE = 2, 12, -12, -8
@@ -78,7 +78,7 @@ SOLID, AIR, HAZARD, ENEMY, START, GOAL = "#", " ", "^", "E", "M", "G"
 
 #: Buttons and how long to hold them. The vocabulary mirrors `super_mario_land_gb`'s
 #: `button,ticks` actions, minus `down` (there is no ducking in this model) and minus `b`
-#: (there is no dash — the model has the cartridge's walk and nothing above it). The jump
+#: (there is no dash: the model has the cartridge's walk and nothing above it). The jump
 #: is one fixed arc, so a hold length decides how long a *direction* is held: the short one
 #: is for fine positioning, the long one for covering ground.
 BUTTON_SETS = ("a+right", "a+left", "right", "left")
@@ -102,8 +102,8 @@ ACTION_NAMES = _actions()
 def parse_level(text):
     """An ASCII level into `(tiles, mario_start, enemy_starts, goal)`.
 
-    The `M`, `E` and `G` markers are stripped out of the tile map — they say where things
-    begin, not what the terrain is — so the tiles that remain are only terrain.
+    The `M`, `E` and `G` markers are stripped out of the tile map (they say where things
+    begin, not what the terrain is), so the tiles that remain are only terrain.
     """
     rows = text.split("\n")
     width = max(len(row) for row in rows)
@@ -164,7 +164,7 @@ def _settle(tiles, x, y):
     """Drop Mario to the floor under his starting tile.
 
     Without this the opening state is airborne, so `on_ground` is false, the first action
-    cannot be a jump, and every level begins with a wasted step. Only Mario moves — the
+    cannot be a jump, and every level begins with a wasted step. Only Mario moves: the
     enemies have not had a tick yet.
     """
     while not blocked(tiles, x, y + 1) and y // TILE <= len(tiles):
@@ -209,7 +209,7 @@ class SuperMarioLandState:
 
     Enemy positions are carried in the state rather than derived from a tick counter. It
     would be tidier to keep a clock and compute them, but then two identical configurations
-    reached at different times would compare unequal and search would never close anything —
+    reached at different times would compare unequal and search would never close anything;
     the state space would be infinite for no reason.
     """
 
@@ -227,7 +227,7 @@ class SuperMarioLandState:
         # what novelty is worth measuring over; the exact ones are there because `literals`
         # has to be a faithful projection of the state. Enemies move one unit a tick, so with
         # tile-granularity atoms alone two genuinely different positions can share a literal
-        # set — and then an action that really did change the world looks like a self-loop.
+        # set, and then an action that really did change the world looks like a self-loop.
         literals = [f"at(mario, {self.tile_x}, {self.tile_y})",
                     f"progress({self.tile_x})",
                     f"speed({vx})",
@@ -322,7 +322,7 @@ class SuperMarioLandGame(Environment):
             and abs(state.y - gy * TILE) < TILE
 
     def is_terminal(self, state):
-        """Mario died — fell out of the level, touched a hazard, or was hit by an enemy.
+        """Mario died: fell out of the level, touched a hazard, or was hit by an enemy.
 
         Exact about death, unlike `SuperMarioLandGBEnv.is_terminal`, which cannot tell a fatal touch
         from a survivable one and so reports only the death music. It is not a test for
@@ -387,7 +387,7 @@ class SuperMarioLandGame(Environment):
 
         for _ in range(action.ticks):
             # 1. Horizontal. Accelerate towards the target, or coast down to a stop, then
-            #    move — resolved on its own axis so a corner never lets you through.
+            #    move, resolved on its own axis so a corner never lets you through.
             if heading:
                 vx = min(vx + ACCEL, target) if target > vx else max(vx - ACCEL, target)
             elif vx:
@@ -400,7 +400,7 @@ class SuperMarioLandGame(Environment):
                 else:
                     x = stepped
 
-            # 2. Jump — one fixed arc, the cartridge's full moving jump. There is no
+            # 2. Jump: one fixed arc, the cartridge's full moving jump. There is no
             #    press-length control, by design.
             if jumping and on_ground:
                 vy, on_ground = JUMP_SPEED, False
@@ -410,7 +410,7 @@ class SuperMarioLandGame(Environment):
 
             # 4. Vertical, resolved after the horizontal move. `falling` is recorded before
             #    the collision because landing on the floor zeroes `vy`, and a stomp is
-            #    judged on having been on the way down — a fall fast enough to reach the
+            #    judged on having been on the way down; a fall fast enough to reach the
             #    floor and an enemy in the same tick would otherwise read as standing still.
             was_y, stepped, falling = y, y + vy, vy > 0
             if blocked(tiles, x, stepped):
@@ -474,7 +474,7 @@ class SuperMarioLandGame(Environment):
         return x, y, vy, False, enemies
 
 
-#: Levels, in rising order of difficulty. Each was checked by search before being shipped —
+#: Levels, in rising order of difficulty. Each was checked by search before being shipped:
 #: see `tests/test_platformer.py`, which re-derives a route through every one of them.
 LEVELS = (
     """\
@@ -551,7 +551,7 @@ M      ####E           ##   E             G
 #############     ############   ###########""",
 )
 
-#: BFWS(w=2) expansions when each level was accepted, in the same order — the ramp,
+#: BFWS(w=2) expansions when each level was accepted, in the same order: the ramp,
 #: recorded rather than asserted. `tests/test_super_mario_land.py` re-derives a route
 #: through every one of them, so a level that stops being finishable fails the suite.
 #: Re-measured when the physics were refitted to the cartridge, which is also when the

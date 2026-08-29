@@ -1,4 +1,4 @@
-# Flipull (USA) — Game Boy — Memory Map
+# Flipull (USA) Game Boy Memory Map
 
 Reverse-engineering reference for reading live game state: the block field,
 block types, and the on-screen counters. This is the source for every address the
@@ -7,7 +7,7 @@ block types, and the on-screen counters. This is the source for every address th
 > **Section 4 is wrong, and this document is kept as written anyway.** It was produced by
 > recording RAM in a purpose-written emulator across one stage and a handful of throws.
 > Driving the environment against the same dump afterwards showed that `$FFD2`/`$FFD3` are a
-> completed-throw *count* rather than in-flight flags — they stay `0` for the whole flight —
+> completed-throw *count* rather than in-flight flags (they stay `0` for the whole flight),
 > that `$FFD4` holds the *previously* held block, and that `$FFDF` is a free-running counter
 > rather than the in-flight X. The field geometry, the cell encoding, the digit-per-byte
 > counters and the column collapse in sections 2 and 3 all hold exactly as written.
@@ -31,7 +31,7 @@ block types, and the on-screen counters. This is the source for every address th
 | Entry point | `$0100`: `NOP` / `JP $0150` |
 
 No mapper means the **entire ROM is flat at `$0000–$7FFF`** with no bank
-switching — the simplest possible cartridge. No cartridge RAM, so all state
+switching, the simplest possible cartridge. No cartridge RAM, so all state
 lives in WRAM `$C000–$DFFF` and HRAM `$FF80–$FFFE`. Flipull leans unusually
 heavily on HRAM: nearly every counter is there rather than in WRAM.
 
@@ -51,7 +51,7 @@ A cell holds a playable block when its value is **`$83`–`$86`**.
 
 ---
 
-## 2. The block field — `$C840`
+## 2. The block field (`$C840`)
 
 ```
 cell_address = $C840 + 32*row + col        ; row stride $20
@@ -67,12 +67,12 @@ cell_address = $C840 + 32*row + col        ; row stride $20
 |---|---|---|---|---|---|---|---|
 | addr | `C920` | `C940` | `C960` | `C980` | `C9A0` | `C9C0` | `C9E0` |
 
-Row 0 is the ceiling and row 13 the floor — both read `$80` across 16 columns.
+Row 0 is the ceiling and row 13 the floor; both read `$80` across 16 columns.
 Column 0 is the left wall (`$80`) on every row. So the usable field is columns
 1–15; Stage 1 occupies columns 1–5.
 
 Although the row stride is 32 bytes, only the first 16 of each row carry
-meaning — the upper half of every row was `$00` throughout observation.
+meaning: the upper half of every row was `$00` throughout observation.
 
 ### Cell values
 
@@ -115,7 +115,7 @@ per-column and immediate.
 
 ---
 
-## 3. Counters — HRAM
+## 3. Counters (HRAM)
 
 Flipull stores counters as **separate decimal digits, ones-first**, not as
 binary or packed BCD. Searching for `25` or `$19` finds nothing; the value lives
@@ -135,7 +135,7 @@ as `05` and `02` in adjacent bytes.
 | `$FFC6` | Stage number | **Unverified** (`01` in Stage 1) — **resolved:** the ones digit; `$FFC7` is the tens |
 
 `$FFC0`/`$FFC1` held `05`,`02` at stage start and **stayed** at `05`,`02` after
-the count dropped to 24 — which is why they read as the stage's starting total
+the count dropped to 24, which is why they read as the stage's starting total
 rather than the live count. Read `$FFC9`/`$FFCA` for the live value:
 
 ```python
@@ -195,15 +195,15 @@ walls = [(r, c) for r in range(ROWS) for c in range(COLS)
 
 Booted in a purpose-written SM83 emulator, driven to Stage 1, then WRAM and
 HRAM recorded once per frame across a scripted sequence of throws and vertical
-moves. Findings were anchored against known on-screen values — `BLOCK 25`,
-`CLEAR 09`, `TIME 2:59`, `STAGE 1` — which makes the counter identifications
+moves. Findings were anchored against known on-screen values (`BLOCK 25`,
+`CLEAR 09`, `TIME 2:59`, `STAGE 1`), which makes the counter identifications
 unusually well-grounded. Screen renders confirmed emulator accuracy.
 
 Static tracing reached 6,675 instructions (far better than Super Mario Land's
 2,011, thanks to the absence of banking), but **the field's address calculator
 was not located in code.** The `$C840`/stride-32 geometry is derived from the
-memory dump's structure, which is unambiguous — 14 evenly spaced rows with
-consistent wall patterns at both ends — but it is empirical, not code-confirmed
+memory dump's structure, which is unambiguous (14 evenly spaced rows with
+consistent wall patterns at both ends), but it is empirical, not code-confirmed
 the way Puzznic's `$29CE` calculator was.
 
 ### Verified
@@ -220,7 +220,7 @@ the way Puzznic's `$29CE` calculator was.
   chains, which are the core of Flipull's scoring, were never exercised.
 - The **score** was never located. It advanced 0 → 100, but no candidate byte
   was isolated.
-- `$FFC6` as stage number — matched `01` but never seen changing. **Since settled:** it is
+- `$FFC6` as stage number: matched `01` but never seen changing. **Since settled:** it is
   the ones digit of a two-digit stage number whose tens live in `$FFC7`, and the loader at
   `0:2D55` indexes a 32-entry table at `$3A0E` with `10*tens + ones - 1`.
 - `$CA00–$CA23` as the upcoming-block queue is a guess from its contents.
@@ -232,5 +232,5 @@ the way Puzznic's `$29CE` calculator was.
 In SameBoy, `x $FFC9` should decrement each time a block is destroyed, and
 `x $FFCB` should tick down once per second. Dump `$C940` and watch a column
 collapse as you throw. Note that SameBoy parses `x $C840/16` as arithmetic
-rather than address-plus-length — use `x $C840` and check `help examine` for
+rather than address-plus-length; use `x $C840` and check `help examine` for
 your build's syntax.

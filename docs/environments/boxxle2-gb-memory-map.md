@@ -1,4 +1,4 @@
-# Boxxle II (USA, Europe) — Game Boy — Memory Map
+# Boxxle II (USA, Europe) Game Boy Memory Map
 
 Reverse-engineering reference for reading live game state: the board, the keeper's position,
 and which of the 120 levels is loaded. This is the source for every address the
@@ -21,8 +21,8 @@ and which of the 120 levels is loaded. This is the source for every address the
 | Global checksum | `$AED5` — valid |
 | Entry point | `$0100`: `NOP` / `JP $0150` |
 
-Because the cartridge type is ROM ONLY, **CPU `$0000–$7FFF` maps 1:1 onto file offsets** —
-every ROM address below is also a file offset — and because there is no cartridge RAM, all
+Because the cartridge type is ROM ONLY, **CPU `$0000–$7FFF` maps 1:1 onto file offsets**
+(every ROM address below is also a file offset), and because there is no cartridge RAM, all
 game state lives in the 8 KiB of work RAM at `$C000–$DFFF` plus HRAM. Progress is carried by
 a four-character passkey, not by a battery save.
 
@@ -41,7 +41,7 @@ Three of the checks are worth naming, and one of them changed a documented fact:
 
 * All 120 boards were loaded through the level-select hook and compared, cell for cell,
   against the same 120 records decoded straight out of the ROM image. **0 mismatches.**
-* Random walks — all 120 levels, twenty-five moves each — were replayed on the cartridge and
+* Random walks (all 120 levels, twenty-five moves each) were replayed on the cartridge and
   on the pure-Python twin and compared after every one of the 3,000 moves. **0 divergences.**
 * **`$C34E` does not hold the values the dispatch table suggests.** The disassembly reads
   state 4 as gameplay and 0 as the title screen; the running game uses 4 for the title screen
@@ -131,8 +131,8 @@ The environment's `fix_index(i)` writes `i // 10` and `i % 10` into those two by
 length is implied by `W` and `H` rather than stored, which is why a decoder has to compute the
 record size to find the next record.
 
-**Stage 2** (`$27F6`) reads that byte stream as one continuous MSB-first bitstream — `W` bits
-per row, `H` rows, three consecutive planes — expanding each bit into a whole byte in a
+**Stage 2** (`$27F6`) reads that byte stream as one continuous MSB-first bitstream (`W` bits
+per row, `H` rows, three consecutive planes), expanding each bit into a whole byte in a
 20-byte-stride buffer:
 
 | Plane | Destination | Meaning |
@@ -145,7 +145,7 @@ Both checks on this format:
 
 1. Computed record sizes match the pointer-table deltas for **all 120 levels**, and the last
    record ends exactly at `$61D8`, immediately before the first graphics blob.
-2. `popcount(plane 0) == popcount(plane 1)` for **every one of the 120 levels** — 1,447 goals
+2. `popcount(plane 0) == popcount(plane 1)` for **every one of the 120 levels**: 1,447 goals
    and 1,447 boxes in total, which is the invariant Sokoban requires and strong evidence the
    plane assignment is the right way round.
 
@@ -164,7 +164,7 @@ else:                  CellSize ($C0FE) = $08   ; 8px cells, 1x1 tile
 ```
 
 and `CentreBoardScroll` at `$100B` centres the board by writing negative scroll shadows. None
-of this touches the plane buffers, so the environment reads the same grid either way — which
+of this touches the plane buffers, so the environment reads the same grid either way, which
 was checked on 14×12 and 16×16 boards as well as small ones.
 
 ---
@@ -194,7 +194,7 @@ Moves are applied to that offset by `ProbeMoveTarget` at `$0B62`:
 | 4 | right | +1 |
 
 The offset and the plane buffers are updated **in the same frame the pad is read**. What takes
-sixteen frames afterwards is the sprite, not the state — see §6.
+sixteen frames afterwards is the sprite, not the state; see §6.
 
 ---
 
@@ -230,7 +230,7 @@ sixteen frames afterwards is the sprite, not the state — see §6.
 | `$CA8A` | `BoardBox` | 360 bytes |
 | `$CBF2` | `BoardWall` | 360 bytes |
 
-### 5.2 `$C34E` — measured, not inferred
+### 5.2 `$C34E`: measured, not inferred
 
 These are the values the running cartridge takes, watched frame by frame from power-on. They
 are **not** the numbering the `MainLoop` dispatch table suggests, and where the two disagree
@@ -259,7 +259,7 @@ Measured on the cartridge; none of it is in the ROM's data.
 ### 6.1 One press, one cell
 
 Holding a direction for 1–19 frames moves the keeper exactly one cell. At **20 frames the
-d-pad repeats** and one press becomes two moves — which in a Sokoban is not a longer plan but
+d-pad repeats** and one press becomes two moves, which in a Sokoban is not a longer plan but
 a box shoved somewhere nobody asked for. `boxxle2_gb.measure_hold_window` re-derives this
 bound from whatever dump is in hand rather than trusting the number here, and picks the middle
 of the window.
@@ -268,7 +268,7 @@ of the window.
 
 The plane buffers and `$C10F`/`$C110` are correct one frame after the press. The **keeper is
 not**: it slides one pixel per frame for sixteen frames, and until it arrives every further
-press is ignored. That slide is visible only in the shadow OAM at `$C000` — a byte-by-byte
+press is ignored. That slide is visible only in the shadow OAM at `$C000`: a byte-by-byte
 diff of `$C0A0–$C460` across the animation finds nothing that is not also changing when the
 game is idle. So the settle predicate is the three planes, the keeper offset **and** the
 160-byte sprite buffer, all holding still together for three frames.
@@ -278,7 +278,7 @@ planner's action having no effect, which is the reason this is written down here
 
 Two further things are needed before the settle is trustworthy. The slide **pauses for a frame
 or two partway through**, and a hold long enough to trip auto-repeat looks perfectly settled in
-the gap between the first move and the second — so the settle is also held open until frame 22,
+the gap between the first move and the second, so the settle is also held open until frame 22,
 one past where the repeat fires. And after a save-state is restored, the machine needs **two
 idle frames** before it will see a button edge at all: press on the very next frame and
 `ReadJoypad` misses it, on some states but not others.
@@ -288,7 +288,7 @@ idle frames** before it will see a button edge at all: press on the very next fr
 About 320 frames after the last box goes home the cartridge switches `$C34E` to `$50` and runs
 its congratulation-and-replay sequence, which **rewrites the plane buffers with something that
 is not a Sokoban position**. A board snapshotted 30 frames after the winning push decodes as
-garbage — boxes and goals scattered over the walls. The environment therefore stops settling
+garbage: boxes and goals scattered over the walls. So the environment stops settling
 the instant every box is home, and treats a solved state as absorbing.
 
 ### 6.4 Getting to a level
@@ -317,7 +317,7 @@ publish the table if you want to type one by hand.
 
 ## 7. Hardware registers
 
-Only these are ever touched: `P1` (`$FF00`, polled — the joypad interrupt is unused), `TAC`
+Only these are ever touched: `P1` (`$FF00`, polled; the joypad interrupt is unused), `TAC`
 (`$FF07`, `$07`, giving a 64 Hz audio tick), `NR30`/`NR50`/`NR51`/`NR52`, `LCDC` (`$FF40`,
 `$C3` when on), `STAT`, `SCY`/`SCX` from the shadows at `$C127`/`$C125`, `LY`, `DMA` (`$FF46`,
 only from the HRAM trampoline at `$FF80`), `BGP`/`OBP0` = `$E4`, `OBP1` = `$7F`, `WY`/`WX`,
@@ -332,7 +332,7 @@ in the button row:
 |---|---|---|---|---|---|---|---|---|
 | Button | Down | Up | Left | Right | Start | Select | B | A |
 
-Bits are active-high after the `CPL`, and `JoypadPressed` is `(old XOR new) AND new` — an edge,
+Bits are active-high after the `CPL`, and `JoypadPressed` is `(old XOR new) AND new`, an edge,
 which is why a held button does not move the keeper twice until auto-repeat fires.
 
 ---

@@ -7,7 +7,7 @@ rewinding the machine.
 
 The sibling [`lolo.py`](lolo.md) re-implements the same puzzle in pure Python over the same 163
 rooms. Use that one for a dependency-free benchmark; use this one for the cartridge's actual
-behaviour — and for the rooms whose enemies move, where the twin is only an approximation.
+behaviour, and for the rooms whose enemies move, where the twin is only an approximation.
 
 Every address this environment reads is catalogued in the
 [memory map](lolo-gb-memory-map.md), including how each one was established.
@@ -32,7 +32,7 @@ env = LoloGBEnv("Adventures of Lolo (U) [S][!].gb")
 | File | `Adventures of Lolo (U) [S][!].gb`, 262,144 bytes |
 | MD5 | `8f6b6ef366a787852f664d945c86eb72` |
 | Internal title | `LOLO2` |
-| Cartridge | MBC1, 256 KiB, 16 banks, **no** cartridge RAM — all state is in work RAM |
+| Cartridge | MBC1, 256 KiB, 16 banks, **no** cartridge RAM; all state is in work RAM |
 
 The addresses are revision-specific, so the constructor hashes the file and raises a `UserWarning`
 when it is not that dump. Pass `verify_rom=False` to silence it.
@@ -96,7 +96,7 @@ A state prints as eight rows of eight, in the alphabet shared with `lolo.py`:
 Two of those are worth pausing on.
 
 **`h` versus `H`.** They draw the same tile and are indistinguishable on screen, but only `h` gives
-Lolo a magic shot — two of them. A room with no `h` in it gives him none, and the enemies in it
+Lolo a magic shot, two of them. A room with no `h` in it gives him none, and the enemies in it
 cannot be moved.
 
 **`e`.** Enemies and eggs are sprites, not board cells, so a live enemy prints as `e` whatever kind
@@ -115,7 +115,7 @@ Five, spelled `"button,ticks"`:
 | `left,20` `up,20` `down,20` `right,20` | one cell |
 | `a,6` | the magic shot |
 
-Lolo walks on a **half-cell grid** — 8 pixels per 16 frames of hold — so the hold length is what
+Lolo walks on a **half-cell grid** (8 pixels per 16 frames of hold), so the hold length is what
 decides whether an action is half a cell, one cell or two. 20 frames is one cell, in the middle of
 the `(16, 28)` band the cartridge actually accepts. Pass `calibrate=True` to measure that band
 again rather than take it on trust; it costs about eighty presses and reports the result in
@@ -130,7 +130,7 @@ opens the pause overlay and B does nothing in a room; neither is offered.
 
 | Indices | `label_for` | What |
 |---|---|---|
-| 0–37 | `tutorial 1a` … `tutorial 19b` | 19 puzzles, each stored twice — `a` is the demonstration the game plays for itself, `b` is the same room to try |
+| 0–37 | `tutorial 1a` … `tutorial 19b` | 19 puzzles, each stored twice: `a` is the demonstration the game plays for itself, `b` is the same room to try |
 | 38–107 | `int 1-1` … `int 5-14` | 5 intermediate floors of 14 |
 | 108–157 | `adv 1-1` … `adv 10-5` | 10 advanced floors of 5 |
 | 158–162 | `pro 1` … `pro 5` | the Pro rooms |
@@ -142,7 +142,7 @@ straight out of the ROM without booting anything.
 
 **Goal:** every heart framer collected and Lolo standing on the door.
 
-That is the cartridge's own win condition, read off the screen rather than waited for — the door
+That is the cartridge's own win condition, read off the screen rather than waited for: the door
 tile changes the frame the last heart is taken. It is checked this way rather than by watching the
 room number advance, because the room number only moves once the between-rooms sequence has run,
 and a state snapshotted during that sequence is not a Lolo position at all.
@@ -152,7 +152,7 @@ and a state snapshotted during that sequence is not a Lolo position at all.
 The cartridge answers a death by restarting the room where he stands, which is not a flag anywhere
 in work RAM. `LoloGBAction` recognises it from either side of the transition: the hearts he had
 collected come back, or he is suddenly somewhere no single action could have taken him. Both tests
-are needed, and the state carries the verdict — a restarted room is byte-for-byte the room `reset`
+are needed, and the state carries the verdict: a restarted room is byte-for-byte the room `reset`
 handed out, so without the flag search would walk back into the initial state by a different route
 and never notice it had thrown a life away.
 
@@ -160,8 +160,8 @@ and never notice it had thrown a life away.
 
 The meter starts empty, because it belongs to the player rather than to the room: on a real
 playthrough whatever was left over from the room before comes with you. A few rooms need a shot
-they cannot earn in-room — `int 1-5` is one, a Snakey sitting in the only gap in a wall of trees
-and not a magic heart framer anywhere — and cannot be cleared from a cold boot for that reason and
+they cannot earn in-room (`int 1-5` is one, a Snakey sitting in the only gap in a wall of trees
+and not a magic heart framer anywhere) and cannot be cleared from a cold boot for that reason and
 not because anything is broken.
 
 ```python
@@ -179,7 +179,7 @@ for NEW GAME, twenty-seven taps of A through the King's introduction, **B** at t
 B rather than A at that one screen is load-bearing. A starts the tutorial, where the first room of
 every pair is a demonstration the game plays for itself, and a self-playing board answers every
 action with a position nobody asked for. Because the screen is reached by *counting* taps, `reset`
-tries the neighbouring counts and checks the result — `is_playing` requires the scene byte to be
+tries the neighbouring counts and checks the result: `is_playing` requires the scene byte to be
 `$17`, the graded-room scene, and not `$14`, the demonstration one.
 
 The room itself is chosen by hooking `LoadRoom` and pinning `$C3A6` on the way in. The hook fires
@@ -200,7 +200,7 @@ ever writes it again. Collecting a heart, pushing a Framer and opening the door 
 as loaded. So the live position is read off the BG tilemap, which is what the game actually
 redraws, and the actors are read out of the shadow OAM, where they are the only place they exist.
 
-Tile numbers are per-environment — the cartridge ships eight terrain themes — so `reset` learns the
+Tile numbers are per-environment (the cartridge ships eight terrain themes), so `reset` learns the
 four numbers it needs from the freshly loaded room, while the board buffer and the tilemap still
 describe the same thing, and decodes every later frame against that.
 

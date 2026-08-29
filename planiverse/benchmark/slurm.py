@@ -18,7 +18,7 @@ unpopular.
 
 **Headroom.** SLURM's `--time` and `--mem` are set *above* the harness's own limits. The
 harness wants to notice its own timeout and write a `TIMEOUT` result; if SLURM kills it at the
-same instant, the row is missing instead — and a missing row looks like an infrastructure
+same instant, the row is missing instead, and a missing row looks like an infrastructure
 problem rather than a slow planner.
 """
 import os
@@ -52,7 +52,7 @@ def write_commands(sandbox_dir, pairs, experiment_dir, entry_point=DEFAULT_ENTRY
                    seed=None):
     """One `cmds/<planner>.txt` per planner. Returns `{tag: (path, count)}`.
 
-    Line *n* of the file is array index *n*, and nothing downstream re-derives the ordering —
+    Line *n* of the file is array index *n*, and nothing downstream re-derives the ordering;
     it reads the file. That is what lets a failed element be re-run by hand: line 412 of the
     file is exactly what array index 412 ran.
     """
@@ -151,14 +151,14 @@ def generate(sandbox_dir, pairs, experiment, experiment_dir,
              entry_point=DEFAULT_ENTRY_POINT, seed=None, per_task_scripts=False):
     """Write the whole job set. Returns a summary dictionary.
 
-    `per_task_scripts` writes one `sbatch` file per run instead of arrays — far more files and
+    `per_task_scripts` writes one `sbatch` file per run instead of arrays: far more files and
     far more scheduler load, but some sites disable job arrays entirely, and one file per run
     is the fallback that always works.
 
     Every path written into a job is absolute. `sbatch` inherits the submitting shell's
     working directory, which holds right up until someone submits from elsewhere or the
-    scheduler starts the job on a node that mounts the tree at a different point — and then a
-    relative path fails a thousand array elements at once, each with an empty log.
+    scheduler starts the job on a node that mounts the tree at a different point; a relative
+    path then fails a thousand array elements at once, each with an empty log.
     """
     sandbox_dir = os.path.abspath(sandbox_dir)
     experiment_dir = os.path.abspath(experiment_dir)
@@ -233,7 +233,7 @@ def _run_local(command_files, setup_commands=()):
 
     It runs the same `setup_commands` an sbatch job does. Skipping them here was a real hole:
     `setup_benchmark.sh` builds a virtualenv and puts its activation in those commands, and a
-    local run that ignored them used whichever interpreter happened to be on PATH — which is
+    local run that ignored them used whichever interpreter happened to be on PATH, which is
     exactly the kind of difference that makes two runs of "the same" benchmark disagree.
     """
     lines = [

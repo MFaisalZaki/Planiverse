@@ -1,7 +1,7 @@
 """Tests for the Adventures of Lolo Game Boy environment.
 
-Two tiers. The first is pure functions of bytes — the room decoder, the tilemap decoder, the
-sprite arithmetic — checked against synthetic data, which is cheaper than booting a Game Boy
+Two tiers. The first is pure functions of bytes (the room decoder, the tilemap decoder, the
+sprite arithmetic) checked against synthetic data, which is cheaper than booting a Game Boy
 and covers the parts most likely to be quietly wrong. The second needs the real cartridge,
 which is copyrighted and cannot ship here, so it is opt-in:
 
@@ -10,7 +10,7 @@ which is copyrighted and cannot ship here, so it is opt-in:
 
 There is no synthetic cartridge standing in for the ROM, unlike Puzznic and Flipull. This
 game reads its live position off the BG tilemap rather than out of work RAM, so a fake
-cartridge would have to draw a convincing screen rather than just park bytes at addresses —
+cartridge would have to draw a convincing screen rather than just park bytes at addresses:
 much more work, for a much weaker check than `decode_grid` against a synthetic tilemap.
 """
 import pytest
@@ -85,7 +85,7 @@ def test_decode_room_turns_cell_codes_into_glyphs():
 
 
 def test_read_room_finds_the_table_where_the_loader_does():
-    """Bank 13, `$4000 + N*64` — which is file offset `13*$4000 + N*64`."""
+    """Bank 13, `$4000 + N*64`, which is file offset `13*$4000 + N*64`."""
     rom = bytearray(ROOM_TABLE_OFFSET + 3 * ROOM_BYTES)
     rom[ROOM_TABLE_OFFSET + 2 * ROOM_BYTES: ROOM_TABLE_OFFSET + 3 * ROOM_BYTES] = \
         synthetic_room({(4, 4): 0x00})
@@ -99,7 +99,7 @@ def test_door_and_start_are_read_out_of_the_board():
 
 
 def test_verify_room_table_rejects_a_slot_that_is_not_a_room():
-    """The check that established where the 163 rooms end — see the memory map §2."""
+    """The check that established where the 163 rooms end (see the memory map §2)."""
     rom = bytearray(ROOM_TABLE_OFFSET + ROOM_COUNT * ROOM_BYTES)
     good = synthetic_room({(0, 0): 0x96, (7, 7): 0x00})
     for index in range(ROOM_COUNT):
@@ -147,7 +147,7 @@ TILES = TileMap(heart=0xE2, framer=0xCE, door_closed=0x8C, door_open=0x8E)
 
 
 def test_decode_grid_on_an_untouched_room_is_the_room():
-    """Nothing has moved yet, so the screen and the board buffer still say the same thing —
+    """Nothing has moved yet, so the screen and the board buffer still say the same thing,
     except for Lolo, who is a sprite and leaves floor behind him."""
     board = synthetic_room({(1, 1): 0x96, (3, 3): 0x90, (3, 5): 0x8F, (2, 2): 0x81,
                             (6, 1): 0x00})

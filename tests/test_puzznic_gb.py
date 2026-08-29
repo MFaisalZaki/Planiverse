@@ -2,7 +2,7 @@
 
 Two tiers. The first runs against a synthetic cartridge built by `fake_puzznic_rom.py`,
 which puts Puzznic's documented facts at Puzznic's documented addresses without being
-Puzznic — enough to check that the environment boots a Game Boy, forces a stage, decodes
+Puzznic: enough to check that the environment boots a Game Boy, forces a stage, decodes
 the grid, waits for a move to settle and notices a cleared stage. The second needs the
 real cartridge, which is copyrighted and cannot ship here, so it is opt-in:
 
@@ -421,7 +421,7 @@ def test_passwords_are_read_out_of_the_cartridge(fake_rom):
 
 def test_the_parse_stops_where_the_table_does(fake_rom):
     """It walks until an entry stops being a password whose round number follows the last,
-    which is what finds the end -- the table is not length-prefixed."""
+    which is what finds the end; the table is not length-prefixed."""
     passwords = PuzznicGBEnv.read_passwords(fake_rom)
     assert len(passwords) == len(FAKE_PASSWORDS)
     assert all(len(password) == 8 for password in passwords)
@@ -462,7 +462,7 @@ def test_fix_index_is_bounded_by_the_table(fake_rom):
 
 def test_a_cartridge_with_no_title_menu_falls_back_to_poking_the_loader(env):
     """The synthetic ROM has a password *table* but no password *screen*, so selection has
-    to go through the stage loader -- and the boot reports which route it took."""
+    to go through the stage loader, and the boot reports which route it took."""
     state, info = env.reset()
     assert info["boot_route"] == "tapped"
     assert info["password"] is None
@@ -516,8 +516,8 @@ def test_the_board_is_readable_before_it_is_playable(fake_rom):
 
 
 # --------------------------------------------------------------- cursor routing
-# Stages are not rectangles -- Round 1 of `Puzznic (J)` has a bottom row two cells narrower
-# than the one above -- and the cursor cannot cross a wall, so stepping rows then columns
+# Stages are not rectangles (Round 1 of `Puzznic (J)` has a bottom row two cells narrower
+# than the one above), and the cursor cannot cross a wall, so stepping rows then columns
 # walks into one.
 
 def test_cursor_path_routes_around_a_wall():
@@ -632,7 +632,7 @@ def test_calibration_can_be_turned_off(fake_rom):
 
 
 # The push has its own window. A held block need not repeat on the cursor's schedule, and
-# holding past it slides the block two cells — which can match it away, so the state handed
+# holding past it slides the block two cells, which can match it away, so the state handed
 # back describes something the action never asked for.
 
 def test_a_long_hold_clears_blocks_it_was_never_asked_to(env):

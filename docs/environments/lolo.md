@@ -4,7 +4,7 @@ Adventures of Lolo's puzzle, implemented rather than emulated, over the cartridg
 No ROM, no emulator, no dependencies.
 
 The sibling [`lolo_gb`](lolo-gb.md) drives the real Game Boy cartridge. Use this one for a
-dependency-free benchmark; use that one when you need the cartridge's actual behaviour — which for
+dependency-free benchmark; use that one when you need the cartridge's actual behaviour, which for
 137 of the 163 rooms you do, and the reason is [below](#where-this-differs-from-the-cartridge).
 
 - **Class:** `LoloGame`
@@ -48,8 +48,8 @@ game = make("lolo", index=38)
 
 ## The rules, stated
 
-Every rule here was measured on the cartridge — the probes are in the
-[memory map](lolo-gb-memory-map.md) §5 — rather than taken from a manual.
+Every rule here was measured on the cartridge (the probes are in the
+[memory map](lolo-gb-memory-map.md) §5) rather than taken from a manual.
 
 Lolo walks the four directions, one cell at a time, on an 8 × 8 board.
 
@@ -58,8 +58,8 @@ Lolo walks the four directions, one cell at a time, on an 8 × 8 board.
    allowed from the other three sides.
 3. A step into an **Emerald Framer** `O` or an **egg** `e` pushes it one cell the same way, if the
    cell behind is empty walkable ground. Nothing can be pulled and no chain of two can be pushed.
-4. A step onto a **heart framer** collects it. `h` — the cartridge stores two heart codes and this
-   is the second — also gives Lolo **two magic shots**; plain `H` gives none.
+4. A step onto a **heart framer** collects it. `h` (the cartridge stores two heart codes and this
+   is the second) also gives Lolo **two magic shots**; plain `H` gives none.
 5. A step into an **enemy** is refused. Enemies never move on their own.
 6. **`shoot`** fires one cell in the direction Lolo last *tried* to move, whether or not that move
    succeeded. An enemy there becomes an egg, which can then be pushed; an egg there is blasted out
@@ -78,8 +78,8 @@ does. That was measured one candidate at a time and it is not a bug in either im
 In one place that matters, and it is worth stating plainly.
 
 **Six of the eight enemies are frozen here.** Snakey and Medusa never move on the cartridge either,
-so rooms holding only those two are modelled exactly. The other six — Leeper, Rocky, Alma, Gol,
-Skull and Don Medusa — do move there, in lock-step with Lolo, and this module leaves them where
+so rooms holding only those two are modelled exactly. The other six (Leeper, Rocky, Alma, Gol,
+Skull and Don Medusa) do move there, in lock-step with Lolo, and this module leaves them where
 they started. For a room that contains one, a plan found here is a plan against a *strictly easier*
 puzzle and may well die on the cartridge. That is the wrong direction for an approximation to err
 in, so it is flagged rather than smoothed over:
@@ -94,13 +94,13 @@ info["unmodelled_enemies"]     # ('K', 'R') — the kinds that would have moved
 ```
 
 **Rafts are refused.** On the cartridge an egg shoved into a river floats, and Lolo can step onto
-it and ride across — that is how `int 1-3` is cleared. Five of the six river codes accept one, and
+it and ride across; that is how `int 1-3` is cleared. Five of the six river codes accept one, and
 two of those then *carry* the raft, one cell every few frames. Modelling a moving raft means
 modelling time, which nothing else here needs, so this module refuses the push. Rooms needing a
 raft cannot be cleared here; `lolo_gb` clears them.
 
-**The hammer is not modelled.** A few rooms start with one in the cartridge's PWR meter — `int 1-5`
-does, and cannot be cleared without it — and what it breaks was not established.
+**The hammer is not modelled.** A few rooms start with one in the cartridge's PWR meter (`int 1-5`
+does, and cannot be cleared without it), and what it breaks was not established.
 
 Two smaller divergences, both in the safe direction. Medusa's shot is instant here where the
 cartridge gives one move of grace, but that move cannot be used to escape, so no plan is lost. And
@@ -118,12 +118,12 @@ plans was then replayed on the real cartridge:
 | rooms whose enemies this module freezes | 25 | 3 |
 
 That is the claim above, measured: where the model is faithful it is faithful, and where it is an
-approximation the approximation is the easy direction — the twenty-two failures are Lolo walking
+approximation the approximation is the easy direction: the twenty-two failures are Lolo walking
 into an enemy that was not standing still. `tests/test_solutions.py` pins both halves, and replays
 the ten confirmed plans on the cartridge when a ROM is available.
 
 The raft rule came out of the same exercise: the one plan that failed for a reason other than a
-moving enemy pushed an egg into a river and rode it, which the cartridge does allow — but with a
+moving enemy pushed an egg into a river and rode it, which the cartridge does allow, but with a
 current this module does not model. Rafts are refused now rather than modelled wrongly.
 
 ## Rooms
@@ -176,4 +176,4 @@ is what decides where the next shot goes. Walking into a rock to turn is a real 
 
 **Goal:** every heart framer collected and Lolo standing on the door.
 
-**Terminal:** Lolo in a Medusa's clear line. Absorbing — there is nothing left to plan for.
+**Terminal:** Lolo in a Medusa's clear line. Absorbing; there is nothing left to plan for.

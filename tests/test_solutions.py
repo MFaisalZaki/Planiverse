@@ -2,14 +2,14 @@
 
 These are regression tests for the *levels*, not for the planners. A level is a piece of
 transcribed data, and the failure mode that data has is silent: a wall in the wrong cell or
-two block types swapped still parses, still renders, and still looks like a puzzle — it just
+two block types swapped still parses, still renders, and still looks like a puzzle; it just
 quietly becomes a different one, or an unsolvable one. Two such slips were found in the
 Puzznic levels by reading the cartridge back (`test_puzznic.py`), and a stored solution per
 level is what would have caught them without a ROM in hand.
 
 Each plan here was produced by a planner and validated against the environment, so a plan
 that stops solving its level means the level changed. Regenerate a plan only once you know
-*why* it went stale — a corrected level is a good reason, an accidental edit is not.
+*why* it went stale: a corrected level is a good reason, an accidental edit is not.
 
 `tests/data/*_solutions.json` maps a level index to its action sequence. Levels with no
 entry are ones no planner has solved within the benchmark's budget; the coverage test below
@@ -80,7 +80,7 @@ def test_every_flipull_stage_has_a_solution():
 
 def test_puzznic_solution_coverage_does_not_shrink():
     """Not every Puzznic level has a stored solution: some are unsolved at the benchmark's
-    budget. That is a known gap rather than an accepted one, so it is pinned — a level
+    budget. That is a known gap rather than an accepted one, so it is pinned: a level
     losing its solution must fail here rather than pass quietly."""
     unsolved = sorted(set(range(50)) - set(PUZZNIC_SOLUTIONS))
     assert unsolved == [15, 17, 28, 34, 35, 42, 46, 47, 49], \
@@ -91,7 +91,7 @@ def test_puzznic_solution_coverage_does_not_shrink():
         "levels 50-127 now have solutions; record them and update this test"
 
 
-#: The levels with a stored plan. Pinned as the solved set rather than the unsolved one — it is
+#: The levels with a stored plan. Pinned as the solved set rather than the unsolved one; it is
 #: the shorter list of the two, and it is the one that must not shrink.
 BOXXLE2_SOLVED = [
     0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 17, 20, 22, 24, 25, 26, 27, 28, 29, 30, 46, 52, 54, 55, 57,
@@ -104,7 +104,7 @@ def test_boxxle2_solution_coverage_does_not_shrink():
     accepted one.
 
     Most of the plans that exist were reconstructed from a human walkthrough's box-push
-    notation; the rest came out of a solver. What is left over is the tail of the cartridge —
+    notation; the rest came out of a solver. What is left over is the tail of the cartridge:
     levels running to fifty-nine boxes, where Sokoban stops being searchable at any budget
     this repository spends. Pinning the set means a level *losing* its plan fails here rather
     than quietly widening the gap, which is the failure that matters: it means the level
@@ -119,7 +119,7 @@ def test_boxxle2_solution_coverage_does_not_shrink():
 LOLO_SOLUTIONS = solutions("lolo")
 
 #: Every stored plan was found by breadth-first search over the Python twin, with the magic
-#: shot meter seeded to two — see `LoloGame(magic_shots=...)`. Pinned as the solved set rather
+#: shot meter seeded to two (see `LoloGame(magic_shots=...)`). Pinned as the solved set rather
 #: than the unsolved one: it is much the shorter list, and it is the one that must not shrink.
 LOLO_SOLVED = [
     0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 38, 39, 41, 45, 54, 56,
@@ -145,8 +145,8 @@ def test_the_stored_lolo_solution_still_clears_its_room(index):
 def test_lolo_solution_coverage_does_not_shrink():
     """Most rooms have no stored plan, and that is a known gap rather than an accepted one.
 
-    Two things put a room out of reach. Some need a mechanic the twin does not model — a raft
-    ridden across a river, or the hammer — and some are simply too wide for breadth-first
+    Two things put a room out of reach. Some need a mechanic the twin does not model (a raft
+    ridden across a river, or the hammer), and some are simply too wide for breadth-first
     search at the quarter-million states this was run to. Pinning the solved set means a room
     *losing* its plan fails here rather than quietly widening the gap, which is the failure
     that matters: it means the room changed.
@@ -193,7 +193,7 @@ def test_solution_indices_are_in_range(name, count):
 # ------------------------------------------------------- the cartridges, when a ROM is here
 # These plans were replayed on the real hardware by the benchmark and recorded only once the
 # cartridge itself reported the stage cleared, so they are the strongest evidence in the
-# repository about what these games do. Replaying one costs an emulator boot, hence `slow`.
+# repository about what these games do. Replaying one costs an emulator boot, so they are marked `slow`.
 
 PUZZNIC_GB_SOLUTIONS = solutions("puzznic_gb")
 FLIPULL_GB_SOLUTIONS = solutions("flipull_gb")

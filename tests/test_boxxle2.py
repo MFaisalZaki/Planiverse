@@ -3,7 +3,7 @@
 Three parts. The first pins the *rules* down on hand-made boards, because a rule set only ever
 exercised through the shipped levels is a rule set nobody can argue with. The second checks the
 environment contract and the levels themselves. The third re-decodes the cartridge and compares
-it against the levels stored here, and is skipped when no ROM is around — the levels were
+it against the levels stored here, and is skipped when no ROM is around: the levels were
 generated from a ROM, so that comparison is the one thing that can catch them drifting.
 """
 import pytest

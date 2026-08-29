@@ -1,8 +1,8 @@
 """Tests for the Boxxle II Game Boy environment.
 
 Two tiers. The first needs neither a ROM nor an emulator: almost everything this environment
-does is a pure function of bytes — the ROM's two-stage level decompressor, the board decoder
-over the three plane buffers, the deadlock test — and those run against synthetic RAM and a
+does is a pure function of bytes (the ROM's two-stage level decompressor, the board decoder
+over the three plane buffers, the deadlock test), and those run against synthetic RAM and a
 synthetic ROM image assembled here in the cartridge's own format. That is a different bargain
 from the Puzznic and Flipull tests, which build a small homebrew cartridge to exercise the
 emulator seam; here the emulator seam is thin and the decoding is where the errors would live.
@@ -38,7 +38,7 @@ needs_rom = pytest.mark.skipif(
 
 
 # --------------------------------------------------------------- a synthetic ROM image
-# Not a runnable cartridge — nothing here is executed. It is the cartridge's *level format*,
+# Not a runnable cartridge: nothing here is executed. It is the cartridge's *level format*,
 # written out by hand, so the decoder can be tested against records whose contents are known
 # rather than only against the 120 nobody wrote down.
 
@@ -46,7 +46,7 @@ def encode_level(width, height, start_col, start_row, goal, box, wall):
     """A level record in the cartridge's format: header, flag bitmap, literals.
 
     The inverse of `expand_record` + `unpack_planes`, so a round trip through the two says
-    the decoder reads what the encoder wrote — and the encoder is short enough to check by
+    the decoder reads what the encoder wrote, and the encoder is short enough to check by
     eye against the memory map.
     """
     bits = []
@@ -150,7 +150,7 @@ def test_expand_record_emits_a_zero_for_every_clear_flag_bit():
 
 
 def test_unpack_planes_reads_one_continuous_bitstream():
-    """W bits per row, H rows, three planes, MSB first — with no padding between them."""
+    """W bits per row, H rows, three planes, MSB first, with no padding between them."""
     # 2x2, so 4 bits per plane and 12 bits in all: goals 1000, boxes 0100, walls 0011.
     stream = bytes([0b10000100, 0b00110000])
     goal, box, wall = unpack_planes(stream, 2, 2)
@@ -254,7 +254,7 @@ def test_an_action_spells_itself_readably():
 
 def test_the_probe_only_measures_where_there_is_room_to_measure():
     """A direction with one clear cell reports every hold as a single move, so a window as
-    wide as the probe comes back — which is how this cartridge once claimed `(1, 40)` for a
+    wide as the probe comes back, which is how this cartridge once claimed `(1, 40)` for a
     d-pad that repeats on frame 20."""
     goal, box, wall = raw_planes(("#####", "#@  #", "#####"))
     grid = decode_board(goal, box, wall, 5, 3, position_to_offset(Position(1, 1)))
@@ -327,7 +327,7 @@ def test_the_level_table_decodes_without_a_single_mismatch(rom):
 
 @needs_rom
 def test_every_level_has_as_many_goals_as_boxes(rom):
-    """popcount(plane 0) == popcount(plane 1) — the invariant that pins the plane order."""
+    """popcount(plane 0) == popcount(plane 1): the invariant that pins the plane order."""
     for index, rows in enumerate(read_levels(rom)):
         text = "".join(rows)
         assert text.count(BOX) + text.count(BOX_ON_GOAL) == \

@@ -1,8 +1,8 @@
 """A synthetic Game Boy ROM that reproduces Puzznic's documented memory layout.
 
 Puzznic is copyrighted and cannot ship with the repo, which would leave everything the
-environment does against a real cartridge — booting, hooking the stage loader, decoding
-the grid, waiting for a move to settle, spotting a cleared stage — untested. This module
+environment does against a real cartridge (booting, hooking the stage loader, decoding
+the grid, waiting for a move to settle, spotting a cleared stage) untested. This module
 builds a small homebrew cartridge that puts the *same facts at the same addresses*:
 
     $D003  stage index, read by the stage loader at $0430
@@ -10,7 +10,7 @@ builds a small homebrew cartridge that puts the *same facts at the same addresse
     $D018  blocks loaded          $D019  blocks remaining
     $DD00  6-byte block records    $DF00  12x10 grid, 2 bytes per cell
 
-It is emphatically **not** a Puzznic clone. It has no gravity, no timer, no score and no
+It is **not** a Puzznic clone. It has no gravity, no timer, no score and no
 cascades: a push that leaves two same-typed blocks orthogonally adjacent clears both
 after a three-frame `$01` transient, and that is the whole rule set. What it exercises is
 the *interface* between the environment and a Game Boy, which is the part that can
@@ -54,7 +54,7 @@ TRIG = 0xC01A                  # NEW_PAD, plus auto-repeat re-fires
 MARKS = 0xC100                 # 240 bytes, indexed exactly like the grid
 
 # Holding a direction moves the cursor once, then again after REPEAT_DELAY frames, then
-# every REPEAT_RATE frames — the behaviour that puts an upper bound on how long an action
+# every REPEAT_RATE frames: the behaviour that puts an upper bound on how long an action
 # may hold a button before it moves the cursor twice.
 REPEAT_DELAY = 16
 REPEAT_RATE = 6
@@ -117,12 +117,12 @@ def stage_layouts():
     Stage 0 is the interesting one: two blocks of the same type two cells apart, so
     `a+right` twice matches them and clears the stage.
     """
-    # 0 — solvable in two pushes.
+    # 0: solvable in two pushes.
     zero = _box(_blank(), 3, 2, 6, 7)
     zero[5][3] = 0x08
     zero[5][6] = 0x08
 
-    # 1 — a different shape and two pairs, so it cannot be confused with stage 0.
+    # 1: a different shape and two pairs, so it cannot be confused with stage 0.
     one = _box(_blank(), 2, 1, 8, 8)
     one[7][2] = 0x08
     one[7][6] = 0x08
@@ -130,11 +130,11 @@ def stage_layouts():
     one[4][5] = 0x09
     one[6][4] = LEDGE
 
-    # 2 — a single block: no pair, so the stage is a dead end the moment it loads.
+    # 2: a single block, no pair, so the stage is a dead end the moment it loads.
     two = _box(_blank(), 4, 3, 7, 6)
     two[6][4] = 0x0A
 
-    # 3 — three types, one of them a triple, plus ledges.
+    # 3: three types, one of them a triple, plus ledges.
     three = _box(_blank(), 1, 1, 10, 8)
     three[9][2] = 0x08
     three[9][5] = 0x08
@@ -696,8 +696,8 @@ def build_rom(title=b"PUZZNICFAKE"):
     asm.asm(PROGRAM)
 
     # A password table where the cartridge keeps one, so `read_passwords` has something to
-    # parse. This ROM has no password *screen* -- building one in assembly would dwarf the
-    # rest of it -- so these are data only, and booting falls back to tapping START.
+    # parse. This ROM has no password *screen* (building one in assembly would dwarf the
+    # rest of it), so these are data only, and booting falls back to tapping START.
     asm.org(PASSWORD_TABLE)
     for index, password in enumerate(FAKE_PASSWORDS, start=1):
         asm.db([TEXT_LETTER_BASE + ord(c) - ord("A") if c != "." else TEXT_PERIOD

@@ -3,7 +3,7 @@
 The failure mode this guards against: a module imports something that only works because a
 dependency happens to pull it in, and breaks the moment that dependency changes or leaves.
 The import-closure test walks the library's own source, so it catches the gap on an install
-that is missing the package — which is exactly the case it exists for.
+that is missing the package, which is exactly the case it exists for.
 """
 import ast
 import pathlib
@@ -39,7 +39,7 @@ ENTRY_POINTS = [
     "planiverse.environments.network_attack.network_attack",
     "planiverse.environments.manufacturing.mfenv",
     "planiverse.benchmark.cli",
-    "planiverse.simulator.simulator",
+    "planiverse.rendering.trace",
     "planiverse.planners.super_mario_planner_gb",
 ]
 
@@ -87,7 +87,7 @@ def import_closure():
     """Third-party roots reachable from the entry points, and who pulls each one in.
 
     Walks the library's own modules rather than importing them, so it works on an install
-    that is missing something — which is the case this is here to catch.
+    that is missing something, which is the case this is here to catch.
     """
     third_party, seen, queue = {}, set(), list(ENTRY_POINTS)
     while queue:
@@ -116,7 +116,7 @@ def test_every_entry_point_exists():
 
 def test_the_console_script_points_at_something_callable(project):
     """The generated SLURM jobs invoke `planiverse-bench` by name, so a broken entry point
-    fails on the cluster rather than here — after the whole benchmark has been submitted."""
+    fails on the cluster rather than here, after the whole benchmark has been submitted."""
     import importlib
 
     scripts = project.get("scripts", {})

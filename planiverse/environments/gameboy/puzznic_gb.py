@@ -187,7 +187,7 @@ def enter_password(pyboy, password, render=False, attempts=3):
     """Type `password` on the password screen and confirm it with END.
 
     Every keystroke is checked against the slot it was meant to fill and retried if it did
-    not land — the screen drops a press now and again, and a password that is one character
+    not land. The screen drops a press now and again, and a password that is one character
     short is silently the wrong round rather than an error.
     """
     cells = {ch: (i // 9, i % 9) for i, ch in enumerate(PASSWORD_ALPHABET)}
@@ -225,7 +225,7 @@ INTRO_STEP_TICKS = 30            # granularity of that wait
 action_cost_map = {"a": 0, "left": 1, "right": 1, "up": 1, "down": 1, "nop": 0}
 
 # The cursor moves in four directions; A turns left/right into a push. There is no
-# `a+up`/`a+down` because Puzznic only slides blocks sideways — you cannot lift one.
+# `a+up`/`a+down` because Puzznic only slides blocks sideways; you cannot lift one.
 def button_actions(calibration=None):
     """The primitive button actions, each held for however long calibration settled on.
 
@@ -252,7 +252,7 @@ Record = namedtuple("Record", ["slot", "type", "state", "row", "col"])
 #: What `calibrate` learned from the cartridge.
 #:
 #: `press_ticks` is the hold a cursor move should use, and `hold_window` the closed range of
-#: holds that move the cursor exactly one cell — its upper end one frame short of the
+#: holds that move the cursor exactly one cell, its upper end one frame short of the
 #: cursor's auto-repeat. `push_ticks` and `push_window` are the same two things for a *push*,
 #: measured separately because a held block need not repeat on the same schedule as the
 #: cursor; `push_ticks` of None means nothing was measured, so fall back to `press_ticks`.
@@ -271,9 +271,9 @@ def push_hold(calibration):
 # How a block gets pushed. Which one a cartridge uses is not in the memory map, so
 # `calibrate` finds out by trying each on a real block.
 PUSH_SCHEMES = {
-    # Hold A and press a direction — one input.
+    # Hold A and press a direction: one input.
     "modifier": ("a", True),
-    # Press A to pick the block up, then press a direction — two inputs.
+    # Press A to pick the block up, then press a direction: two inputs.
     "grab": ("a", False),
     # A direction alone moves the block the cursor is sitting on.
     "direct": (None, True),
@@ -376,7 +376,7 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
 def _force_stage(context):
     """Hook body: pin `$D003` on the way into the stage loader.
 
-    Writing the stage index from outside on a frame boundary is not enough — a title
+    Writing the stage index from outside on a frame boundary is not enough: a title
     screen can reset it and call the loader within the same frame, and the loader wins.
     Hooking its entry puts the write between the reset and the read.
     """
@@ -420,7 +420,7 @@ def _probe_direction(pyboy, state, render, settle_kwargs, max_hold):
     """A direction with room for the cursor to show a repeat, which needs two cells.
 
     Picking the first direction that moves at all is not enough: with a wall one cell away
-    every hold looks identical, and the window comes back as wide as the probe, which is how
+    every hold looks identical, and the window comes back as wide as the probe. That is how
     `Puzznic (J)` first reported `(1, 40)` for a cursor that in fact repeats around frame 30.
     """
     fallback = None
@@ -462,7 +462,7 @@ def probe_push_scheme(pyboy, state, press_ticks, render=False, **settle_kwargs):
     """Find out how this cartridge moves a block, by trying each scheme on a real one.
 
     Returns `(scheme, prefix)` from `PUSH_SCHEMES`, or `(None, None)` if no candidate moved
-    a block — which usually means the cursor could not be walked onto one.
+    a block, which usually means the cursor could not be walked onto one.
     """
     for block in state.blocks:
         for direction in ("left", "right"):
@@ -507,8 +507,8 @@ def _walk_then_press(pyboy, state, target, press_ticks, presses, render=False, *
 def _slide_distance(before, after, row, col, step, max_cells):
     """How far the block that was at `(row, col)` travelled, or None if it is not there.
 
-    None means the probe destroyed its own evidence — the block fell, or met a same-typed
-    neighbour and cleared — so the hold it was testing cannot be read off this board.
+    None means the probe destroyed its own evidence (the block fell, or met a same-typed
+    neighbour and cleared), so the hold it was testing cannot be read off this board.
     """
     if after[row][col] == before[row][col]:
         return 0
@@ -527,7 +527,7 @@ def push_probe_candidates(state, cells=2):
     """Blocks that can be slid `cells` cells without falling, matching, or hitting anything.
 
     A probe has to be readable afterwards. A block that drops down a hole, or lands next to
-    its own colour and vanishes, tells you nothing about how far the push went — so those
+    its own colour and vanishes, tells you nothing about how far the push went, so those
     are filtered out here rather than discovered halfway through a measurement.
     """
     for block in state.blocks:
@@ -628,13 +628,13 @@ def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
     """Advance past the round's intro, and report how many frames it took.
 
     The stage loader fills work RAM before the round has finished announcing itself, so the
-    board is fully readable while every button is still ignored — about 200 frames on
-    `Puzznic (J)`. A state snapshotted in that window looks perfectly normal and answers no
+    board is fully readable while every button is still ignored (about 200 frames on
+    `Puzznic (J)`). A state snapshotted in that window looks normal and answers no
     action, which is the worst way for this to go wrong: search sees a stage with no legal
     moves rather than an error.
 
     Rather than hard-code the delay, this presses a direction from a snapshot at increasing
-    offsets until the cursor answers, then rewinds and replays only the waiting — so the
+    offsets until the cursor answers. It then rewinds and replays only the waiting, so the
     state handed back still has the cursor exactly where the loader put it. If the wait
     alone never works it tries again having pressed START first, because START is the pause
     button once a round is running and the boot sequence taps it.
@@ -678,10 +678,10 @@ def boot(pyboy, password=None, render=False, max_ticks=BOOT_MAX_TICKS,
     Returns `"password"`, `"1player"` or `"tapped"`, or None if no stage ever loaded.
 
     The cartridge's own title menu is the route worth taking: `PASSWORD` puts the game on
-    the round the password belongs to with all of its own state set up the way it expects,
-    where poking `$D003` merely swaps the layout under a game that still thinks it is on
-    round one. `"tapped"` is the fallback for a cartridge with no such menu — the test ROM
-    is one — and is what `stage_index` needs the loader hook for.
+    the round the password belongs to with all of its own state set up the way it expects.
+    Poking `$D003` merely swaps the layout under a game that still thinks it is on
+    round one. `"tapped"` is the fallback for a cartridge with no such menu (the test ROM
+    is one) and is what `stage_index` needs the loader hook for.
     """
     if title_seen if title_seen is not None else wait_for_title(pyboy, render):
         if password is not None:
@@ -755,10 +755,10 @@ class PuzznicGBState(GBState):
         self.literals = frozenset(predicates)
 
     def is_consistent(self):
-        """Do the grid, the record array and `$D019` tell the same story?
+        """Whether the grid, the record array and `$D019` tell the same story.
 
         The memory map's own cross-check. A mismatch means one of the three addresses has
-        drifted — the grid scan and `$D019` are the two that were verified against live
+        drifted; the grid scan and `$D019` are the two that were verified against live
         RAM, so trust those.
         """
         return len(self.blocks) == self.blocks_remaining == len(self.records)
@@ -864,8 +864,8 @@ CURSOR_IMPASSABLE = (CELL_WALL, CELL_OUTSIDE)
 def cursor_path(grid, start, target):
     """The shortest route the cursor can take from `start` to `target`, as directions.
 
-    Stages are not rectangles — Round 1's bottom row is two cells narrower than the row
-    above it — and the cursor cannot cross a wall, so stepping the rows and then the columns
+    Stages are not rectangles (Round 1's bottom row is two cells narrower than the row
+    above it) and the cursor cannot cross a wall, so stepping the rows and then the columns
     walks into one. This is a breadth-first search over the cells the cursor may occupy.
     Returns None when no route exists.
     """
@@ -1038,7 +1038,7 @@ class PuzznicGBEnv(GBEnv):
     def is_terminal(self, state):
         """A dead end: some type has exactly one block left, so the stage cannot clear.
 
-        Absorbing for the same reason the pure-Python environment makes it so — there is
+        Absorbing for the same reason the pure-Python environment makes it so: there is
         nothing left to plan for. The win side of `__advance__`'s absorbing rule matters
         here too: clearing the last block ends the stage and the cartridge loads the next
         round straight over the top of it, so pressing on past a goal state would silently

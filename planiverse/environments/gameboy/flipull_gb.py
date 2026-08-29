@@ -1,23 +1,23 @@
 """Flipull on a Game Boy, driven through PyBoy.
 
-Flipull — Taito's *Plotting* — sits the player at the right of a wall of blocks holding one
+Flipull (Taito's *Plotting*) sits the player at the right of a wall of blocks holding one
 of them, free to move up and down the twelve rows or to throw. A throw sends the block left;
 blocks of its own type are destroyed, a destroyed block drops its column, and something comes
 back into his hand. The stage is finished when few enough blocks are left.
 
 That is deliberately vague about what a throw hits, because nobody has established it: driven
 across all twelve rows of stage 1, *every* row connects, empty ones included, so the block
-travels further than its own row. This environment does not model it — it asks the cartridge,
+travels further than its own row. This environment does not model it: it asks the cartridge,
 which is the whole point of driving one. See `FlipullGBEnv.successors`.
 
-The action set is small for a Game Boy game — pick a row, throw — while the *consequences* of
+The action set is small for a Game Boy game (pick a row, throw) while the *consequences* of
 a throw run several moves deep, which is the shape a planner wants.
 
 The addresses come from a reverse-engineering pass over `Flipull (USA).gb`
 (MD5 `4fcc13db8144687e6b28200387aed25c`) and are documented in
-`docs/environments/flipull-gb-memory-map.md`. That map was derived behaviourally — recording
-WRAM and HRAM every frame against known on-screen values — so its confidence varies field by
-field, and the constants below carry that grading rather than pretending to it. Four of them
+`docs/environments/flipull-gb-memory-map.md`. That map was derived behaviourally (recording
+WRAM and HRAM every frame against known on-screen values), so its confidence varies field by
+field. The constants below carry that grading rather than pretending to it. Four of them
 turned out to mean something else once this code was driven against the same dump; those
 carry what the cartridge said instead.
 
@@ -40,7 +40,7 @@ ROM_MD5 = "4fcc13db8144687e6b28200387aed25c"
 
 # ------------------------------------------------------------------- the block field
 # Verified: base, stride and the wall pattern at both ends. The address calculator was never
-# found in code — unlike Puzznic's at `0:29CE` — so the geometry is read off the dump's
+# found in code (unlike Puzznic's at `0:29CE`), so the geometry is read off the dump's
 # structure: 14 evenly spaced rows with consistent borders.
 FIELD_ADDR = 0xC840
 ROW_STRIDE = 0x20                # 32 bytes per row...
@@ -61,7 +61,7 @@ LEFT_WALL_COL = 0
 CELL_GLYPHS = {CELL_OUTSIDE: " ", CELL_BORDER: "#", CELL_STAIRCASE: "="}
 
 # --------------------------------------------------------------------- HRAM counters
-# Flipull keeps its counters as separate decimal digits, ones first — not binary and not
+# Flipull keeps its counters as separate decimal digits, ones first: not binary and not
 # packed BCD. Searching for 25 or $19 finds nothing; the value is `05` and `02` in adjacent
 # bytes. Nearly every counter is in HRAM rather than WRAM.
 BLOCKS_ONES_ADDR = 0xFFC9        # verified: 05 -> 04 as the HUD went 25 -> 24
@@ -75,7 +75,7 @@ SUBSECOND_ADDR = 0xFFCD          # moderate: free-running tick
 CLEAR_TARGET_ADDR = 0xFFCF       # moderate: the CLEAR number; never seen change
 
 # ------------------------------------------------------------------------ the stage
-# The map graded `$FFC6` unverified — "read 01 in stage 1, never seen change" — and it is
+# The map graded `$FFC6` unverified ("read 01 in stage 1, never seen change"), and it is
 # half the answer. Disassembling the loader shows the stage number is kept as two decimal
 # digits, and both are read straight into the HUD:
 STAGE_ONES_ADDR = 0xFFC6         # verified: the on-screen STAGE number tracks these two
@@ -99,7 +99,7 @@ def stage_number(tens, ones):
 
 #: `0:2D55` is the loader. It reads both digits, indexes a table of 32 pointers at `$3A0E`,
 #: and copies the three bytes each one points at into the HUD counters. Hooking it is how
-#: `fix_index` selects a stage — see `FlipullGBEnv.fix_index`.
+#: `fix_index` selects a stage; see `FlipullGBEnv.fix_index`.
 STAGE_LOADER_ADDR = 0x2D55
 STAGE_TABLE_ADDR = 0x3A0E
 STAGE_COUNT = 32
@@ -112,35 +112,44 @@ ROM_BANK = 0                     # no mapper: the whole ROM is flat at $0000-$7F
 THROW_COUNT_ADDRS = (0xFFD2, 0xFFD3)  # a COUNT of completed throws, not a pair of flags:
                                       # 0,0 -> 1,1 -> 2,2 -> 3,3, and it does not advance
                                       # for a throw that changes nothing. The map read the
-                                      # first increment as `00 -> 01 on release`. Crucially
+                                      # first increment as `00 -> 01 on release`. Note that
                                       # it stays 0 for the whole flight and rises only when
                                       # the block lands, so it is the opposite of the
                                       # in-flight marker it was taken for.
-LAST_THROWN_ADDR = 0xFFD4        # the block *previously* in hand, i.e. the one just thrown
-                                 # — it lags the held-block sprite by exactly one throw, and
+LAST_THROWN_ADDR = 0xFFD4        # the block *previously* in hand, i.e. the one just thrown;
+                                 # it lags the held-block sprite by exactly one throw, and
                                  # reads $00 until the first throw. Not what is in hand now;
                                  # `held_sprite` is.
 FREE_COUNTER_ADDR = 0xFFDF       # the map read this as the in-flight X because it falls
-                                 # steadily. It does fall — by 17 a frame, wrapping through
+                                 # steadily. It does fall, by 17 a frame, wrapping through
                                  # zero, whether or not anything is in flight. A counter.
 INFLIGHT_Y_ADDR = 0xFFDE         # low, and unused here for the same reason
 PLAYER_STATE_ADDR = 0xC002       # tracked vertical input (89/8F); not a row index
 
 #: OAM DMA source, confirmed on the cartridge: `$C000`-`$C09F` mirrors hardware OAM at
 #: `$FE00` byte for byte. The player and the block in his hand are both sprites, and which
-#: slots they occupy is discovered at runtime — see `probe_sprites`.
+#: slots they occupy is discovered at runtime; see `probe_sprites`.
 OAM_BUFFER_ADDR = 0xC000
 OAM_BUFFER_BYTES = 160
 
 # --------------------------------------------------------------------------- driving
 PRESS_TICKS = 5                  # fallback only; `calibrate` measures the real window.
                                  # Flipull (USA) repeats on frame 11, so its window is
-                                 # (1, 10) and the middle of it is 5 — a far tighter bound
+                                 # (1, 10) and the middle of it is 5, a far tighter bound
                                  # than Puzznic's (1, 30).
 PROBE_MAX_HOLD = 60
 SETTLE_MAX_TICKS = 900           # the longest throw measured took 169 frames: the block
 SETTLE_STABLE_TICKS = 10         # crosses the field, lands, and then arcs back to the hand
 BOOT_MAX_TICKS = 2400
+
+#: Extra idle frames before boot, per selected stage index. The cartridge draws each
+#: stage's block *arrangement* from an RNG seeded by boot timing; its stage table fixes
+#: only the block total and the CLEAR target. A deterministic boot therefore always sees
+#: the same draw, and without this delay the 32 stages collapse to three distinct boards
+#: (one per block total). Seven frames per index gives every index its own draw, still
+#: deterministically: the same index always builds the same board, so `reset` stays
+#: repeatable. Verified against the cartridge: 32 indices, 32 distinct fields.
+SEED_TICKS_PER_INDEX = 7
 BOOT_PRESS_EVERY = 12
 INTRO_MAX_TICKS = 900
 INTRO_STEP_TICKS = 10
@@ -213,7 +222,7 @@ def row_for_y(y, row_pitch, bottom_y):
     anchors are measured on the cartridge, so nothing here is a magic screen coordinate.
 
     Verified by throwing from all twelve reachable rows of `Flipull (USA)` stage 1 and
-    watching which field rows changed — a destroyed block collapses its column, so the rows
+    watching which field rows changed: a destroyed block collapses its column, so the rows
     that move are exactly row 8 down to the row that was hit.
     """
     if y is None or not row_pitch or bottom_y is None:
@@ -228,7 +237,7 @@ def row_blocks(field, row):
     """A row left to right, as `(col, type)` for the blocks in it.
 
     Offered as a convenience for a planner reasoning about a row, not as a model of what a
-    throw does — see `FlipullGBEnv.successors` for why there is no such model here.
+    throw does; see `FlipullGBEnv.successors` for why there is no such model here.
     """
     if row is None or not 0 <= row < FIELD_ROWS:
         return ()
@@ -278,7 +287,7 @@ def throw_count(pyboy):
 
     Not a flag, and not an in-flight marker. Driving the cartridge shows `$FFD2`/`$FFD3`
     counting `0,0 -> 1,1 -> 2,2 -> 3,3`, staying put for a throw that changes nothing, and
-    — the part that matters — remaining `0` for the whole flight, rising only when the block
+    (the part that matters) remaining `0` for the whole flight, rising only when the block
     lands. Treating it as "a throw is in progress" gets the truth exactly backwards.
     """
     return max(pyboy.memory[addr] for addr in THROW_COUNT_ADDRS)
@@ -310,9 +319,9 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
     Settled means the field **and the sprites** byte-identical for `stable_ticks` frames.
 
     Both halves are load-bearing, and the sprites are the half that is easy to miss: a
-    thrown block is a *sprite* until it lands, so the field sits perfectly still for the
+    thrown block is a *sprite* until it lands, so the field sits still for the
     thirty-odd frames it spends crossing the screen. Waiting on the field alone calls that
-    settled and snapshots a position mid-throw — which is what this function used to do,
+    settled and snapshots a position mid-throw. This function used to do that,
     because it also trusted `$FFD2`/`$FFD3` to say a throw was in flight when in fact they
     stay `0` until it lands.
 
@@ -342,15 +351,15 @@ def probe_sprites(pyboy, render=False, press_ticks=PRESS_TICKS, throw_button=Non
                   **settle_kwargs):
     """Which OAM entries are the player and the block in his hand, and which way he can move.
 
-    The memory map has no row index for the player — `$C002` tracks vertical *input*, not
-    position — so the only thing that says where he is, is his sprite. Which sprite that is
+    The memory map has no row index for the player (`$C002` tracks vertical *input*, not
+    position), so the only thing that says where he is, is his sprite. Which sprite that is
     gets discovered rather than assumed, so it survives a different stage or revision.
 
     Two things the cartridge taught this probe, neither of which the synthetic one could:
 
     **The player may start against a wall.** `Flipull (USA)` opens with him on the bottom
-    row, where `down` moves nothing at all. Demanding that a candidate move *both* ways —
-    which is what this did — finds nobody. So a blocked direction is allowed, and what is
+    row, where `down` moves nothing at all. Demanding that a candidate move *both* ways
+    (which is what this did) finds nobody. So a blocked direction is allowed, and what is
     required instead is that no candidate ever move the *wrong* way: up must not increase Y
     and down must not decrease it, and at least one of them has to do something. That still
     rejects a free-running counter that happens to live in the OAM buffer, which is the
@@ -360,7 +369,7 @@ def probe_sprites(pyboy, render=False, press_ticks=PRESS_TICKS, throw_button=Non
     **More than one sprite moves.** The player and the block in his hand travel together, so
     there are two candidates, not one. They are told apart by throwing: the held block flies
     off across the field, the player does not move. That also identifies the held-block
-    sprite, which is worth having — its tile is the only honest read of what is in hand.
+    sprite, which is worth having: its tile is the only honest read of what is in hand.
 
     Returns `(player, held, move_button)`, any of which may be `None`.
     """
@@ -441,7 +450,7 @@ def probe_initial_hand(pyboy, state_bytes, render=False, press_ticks=PRESS_TICKS
     is not a block value at all, and inventing a type for it would be a guess.
 
     So it is measured instead. `$FFD4` holds the block *previously* in hand, so throwing once
-    and reading it back names the block that was there before the throw — after which the
+    and reading it back names the block that was there before the throw, after which the
     probe rewinds and the throw never happened. Confirmed by working the first throw
     backwards from what it did to the field: it destroyed a `$83` and left a `$83` behind in
     the cell it swapped with, which is `$FFD4`'s answer too.
@@ -462,7 +471,7 @@ def measure_hold_window(pyboy, state_bytes, sprite, render=False, max_hold=PROBE
     long and auto-repeat moves two rows, so the state handed back is not the one the action
     described. Measured off the cartridge rather than guessed.
 
-    `button` is the direction the player can actually move in from here — passed in rather
+    `button` is the direction the player can actually move in from here, passed in rather
     than hard-coded, because on `Flipull (USA)` he starts on the bottom row and this used to
     probe `down` into the floor and conclude he never moved.
     """
@@ -490,8 +499,8 @@ def probe_throw_button(pyboy, state_bytes, render=False, press_ticks=PRESS_TICKS
                        **settle_kwargs):
     """Which button throws, found by pressing each and watching for a throw.
 
-    A throw shows up in two independent places — the completed-throw count at
-    `$FFD2`/`$FFD3` goes up, and the field changes — so a button that only moves the player
+    A throw shows up in two independent places (the completed-throw count at
+    `$FFD2`/`$FFD3` goes up, and the field changes), so a button that only moves the player
     is not mistaken for one. Both are checked *after* settling, because neither happens
     until the block lands, some thirty frames after the press.
 
@@ -511,7 +520,7 @@ def probe_throw_button(pyboy, state_bytes, render=False, press_ticks=PRESS_TICKS
 
 def calibrate(pyboy, state_bytes, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwargs):
     """Measure how this cartridge wants to be driven. A property of the game, so once is
-    enough — every probe rewinds to `state_bytes`, so nothing it does survives."""
+    enough: every probe rewinds to `state_bytes`, so nothing it does survives."""
     load_state(pyboy, state_bytes, render)
     # The throw button first: it needs nothing else, and telling the player apart from the
     # block in his hand needs a throw to separate them.
@@ -534,8 +543,8 @@ def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
                            step=INTRO_STEP_TICKS, press_ticks=PRESS_TICKS):
     """Advance until the stage accepts a button, and report how many frames it took.
 
-    A stage can be entirely readable while its intro is still running — Puzznic ignores input
-    for 210 frames after its field is in memory — and a state snapshotted in that window
+    A stage can be entirely readable while its intro is still running (Puzznic ignores input
+    for 210 frames after its field is in memory), and a state snapshotted in that window
     looks normal and answers nothing. Probes from a snapshot at increasing offsets, then
     rewinds and replays only the waiting, so the field is untouched.
 
@@ -544,7 +553,7 @@ def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
     is not the same question and gives the wrong answer on any cartridge whose sprites
     animate: everything moves every frame regardless of input, so the very first offset
     looks interactive and this returns 0 whether or not the game is listening.
-    `Flipull (USA)` really does answer at 0 — but it takes the two-run comparison to know
+    `Flipull (USA)` really does answer at 0, but it takes the two-run comparison to know
     that rather than to assume it.
     """
     snapshot = save_state(pyboy)
@@ -622,7 +631,7 @@ class FlipullGBState(GBState):
         self.row_blocks = row_blocks(self.field, self.player_row)
 
         # The block types a stage started with, carried down the search tree rather than
-        # re-derived — a type cleared out would otherwise look like one that never existed.
+        # re-derived; a type cleared out would otherwise look like one that never existed.
         self.stage_types = (frozenset(block.type for block in self.blocks)
                             if stage_types is None else stage_types)
 
@@ -652,7 +661,7 @@ class FlipullGBState(GBState):
         self.literals = frozenset(predicates)
 
     def is_consistent(self):
-        """Does the field agree with the HUD counter?
+        """Whether the field agrees with the HUD counter.
 
         The memory map's own cross-check: 25 cells in `$83`-`$86` against `BLOCK 25`, and 24
         against 24 after a throw. A mismatch means one of the two has drifted.
@@ -680,7 +689,7 @@ class FlipullGBState(GBState):
         """The type of the block in the player's hand, read off its sprite.
 
         `$FFD4` looks like this and is not: driven across five throws it holds the block
-        *previously* in hand — the one just thrown — lagging the sprite by one throw and
+        *previously* in hand (the one just thrown), lagging the sprite by one throw and
         reading `$00` until the first throw of a stage. The sprite's tile is the live
         value, and it uses the same `$83`-`$86` encoding the field does.
         """
@@ -718,17 +727,21 @@ class FlipullGBState(GBState):
         return text
 
     def __eq__(self, other):
-        # The position is the field, what is in hand, and which row the player is on — a
+        # The position is the field, what is in hand, and which row the player is on: a
         # throw from a different row does something different, so it is not the same state.
         # Depth and history are not part of it, so a state reached two ways compares equal.
+        # The clear target is part of it: stages can share a board and differ only in the
+        # target (stages 1 and 3 do), so the same field can sit at two different distances
+        # from the goal.
         return (isinstance(other, FlipullGBState) and self.field == other.field
-                and self.held_block == other.held_block and self.player_y == other.player_y)
+                and self.held_block == other.held_block and self.player_y == other.player_y
+                and self.clear_target == other.clear_target)
 
     def __hash__(self):
-        return hash((self.field, self.held_block, self.player_y))
+        return hash((self.field, self.held_block, self.player_y, self.clear_target))
 
     def threw(self, parent):
-        """Did the throw that produced this state connect?
+        """Whether the throw that produced this state connected.
 
         The cartridge's own answer, read from its completed-throw counter rather than
         inferred: a throw that changes nothing does not advance it.
@@ -736,9 +749,12 @@ class FlipullGBState(GBState):
         return self.throws != parent.throws
 
     def __str__(self):
-        return self.render_field(self.field, self.held_block,
-                                 self.player_row if self.player_row is not None
-                                 else self.player_y)
+        # The clear target rides along under the board for the same reason it is part of
+        # `__eq__`: without it, stages that share a board stringify identically.
+        board = self.render_field(self.field, self.held_block,
+                                  self.player_row if self.player_row is not None
+                                  else self.player_y)
+        return f"{board}\nclear target: {self.clear_target}"
 
     def __repr__(self):
         return (f"<FlipullGBState(depth={self.depth}, remaining={self.blocks_remaining}"
@@ -775,11 +791,11 @@ class FlipullGBEnv(GBEnv):
 
     `successors` routinely filters two of the three actions, and both for real reasons: a
     move into a wall (the player starts on the bottom row, so `down` does nothing until he
-    has gone up), and a throw that does not connect — some throws play the whole animation
+    has gone up), and a throw that does not connect: some throws play the whole animation
     and leave the position exactly as it was, down to the cartridge's own completed-throw
     counter. What decides which throws connect is **not modelled here**, deliberately. The
-    obvious rule — that the block meets the rightmost block in the player's row and needs a
-    match — is wrong: driven across all twelve rows of stage 1, every row connects,
+    obvious rule, that the block meets the rightmost block in the player's row and needs a
+    match, is wrong: driven across all twelve rows of stage 1, every row connects,
     including rows with no blocks in them at all, so the block plainly travels further than
     its own row. Rather than ship a guess, this environment does what it exists to do and
     asks the cartridge. `row_blocks` is exported for a planner that wants to build its own
@@ -794,7 +810,7 @@ class FlipullGBEnv(GBEnv):
     def read_stage_table(romfile, base=STAGE_TABLE_ADDR, count=STAGE_COUNT):
         """The stage list, read out of the cartridge rather than transcribed.
 
-        `$3A0E` is a table of `count` little-endian pointers; each points at three bytes —
+        `$3A0E` is a table of `count` little-endian pointers; each points at three bytes:
         the CLEAR target, then the block total as ones and tens digits, the same
         digit-per-byte spelling the HUD counters use. The loader at `0:2D55` indexes it
         with `10*$FFC7 + $FFC6 - 1`.
@@ -851,16 +867,16 @@ class FlipullGBEnv(GBEnv):
     def fix_index(self, index):
         """Select the stage, zero-based: `fix_index(7)` is stage 8.
 
-        The cartridge keeps its stage number as two decimal digits — `$FFC7` tens, `$FFC6`
-        ones — and the loader at `0:2D55` turns them into an index into a 32-entry table.
+        The cartridge keeps its stage number as two decimal digits (`$FFC7` tens, `$FFC6`
+        ones), and the loader at `0:2D55` turns them into an index into a 32-entry table.
         `reset` hooks that loader and writes the digits as it arrives, so the stage the
         cartridge builds is the one asked for.
 
         This is not the same as poking a layout in behind the game's back, which is what
         Puzznic's fallback route does and why that one is kept for emergencies. Here the
         two bytes written *are* the game's own stage number, they are written before
-        anything reads them, and the eleven places that read them — the field builder and
-        the HUD among them — all then agree: the on-screen `STAGE` really does say 8.
+        anything reads them, and the eleven places that read them (the field builder and
+        the HUD among them) all then agree: the on-screen `STAGE` really does say 8.
         """
         if not self.stages:
             raise RuntimeError(
@@ -876,6 +892,11 @@ class FlipullGBEnv(GBEnv):
 
     def reset(self):
         self.__restart_emulator__()
+        # The arrangement RNG is seeded by boot timing (see SEED_TICKS_PER_INDEX), so this
+        # per-index delay is what makes fix_index select a distinct board rather than only
+        # a distinct CLEAR target.
+        for _ in range(SEED_TICKS_PER_INDEX * (self.stage_index or 0)):
+            self.pyboy.tick()
         self.__force_stage__()
         if not boot(self.pyboy, self.render_window, self.boot_max_ticks):
             raise RuntimeError(
@@ -925,11 +946,11 @@ class FlipullGBEnv(GBEnv):
         self.pyboy.hook_register(ROM_BANK, STAGE_LOADER_ADDR, force, None)
 
     def __check_stage__(self):
-        """Did the stage that loaded match what the ROM's table said it would?
+        """Whether the stage that loaded matches what the ROM's table said it would.
 
         The table gives a block total and a CLEAR target per stage, and no two neighbours
-        share both, so this catches a selection that silently did not take — which is the
-        failure worth catching, because a wrong stage still looks like a perfectly good one.
+        share both, so this catches a selection that silently did not take, which is the
+        failure worth catching, because a wrong stage still looks like a good one.
         """
         if self.stage_index is None:
             return
@@ -949,7 +970,7 @@ class FlipullGBEnv(GBEnv):
         """Few enough blocks left.
 
         Flipull finishes a stage when the count is down to the `CLEAR` number rather than to
-        zero — the HUD shows `BLOCK 25` against `CLEAR 09`. `$FFCF` is that number, and the
+        zero: the HUD shows `BLOCK 25` against `CLEAR 09`. `$FFCF` is that number, and the
         map grades it moderate: it read 09 and never changed, which is consistent with a
         target but was never watched being met.
         """

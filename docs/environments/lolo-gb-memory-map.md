@@ -1,4 +1,4 @@
-# Adventures of Lolo (Game Boy) — memory map
+# Adventures of Lolo (Game Boy) memory map
 
 Target: `Adventures of Lolo (U) [S][!].gb` · 262,144 bytes · HAL Laboratory / Nintendo, internal
 title `LOLO2` · MD5 `8f6b6ef366a787852f664d945c86eb72`
@@ -30,7 +30,7 @@ graphics, bank 15 is the sound driver entered from the timer interrupt.
 
 ---
 
-## 2. The room table — **(measured, byte for byte)**
+## 2. The room table **(measured, byte for byte)**
 
 `LoadRoom` at `$11E5`:
 
@@ -73,7 +73,7 @@ loop:   INC B / SUB $0E / JR NC,loop
 ```
 
 That fixes 38 as the end of the tutorial and 14 as the levels per floor. The rest follows from the
-163 live slots and matches the published description of the European release — 144 puzzles:
+163 live slots and matches the published description of the European release (144 puzzles):
 
 | Slots | Count | What |
 |---|---|---|
@@ -86,7 +86,7 @@ That fixes 38 as the end of the tutorial and 14 as the levels per floor. The res
 
 ---
 
-## 3. Cell codes — **(measured)**
+## 3. Cell codes **(measured)**
 
 Established by patching a synthetic room over the board buffer at `$1207`, letting the game draw
 it, and reading the result off the screen. The names are the cartridge's own: the object list at
@@ -167,11 +167,11 @@ not in it.
 
 ---
 
-## 5. Rules — **(all measured)**
+## 5. Rules **(all measured)**
 
 ### Movement
 
-Lolo walks on a **half-cell grid**. A d-pad press moves him 8 pixels — half a cell — per 16 frames
+Lolo walks on a **half-cell grid**. A d-pad press moves him 8 pixels (half a cell) per 16 frames
 of hold:
 
 | Hold (frames) | Cells moved |
@@ -216,7 +216,7 @@ collecting one, two shots land and a third does nothing.
 ### Medusa
 
 A Medusa kills Lolo when he stands anywhere in its row or column. The shot takes **one action** to
-arrive, and moving out of the line does not save him — so for planning, entering the line is death.
+arrive, and moving out of the line does not save him, so for planning, entering the line is death.
 
 What blocks the line, measured one cell at a time by putting each candidate between Lolo and the
 Medusa:
@@ -231,8 +231,8 @@ and the thing most likely to be read as a bug in either implementation.
 
 ### Clearing a room
 
-The door tile changes the frame the last heart framer is taken — from *n* to *n*+2, in every
-environment measured — and stepping onto the open door ends the room. `lolo_gb.is_goal` is exactly
+The door tile changes the frame the last heart framer is taken (from *n* to *n*+2, in every
+environment measured), and stepping onto the open door ends the room. `lolo_gb.is_goal` is exactly
 that: `hearts_left == 0` and Lolo standing on the door cell.
 
 ---
@@ -250,7 +250,7 @@ across. Measured on all six river codes, with a magic heart, a Snakey and a one-
 | `$85` | accepted | rides, and drifts **down** |
 
 That drift is a current: the raft keeps moving after Lolo boards it. It is how int 1-3 is cleared,
-and it is why tutorial 14a — whose river is `$83` — cannot be crossed by stepping straight on.
+and it is why tutorial 14a (whose river is `$83`) cannot be crossed by stepping straight on.
 `lolo.py` refuses to push an egg into a river rather than model a moving raft; `lolo_gb` of course
 does whatever the cartridge does.
 
@@ -259,16 +259,16 @@ does whatever the cartridge does.
 ## 7. Why the live position is not in work RAM
 
 `$C3BF` is written once by `LoadRoom` and never again. Collecting a heart, pushing a Framer and
-opening the door all leave it byte-for-byte as it was loaded — verified by walking a room to
+opening the door all leave it byte-for-byte as it was loaded, verified by walking a room to
 completion and diffing.
 
 What the game *does* redraw is the BG tilemap, so that is where `lolo_gb` reads the live position:
 the playfield is BG columns 1–16 and rows 1–16, one 2 × 2 tile block per cell, and cell `(r, c)`
-starts at tile `(1 + 2c, 1 + 2r)`. Actors are not there at all — they are sprites in `$C000`.
+starts at tile `(1 + 2c, 1 + 2r)`. Actors are not there at all; they are sprites in `$C000`.
 
 Tile numbers are **per-environment**: the cartridge ships eight terrain themes and the same cell
-code draws different tiles in each, so `lolo_gb.learn_tiles` measures the four numbers it needs —
-heart, Framer, closed door, open door — from the freshly loaded room, while the board buffer and
+code draws different tiles in each, so `lolo_gb.learn_tiles` measures the four numbers it needs
+(heart, Framer, closed door, open door) from the freshly loaded room, while the board buffer and
 the tilemap still agree, and decodes every later frame against that.
 
 ---
@@ -282,7 +282,7 @@ The route from power-on to a graded room:
 3. A → NEW GAME, then the King's introduction.
 4. **27 taps of A** reach the screen offering `Push A: ENTRY / Push B: INTERMEDIATE`.
 5. **B**, not A. A starts the tutorial, where the first room of every pair is a demonstration the
-   game plays for itself — a board that answers every action with a position nobody asked for.
+   game plays for itself, a board that answers every action with a position nobody asked for.
 6. A through the orchestra cutscene until `$C3BE` reads `$17` and a board is up.
 
 The count in step 4 is measured, and `LoloGBEnv.reset` retries the neighbouring counts, because

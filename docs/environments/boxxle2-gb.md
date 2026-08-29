@@ -7,7 +7,7 @@ its rules. States are emulator save-states, so search can branch by rewinding th
 
 The sibling [`boxxle2.py`](boxxle2.md) re-implements the same 120 levels in pure Python. Use
 that one if you want a dependency-free benchmark; use this one if you want the cartridge's
-actual behaviour. Unusually among the twins here, the two agree exactly — see
+actual behaviour. Unusually among the twins here, the two agree exactly; see
 [Verified against the cartridge](#verified-against-the-cartridge).
 
 Every address this environment reads is catalogued in the
@@ -45,7 +45,7 @@ Every address below was read from one specific dump:
 |---|---|
 | File | `Boxxle II (USA, Europe).gb`, 32,768 bytes |
 | MD5 | `308abd707a48ee9d69c287d818469fd6` |
-| Cartridge | ROM ONLY — no mapper, **no** cartridge RAM. All state is in work RAM. |
+| Cartridge | ROM ONLY: no mapper, **no** cartridge RAM. All state is in work RAM. |
 
 Because the addresses are revision-specific, the constructor hashes the file and raises a
 `UserWarning` when it is not that dump. Pass `verify_rom=False` to silence it.
@@ -126,7 +126,7 @@ python -m planiverse.environments.gameboy.boxxle2_gb "Boxxle II (USA, Europe).gb
 By hooking `LoadLevelHeader` at `$0F53` and writing the stage and level counters from inside
 the hook body.
 
-The obvious alternative — write `$C162` and `$C352` from outside, on a frame boundary — does
+The obvious alternative (write `$C162` and `$C352` from outside, on a frame boundary) does
 not work. The menu resets both counters and calls the loader within the same frame, so the
 loader always reads the reset values. Hooking its entry puts the write between the reset at
 the menu and the read at `$0F5D`.
@@ -139,19 +139,19 @@ you want to type one by hand; the hook reaches all 120 levels without them.
 
 ## Booting
 
-Power-on to a playable board is roughly 1,370 frames — about 0.05 s of emulation, and about
-0.17 s of wall clock including the calibration probe. The front end is three screens deep:
+Power-on to a playable board is roughly 1,370 frames (about 0.05 s of emulation, and about
+0.17 s of wall clock including the calibration probe). The front end is three screens deep:
 
 | `$C34E` | Screen | How it is passed |
 |---|---|---|
 | `$04` | title, "PUSH START KEY" | START |
 | `$10` | MUSIC: BGM A / B / C | START |
 | `$20` | MENU: PLAY / PASSKEY / CREATE | START, with PLAY already selected |
-| `$06` | the story cutscene | waited out — about 970 frames, and no button shortens it |
+| `$06` | the story cutscene | waited out; about 970 frames, and no button shortens it |
 | `$00` | playing | |
 
 `boot` presses START only while `$C34E` names one of the first three. Tapping it on a timer
-instead — which is what the Puzznic environment's fallback route does — is wrong here, because
+instead (which is what the Puzznic environment's fallback route does) is wrong here, because
 **START during play opens the pause overlay**, so a stray press lands on exactly the screen
 being aimed at.
 
@@ -180,8 +180,8 @@ so a position reached two ways compares equal and search closes.
 
 ### Where the board comes from
 
-The cartridge decompresses each level into three plain byte planes in work RAM — goals at
-`$C922`, boxes at `$CA8A`, walls at `$CBF2`, one byte per cell, 20 bytes per row — and the
+The cartridge decompresses each level into three plain byte planes in work RAM (goals at
+`$C922`, boxes at `$CA8A`, walls at `$CBF2`, one byte per cell, 20 bytes per row) and the
 environment reads them directly. No tile decoding, no sprite matching, no inference. The
 keeper is a 16-bit offset into the same grid at `$C110:$C10F`.
 
@@ -201,7 +201,7 @@ partitions on atoms, and `boxes-home(n)` alone gives it a very coarse progress s
 `goal-reached` and `terminal-state` are added when they apply.
 
 Walls are *not* literals. They never change, there are hundreds of them on a large board, and
-every one would be an atom that is true in every state — pure noise for a novelty measure.
+every one would be an atom that is true in every state: pure noise for a novelty measure.
 
 ### Consistency
 
@@ -228,7 +228,7 @@ move, and whether it walks or pushes is the game's decision, not the plan's.
 ### Ticks are measured, not chosen
 
 Holding a direction for 1–19 frames moves the keeper exactly one cell. At 20 frames the d-pad
-repeats and one press becomes two moves — which in a Sokoban is not a longer plan but a box
+repeats and one press becomes two moves, which in a Sokoban is not a longer plan but a box
 pushed somewhere nobody asked for, and a successor that does not match the action that
 produced it.
 
@@ -240,9 +240,9 @@ info["calibration"]
 # Calibration(press_ticks=9, hold_window=(1, 18))
 ```
 
-`measure_hold_window` finds a direction with two clear cells of room — one cell is not enough,
+`measure_hold_window` finds a direction with two clear cells of room (one cell is not enough,
 because with a wall in the way every hold looks identical and the window comes back as wide as
-the probe — then walks the hold from 1 upwards, rewinding to the same state each time, and
+the probe), then walks the hold from 1 upwards, rewinding to the same state each time, and
 reports the closed range that moves exactly one cell. `press_ticks` is the middle of it: far
 enough above the low end to survive a frame of jitter in when the game samples the pad, far
 enough below the high end not to trip the repeat.
@@ -264,16 +264,16 @@ sixteen frames, and every press during the slide is ignored.
 
 That slide is visible *only* in the shadow OAM at `$C000`. A byte-by-byte diff of
 `$C0A0–$C460` across the animation finds nothing that is not also moving when the game is
-idle — no counter, no flag, no direction byte. So `settle` watches the three planes, the keeper
+idle: no counter, no flag, no direction byte. So `settle` watches the three planes, the keeper
 offset **and** the 160-byte sprite buffer, and returns once all of them have held still for
 three frames.
 
 Watching only the planes drops roughly every second press, and the failure looks exactly like a
-planner's action having no effect — which is the reason this is written down twice, here and in
+planner's action having no effect, which is the reason this is written down twice, here and in
 the memory map.
 
 Stability on its own is still not enough, and this is the part that took the longest to find.
-The slide **pauses for a frame or two partway through**, and — worse — a hold long enough to
+The slide **pauses for a frame or two partway through**, and, worse, a hold long enough to
 trip the d-pad's auto-repeat looks perfectly settled in the gap between the first move and the
 second. So `settle` also refuses to return before frame 22, which is one past the frame the
 repeat would have fired on. It costs nothing: the slide plus its stable frames already take
@@ -289,11 +289,11 @@ env = Boxxle2GBEnv(rom, settle_max_ticks=240, settle_stable_ticks=3)
 afterwards. **On some states that one frame is not enough**: the press lands before the main
 loop next samples the pad, `ReadJoypad` never sees the edge, and the move is silently dropped.
 The successor then comes back equal to its parent and `successors` deletes the action as a
-no-op — a legal move disappearing from the search space with no error anywhere.
+no-op, a legal move disappearing from the search space with no error anywhere.
 
 It is not every state, which is what makes it nasty: replaying a 500-move plan on the cartridge
-failed at move 19, and that same move applied on its own worked perfectly. `Boxxle2GBAction`
-therefore runs `LEAD_IN_TICKS = 2` idle frames after the rewind and before the press. The
+failed at move 19, and that same move applied on its own worked perfectly. So `Boxxle2GBAction`
+runs `LEAD_IN_TICKS = 2` idle frames after the rewind and before the press. The
 constant lives here rather than in the shared `GBAction` because the other cartridges do not
 need it.
 
@@ -304,7 +304,7 @@ did not.
 
 About 320 frames after the last box goes home, the cartridge switches to its
 congratulation-and-replay sequence and **rewrites the plane buffers with something that is not
-a Sokoban position** — boxes and goals scattered across the walls. A board snapshotted 30
+a Sokoban position**: boxes and goals scattered across the walls. A board snapshotted 30
 frames after the winning push decodes as garbage.
 
 So `settle` returns the instant every box is home, and `__advance__` treats a solved state as
@@ -320,7 +320,7 @@ env.is_terminal(state)    # some box is wedged in a corner, off a goal
 
 `is_terminal` is **sound and deliberately incomplete**. A box with a wall on one of its vertical
 sides and one of its horizontal sides can never be moved again by anyone, so if it is not
-already home the level is lost — that much is certain, and it is what `stuck_boxes` reports.
+already home the level is lost; that much is certain, and it is what `stuck_boxes` reports.
 Positions that are dead for subtler reasons (a wall-hugging row with no goal on it, two boxes
 frozen against each other) are not claimed, because a wrong `is_terminal` prunes a *solvable*
 branch, and that is a much worse failure than letting a doomed one run.
@@ -351,7 +351,7 @@ result = BFWSSearch(
 Two things to expect. The branching factor is at most four and often two or three, which is
 low; and the state space is nonetheless enormous, because Sokoban's difficulty is in the
 ordering of the pushes rather than in the choice at any one step. Expect the early levels to
-fall quickly and the later ones not to fall at all — the same shape the stored solutions have
+fall quickly and the later ones not to fall at all, the same shape the stored solutions have
 (see below).
 
 An expansion costs one save-state load, one button press and a settle: on the order of a
@@ -368,7 +368,7 @@ the three plane addresses, the 20-byte stride, the keeper offset and the level-s
 
 **The Python twin matches move for move.** All 120 levels, twenty-five random moves each,
 replayed on the cartridge and on [`boxxle2.py`](boxxle2.md) and compared after every one of the
-3,000 moves. **0 divergences** — walls refusing a step, boxes refusing a push, boxes against
+3,000 moves. **0 divergences**: walls refusing a step, boxes refusing a push, boxes against
 boxes, and boards in both cell-size modes.
 
 **Stored plans still clear their levels.** `tests/data/boxxle2_gb_solutions.json` holds an

@@ -10,7 +10,7 @@ found nothing". So every run ends in a status:
 
 | Status | Meaning |
 |---|---|
-| `SOLVED` | a plan, and — if `validate-plans` — one that replays to a goal |
+| `SOLVED` | a plan, and (if `validate-plans`) one that replays to a goal |
 | `INVALID` | a plan that does not replay to a goal. A planner bug, reported as one |
 | `UNSOLVED` | the planner stopped of its own accord without a plan |
 | `TIMEOUT` | the wall-clock limit ran out first |
@@ -18,13 +18,13 @@ found nothing". So every run ends in a status:
 | `MEMOUT` | the memory limit was hit |
 | `ERROR` | it raised |
 | `UNSUPPORTED` | the environment could not be built here (missing dependency, missing ROM) |
-| `MISSING` | no result file — assigned at analysis time, never written by a run |
+| `MISSING` | no result file: assigned at analysis time, never written by a run |
 
 `TIMEOUT` and `NODEOUT` are separated because they say different things about the same
 planner: one is too slow per node, the other is looking in the wrong place.
 
 `UNSOLVED` deliberately does **not** say "unsolvable". Only BFWS among these planners is
-complete — see `catalogue.COMPLETE` — so for everything else it means no more than "this
+complete (see `catalogue.COMPLETE`), so for everything else it means no more than "this
 planner stopped looking". Each result records the planner's raw `search_status` alongside, and
 `complete` says whether the answer is a proof, so the two cases stay distinguishable in the
 tables instead of being averaged together.
@@ -55,7 +55,7 @@ class _TimeLimit:
     """A hard wall-clock stop, on top of the planner's own `Budget`.
 
     The `Budget` is checked between expansions, which is enough right up until one expansion
-    is itself slow — the power grid environment spends 8 to 19 seconds in a single one, and
+    is itself slow: the power grid environment spends 8 to 19 seconds in a single one, and
     the Game Boy environments can spend longer. Without an alarm on top, a job asked for 30
     minutes can overrun by one expansion and be killed by SLURM instead, losing the result
     file and turning a legible TIMEOUT into a missing row.
@@ -189,8 +189,8 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None, roms=None):
 
         record["statistics"] = _statistics(outcome)
         record["search_status"] = outcome.status
-        # Recomputed now the run is over: a conditionally complete planner — `IteratedWidth`
-        # — only proves unsolvability on the runs where it says it exhausted the space.
+        # Recomputed now the run is over: a conditionally complete planner (`IteratedWidth`)
+        # only proves unsolvability on the runs where it says it exhausted the space.
         record["complete"] = catalogue.is_complete(planner_spec.planner, outcome.status)
         record["plan_length"] = len(outcome.plan) if outcome.plan is not None else None
         record["plan_cost"] = outcome.cost if outcome.plan else None
@@ -225,7 +225,7 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None, roms=None):
 def _dependencies_present(spec):
     """Are the environment's third-party modules importable?
 
-    Not `spec.available()`, which also asks whether a cartridge is present — and answers by
+    Not `spec.available()`, which also asks whether a cartridge is present, and answers by
     looking at an environment variable. The experiment's own recorded ROM path has to be
     allowed to satisfy that instead, so the two questions are asked separately here.
     """
@@ -253,7 +253,7 @@ def _classify(outcome, limits, elapsed):
     """Which limit ran out, when the search says only that one did.
 
     `SearchResult.status` reports `out_of_budget` without saying which half of the budget was
-    spent, and the distinction is the useful part — too slow per node is a different problem
+    spent, and the distinction is the useful part: too slow per node is a different problem
     from looking in the wrong place. So it is recovered here by comparing what was spent
     against what was allowed.
     """

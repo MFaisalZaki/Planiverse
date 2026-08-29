@@ -23,7 +23,7 @@ Four things about this cartridge shape the module.
 **The board is already composed in RAM.** `LoadLevel` at `$08C0` builds a 20x18 map of cell
 codes at `$C2F2`, one byte per cell, and the whole game runs on it: walls, pits, blocks,
 turnstiles, the taters and the exit flag are all there, and each code carries the shape
-information a planner needs — a block square says which of its neighbours belong to the same
+information a planner needs: a block square says which of its neighbours belong to the same
 block, a turnstile pivot says which arms it has. So the environment reads the position
 directly rather than inferring it from tiles or sprites, and `is_goal` is exact.
 
@@ -39,7 +39,7 @@ test, and it is the cartridge's own.
 **The sprite never stops moving.** The tater bobs on the spot forever, so a settle predicate
 that watches the shadow OAM the way `puzznic_gb` and `flipull_gb` do would never fire here.
 This one watches the board buffer alone, which is sound because everything a move changes is
-in it — and because the cartridge takes the next press about six frames after the last one,
+in it, and because the cartridge takes the next press about six frames after the last one,
 long before the settle window closes.
 """
 from collections import namedtuple
@@ -94,8 +94,8 @@ LEVEL_DATA_BANK = 3
 # --------------------------------------------------------------------- the level sets
 # Three sets on the cartridge; two of them are rooms. Set B, behind PRACTICE MODE, is a timed
 # climb through ten floors whose board buffer holds the corridors of the neighbouring floors
-# as well as the room, and whose tater starts outside the room — a different game, not a
-# different level — so this environment does not offer it. The index `fix_index` takes runs
+# as well as the room, and whose tater starts outside the room (a different game, not a
+# different level), so this environment does not offer it. The index `fix_index` takes runs
 # over set A and then set C, which is also the order `amazing_tater.LEVELS` is in.
 
 #: `(letter, the game mode that reaches the set, how many rooms)`, in index order.
@@ -103,7 +103,7 @@ LEVEL_SETS = (("A", 0, 41), ("C", 3, 64))
 LEVEL_COUNT = sum(size for _letter, _mode, size in LEVEL_SETS)
 
 #: How far down SELECT MODE each game mode sits. The menu reads BEGINNER, PUZZLE, PRACTICE,
-#: ACTION, and BEGINNER and ACTION both land on set C — this environment takes BEGINNER,
+#: ACTION, and BEGINNER and ACTION both land on set C; this environment takes BEGINNER,
 #: which is the entry the cursor already starts on.
 MODE_MENU_ROW = {0: 1, 1: 2, 3: 0}
 
@@ -227,7 +227,7 @@ def board_bounds(buffer):
     """The rectangle of the 20x18 buffer the room occupies, as `(top, left, bottom, right)`.
 
     Cropping to the cells that are not `$FF` rather than to `$C2BD`/`$C2BE` is deliberate:
-    the two agree on every room the cartridge ships — the tests check that — and the crop
+    the two agree on every room the cartridge ships (the tests check that), and the crop
     keeps working on a buffer read before the dimension bytes have been written.
     """
     live = [(index // ROW_STRIDE, index % ROW_STRIDE)
@@ -271,7 +271,7 @@ def is_solved(pyboy):
 
     The board cannot answer this. A tater in mid-step is *taken off* the board map and drawn
     as a sprite until it arrives, so for a dozen frames after every single press the board
-    shows no tater at all — which is indistinguishable from a solved room if that is all you
+    shows no tater at all, which is indistinguishable from a solved room if that is all you
     look at. `$C2AD` keeps the character's bit set for the whole step, and only clears it when
     the tater reaches the flag.
     """
@@ -279,7 +279,7 @@ def is_solved(pyboy):
 
 
 def render_board(rows):
-    """The friendly view — `$` for every block square, `+` for every arm, `o` for a pivot.
+    """The friendly view: `$` for every block square, `+` for every arm, `o` for a pivot.
 
     The same one `str(amazing_tater.AmazingTaterState)` prints, so a position looks the same
     whichever of the two is holding it. `state.rows` is the exact view, and that is what the
@@ -309,7 +309,7 @@ def board_shape(pyboy):
 def taters_on_board(pyboy):
     """`$C2AD`: one bit per character still to reach the flag.
 
-    A mask and not a count, which took a four-tater room to notice — three of the six rooms
+    A mask and not a count, which took a four-tater room to notice: three of the six rooms
     with more than one tater read 15 there, and a room with the first and fourth characters
     reads 9. The board says the same thing, and `AmazingTaterGBState.is_consistent` checks
     that the two agree.
@@ -374,12 +374,12 @@ BOOT_STEP_TICKS = 30
 INTRO_MAX_TICKS = 300            # how long `wait_until_interactive` will keep probing
 INTRO_STEP_TICKS = 20
 INTRO_FALLBACK_TICKS = 120       # twice the measured wait, for a room where no press does
-                                 # anything at all and the probe therefore cannot tell
+                                 # anything at all, so the probe cannot tell
 
 DIRECTIONS = {"up": (-1, 0), "right": (0, 1), "down": (1, 0), "left": (0, -1)}
 
 #: Handing the controls to the next tater. SELECT on the console; free, because it moves
-#: nobody — otherwise the cheapest plan for a two-tater room would be measured partly in how
+#: nobody; otherwise the cheapest plan for a two-tater room would be measured partly in how
 #: often you swapped.
 SWITCH = "switch"
 SWITCH_BUTTON = "select"
@@ -436,7 +436,7 @@ def _force_level(context):
 
     The loader is entered with `HL` holding twice the level index, worked out by its caller
     from a stage counter and a level-within-stage counter that between them do not cover a
-    set evenly — set A's last room is the one left over after four stages of ten. Writing the
+    set evenly: set A's last room is the one left over after four stages of ten. Writing the
     index the loader is about to use sidesteps all of that, and it is the only write: the
     game mode still comes from the menu, so the cartridge stays in a state it put itself in.
     """
@@ -447,8 +447,8 @@ def _force_level(context):
 def boot(pyboy, mode, render=False, max_ticks=BOOT_MAX_TICKS):
     """Get from power-on to a loaded room in `mode`. True if one appeared.
 
-    The front end is the title screen, then SELECT MODE, then — depending on the mode chosen
-    — either a tutor with several screens of advice or an ENTER PASSWORD grid, and START
+    The front end is the title screen, then SELECT MODE, then, depending on the mode chosen,
+    either a tutor with several screens of advice or an ENTER PASSWORD grid, and START
     advances all of them. Only one screen needs the d-pad: SELECT MODE, where BEGINNER MODE
     is already under the cursor and PUZZLE MODE is one press down.
 
@@ -456,7 +456,7 @@ def boot(pyboy, mode, render=False, max_ticks=BOOT_MAX_TICKS):
     screen and a small number everywhere a cursor exists, so the title screen is what marks
     the boundary: the first small number after it is SELECT MODE's highlight. That matters
     because PUZZLE MODE's password grid reuses the same byte as its own row cursor, and a
-    d-pad press aimed at the mode menu but landing there walks the alphabet instead — which
+    d-pad press aimed at the mode menu but landing there walks the alphabet instead. That
     is exactly how this got written the wrong way round the first time, and why the boot stops
     touching the d-pad the moment the mode is chosen.
     """
@@ -472,7 +472,7 @@ def boot(pyboy, mode, render=False, max_ticks=BOOT_MAX_TICKS):
             past_title = cursor is None
             pyboy.button("start", BOOT_PRESS_TICKS)
         elif chosen or cursor is None:
-            # Either the mode is picked, or the menu has not drawn itself yet — and `chosen`
+            # Either the mode is picked, or the menu has not drawn itself yet, and `chosen`
             # must not be set here. Setting it on the frame between the title going away and
             # the menu appearing is what made the first version of this pick whatever the
             # cursor happened to be resting on.
@@ -492,13 +492,13 @@ def wait_until_interactive(pyboy, render=False, max_ticks=INTRO_MAX_TICKS,
     """Advance past the room's intro, and report how many frames it took.
 
     The loader fills the board buffer before the room has finished announcing itself, so the
-    board is fully readable — and settled — while every button is still ignored, for about
-    sixty frames. A state snapshotted in that window looks perfectly normal and answers no
+    board is fully readable, and settled, while every button is still ignored, for about
+    sixty frames. A state snapshotted in that window looks normal and answers no
     action, which is the worst way for this to go wrong: search sees a room with no legal
     moves rather than an error.
 
     Rather than hard-code the delay, this presses each button from a snapshot at increasing
-    offsets until something answers, then rewinds and replays only the waiting — so the state
+    offsets until something answers. It then rewinds and replays only the waiting, so the state
     handed back is still the one the loader built. SELECT counts as an answer, and has to:
     room A-14 opens with its first tater walled in on all four sides, and handing the
     controls to the other one is the only thing a player can do there.
@@ -577,7 +577,7 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
     """The closed range of hold lengths that move a tater exactly one cell.
 
     The lower end is where a press starts registering at all; the upper end is one frame
-    short of the d-pad's auto-repeat, past which one action walks two cells — and in a game
+    short of the d-pad's auto-repeat, past which one action walks two cells. In a game
     where a block shoved into the wrong pit is gone for good, that is not a longer plan but a
     different one. Neither bound is in the memory map, so both are measured here.
     `Amazing Tater (U)` reports `(1, 11)`.
@@ -662,7 +662,7 @@ class AmazingTaterGBState(GBState):
         self.literals = frozenset(predicates)
 
     def is_consistent(self):
-        """Does the cartridge's own bookkeeping agree with its own board?
+        """Whether the cartridge's own bookkeeping agrees with its own board.
 
         `$C2AD` carries a bit for every tater still to get home and the board draws one code
         per tater, so the two must name the same characters. A position where they disagree
@@ -709,7 +709,7 @@ class AmazingTaterGBAction(GBAction):
         pyboy.tick(max(ticks) + 1, render)
 
     def __settle__(self, pyboy, render, **settle_kwargs):
-        """Wait out the move, and — after SELECT — the lockout that follows it.
+        """Wait out the move, and, after SELECT, the lockout that follows it.
 
         Handing the controls over changes nothing on the board, so the ordinary settle
         predicate is satisfied the instant the press is made and the next action arrives
@@ -793,7 +793,7 @@ class AmazingTaterGBEnv(GBEnv):
 
         This is where `amazing_tater.LEVELS` came from, and re-running it is how a claim
         about a level can be settled without a screenshot. It boots the emulator once per
-        room, so it is slow — a minute or two — and it is the only thing here that is.
+        room, so it is slow (a minute or two), and it is the only thing here that is.
         """
         return tuple(self.__dump__(index) for index in range(LEVEL_COUNT))
 
@@ -851,8 +851,8 @@ class AmazingTaterGBEnv(GBEnv):
     def is_terminal(self, state):
         """Never, and the honest answer is that this cartridge does not offer a cheap test.
 
-        Amazing Tater has real dead ends — a block settled into the one pit that had to be
-        crossed somewhere else is gone for good, and so is the room — but recognising them
+        Amazing Tater has real dead ends (a block settled into the one pit that had to be
+        crossed somewhere else is gone for good, and so is the room), but recognising them
         needs reachability under moving turnstiles, which is not something the board buffer
         answers. The twin's test, "no move changes anything", is not available here either:
         finding that out means expanding the state, and expanding calls back through

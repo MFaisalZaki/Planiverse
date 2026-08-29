@@ -57,7 +57,7 @@ def perform_action(self, state, action):
         return next_state, result
 
     if action.is_exploit() and host_compromised:
-        # host already compromised so exploits don't fail due to randomness
+        # host already compromised so exploits do not fail due to randomness
         pass
     # elif np.random.rand() > action.prob:
     #     return next_state, ActionResult(False, 0.0, undefined_error=True)

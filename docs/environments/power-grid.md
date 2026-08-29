@@ -1,15 +1,15 @@
 # Power grid (restoring security after a line trips)
 
-A transmission line goes out. The power it was carrying does not stop — it redistributes
+A transmission line goes out. The power it was carrying does not stop: it redistributes
 over every remaining line according to Kirchhoff's laws, and some of them now carry more
 than they are rated for. Left alone, an overloaded line trips too, which redistributes the
 flow again, which is how a regional blackout happens.
 
 The operator's move is to change the **topology**. At a substation the equipment is split
 across two busbars, and reassigning which side each line, generator and load sits on
-reroutes the power without switching anything off. That is a discrete action set — a few
+reroutes the power without switching anything off. That is a discrete action set (a few
 hundred distinct reconfigurations on the small case, sixty-six thousand on a competition
-one — sitting on a transition function that is a nonlinear solve.
+one) sitting on a transition function that is a nonlinear solve.
 
 - **Class:** `PowerGridEnv`
 - **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
@@ -21,7 +21,7 @@ one — sitting on a transition function that is a nonlinear solve.
 
 The flow on every line is the solution of the AC power-flow equations, found by
 Newton–Raphson at each step. There is no way to write "the effect of moving this line to
-busbar 2 is that line 17 now carries 1.08 of its rating" — the only way to know is to solve
+busbar 2 is that line 17 now carries 1.08 of its rating": the only way to know is to solve
 the network. A local action has a global, numerical effect.
 
 And **doing nothing is not safe**. The demand time series keeps moving, so the problem is a
@@ -70,7 +70,7 @@ every line of every chronic was tripped in turn.
 
 ### The filter that matters
 
-Every scenario here **blacks out if ignored**. That is not decoration — it is what makes
+Every scenario here **blacks out if ignored**. That is not decoration; it is what makes
 them instances at all. Most overloads on this case *clear themselves* as demand moves:
 tripping line 1 on chronic 0 gives a loading of 1.019 that is back under the limit two steps
 later with no action whatsoever. An instance the null plan solves is not an instance, and 32
@@ -86,7 +86,7 @@ reproducing fails loudly rather than quietly becoming easy.
 domain as bundled, not a shortcoming of the setup, and it was checked rather than assumed:
 
 - Double contingencies (N-2) were tried across all pairs of the interesting lines on two
-  chronics. Every one either black-outs immediately or causes no overload at all — this
+  chronics. Every one either black-outs immediately or causes no overload at all: this
   14-bus case has no survivable N-2.
 - The larger bundled cases were tried too. `l2rpn_neurips_2020_track1` (36 substations, 59
   lines, **66,811** topology actions) and `rte_case118_example` (118 substations, 186 lines,
@@ -94,11 +94,11 @@ domain as bundled, not a shortcoming of the setup, and it was checked rather tha
 
 So the challenge this environment poses is not "find a long plan". It is:
 
-1. **A large action space** — 209 topology actions on the small case, 45–119 of them
+1. **A large action space**: 209 topology actions on the small case, 45–119 of them
    relevant to any given overload, tens of thousands on the bigger ones.
-2. **An expensive successor function** — every child is an AC power-flow solve, about
+2. **An expensive successor function**: every child is an AC power-flow solve, about
    50 ms; one expansion here takes 8–19 seconds.
-3. **A hard deadline** — two to four steps before the cascade.
+3. **A hard deadline**: two to four steps before the cascade.
 
 That is a real and under-served shape of planning problem: cheap to state, expensive to
 expand, needle-in-a-haystack. A heuristic that avoids simulating all 119 candidates is worth
@@ -123,7 +123,7 @@ copies per child, so a path is never walked twice.
 
 | Field | Meaning |
 |---|---|
-| `path` | the action ids taken — the whole state |
+| `path` | the action ids taken; the whole state |
 | `max_rho` | worst line loading; `1.0` is exactly the thermal rating |
 | `rhos` | loading of every line |
 | `blackout` | the episode ended |
@@ -131,7 +131,7 @@ copies per child, so a path is never walked twice.
 
 Literals: `acted(i,id)`, `step(n)`, `max-loading(n)` bucketed into tenths,
 `overloaded(line-n)`, and `secure` or `blackout`. A blacked-out grid has no loadings to
-report — `max_rho` is infinite so it sorts last — so its numeric atoms are simply absent
+report (`max_rho` is infinite so it sorts last), so its numeric atoms are absent
 rather than fabricated.
 
 **Actions** are indices into grid2op's `IdToAct` enumeration of the topology space, so a
@@ -143,14 +143,14 @@ doing nothing. Every topology action is legal from every state, but offering all
 about thirty seconds a node, and the substations either end of the overloading line are what
 an operator would look at. `PowerGridEnv(restrict_to_overloads=False)` offers the lot.
 
-- **Goal** — every line back within its rating, grid still standing.
-- **Terminal** — blacked out, or past the horizon. A blackout is absorbing in the simulator
+- **Goal**: every line back within its rating, grid still standing.
+- **Terminal**: blacked out, or past the horizon. A blackout is absorbing in the simulator
   too, so there is genuinely nothing to plan from.
 
 ## Attribution
 
-Built on [Grid2Op](https://github.com/Grid2Op/grid2op), the framework RTE — the French
-transmission system operator — uses for the L2RPN competitions.
+Built on [Grid2Op](https://github.com/Grid2Op/grid2op), the framework RTE (the French
+transmission system operator) uses for the L2RPN competitions.
 
 ## Files
 

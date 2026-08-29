@@ -70,7 +70,7 @@ def test_actions_order_by_tick_count():
 # graded "verified" in the memory map: observed changing correctly under controlled input.
 
 def test_timer_is_two_bcd_bytes():
-    """$DA02 holds the high digit and $DA01 the low two, so 03/97 reads 397 — the map's
+    """$DA02 holds the high digit and $DA01 the low two, so 03/97 reads 397, the map's
     own worked example, checked against the on-screen value."""
     assert decode_timer(0x03, 0x97) == 397
     assert decode_timer(0x00, 0x00) == 0
@@ -84,7 +84,7 @@ def test_object_array_is_ten_slots_of_sixteen():
 
 
 def test_objects_read_type_and_position():
-    """+0 is the status byte, +1 the type, +2 Y and +3 X — the four fields the map marks
+    """+0 is the status byte, +1 the type, +2 Y and +3 X: the four fields the map marks
     verified, from watching a slot go live and its X fall as the enemy walked left."""
     raw = bytearray([OBJECT_EMPTY] * (OBJECT_SLOTS * OBJECT_STRIDE))
     raw[0:5] = bytes([0x00, 0x01, 0x88, 0x40, 0x05])
@@ -127,7 +127,7 @@ def test_direction_is_a_code_not_a_velocity():
 
 def test_mario_x_is_a_screen_coordinate():
     """It stops at $51 when the camera takes over, so it cannot measure progress through a
-    level — which is why the planner's goal window is on `level_progress`."""
+    level, which is why the planner's goal window is on `level_progress`."""
     assert MARIO_X_SATURATES_AT == 0x51
 
 
@@ -198,7 +198,7 @@ def test_state_reads_mario_out_of_ram(env):
 
 @needs_rom
 def test_facing_and_direction_follow_the_input(env):
-    """$C205 is $20 facing left, $C20D is $10 right / $20 left — both graded verified."""
+    """$C205 is $20 facing left, $C20D is $10 right / $20 left; both are graded verified."""
     state, _ = env.reset()
     left = SuperMarioLandGBAction("left,10").apply(env.pyboy, state)
     right = SuperMarioLandGBAction("right,10").apply(env.pyboy, state)
@@ -237,8 +237,8 @@ def test_enemies_come_from_the_object_array(env):
 
 @needs_rom
 def test_the_camera_is_read_from_the_register(env):
-    """There is no WRAM mirror of the scroll value — the map searched for one and found
-    none — so SCX comes from $FF43."""
+    """There is no WRAM mirror of the scroll value (the map searched for one and found
+    none), so SCX comes from $FF43."""
     state, _ = env.reset()
     assert 0 <= state.camera_x <= 255
     assert state.camera_y == 0, "the flat opening of 1-1 never scrolls vertically"
@@ -327,3 +327,25 @@ def test_literals_describe_mario(env):
     # depth and coins are separate literals: they used to be concatenated into one.
     assert f"(depth {state.depth})" in state.literals
     assert f"(coins {state.coins})" in state.literals
+
+
+@needs_rom
+def test_states_from_different_levels_are_different():
+    """The level really did change (the wrapper's world readback and the tilemap both
+    said so), but the state left the level identity out of `literals`, `__eq__` and
+    `repr`, so states from two different levels stringified and compared equal. The
+    world byte the state used to read, $DA16, was an unverified guess that held 1 in
+    every level; $FFB4 is the byte PyBoy's own wrapper reads, high nibble world and
+    low nibble level, and it was verified against all 12 levels on the cartridge."""
+    first_env = SuperMarioLandGBEnv(sml_rom_path(), render=False)
+    first_env.fix_index(0)
+    first, _ = first_env.reset()
+    third_env = SuperMarioLandGBEnv(sml_rom_path(), render=False)
+    third_env.fix_index(2)
+    third, _ = third_env.reset()
+
+    assert (first.world, first.level) == (1, 1)
+    assert (third.world, third.level) == (1, 3)
+    assert first != third
+    assert str(first) != str(third)
+    assert first.literals != third.literals

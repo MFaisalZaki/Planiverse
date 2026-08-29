@@ -1,12 +1,12 @@
 """The one thing every Planiverse environment is.
 
-There used to be two base classes — `RealWorldProblem` and `RetroGame` — and the split cost
+There used to be two base classes, `RealWorldProblem` and `RetroGame`, and the split cost
 something without buying anything. It described where an environment *came from*, not what a
 planner could *do* with it, so nothing could dispatch on it usefully: the `Simulator` facade
 ended up asking `isinstance(env, RetroGame) or isinstance(env, RealWorldProblem)`, two
-branches doing identical work. Meanwhile the distinctions that actually matter to a planner —
-is the transition deterministic, how do you get back to a state to expand it again, how
-expensive is one successor — were written nowhere at all.
+branches doing identical work. Meanwhile the distinctions that actually matter to a planner
+(is the transition deterministic, how do you get back to a state to expand it again, how
+expensive is one successor) were written nowhere at all.
 
 So there is one base class now, and the taxonomy moved into data. `Environment` is the
 contract; `EnvironmentSpec` in `registry.py` carries everything a caller might want to select
@@ -25,8 +25,8 @@ def _stub(method):
     The distinction matters to `capabilities()`. `validate` has a *working* default derived
     from `simulate` and `is_goal`, so an environment that does not override it still offers
     it. `step` and `get_actions` have defaults that only raise, so an environment that does
-    not override them does not offer them at all. Overriding is therefore the wrong test,
-    and so is `hasattr`.
+    not override them does not offer them at all. Overriding is the wrong test, and so is
+    `hasattr`.
     """
     method.__planiverse_stub__ = True
     return method
@@ -58,7 +58,7 @@ class Environment:
 
     # ------------------------------------------------------------------- the contract
     # Not abstract methods. A missing one raises where it is *called*, naming the class and
-    # the method, which is a better error than a class that cannot be constructed at all —
+    # the method, which is a better error than a class that cannot be constructed at all:
     # an environment half-written is still worth poking at in a REPL.
 
     @_stub
@@ -84,7 +84,7 @@ class Environment:
 
     @_stub
     def is_terminal(self, state):
-        """Is this a dead end — no goal reachable from here?"""
+        """Is this a dead end (no goal reachable from here)?"""
         raise NotImplementedError(f"{type(self).__name__} must implement is_terminal()")
 
     @_stub
@@ -119,6 +119,20 @@ class Environment:
             f"{type(self).__name__} has no static action list; its actions are built per "
             "state by successors()")
 
+    def render_trace(self, trace, target, **kwargs):
+        """Write a trace to `target`: an animated GIF (`plan.gif`) or a directory of
+        one PNG per state.
+
+        A convenience over `planiverse.rendering.render_trace` that supplies this
+        environment's cartridge when it has one, so a Game Boy trace comes out as real
+        console screenshots with no extra arguments. Not a capability: it works for every
+        environment, because every state can at least be rendered as its own text.
+        """
+        from planiverse.rendering import render_trace
+
+        kwargs.setdefault("gamerom", getattr(self, "romfile", None))
+        return render_trace(trace, target, **kwargs)
+
     @classmethod
     def capabilities(cls):
         """Which optional methods this environment actually *provides*.
@@ -142,7 +156,7 @@ def implements_contract(candidate):
     """Does `candidate` satisfy the contract, whether or not it inherits from `Environment`?
 
     Kept because anything a user brings from outside is a legitimate environment without
-    being a subclass. Structural, not nominal — which is the point of dropping the
+    being a subclass. Structural, not nominal, which is the point of dropping the
     two-base-class taxonomy in the first place.
 
     A base-class default that only raises does not count: a bare `Environment()` has all six

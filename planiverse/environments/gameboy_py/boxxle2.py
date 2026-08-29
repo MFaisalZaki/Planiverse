@@ -10,7 +10,7 @@ behaviour.
 Sokoban, and nothing more. A warehouse keeper walks the four directions one cell at a time:
 
 1. A step into a **wall** is refused, and the position does not change.
-2. A step into a **box** pushes it one cell in the same direction — but only if the cell
+2. A step into a **box** pushes it one cell in the same direction, but only if the cell
    *behind* the box is empty floor. A box cannot be pulled, and no chain of boxes can be
    pushed at once.
 3. Any other step just moves the keeper.
@@ -36,7 +36,7 @@ there loads the next one over the top of it. Here a solved position is simply te
 ## Where the levels came from
 
 All 120 of them were decoded out of `Boxxle II (USA, Europe).gb` by
-`boxxle2_gb.read_levels`, at matching indices — `fix_index(7)` here and on `boxxle2_gb` are
+`boxxle2_gb.read_levels`, at matching indices: `fix_index(7)` here and on `boxxle2_gb` are
 the same board. Nothing was transcribed by hand, which is why none of them carries the kind
 of quiet error the hand-typed Puzznic levels did; `tests/test_boxxle2.py` re-decodes the ROM
 and compares, when a ROM is available, so a level cannot drift away from the cartridge
@@ -309,7 +309,7 @@ LEVELS = (
 def parse_level(text):
     """An ASCII level into `(walls, goals, boxes, player, shape)`.
 
-    The static half of a level — walls, goals and the board's shape — is separated from the
+    The static half of a level (walls, goals and the board's shape) is separated from the
     part that moves, because it never changes and copying it into every state would make
     every state a hundred times bigger than the position it describes.
     """
@@ -336,7 +336,7 @@ def push(walls, boxes, player, direction):
     """One step. Returns `(player, boxes)`, or None when the step is refused.
 
     None rather than an unchanged position, so that a caller can tell "the keeper walked
-    somewhere" from "the keeper walked into a wall" without comparing states — which is what
+    somewhere" from "the keeper walked into a wall" without comparing states, which is what
     `successors` needs to drop the actions that do nothing.
     """
     row_step, col_step = DIRECTIONS[direction]
@@ -354,8 +354,8 @@ def push(walls, boxes, player, direction):
 def dead_squares(walls, goals, shape):
     """Cells a box can never leave: the corners of walls that are not goals.
 
-    Sokoban's cheapest and safest deadlock test. Sound — a box here really is stuck for good,
-    because both of the axes it could be pushed along are blocked — and deliberately not
+    Sokoban's cheapest and safest deadlock test. Sound (a box here really is stuck for good,
+    because both of the axes it could be pushed along are blocked) and deliberately not
     complete: a wrong "dead end" prunes a solvable branch, which is a far worse failure than
     letting a doomed one run. Frozen pairs, and rows that hug a wall with no goal on them, are
     dead too and are not claimed here.
@@ -534,7 +534,7 @@ class Boxxle2Game(Environment):
     def is_terminal(self, state):
         """A box on a square it can never be pushed off again.
 
-        Sound, not complete — see `dead_squares`. The Game Boy sibling computes exactly the
+        Sound, not complete: see `dead_squares`. The Game Boy sibling computes exactly the
         same test from exactly the same information: this cartridge keeps its walls in work
         RAM, so for once the twin has no analytical advantage over the emulator.
         """

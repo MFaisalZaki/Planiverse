@@ -1,8 +1,8 @@
 """Tests for the Amazing Tater Game Boy environment.
 
 Two tiers. The first needs neither PyBoy nor a cartridge: almost everything this environment
-does before it touches the emulator is a pure function of bytes — the cell-code decoder, the
-board cropper, the ROM's own pointer tables — and those are checked against synthetic buffers
+does before it touches the emulator is a pure function of bytes (the cell-code decoder, the
+board cropper, the ROM's own pointer tables), and those are checked against synthetic buffers
 and a synthetic ROM image, which is cheaper and covers more than driving the machine would.
 
 The second needs the real cartridge, which is copyrighted and cannot ship here, so it is
@@ -66,7 +66,7 @@ def test_the_two_modules_agree_on_the_alphabet():
 def test_every_glyph_but_wall_and_pivot_names_exactly_one_code():
     """Fifteen wall graphics and fifteen turnstile shapes collapse; nothing else may.
 
-    The collapse is deliberate — which wall graphic a wall uses and which shape a pivot is
+    The collapse is deliberate: which wall graphic a wall uses and which shape a pivot is
     change nothing a tater can do, and a pivot's arms are written out beside it anyway. Every
     other code has to survive the trip, or a board could not be read back.
     """
@@ -280,7 +280,7 @@ def test_a_room_with_a_walled_in_tater_still_offers_the_switch(env):
 @needs_rom
 def test_two_switches_in_a_row_both_land(env):
     """The cartridge ignores anything pressed within 33 frames of a SELECT, and nothing on
-    the board says so — which silently turned every second switch into a no-op."""
+    the board says so, which silently turned every second switch into a no-op."""
     env.fix_index(13)
     state, _ = env.reset()
     once = env.__advance__(state, f"{SWITCH},5")

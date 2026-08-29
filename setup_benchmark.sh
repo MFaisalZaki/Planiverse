@@ -17,7 +17,7 @@
 #
 # The reason this exists rather than a line in the README is the cartridges. Puzznic, Flipull
 # and Super Mario Land are copyrighted and cannot ship here, so their paths can only come
-# from you — and an experiment that silently skipped them would quietly be benchmarking half
+# from you, and an experiment that silently skipped them would quietly be benchmarking half
 # of what it claims to. This asks.
 set -euo pipefail
 
@@ -82,7 +82,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         # --rom-puzznic, --rom-flipull, --rom-super-mario-land (--rom-mario), and whatever a future Game
         # Boy environment adds. Matched by shape and handed straight to `init`, which
-        # generates the real flags from the registry — so this script never holds a second
+        # generates the real flags from the registry, so this script never holds a second
         # list of them that could fall out of step.
         --rom-*)
             ROM_ARGS+=("$1" "$2")
@@ -141,8 +141,8 @@ if [ "$USE_VENV" = "1" ]; then
         exit 1
     fi
     ENTRY_POINT="$CLI"
-    # Activated as well, so anything a job runs after the CLI — and anything you run by hand
-    # in one of these directories — gets the same interpreter.
+    # Activated as well, so anything a job runs after the CLI (and anything you run by hand
+    # in one of these directories) gets the same interpreter.
     SETUP_COMMANDS+=(--setup-command ". $VENV_DIR/bin/activate")
 else
     if [ -z "$ENTRY_POINT" ]; then
@@ -188,7 +188,7 @@ ask_rom() {
     local default="${!variable:-}" answer
 
     # Every exit is an explicit `return 0`. A bare `return` carries the status of the last
-    # command, so a skipped cartridge left a failing `[ -n ... ]` as the result — and
+    # command, so a skipped cartridge left a failing `[ -n ... ]` as the result, and
     # `rom=$(ask_rom ...)` takes its status, which under `set -e` ended the script on the
     # first environment the user does not have a ROM for.
     if [ "$ASSUME_YES" = "1" ] || [ ! -t 0 ]; then
@@ -252,7 +252,7 @@ echo "  its pure-Python twin; each one you skip is reported as skipped rather th
 echo "  dropped. Paths are recorded in the experiment, so cluster jobs get them too."
 echo
 
-# Environment, variable, flag and label, four fields per entry — kept as a flat list and read
+# Environment, variable, flag and label, four fields per entry; kept as a flat list and read
 # four at a time, because a label contains a space and word-splitting one string would tear
 # "Super Mario Land" into three.
 ROM_ENTRIES=(
@@ -276,7 +276,7 @@ supplied() {
     return 1
 }
 
-# Spaces after commas are forgiven — "puzznic, flipull" means what it says.
+# Spaces after commas are forgiven: "puzznic, flipull" means what it says.
 ENVIRONMENTS="${ENVIRONMENTS// /}"
 
 for ((i = 0; i < ${#ROM_ENTRIES[@]}; i += 4)); do

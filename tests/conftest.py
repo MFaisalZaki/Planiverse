@@ -57,8 +57,8 @@ def boxxle2_rom_path():
 
     Copyrighted like the others, so it is opt-in via PLANIVERSE_BOXXLE2_ROM. Unlike Puzznic
     and Flipull there is no synthetic cartridge standing in for it: almost everything the
-    Boxxle II environment does is a pure function of bytes — the level decoder, the board
-    decoder, the deadlock test — and those are tested against synthetic RAM and a synthetic
+    Boxxle II environment does is a pure function of bytes (the level decoder, the board
+    decoder, the deadlock test), and those are tested against synthetic RAM and a synthetic
     ROM image instead, which is cheaper and covers more.
     """
     rom = os.environ.get("PLANIVERSE_BOXXLE2_ROM")

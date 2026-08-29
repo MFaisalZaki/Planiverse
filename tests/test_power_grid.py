@@ -1,7 +1,7 @@
 """Tests for the power grid environment.
 
 The case and its time series ship inside grid2op, so there is nothing to download. The
-tests are slower than most in this suite — every successor is an AC power-flow solve — so
+tests are slower than most in this suite (every successor is an AC power-flow solve), so
 the expensive ones are marked `slow`.
 """
 import pytest
@@ -90,7 +90,7 @@ def test_every_scenario_reproduces_its_recorded_measurements():
 def test_doing_nothing_really_does_black_the_grid_out(env):
     """What makes these instances instances.
 
-    Most overloads on this case clear themselves as demand moves — tripping line 1 on
+    Most overloads on this case clear themselves as demand moves: tripping line 1 on
     chronic 0 gives 1.019 and is back under the limit two steps later with no action at
     all. Those are solved by the null plan and are deliberately not in the scenario list.
     Every scenario that *is* in it blacks out if ignored.
@@ -179,7 +179,7 @@ def test_a_blackout_is_terminal_and_absorbing(env):
 
 def test_a_blackout_state_has_no_numeric_literals():
     """`max_rho` is infinite for a blackout precisely so it sorts last, which means the
-    bucketed loading atom cannot be computed — it is simply absent."""
+    bucketed loading atom cannot be computed; it is simply absent."""
     blacked_out = PowerGridState((0,), float("inf"), (), True, 5, False)
     assert "blackout" in blacked_out.literals
     assert not any(lit.startswith("max-loading") for lit in blacked_out.literals)

@@ -2,9 +2,9 @@
 
 Addresses come from a reverse-engineering pass over `Super Mario Land (World) (Rev 1).gb`
 (MD5 `b259feb41811c7e4e1dc200167985c84`), documented in
-`docs/environments/super-mario-land.md`. That map was derived *behaviourally* — recording
-work RAM every frame while driving scripted input — so its confidence varies field by field,
-and the constants below carry that grading rather than pretending to it.
+`docs/environments/super-mario-land.md`. That map was derived *behaviourally* (recording
+work RAM every frame while driving scripted input), so its confidence varies field by field.
+The constants below carry that grading rather than pretending to it.
 """
 from itertools import product, chain
 from collections import namedtuple
@@ -17,7 +17,7 @@ from planiverse.environments.gameboy.gb import (
 ROM_MD5 = "b259feb41811c7e4e1dc200167985c84"
 
 # --------------------------------------------------------------- Mario's state struct
-# $C200-$C21F. Verified: the struct starts at $C200 -- $C1F0-$C1FF was provably zero across
+# $C200-$C21F. Verified: the struct starts at $C200; $C1F0-$C1FF was provably zero across
 # every frame recorded.
 MARIO_Y_ADDR = 0xC201            # verified; screen coordinates, not level
 MARIO_X_ADDR = 0xC202            # verified; saturates at $51 once the camera takes over
@@ -49,14 +49,17 @@ Enemy = namedtuple("Enemy", ["slot", "type", "x", "y", "animation"])
 TIMER_LOW_ADDR = 0xDA01          # verified: low two digits, BCD
 TIMER_HIGH_ADDR = 0xDA02         # verified: high digit, BCD
 LIVES_ADDR = 0xDA15              # moderate: matched MARIO x02 on screen, never seen change
-WORLD_ADDR = 0xDA16              # unverified: read $01 in 1-1, no level transition observed
+WORLD_LEVEL_ADDR = 0xFFB4        # high nibble world, low nibble level: the byte PyBoy's own
+                                 # wrapper reads, verified against all 12 levels on the
+                                 # cartridge. Replaces $DA16, an unverified guess that held
+                                 # $01 in every level and so carried no level identity.
 
 #: Hardware SCX. The map searched all of WRAM for a mirror of the scroll value and found
 #: none, so the camera is only readable from the register itself.
 SCX_ADDR = 0xFF43
 SCY_ADDR = 0xFF42
 
-#: Not in the memory map -- PyBoy's own Super Mario Land wrapper uses it as the level block,
+#: Not in the memory map: PyBoy's own Super Mario Land wrapper uses it as the level block,
 #: and `level_progress` below is its formula. Kept because it is the only thing that gives a
 #: number which keeps rising across screens; the map explicitly failed to find a 16-bit
 #: level X anywhere in WRAM.
@@ -77,7 +80,7 @@ velocity = namedtuple("Velocity", ["x", "y"])
 def read_timer(pyboy):
     """The HUD timer, from the two BCD bytes at `$DA01`/`$DA02`.
 
-    `$DA02` holds the high digit and `$DA01` the low two, so `03`/`97` reads 397 — checked
+    `$DA02` holds the high digit and `$DA01` the low two, so `03`/`97` reads 397, checked
     against the on-screen value, decrementing one BCD unit per second.
     """
     return decode_timer(pyboy.memory[TIMER_HIGH_ADDR], pyboy.memory[TIMER_LOW_ADDR])
@@ -142,7 +145,7 @@ class SuperMarioLandGBState(GBState):
         self.animation_frame = pyboy.memory[MARIO_ANIMATION_ADDR]
         self.moving = pyboy.memory[MARIO_MOVING_ADDR] != 0
 
-        # $C20C is a speed *magnitude* and $C20D a direction code -- not the x and y of a
+        # $C20C is a speed *magnitude* and $C20D a direction code, not the x and y of a
         # velocity, which is what these two used to be read as. There is no vertical
         # velocity byte in the map at all; `jump_phase` and `on_ground` are what describe
         # vertical motion.
@@ -165,15 +168,16 @@ class SuperMarioLandGBState(GBState):
 
         # Goal/terminal flags are sampled here, while the emulator still holds this state.
         # Reading them later from live memory would describe whichever state was applied last.
-        # Neither address is in the memory map; both are inherited guesses -- see the docs.
+        # Neither address is in the memory map; both are inherited guesses; see the docs.
         self.level_complete = pyboy.memory[LEVEL_COMPLETE_ADDR] == 0x01
         self.game_over = pyboy.memory[MUSIC_TRACK_ADDR] == DEATH_MUSIC_TRACK
 
         self.timeleft = read_timer(pyboy)
         self.lives_left = bcd_to_dec(pyboy.memory[LIVES_ADDR])
-        self.world = pyboy.memory[WORLD_ADDR]
+        world_level = pyboy.memory[WORLD_LEVEL_ADDR]
+        self.world, self.level = world_level >> 4, world_level & 0x0F
 
-        # PyBoy's own wrapper formula, not the memory map's -- the map looked for a 16-bit
+        # PyBoy's own wrapper formula, not the memory map's; the map looked for a 16-bit
         # level X across all of WRAM and found nothing. SCX is taken at scanline 16 rather
         # than from $FF43, because the HUD splits the screen and the register holds whatever
         # the split left behind; scanline 16 is below it, so it is the playfield's scroll.
@@ -186,6 +190,10 @@ class SuperMarioLandGBState(GBState):
         self.score = self.__sum_number_on_screen__(pyboy, 0, 1, 6, blank, -256)
 
         predicates = [
+            # The level identity. Without it, states from two different levels compared
+            # equal at spawn: every level starts Mario at the same screen position with
+            # the same coins, lives and progress.
+            f'(world {self.world} {self.level})',
             f'(supermario position {self.mario_position.x} {self.mario_position.y})',
             f'(supermario motion {self.mario_speed} {self.mario_direction})',
             f'(supermario grounded {int(self.on_ground)})',
@@ -205,13 +213,14 @@ class SuperMarioLandGBState(GBState):
         return number
     
     def __eq__(self, other):
-        # Two states are equal if and only if mario is in the same position. 
-        # I am afraid that this won't all mario to go back
-        # So if mairo is in the same position and time difference is more than xx seconds then consider those two states are the same.
+        # Two states are equal if and only if Mario is in the same position.
+        # I am afraid that this will not allow Mario to go back.
+        # So if Mario is in the same position and the time difference is more than xx seconds then consider those two states the same.
         return self.literals == other.literals and abs(self.timeleft - other.timeleft) < 5
 
     def __repr__(self):
-        return (f'<SuperMarioLandGBState(depth={self.depth}, mario_position={self.mario_position}, '
+        return (f'<SuperMarioLandGBState(world={self.world}-{self.level}, depth={self.depth}, '
+                f'mario_position={self.mario_position}, '
                 f'progress={self.level_progress}, enemies={self.enemies_on_screen})>')
     
     @staticmethod
@@ -219,8 +228,8 @@ class SuperMarioLandGBState(GBState):
         """Whether an object's box overlaps Mario's.
 
         Both are screen coordinates read on the same frame, so they are directly
-        comparable. This is a proximity test, not a flag the game sets — the map found no
-        damage byte — so it says "in contact", not "took a hit": what contact costs
+        comparable. This is a proximity test, not a flag the game sets (the map found no
+        damage byte), so it says "in contact", not "took a hit": what contact costs
         depends on power-up state, which the map could not confirm either.
         """
         return abs(mario.x - enemy.x) < reach and abs(mario.y - enemy.y) < reach
@@ -237,7 +246,7 @@ class SuperMarioLandGBState(GBState):
         """Inherited behaviour, with this game's larger default scale.
 
         It used to open a real SDL2 window to take the screenshot, which needs a display and
-        so failed on any headless machine — including every CI runner. The shared
+        so failed on any headless machine, including every CI runner. The shared
         implementation uses the null window, which renders the frame just as well.
         """
         return super().save(gamerom, file, scale=scale)
@@ -309,7 +318,7 @@ class SuperMarioLandGBEnv(GBEnv):
         """Mario died.
 
         Touching an enemy is deliberately not terminal. `state.touching_enemy` is a
-        proximity test over the object array, and contact is only fatal to small Mario —
+        proximity test over the object array, and contact is only fatal to small Mario;
         the map could not confirm the power-up byte, so there is no way to tell the cases
         apart. Death itself is caught by the music track. Use `mario_damage()` if you want
         contact as a heuristic penalty.
@@ -324,7 +333,7 @@ class SuperMarioLandGBEnv(GBEnv):
 
         Unlike the siblings there is no absorbing rule for won or lost levels here, and no
         settle: both would change what this environment has always handed back, and
-        verifying the change needs the real cartridge — so the alignment is deliberately
+        verifying the change needs the real cartridge, so the alignment is deliberately
         deferred rather than slipped in.
         """
         if isinstance(action, str):

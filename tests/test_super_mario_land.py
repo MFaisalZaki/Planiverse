@@ -119,7 +119,7 @@ def test_gravity_is_capped():
 
 def test_a_wall_stops_you_and_takes_your_speed():
     """The flag is parked out of reach above the wall so that this measures the wall and not
-    the level ending — an earlier version put it in the running lane, and the run stopped
+    the level ending: an earlier version put it in the running lane, and the run stopped
     because Mario had won."""
     walled = "\n".join(["      G", "   #   ", "M  #   ", "#######"])
     game, state = game_on(walled)

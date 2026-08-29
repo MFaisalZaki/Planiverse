@@ -1,4 +1,4 @@
-"""`planiverse-bench` — the staged command line.
+"""`planiverse-bench`: the staged command line.
 
 The stages mirror [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit), because the
 separation is the useful part: each one writes files the next one reads, so a benchmark can be
@@ -31,7 +31,7 @@ from planiverse.environments import REGISTRY
 
 #: How high `iw` is allowed to climb. A bound, not a plan: `IteratedWidth` stops as soon as a
 #: width solves the problem, the budget runs out, or a width covers the whole reachable space
-#: without discarding anything for novelty — so in practice it stops at 1 or 2 and this
+#: without discarding anything for novelty, so in practice it stops at 1 or 2 and this
 #: number is never reached. Fixing the width instead would report IW at a configuration we
 #: chose rather than at the one the algorithm defines.
 MAX_WIDTH = 1000
@@ -39,8 +39,8 @@ MAX_WIDTH = 1000
 #: What `init` writes. A spread rather than a single planner: the point of the harness is
 #: comparison, and one of each family makes the first report say something.
 #:
-#: Every width planner runs as its **iterated** version — a fixed width reports the planner
-#: at a configuration we chose rather than at the one the algorithm defines — joined by the
+#: Every width planner runs as its **iterated** version (a fixed width reports the planner
+#: at a configuration we chose rather than at the one the algorithm defines), joined by the
 #: two sampling planners, `fsx` and `mcts`. `iw` and `siw` iterate because novelty is a
 #: *filter* in both, so a width too low loses states outright and which width is enough is a
 #: property of the problem.
@@ -50,12 +50,12 @@ DEFAULT_PLANNERS = (
     PlannerSpec(tag="siw", planner="siw",
                 params={"width": 1, "max_width": MAX_WIDTH, "strict": False}),
     # BFWS iterates for a different reason than IW does. Plain BFWS is complete at every
-    # width, so escalation is not a cure for a too-low width — it is a budget strategy:
+    # width, so escalation is not a cure for a too-low width; it is a budget strategy:
     # cheap pruned rounds (k-BFWS, IW's frontier with BFWS's ordering inside it) first,
-    # then one unpruned, complete round on whatever budget is left — the Dual-BFWS shape.
+    # then one unpruned, complete round on whatever budget is left (the Dual-BFWS shape).
     # The bound is MAX_WIDTH like the others', but `strict` is deliberately left on, unlike
     # theirs: here escalation competes with the final complete round for the same budget,
-    # and pruned rounds above width 2 would spend it enumerating tuples instead — so the
+    # and pruned rounds above width 2 would spend it enumerating tuples instead, so the
     # strict refusal is what hands the leftover budget to the complete round.
     PlannerSpec(tag="bfws", planner="iterated_bfws", params={"max_width": MAX_WIDTH}),
     PlannerSpec(tag="fsx", planner="fsx",

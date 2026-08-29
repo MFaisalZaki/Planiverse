@@ -2,7 +2,7 @@
 
 A capacity-planning problem: buy machine configurations from a market, run them, and meet a
 production demand before the clock runs out. Each configuration trades off purchase cost, running
-cost, throughput, and setup time — so the plan is a bet about which machines to buy and when to start
+cost, throughput, and setup time, so the plan is a bet about which machines to buy and when to start
 paying for them. Adapted from [mfgrl](https://github.com/torayeff/mfgrl).
 
 - **Class:** `MfgEnv`
@@ -33,7 +33,7 @@ sorted(state.literals)[:3]
 # ['bought(cfg0 false)', 'bought(cfg1 false)', 'bought(cfg2 false)']
 ```
 
-Only buy actions are available initially — nothing can produce until something is bought.
+Only buy actions are available initially: nothing can produce until something is bought.
 
 ## Instances
 
@@ -55,7 +55,7 @@ The instances span the difficulty range: `data6.json` (demand 24 in 100 days) is
 The index used to come from a bare `os.listdir`, whose order is filesystem-dependent, so "index 0"
 named a different instance on different machines and results were not reproducible. If you have
 results recorded against the old numbering, they were collected against whatever order that machine
-returned — on the machine these docs were written on, index 0 was `data1.json`.
+returned; on the machine these docs were written on, index 0 was `data1.json`.
 
 ### Data format
 
@@ -91,8 +91,9 @@ returned — on the machine these docs were written on, index 0 was `data1.json`
 (DEMAND_TIME - SETUP_TIMES[best]) * PRODN_RATES[best] * BUFFER_SIZE > DEMAND
 ```
 
-i.e. even filling the buffer with the highest-throughput configuration must beat the demand. It also
-computes `PENALTY_K` (worst-case cost bound), inherited from the RL formulation and **unused** here.
+i.e. even filling the buffer with the highest-throughput configuration must beat the demand. The
+same load step computes `PENALTY_K` (worst-case cost bound), inherited from the RL formulation and
+**unused** here.
 
 ## State representation
 
@@ -109,7 +110,7 @@ computes `PENALTY_K` (worst-case cost bound), inherited from the RL formulation 
 | `produced_counts` | Units made by this configuration |
 | `market_*` | The market's advertised values (constant, pre-purchase) |
 
-Literals are stringified state variables, lowercased, with `.` escaped to `_` — `bought(cfg0 false)`,
+Literals are stringified state variables, lowercased, with `.` escaped to `_`: `bought(cfg0 false)`,
 `production_rates(cfg1 1_5)`, `demand(1000)`, `demand_time(100)`. `__eq__` compares literals, so the
 literal set *is* the state identity here.
 
@@ -128,9 +129,9 @@ of `15` both rendered as `15`, silently merging two distinct states into one.
 | `FINISH_PRODUCTION_CFG` | Run `cfg_id` until goal/terminal | ❌ implemented, commented out |
 | `FINISH_PRODUCTION_ALL` | Run every config until goal/terminal | ❌ constructed, never appended |
 
-So the live action set is: **buy any unbought configuration**, or **run a bought configuration for
+The live action set is then: **buy any unbought configuration**, or **run a bought configuration for
 10/20/50/100 days**. `apply_action` still handles all five types, so `simulate` accepts plans using
-the unoffered ones — they're disabled in expansion, not removed.
+the unoffered ones; they are disabled in expansion, not removed.
 
 The macro-actions are the point. Single-day stepping makes a 150-day horizon unsearchable; batching
 in 10–100 day chunks turns it into a handful of decisions, at the cost of not being able to stop
@@ -138,10 +139,10 @@ production mid-batch.
 
 ## Transition
 
-**Buy** (`buy_cfg`) — copies market values into the live fields, sets `bought`, and initialises
+**Buy** (`buy_cfg`) copies market values into the live fields, sets `bought`, and initialises
 `cfgs_status = 1 / market_setup_times`. It does **not** advance time.
 
-**Produce** (`continue_production`) — one day:
+**Produce** (`continue_production`) runs one day:
 
 ```python
 produced_counts += cfgs_status.astype(int) * production_rates   # only counts when status == 1
@@ -156,23 +157,24 @@ early on goal or terminal.
 
 ## Goal and terminal
 
-- **Goal** (`is_goal`) — `demand_time <= 0`. As the source comment says: *"Let's consider the goal
+- **Goal** (`is_goal`): `demand_time <= 0`. As the source comment says: *"Let's consider the goal
   state as the state where the demand_time is out."* **The goal is the clock expiring, not the demand
   being met.** Any plan that burns 150 days is a "solution"; whether it produced anything is not
   checked. Quality has to come from your cost function.
-- **Terminal** (`is_terminal`) — always `False`.
+- **Terminal** (`is_terminal`): always `False`.
 
 ## Known quirks
 
-- **`MfgEnv.__init__` doesn't call `super().__init__()`**, so `self.name` (from `RealWorldProblem`)
-  is never set. `Simulator`'s `isinstance` dispatch still works.
-- **`fix_index` must precede `reset()`** — `reset` reads `self.NUM_CFGS` etc., which `_setup_data`
+- **`MfgEnv.__init__` does not call `super().__init__()`**, so `self.name` (from `Environment`)
+  is never set. Nothing dispatches on it (the contract check is structural), but code that
+  reads `env.name` gets the class attribute default instead of an instance name.
+- **`fix_index` must precede `reset()`**: `reset` reads `self.NUM_CFGS` etc., which `_setup_data`
   creates.
 - **Rewards are computed and thrown away.** `buy_cfg`/`continue_production` compute a local `reward`
-  variable that is never returned — a leftover from the RL original. Cost accounting is the planner's
+  variable that is never returned, a leftover from the RL original. Cost accounting is the planner's
   job; read it off the state's cost fields.
 - **`buffer_size` is loaded but unmodelled.** The multi-machine buffer of the RL original is not
-  implemented — each configuration is bought once, not stocked *n* times. It survives only in the
+  implemented: each configuration is bought once, not stocked *n* times. It survives only in the
   feasibility assert and `PENALTY_K`.
 - **The goal ignores demand.** Running the clock out is a "solution" even if nothing was produced;
   see [Goal and terminal](#goal-and-terminal).
@@ -187,8 +189,8 @@ reproduce:
   other machine was invisible to it. Use `total_produced(state._state)` for the shop-floor total.
 - **`demand_time` advances one day per day.** `finish_production_all` decremented it once per
   configuration inside its loop, so a single day of running five machines burned five days of clock.
-- **Indices are sorted** — see [Instances](#instances).
-- **Literals no longer collide** — see [State representation](#state-representation).
+- **Indices are sorted**; see [Instances](#instances).
+- **Literals no longer collide**; see [State representation](#state-representation).
 
 ## Files
 

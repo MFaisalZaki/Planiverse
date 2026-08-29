@@ -20,7 +20,7 @@ revision-specific, which is why `LoloGBEnv` checks the ROM's MD5 and warns when 
 Four things about this cartridge shape the module.
 
 **The board buffer is the level, not the position.** `LoadRoom` at `$11E5` copies 64 bytes
-out of bank 13 into `$C3BF` — eight rows of eight cells, one byte each — and *never touches
+out of bank 13 into `$C3BF` (eight rows of eight cells, one byte each) and *never touches
 them again*. Collecting a heart, pushing an Emerald Framer and opening the door all leave
 `$C3BF` exactly as it was loaded. So the live position cannot be read there. It is read off
 the BG tilemap instead, where every cell is a 2x2 block of tiles at columns 1-16, rows 1-16,
@@ -28,8 +28,8 @@ and it is the tilemap that the game actually redraws.
 
 **Tile numbers are per-environment.** The cartridge ships eight terrain themes and the same
 cell code renders with different tiles in each, so no fixed tile table would work. `reset`
-learns the handful of tile numbers it needs — heart, closed door, open door, Emerald Framer
-— by reading the tilemap while the board buffer still describes it, and decodes every later
+learns the handful of tile numbers it needs (heart, closed door, open door, Emerald Framer)
+by reading the tilemap while the board buffer still describes it, and decodes every later
 frame against that. See `learn_tiles`.
 
 **Lolo lives on a half-cell grid.** A d-pad press held 1-14 frames moves him 8 pixels, half a
@@ -37,7 +37,7 @@ cell; 16-28 frames moves a whole one. `PRESS_TICKS` is 20 so that one action is 
 which is the granularity the room is designed on; `HALF_STEP_TICKS` is offered for the
 positions where standing on a half-cell matters.
 
-**Enemies move only when Lolo does.** Left alone the board is completely still — measured on
+**Enemies move only when Lolo does.** Left alone the board is completely still, measured on
 all eight enemy kinds for 540 frames. That is what makes a settle predicate work at all here,
 and it is why the cartridge is a sane thing to search: the game advances on Lolo's clock.
 """
@@ -63,7 +63,7 @@ ROOM_COUNT = 163
 # where the tutorial ends and the graded rooms begin. The rest of the split is the shape of
 # the 163 live slots and matches the published description of the European release: a
 # tutorial of 19 rooms, five intermediate floors of 14, ten advanced floors of 5, and 5 Pro
-# rooms — 144 distinct puzzles, with each tutorial room stored twice.
+# rooms: 144 distinct puzzles, with each tutorial room stored twice.
 
 #: Rooms 0-37: 19 puzzles, each stored as a (demonstration, play-it-yourself) pair.
 TUTORIAL_START, TUTORIAL_PAIRS = 0, 19
@@ -88,7 +88,7 @@ OAM_BUFFER_ADDR = 0xC000         # OAM DMA source: 40 sprites of 4 bytes
 
 #: `$C3BE` while an intermediate room is being played. The tutorial's demonstration rooms run
 #: as `$14` and play themselves, which is the one boot outcome that has to be rejected rather
-#: than merely waited out — a self-playing board answers every action with a different one.
+#: than merely waited out: a self-playing board answers every action with a different one.
 SCENE_PLAYING = 0x17
 SCENE_TUTORIAL_DEMO = 0x14
 
@@ -174,8 +174,8 @@ def read_rooms(romfile):
 def room_label(index):
     """How the game itself numbers a room.
 
-    The tutorial stores each of its 19 puzzles twice — the demonstration the game plays for
-    you, then the same room to try — so its labels carry which half of the pair a slot is.
+    The tutorial stores each of its 19 puzzles twice (the demonstration the game plays for
+    you, then the same room to try), so its labels carry which half of the pair a slot is.
     """
     if index < TUTORIAL_END:
         pair, half = divmod(index, 2)
@@ -225,8 +225,8 @@ def decode_grid(board, tiles, tilemap):
     """The live room, as eight rows of eight glyphs.
 
     `board` is the static room from `$C3BF` and supplies the terrain, which never changes.
-    Everything that *does* change — hearts being taken, Framers being pushed, the door opening
-    — is read from `tilemap`, an 8x8 of the top-left tile of each cell's 2x2 block, against
+    Everything that *does* change (hearts being taken, Framers being pushed, the door opening)
+    is read from `tilemap`, an 8x8 of the top-left tile of each cell's 2x2 block, against
     the numbers `learn_tiles` measured for this room.
 
     A cell whose static glyph is an object but whose tile is no longer that object's tile has
@@ -261,7 +261,7 @@ def decode_grid(board, tiles, tilemap):
 
 
 def door_cell(board):
-    """Where the room's one door is. Every room has exactly one — see `verify_room_table`."""
+    """Where the room's one door is. Every room has exactly one; see `verify_room_table`."""
     index = list(board).index(0x96)
     return Position(*divmod(index, 8))
 
@@ -290,7 +290,7 @@ def render_grid(grid, lolo, enemies=()):
 # ------------------------------------------------------------------------- emulation
 
 def read_board(pyboy):
-    """The room as `LoadRoom` left it. Static for the whole room — see the module docstring."""
+    """The room as `LoadRoom` left it. Static for the whole room; see the module docstring."""
     return bytes(pyboy.memory[BOARD_ADDR:BOARD_ADDR + ROOM_BYTES])
 
 
@@ -311,7 +311,7 @@ def learn_tiles(pyboy):
 
     Called once, on a freshly loaded room, when the board buffer and the tilemap describe the
     same thing: every heart cell still holds a heart, every Framer is where it was loaded, and
-    the door is shut. The open-door tile cannot be read yet — no room starts with it open — so
+    the door is shut. The open-door tile cannot be read yet (no room starts with it open), so
     it is taken as the closed tile plus two, which is what every environment does and what
     `docs/environments/lolo-gb-memory-map.md` records the measurement for.
 
@@ -354,7 +354,7 @@ def other_sprites(pyboy):
     """Every visible sprite that is not Lolo, as `(row, col)` cells.
 
     Every actor on this cartridge is drawn as two 8x16 sprites side by side, filled into the
-    shadow OAM in pairs — Lolo in slots 0 and 1, then one pair per enemy or egg. Taking every
+    shadow OAM in pairs: Lolo in slots 0 and 1, then one pair per enemy or egg. Taking every
     second entry keeps the left half of each pair and drops the right, which is what makes an
     enemy one cell rather than two: reading both halves would put a Snakey at columns 5 and
     5.5 and paint over whatever is standing at column 6.
@@ -379,9 +379,9 @@ def magic_shots(pyboy):
 
 
 def is_playing(pyboy):
-    """Is a graded room up and waiting for input?
+    """Whether a graded room is up and waiting for input.
 
-    Three things have to agree. The scene has to be the one the intermediate route runs in —
+    Three things have to agree. The scene has to be the one the intermediate route runs in:
     the tutorial's demonstration rooms are `$14` and play themselves, and a board that moves
     on its own is worse than no board at all. The board buffer has to be non-empty, because it
     is zero on every menu. And Lolo has to have a sprite, because the buffer keeps the last
@@ -409,7 +409,7 @@ DIRECTIONS = {"left": (0, -1), "up": (-1, 0), "down": (1, 0), "right": (0, 1)}
 
 #: What each button costs. `a` is the magic shot: it turns the enemy Lolo is facing into an
 #: egg, and a second shot at an egg blasts it out of the room. Shots are rationed by the
-#: cartridge — the status bar's "PWR" meter — so they are worth what a move is and no more.
+#: cartridge (the status bar's "PWR" meter), so they are worth what a move is and no more.
 action_cost_map = {"left": 1, "right": 1, "up": 1, "down": 1, "a": 1, "nop": 0}
 
 #: START opens the pause overlay and B does nothing in a room; neither is offered.
@@ -427,7 +427,7 @@ def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_
 
     Watching the shadow OAM is enough, and watching anything else would be wrong. The tilemap
     is updated the frame a heart is taken, so a move that ends on a heart would be called
-    finished while Lolo is still sliding — and the dropped presses that causes look exactly
+    finished while Lolo is still sliding, and the dropped presses that causes look exactly
     like a planner's action having no effect. Lolo's slide, every enemy's step and the magic
     shot in flight are all sprites, so when `$C000` holds still for eight frames, nothing on
     the board is moving.
@@ -491,7 +491,7 @@ def boot(pyboy, story_presses=BOOT_STORY_PRESSES, render=False):
 def _force_room(context):
     """Hook body: pin `$C3A6` on the way into `LoadRoom`, once.
 
-    Writing it from outside on a frame boundary is not enough — the route into a room sets the
+    Writing it from outside on a frame boundary is not enough: the route into a room sets the
     number and calls the loader within the same frame. Hooking `$11EC` puts the write between
     the two. It fires once and then stands down, so that clearing the room lets the cartridge
     advance to the next one of its own accord instead of being pinned into replaying this one.
@@ -541,11 +541,11 @@ def _cells_moved(before, after, step):
 def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwargs):
     """The closed range of hold lengths that move Lolo exactly one cell.
 
-    Lolo walks eight pixels — half a cell — per sixteen frames of hold, so this measures both
+    Lolo walks eight pixels (half a cell) per sixteen frames of hold, so this measures both
     ends of the middle band rather than assuming either: below it a press is a half-step, above
     it two cells, and a planner handed back a two-cell move is not being told what its action
-    did. `Adventures of Lolo (U)` reports a band about sixteen frames wide — `(16, 28)` walking
-    right out of int 1-1's start, `(17, 31)` on whichever direction `_open_direction` picks —
+    did. `Adventures of Lolo (U)` reports a band about sixteen frames wide (`(16, 28)` walking
+    right out of int 1-1's start, `(17, 31)` on whichever direction `_open_direction` picks),
     and `PRESS_TICKS` sits inside it either way.
 
     Returns `(low, high)`, or None if no hold moves Lolo exactly one cell.
@@ -572,7 +572,7 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
     """
     window = measure_hold_window(pyboy, state, render, max_hold, **settle_kwargs)
     if window is None:
-        # Lolo never moved — a room where he starts boxed in. Rather than drive the game with
+        # Lolo never moved: a room where he starts boxed in. Rather than drive the game with
         # a made-up hold, fall back to the documented default and say the window is unknown.
         return Calibration(PRESS_TICKS, None)
     low, high = window
@@ -667,13 +667,13 @@ class LoloGBAction(GBAction):
                            died=self.__died__(pyboy, state))
 
     def __died__(self, pyboy, state):
-        """Did Lolo lose a life during this action?
+        """Whether Lolo lost a life during this action.
 
         The cartridge answers by restarting the room where he stands, which is not a flag
         anywhere in work RAM but is unmistakable from either side of the transition: the
         hearts he had collected come back, or he is suddenly somewhere no single action could
         have taken him. One cell is the most any action moves him, so a jump of more than one
-        is a respawn and nothing else. Both tests are needed — the first misses a death in a
+        is a respawn and nothing else. Both tests are needed: the first misses a death in a
         room where he had not collected anything yet, the second misses one where he died on
         the cell he started the action from.
         """
@@ -689,7 +689,7 @@ class LoloGBEnv(GBEnv):
     """Adventures of Lolo, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your own
-    dump. `fix_index` selects which of the 163 rooms the cartridge's loader will build — the
+    dump. `fix_index` selects which of the 163 rooms the cartridge's loader will build: the
     same indices `gameboy_py/lolo.py` uses, so `fix_index(38)` is the same room in both.
     """
 
@@ -709,16 +709,16 @@ class LoloGBEnv(GBEnv):
         self.tiles = None
         self.door = None
         # Off by default, unlike the other cartridges here. Calibration costs eighty boots'
-        # worth of presses and this ROM's answer — `(16, 28)`, so 20 — has been measured and
+        # worth of presses and this ROM's answer (`(16, 28)`, so 20) has been measured and
         # written down; turn it on to check that claim, not to discover it.
         self.should_calibrate = calibrate
         self.calibration = None
         self.actions = action_list
         # Booting straight into a room starts the magic-shot meter empty, because the meter is
         # the player's and not the room's: on a real playthrough whatever was left over from
-        # the room before comes with you. Rooms that need a shot they cannot earn in-room —
-        # int 1-5 is one, a Snakey in the only gap in a wall of trees and not a magic heart
-        # framer anywhere — are unclearable from a cold boot for that reason and not because
+        # the room before comes with you. Rooms that need a shot they cannot earn in-room
+        # (int 1-5 is one, a Snakey in the only gap in a wall of trees and not a magic heart
+        # framer anywhere) are unclearable from a cold boot for that reason and not because
         # anything is wrong. Seed the meter here to play them. `gameboy_py/lolo.py` takes the
         # same argument and means the same thing by it.
         self.magic_shots = magic_shots
@@ -750,7 +750,7 @@ class LoloGBEnv(GBEnv):
 
         Booting is retried across `BOOT_STORY_ALTERNATIVES` rather than trusted once. The one
         screen where the route presses B instead of A is reached by counting taps through the
-        King's introduction, and landing one screen early or late starts the tutorial instead —
+        King's introduction, and landing one screen early or late starts the tutorial instead,
         whose demonstration rooms play themselves and would answer every action with a
         position nobody asked for. `is_playing` catches that, and the retry fixes it.
         """

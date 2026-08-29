@@ -1,6 +1,6 @@
 """Monte Carlo Tree Search (UCT) for deterministic, goal-directed simulators.
 
-UCT — Kocsis and Szepesvári, *Bandit Based Monte-Carlo Planning* (ECML 2006) — treats the
+UCT, from Kocsis and Szepesvári's *Bandit Based Monte-Carlo Planning* (ECML 2006), treats the
 choice of child at each node as a multi-armed bandit and picks by the UCB1 rule, so the tree
 grows deepest where the returns look best while still sampling everything occasionally. Browne
 et al.'s *A Survey of Monte Carlo Tree Search Methods* (IEEE TCIAIG 4(1), 2012) is the
@@ -11,8 +11,8 @@ MCTS was built for adversarial games with a natural terminal reward. Planiverse 
 neither, and three adaptations follow:
 
 **There is no score, only `is_goal`.** A rollout that fails tells you nothing about how close
-it got. The default reward is therefore blunt — 1 for reaching a goal, 0 otherwise, less a
-small length penalty so shorter solutions win ties — and a `reward` callback lets a caller
+it got, so the default reward is blunt: 1 for reaching a goal, 0 otherwise, less a
+small length penalty so shorter solutions win ties. A `reward` callback lets a caller
 supply something denser when the environment offers one (blocks cleared, contamination
 removed). Without one, MCTS needs a rollout to *stumble* into a goal before it learns
 anything at all, which on a sparse problem it may never do.
@@ -23,7 +23,7 @@ and can select on either. `backup="max"` is usually right for planning and is th
 `backup="mean"` is the classical rule.
 
 **Dead ends are real and absorbing.** A rollout that walks into one has wasted its budget, so
-terminal states are marked in the tree and never selected again — which stops UCT from
+terminal states are marked in the tree and never selected again, which stops UCT from
 re-exploring a branch it has already proved is over.
 
 The plan returned is the best goal-reaching path *found*, not the tree's principal variation:
@@ -83,11 +83,11 @@ class MCTSPlanner:
     def __init__(self, iterations=1000, exploration=DEFAULT_EXPLORATION, rollout_depth=30,
                  reward=None, backup="max", seed=None, length_penalty=0.001):
         """
-        - `reward(state) -> float in [0, 1]` — how good a non-goal state is. Without it the
+        - `reward(state) -> float in [0, 1]`: how good a non-goal state is. Without it the
           signal is goal-or-nothing, which is honest but sparse.
-        - `backup` — `"max"` propagates the best value seen through a node, `"mean"` the
+        - `backup`: `"max"` propagates the best value seen through a node, `"mean"` the
           classical average. Determinism makes max the better choice for planning.
-        - `length_penalty` — subtracted per action, so among solutions the shorter wins.
+        - `length_penalty`: subtracted per action, so among solutions the shorter wins.
         """
         if backup not in ("max", "mean"):
             raise ValueError(f"backup must be 'max' or 'mean', got {backup!r}")
@@ -144,7 +144,7 @@ class MCTSPlanner:
         path = []
         # The best reward seen *anywhere along* the rollout, not just where it stopped.
         # Random rollouts in a domain with dead ends nearly always end in one, and scoring
-        # only the final state throws away everything the rollout learned on the way — the
+        # only the final state throws away everything the rollout learned on the way: the
         # tree then sees 0 for every branch and UCT has no gradient to climb. Keeping the
         # high-water mark is what makes a dense `reward` callback actually reach the tree.
         best = self.reward(state) if self.reward else 0.0

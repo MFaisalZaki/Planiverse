@@ -2,7 +2,7 @@
 
 A potato crop goes in the ground in April and comes out in October. Through the season the
 farmer decides, every ten days, whether to irrigate and by how much. The yield is not the
-sum of those decisions — it is the *integral* of a crop growth model driven by the actual
+sum of those decisions: it is the *integral* of a crop growth model driven by the actual
 weather: water applied on day 20 changes the leaf area, which changes how much light the
 canopy intercepts for the next eighty days, which changes the tuber weight at harvest.
 
@@ -13,8 +13,8 @@ the trajectory of a differential equation whose value only becomes a yield at th
 Two things make the decision genuinely hard, both measured on the shipped weather:
 
 * **Whether irrigation helps at all depends on weather that has not happened yet.** In 1980
-  a reference schedule of four 2 cm applications gains **nothing** — the season was wet
-  enough. In 1986 the same schedule gains **2698 kg/ha**. The states look identical on the
+  a reference schedule of four 2 cm applications gains **nothing**, because the season was
+  wet enough. In 1986 the same schedule gains **2698 kg/ha**. The states look identical on the
   day the first decision is made.
 * **Yield is not monotone in water.** Applying more, earlier, is not reliably better; the
   crop's response depends on the growth stage it is in when the water arrives.
@@ -58,11 +58,11 @@ IRRIGATION_EFFICIENCY = 0.7
 
 #: The schedule every scenario's target is measured against: 2 cm on the 20th, 40th, 60th
 #: and 80th day after sowing. It is a witness that each instance is solvable, and it is
-#: deliberately naive — a fixed calendar that ignores the weather entirely.
+#: deliberately naive: a fixed calendar that ignores the weather entirely.
 REFERENCE_SCHEDULE = ((20, 2.0), (40, 2.0), (60, 2.0), (80, 2.0))
 
 #: The target is a shade under what the reference achieves, so a planner that finds a
-#: different — or cheaper — schedule of the same quality also succeeds.
+#: different (or cheaper) schedule of the same quality also succeeds.
 TARGET_FRACTION = 0.98
 
 Scenario = namedtuple("Scenario", ["year", "rainfed", "reference"])
@@ -116,7 +116,7 @@ AGROMANAGEMENT = """
 
 
 def weather_directory():
-    """Where PCSE keeps the CABO weather files it ships — 24 years of Dutch seasons."""
+    """Where PCSE keeps the CABO weather files it ships: 24 years of Dutch seasons."""
     import pcse
 
     return os.path.join(os.path.dirname(pcse.__file__), "tests", "test_data")
@@ -158,9 +158,9 @@ class CropAction:
 class CropState:
     """A season part-way through: the decisions taken, and what the crop has done so far.
 
-    The decision tuple is the state. The crop model is deterministic given the weather —
-    the same schedule in the same year always produces the same yield, verified by running
-    it twice — so replaying a schedule lands in the same place and two schedules that agree
+    The decision tuple is the state. The crop model is deterministic given the weather
+    (the same schedule in the same year always produces the same yield, verified by running
+    it twice), so replaying a schedule lands in the same place and two schedules that agree
     are the same state.
     """
 
@@ -230,7 +230,7 @@ class CropEnv(Environment):
     # ------------------------------------------------------------------ instances
 
     def fix_index(self, index):
-        """Choose the growing season — the same field, a different year's weather."""
+        """Choose the growing season: the same field, a different year's weather."""
         if not 0 <= index < len(SCENARIOS):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(SCENARIOS)} seasons, so the index "
@@ -315,7 +315,7 @@ class CropEnv(Environment):
         return 0.0, biomass, False
 
     def __state__(self, schedule):
-        """The state a schedule leads to. Memoised — deterministic, so it cannot differ."""
+        """The state a schedule leads to. Memoised: deterministic, so it cannot differ."""
         key = tuple(schedule)
         if key in self._cache:
             return self._cache[key]
@@ -344,7 +344,7 @@ class CropEnv(Environment):
     def is_goal(self, state):
         """Harvested, at or above target, without exceeding the water budget.
 
-        The yield is only known at harvest, so no part-grown state is ever a goal — this is
+        The yield is only known at harvest, so no part-grown state is ever a goal: this is
         a finite-horizon problem in which the whole season must be planned before the
         outcome is visible. That is the shape of the domain, not a modelling choice.
         """
@@ -401,7 +401,7 @@ class CropEnv(Environment):
         """The naive fixed-calendar schedule every target is measured against.
 
         Kept as a method because it is a *witness*: every scenario is solvable, and this is
-        the plan that proves it. It is also a baseline worth beating — it ignores the
+        the plan that proves it. It is also a baseline worth beating: it ignores the
         weather entirely, so in a wet year it spends the whole budget for nothing.
         """
         days = decision_days()

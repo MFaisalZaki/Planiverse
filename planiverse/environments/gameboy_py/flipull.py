@@ -11,7 +11,7 @@ the rows or throws. A throw sends the held block leftward along the player's row
 
 1. It **destroys** each block of its own type it meets, and keeps going.
 2. The first block of a **different** type takes the thrown block's place, and comes back into
-   the player's hand — a swap.
+   the player's hand: a swap.
 3. If the *very first* block it meets is a different type, **nothing happens at all**: the
    block flies out and comes back, and the position is unchanged.
 4. Every destroyed cell **collapses its column**: everything above it falls one row.
@@ -25,13 +25,13 @@ refused most of the time and choosing which row to stand on is the whole game.
 ## How faithful is this to the cartridge?
 
 Partly, and the honest answer is worth more than a claim. The rules above were derived by
-driving `Flipull (USA)` and predicting what it would do, and they reproduce it **exactly** —
-field and hand, cell for cell — for throws taken level with the wall in the positions
+driving `Flipull (USA)` and predicting what it would do, and they reproduce it **exactly**
+(field and hand, cell for cell) for throws taken level with the wall in the positions
 checked. Over a longer automated comparison they agreed on about half of the level throws and
-four in five of the throws from above the wall, so something further is going on that has not
+four in five of the throws from above the wall, so something more is going on that has not
 been pinned down: the staircase, or a bounce, or a fall the model does not have.
 
-So this is a Flipull-*like* environment with a stated rule set, not a clone — the same
+So this is a Flipull-*like* environment with a stated rule set, not a clone: the same
 posture as the synthetic test cartridge in `tests/fake_flipull_rom.py`. What it is good for is
 a well-defined, dependency-free planning problem; what it is not good for is predicting the
 cartridge, which is what `flipull_gb` is there to do.
@@ -39,18 +39,24 @@ cartridge, which is what `flipull_gb` is there to do.
 ## What the Python twin can do that the cartridge cannot
 
 Because the rules are known here, `is_terminal` is **exact**: a position is a dead end when no
-throw from any row would connect. The Game Boy environment cannot compute that — it does not
-know what a throw hits — and can only tell you the clock ran out. Dead-end detection is most
+throw from any row would connect. The Game Boy environment cannot compute that (it does not
+know what a throw hits) and can only tell you the clock ran out. Dead-end detection is most
 of what makes a puzzle searchable, so this is not a small difference.
 
 ## Where the stages came from
 
-They were generated and measured, not drawn. Hand-drawn boards kept turning out to have
-unreachable targets — symmetric patterns in particular create parity traps where the last few
-blocks can never be matched — so each stage here was produced randomly, explored exhaustively,
-and kept only once its target was known to be reachable. `tests/test_flipull.py` re-derives a
-solution for every one of them, so a stage whose goal drifts out of reach fails the suite
-rather than quietly wasting a planner's budget.
+The 32 stages replicate the cartridge's own stage table: stage for stage, the same board
+size and the same CLEAR target as `Flipull (USA)`. The arrangements are generated rather
+than copied, for two reasons. First, the cartridge has no canonical arrangements to copy:
+it draws each stage's block layout from an RNG seeded by boot timing, and its ROM stores
+only the block total and the CLEAR target per stage. Second, arrangements the cartridge
+happens to draw are mostly unreachable to their targets under this twin's stated rules
+(26 of 32 in one deterministic draw, proved by exhausting their state spaces), which is a
+measure of how much the unpinned throw mechanics matter. So each board here was produced
+randomly, explored exhaustively, and kept only when the fewest blocks it can be reduced
+to is exactly the cartridge's target. `tests/test_flipull.py` re-derives a solution for
+every one of them, so a stage whose goal drifts out of reach fails the suite rather than
+quietly wasting a planner's budget.
 """
 from planiverse.environments.base import Environment
 
@@ -60,25 +66,51 @@ from planiverse.environments.base import Environment
 WALL, EMPTY = "#", " "
 BLOCK_TYPES = ("1", "2", "3", "4")
 
-#: `(stage, clear_target)`, in rising order of difficulty: the shortest optimal solution runs
-#: 4 moves and the longest 52, over reachable state spaces from a dozen states to ~150,000.
-#: Every target is the fewest blocks the board can actually be reduced to, so a stage is only
-#: cleared by playing it out rather than by chipping away at it.
+#: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
+#: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
+#: of `Flipull (USA)`. The arrangements are this twin's own, because the cartridge has
+#: none to copy: it draws each stage's arrangement from an RNG seeded by boot timing, so
+#: there is no canonical layout per stage, only a contract. Each board here was generated
+#: randomly and explored exhaustively, and kept only when the fewest blocks it can be
+#: reduced to under this twin's rules is *exactly* the cartridge's target, so a stage is
+#: only cleared by playing it out rather than by chipping away at it.
 #:
-#: The player starts on the bottom row of the wall, as on the cartridge — the position where
+#: The player starts on the bottom row of the wall, as on the cartridge: the position where
 #: `down` does nothing, and the reason the Game Boy environment's sprite probe had to stop
 #: demanding movement in both directions.
 STAGES = (
-    ("#####\n#   #\n#111#\n#211#\n#####", 1),
-    ("#####\n#   #\n#222#\n#222#\n#211#\n#####", 1),
-    ("######\n#    #\n#2122#\n#2121#\n#1121#\n######", 1),
-    ("#######\n#     #\n#21222#\n#22211#\n#21211#\n#######", 1),
-    ("######\n#    #\n#1221#\n#1221#\n#1 12#\n#2  1#\n#1 21#\n######", 1),
-    ("########\n#      #\n#1112 2#\n#221122#\n#112112#\n#11121 #\n#21  11#\n########", 1),
-    ("#######\n#     #\n#21222#\n#22121#\n#21111#\n#22221#\n#22112#\n#22111#\n#######", 1),
-    ("#########\n#       #\n#2222111#\n#1111112#\n#2121221#\n#1111212#\n#2112112#\n#########", 1),
-    ("#########\n#       #\n#2122122#\n#1222112#\n#1222221#\n#2112221#\n#2111122#\n#########", 1),
-    ("########\n#      #\n#3 3233#\n#133321#\n#22 121#\n#232 12#\n#3 1312#\n#121333#\n########", 2),
+    ("#######\n#     #\n#42442#\n#44311#\n#34431#\n#24133#\n#31211#\n#######", 9),
+    ("#######\n#     #\n#24111#\n#34422#\n#21334#\n#11141#\n#23421#\n#######", 9),
+    ("#######\n#     #\n#34441#\n#24231#\n#43413#\n#42442#\n#44413#\n#######", 8),
+    ("#######\n#     #\n#31131#\n#42221#\n#14132#\n#23243#\n#22333#\n#33231#\n#######", 8),
+    ("#######\n#     #\n#21142#\n#14243#\n#14122#\n#44434#\n#42222#\n#12211#\n#######", 8),
+    ("#######\n#     #\n#43313#\n#43444#\n#23331#\n#44133#\n#11223#\n#22121#\n#######", 7),
+    ("#######\n#     #\n#41331#\n#41233#\n#13341#\n#42314#\n#42433#\n#41122#\n#######", 7),
+    ("########\n#      #\n#423324#\n#441431#\n#122341#\n#232321#\n#434441#\n#142312#\n########", 7),
+    ("########\n#      #\n#144144#\n#232242#\n#443124#\n#321242#\n#141314#\n#231434#\n########", 8),
+    ("########\n#      #\n#114411#\n#331224#\n#241444#\n#231442#\n#442321#\n#343142#\n########", 8),
+    ("########\n#      #\n#121241#\n#334131#\n#422343#\n#114244#\n#412144#\n#321111#\n########", 8),
+    ("#######\n#     #\n#23222#\n#12324#\n#42442#\n#12141#\n#31214#\n#44412#\n#######", 7),
+    ("#######\n#     #\n#21324#\n#42214#\n#32323#\n#43342#\n#21214#\n#31311#\n#######", 7),
+    ("########\n#      #\n#442434#\n#133234#\n#413421#\n#132114#\n#243224#\n#414444#\n########", 7),
+    ("########\n#      #\n#131113#\n#433111#\n#331112#\n#444344#\n#132211#\n#133443#\n########", 7),
+    ("#######\n#     #\n#22244#\n#21323#\n#41142#\n#21331#\n#14424#\n#12133#\n#######", 7),
+    ("#######\n#     #\n#23214#\n#22441#\n#12424#\n#41222#\n#34144#\n#42113#\n#######", 7),
+    ("#######\n#     #\n#43132#\n#11324#\n#11433#\n#41334#\n#24432#\n#31233#\n#######", 7),
+    ("#######\n#     #\n#12334#\n#32431#\n#31244#\n#42232#\n#14221#\n#33124#\n#######", 7),
+    ("#######\n#     #\n#43234#\n#44431#\n#32322#\n#43312#\n#42422#\n#34334#\n#######", 7),
+    ("#######\n#     #\n#21121#\n#21142#\n#14443#\n#24441#\n#44324#\n#11234#\n#######", 7),
+    ("#######\n#     #\n#42342#\n#12242#\n#34424#\n#43113#\n#23344#\n#13424#\n#######", 6),
+    ("#######\n#     #\n#23214#\n#44123#\n#24432#\n#43122#\n#42421#\n#24141#\n#######", 6),
+    ("########\n#      #\n#342424#\n#434333#\n#432324#\n#423341#\n#121221#\n#112131#\n########", 6),
+    ("########\n#      #\n#343232#\n#341111#\n#414222#\n#232222#\n#423322#\n#443113#\n########", 6),
+    ("########\n#      #\n#131133#\n#243414#\n#214313#\n#342112#\n#314211#\n#231433#\n########", 6),
+    ("########\n#      #\n#443443#\n#413113#\n#341411#\n#433413#\n#411111#\n#442234#\n########", 6),
+    ("########\n#      #\n#144412#\n#432431#\n#143323#\n#212141#\n#111234#\n#311123#\n########", 6),
+    ("########\n#      #\n#412114#\n#123122#\n#213124#\n#222442#\n#243141#\n#232134#\n########", 6),
+    ("#######\n#     #\n#22121#\n#44314#\n#12433#\n#23323#\n#21314#\n#######", 6),
+    ("#######\n#     #\n#13113#\n#24124#\n#14213#\n#42444#\n#42433#\n#######", 6),
+    ("#######\n#     #\n#21422#\n#31342#\n#42134#\n#11441#\n#21123#\n#######", 6),
 )
 
 
@@ -140,8 +172,8 @@ def throw(grid, row, held):
 def collapse(grid, row, col):
     """Drop the blocks stacked above `(row, col)` by one, in place.
 
-    Only *blocks* fall. The run stops at the first cell above that is not one — empty air or
-    the border — so a block with a gap under it stays where it is and the walls stay where
+    Only *blocks* fall. The run stops at the first cell above that is not one (empty air or
+    the border), so a block with a gap under it stays where it is and the walls stay where
     they are. Getting this wrong is quiet and ugly: an earlier version shifted whatever was
     above, which walked the top border down into the play area one throw at a time, and the
     board still looked plausible while it happened.
@@ -273,8 +305,8 @@ class FlipullGame(Environment):
     def is_terminal(self, state):
         """No throw from any row would connect, so the board can never change again.
 
-        Exact, because the rules are known here. The Game Boy sibling cannot compute this —
-        it does not know what a throw hits — and can only report that the clock ran out.
+        Exact, because the rules are known here. The Game Boy sibling cannot compute this
+        (it does not know what a throw hits) and can only report that the clock ran out.
         """
         return not self.is_goal(state) and not state.any_throw_connects()
 

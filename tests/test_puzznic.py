@@ -210,7 +210,7 @@ def test_match_cascades_after_gravity():
     """Clearing lets boxes fall, which can form a new match, which clears in the same step."""
     game = build("#####\n#1  #\n#1  #\n#   #\n#  c#\n#####")
     after = game._compute_successor_state_(game.state, "left")
-    # Both boxes fell together, matched, and cleared -- the level is now won.
+    # Both boxes fell together, matched, and cleared: the level is now won.
     assert after.is_goal()
     assert len(after.cleared_boxes) == 2
 

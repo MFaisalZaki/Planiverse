@@ -144,15 +144,32 @@ def test_implements_the_core_interface(factory):
 
 @pytest.mark.parametrize("factory", environment_params())
 def test_is_a_recognised_environment_type(factory):
-    """One base class now, and Simulator dispatches structurally as well.
+    """One base class now, and the contract check is structural as well.
 
-    There used to be two — `RetroGame` and `RealWorldProblem` — and the split described
+    There used to be two (`RetroGame` and `RealWorldProblem`), and the split described
     where an environment came from rather than what a planner could do with it, so the
-    facade ended up with two isinstance branches doing identical work.
+    `Simulator` facade that dispatched on them ended up with two isinstance branches doing
+    identical work. The facade followed the split into history once every caller took the
+    environment directly.
     """
     env = factory()
     assert isinstance(env, Environment)
     assert implements_contract(env), "and it answers the contract structurally too"
+
+
+def test_an_outside_environment_needs_no_subclassing():
+    """`implements_contract` is duck typing: an environment brought from outside the
+    library counts as long as it answers the six methods, which is the point of checking
+    structurally instead of by base class. A bare `Environment()` has all six attributes
+    and implements none of them, so it must not count."""
+
+    class Outsider:
+        reset = fix_index = successors = is_goal = is_terminal = simulate = lambda *a: None
+
+    assert not isinstance(Outsider(), Environment)
+    assert implements_contract(Outsider())
+    assert not implements_contract(Environment()), "stubs do not satisfy the contract"
+    assert not implements_contract(object())
 
 
 def test_every_registered_environment_is_in_the_catalogue():
@@ -165,7 +182,7 @@ def test_every_registered_environment_is_in_the_catalogue():
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():
-    """Listing the catalogue must not import pyboy, grid2op, numba and the rest — half of
+    """Listing the catalogue must not import pyboy, grid2op, numba and the rest; half of
     them would not be installed."""
     for spec in list_environments():
         assert ":" in spec.factory
@@ -293,7 +310,7 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
 
 def test_validate_comes_from_the_base_and_still_counts_as_provided():
     """`validate` is the same sentence in every environment, so it is written once in the
-    base — but it is a *working* default, unlike `step` and `get_actions` whose defaults
+    base, but it is a *working* default, unlike `step` and `get_actions` whose defaults
     only explain their own absence.
 
     So "does the class override it" is the wrong test for whether a capability is offered,

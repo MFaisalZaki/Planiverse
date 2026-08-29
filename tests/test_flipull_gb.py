@@ -186,7 +186,7 @@ def test_the_stage_table_is_read_out_of_the_rom(fake_rom):
 
 
 def test_the_stage_table_stops_at_the_end_rather_than_running_on(fake_rom):
-    """A pointer table has no length field, so the parse has to recognise its own end —
+    """A pointer table has no length field, so the parse has to recognise its own end:
     on the cartridge another, shorter table follows it immediately in ROM."""
     stages = FlipullGBEnv.read_stage_table(fake_rom, count=64)
     assert len(stages) == 4, "the terminator entry is not a stage"
@@ -284,7 +284,7 @@ def test_calibration_finds_the_player_and_the_throw(env):
 
 def test_the_player_sprite_is_found_by_moving_not_assumed(env):
     """A candidate must never move the *wrong* way, which is what rejects a scratch byte
-    parked in the OAM buffer — the way this went wrong first.
+    parked in the OAM buffer, the way this went wrong first.
 
     It must not have to move *both* ways, which is what rejects the player himself: the
     cartridge starts him on the bottom row, where `down` is the floor.
@@ -312,7 +312,7 @@ def test_moving_is_a_real_state_change(env):
     else, so a move must not collapse into a self-loop.
 
     Only one direction is offered from the starting row, because the other is into the
-    floor and `successors` filters what does nothing — which is the correct answer, not a
+    floor and `successors` filters what does nothing, which is the correct answer, not a
     missing action.
     """
     state, _ = env.reset()
@@ -347,7 +347,7 @@ def test_applying_an_action_rewinds_to_the_parent_first(env):
 def test_a_throw_that_does_not_connect_is_a_self_loop(env):
     """Some throws play the whole animation and change nothing.
 
-    The environment does not try to predict which — see `successors` — but it must handle
+    The environment does not try to predict which (see `successors`), but it must handle
     one correctly when it happens: the position is untouched down to the cartridge's own
     completed-throw counter, so it is a self-loop and gets filtered.
     """
@@ -368,7 +368,7 @@ def test_a_throw_that_does_not_connect_is_a_self_loop(env):
 
 
 def test_a_throw_that_connects_clears_a_block_and_drops_the_column(env):
-    """The whole mechanic, end to end — and the column collapse the map recorded."""
+    """The whole mechanic, end to end, and the column collapse the map recorded."""
     state, info = env.reset()
     throw = FlipullGBAction(f"{info['calibration'].throw_button},"
                             f"{info['calibration'].throw_ticks}")
@@ -397,8 +397,8 @@ def test_the_held_block_comes_off_the_sprite_not_off_ffd4(env):
 
 
 def test_goal_is_the_clear_target_not_zero(env):
-    """Flipull finishes a stage when few enough blocks are left — `BLOCK 25` against
-    `CLEAR 09` — rather than when the field is empty."""
+    """Flipull finishes a stage when few enough blocks are left (`BLOCK 25` against
+    `CLEAR 09`) rather than when the field is empty."""
     state, _ = env.reset()
     assert state.clear_target == 9
     assert not env.is_goal(state)
@@ -452,7 +452,7 @@ def test_cartridge_boots_into_a_stage(cartridge):
 def test_cartridge_stage_one_is_the_one_the_map_recorded(cartridge):
     """25 blocks in columns 1-5, `CLEAR 09`, and a three-minute clock.
 
-    The map recorded `TIME 2:59`, which is that clock one second in — it was read a moment
+    The map recorded `TIME 2:59`, which is that clock one second in: it was read a moment
     after the stage began. `reset` snapshots at the first frame the stage will answer a
     button, which on this cartridge is immediately, so it sees the full 3:00.
     """
@@ -480,7 +480,7 @@ def test_cartridge_calibration(cartridge):
 @needs_rom
 def test_cartridge_repeat_really_fires_where_the_window_says(cartridge):
     """The bound the window claims, checked directly: one row at the top of the window,
-    two rows one frame past it. A hold of 8 — the old hard-coded default — still moves one
+    two rows one frame past it. A hold of 8 (the old hard-coded default) still moves one
     row here, so this passing was never evidence the number was right."""
     state, info = cartridge.reset()
     low, high = info["calibration"].hold_window
@@ -508,7 +508,7 @@ def test_cartridge_a_throw_is_still_in_the_air_when_the_field_goes_quiet(cartrid
 
     A thrown block is a sprite until it lands, so the field is byte-identical for the whole
     flight. Settling on the field alone returns mid-throw and snapshots a position that has
-    not happened yet — and the throw count cannot rescue it, because that stays 0 until the
+    not happened yet, and the throw count cannot rescue it, because that stays 0 until the
     block lands too.
     """
     state, info = cartridge.reset()
@@ -536,7 +536,7 @@ def test_cartridge_throws_stop_connecting_and_that_is_a_self_loop(cartridge):
 
     Thrown repeatedly from the starting row, `Flipull (USA)` connects three times and then
     stops: the animation still plays, and the field, counter, hand and throw count are all
-    unchanged. What decides this is not modelled — see `successors` — but it has to be
+    unchanged. What decides this is not modelled (see `successors`), but it has to be
     recognised, and the environment recognises it the only honest way, by comparing states.
     """
     state, info = cartridge.reset()
@@ -578,7 +578,7 @@ def test_cartridge_has_thirty_two_stages_and_every_one_of_them_loads(cartridge):
     """The whole point of `fix_index`, checked against the ROM's own table.
 
     Each stage's block total and CLEAR target come from the descriptor table at `$3A0E`,
-    so this is not "a different board appeared" — it is the board the cartridge itself
+    so this is not "a different board appeared": it is the board the cartridge itself
     says stage N has. `reset` makes the same check and raises if it fails, so this is
     really asserting that all 32 selections take.
     """
@@ -658,3 +658,39 @@ def test_cartridge_screenshot(cartridge, tmp_path):
 
 def test_the_synthetic_stage_matches_the_map():
     assert block_count(stage_one()) == 25
+
+
+def test_the_clear_target_is_part_of_the_state_identity(env):
+    """Stages 1 and 3 of the real cartridge share a board and differ only in their
+    CLEAR target (9 against 8), so a state that ignores the target treats positions
+    with different goals as the same position, and stringifies them identically."""
+    import copy
+
+    env.fix_index(0)
+    state, _ = env.reset()
+    harder = copy.copy(state)
+    harder.clear_target = state.clear_target + 1
+
+    assert harder != state
+    assert str(harder) != str(state)
+
+
+@pytest.mark.skipif(flipull_rom_path() is None,
+                    reason="set PLANIVERSE_FLIPULL_ROM to test against the cartridge")
+def test_each_stage_draws_its_own_board():
+    """The cartridge draws each stage's arrangement from an RNG seeded by boot timing;
+    its stage table fixes only the block total and the CLEAR target. A deterministic
+    boot always sees the same draw, so the 32 stages used to collapse to three distinct
+    boards, one per block total. The per-index seed delay in `reset` gives every stage
+    its own board, and deterministically: the same index still builds the same board."""
+    def field(index):
+        env = FlipullGBEnv(flipull_rom_path(), calibrate=False)
+        env.fix_index(index)
+        state, _ = env.reset()
+        env.close()
+        return state.field
+
+    # Stages 5 and 6 (indices 4 and 5) share a block total in the ROM's table, so only
+    # the drawn arrangement can tell them apart.
+    assert field(4) != field(5)
+    assert field(4) == field(4), "and the draw is stable per index"

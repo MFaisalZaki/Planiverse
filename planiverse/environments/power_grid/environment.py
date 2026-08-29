@@ -1,6 +1,6 @@
 """Restoring an electricity grid to a secure state after a line trips.
 
-A transmission line goes out. The power it was carrying does not stop — it redistributes
+A transmission line goes out. The power it was carrying does not stop: it redistributes
 over every remaining line according to Kirchhoff's laws, and some of those lines now carry
 more than they are rated for. Left alone, an overloaded line trips too, which redistributes
 the flow again, which is how a regional blackout happens. The operator's move is to change
@@ -8,7 +8,7 @@ the *topology*: at a substation, the equipment is split across two busbars, and 
 which side each line, generator and load sits on reroutes the power without switching
 anything off.
 
-That is a discrete action set — a few hundred distinct reconfigurations — sitting on top of
+That is a discrete action set (a few hundred distinct reconfigurations) sitting on top of
 a transition function that is a nonlinear solve. The flow on every line is the solution of
 the AC power-flow equations, found by Newton-Raphson at each step. There is no way to write
 "the effect of moving this line to busbar 2 is that line 17 now carries 1.08 of its rating";
@@ -53,7 +53,7 @@ Scenario = namedtuple("Scenario", ["chronic", "line", "rho_after_trip",
 #: Which line to trip, on which time series.
 #:
 #: Chosen by N-1 analysis: every line of every chronic was tripped in turn, and these are the
-#: ones that leave the grid **standing but doomed** — it survives the trip and then blacks out
+#: ones that leave the grid **standing but doomed**: it survives the trip and then blacks out
 #: within `blackout_in` steps if the operator does nothing. That filter matters more than it
 #: sounds. Most overloads on this case *clear themselves* as demand moves: tripping line 1 on
 #: chronic 0 gives a loading of 1.019 that is back under the limit two steps later on its own.
@@ -110,8 +110,8 @@ class PowerGridState:
     """A grid position: which actions have been taken, and what the solve says about it.
 
     The action path is the state. Grid2op is deterministic once the time series is pinned
-    with `set_id` and the environment is seeded — verified by running the same sequence
-    twice and comparing every line's loading — so replaying a path always lands in the same
+    with `set_id` and the environment is seeded (verified by running the same sequence
+    twice and comparing every line's loading), so replaying a path always lands in the same
     place, and two paths that agree are the same position.
     """
 
@@ -128,8 +128,8 @@ class PowerGridState:
                     for index, action_id in enumerate(self.path) if action_id]
         literals.append(f"step({step})")
         if blackout:
-            # A blacked-out grid has no line loadings to report — `max_rho` is infinite
-            # precisely so it sorts last — so the numeric atoms are simply absent.
+            # A blacked-out grid has no line loadings to report (`max_rho` is infinite
+            # precisely so it sorts last), so the numeric atoms are simply absent.
             literals.append("blackout")
         else:
             # Bucketed: a planner keyed on the raw loading would find every state novel.
@@ -182,7 +182,7 @@ class PowerGridEnv(Environment):
         self.grid_name = grid_name
         # Every topology action is legal, but expanding all 209 of them costs half a minute
         # a node. Restricting to the substations that touch an overloaded line is what an
-        # operator would consider, and is what makes search tractable — see `successors`.
+        # operator would consider, and is what makes search tractable (see `successors`).
         self.restrict_to_overloads = restrict_to_overloads
 
         self.scenario_index = None
@@ -274,7 +274,7 @@ class PowerGridEnv(Environment):
         return PowerGridState(path, max_rho, rhos, False, step, True)
 
     def __state__(self, path):
-        """The state a path leads to. Memoised — deterministic, so it cannot differ."""
+        """The state a path leads to. Memoised: deterministic, so it cannot differ."""
         key = tuple(path)
         if key in self._cache:
             return self._cache[key]
@@ -310,7 +310,7 @@ class PowerGridEnv(Environment):
     def is_terminal(self, state):
         """Blacked out, or out of time.
 
-        A blackout is absorbing in the simulator too — grid2op ends the episode — so there is
+        A blackout is absorbing in the simulator too (grid2op ends the episode), so there is
         genuinely nothing further to plan from.
         """
         return state.blackout or state.step >= self.horizon

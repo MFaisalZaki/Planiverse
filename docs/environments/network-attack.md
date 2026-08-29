@@ -28,7 +28,7 @@ for action, successor in env.successors(state):
 trace = env.simulate([a for a, _ in env.successors(state)][:3])
 ```
 
-You can also name a scenario directly, skipping `fix_index`, or load your own scenario file:
+You can name a scenario directly instead, skipping `fix_index`, or load your own scenario file:
 
 ```python
 env = EnvNASim(scenario_name="small-honeypot")
@@ -63,7 +63,7 @@ either `scenario_name` or `scenario_yaml` is set.
 
 ## Determinism: the monkey-patch
 
-NASim is a stochastic RL environment — exploits succeed with probability `action.prob`. That is fatal
+NASim is a stochastic RL environment: exploits succeed with probability `action.prob`. That is fatal
 for deterministic search, so this module replaces `Network.perform_action` at import time with a copy
 that keeps every precondition check but **removes the random failure roll**:
 
@@ -80,12 +80,12 @@ unreachable/undiscovered targets return a connection error, remote actions witho
 a permission error, exploits against a service the firewall blocks return a connection error, and
 privilege escalation on an uncompromised host returns a connection error.
 
-The patch also adds `__hash__` to every action class (`Exploit`, `PrivilegeEscalation`,
+The same patch adds `__hash__` to every action class (`Exploit`, `PrivilegeEscalation`,
 `ServiceScan`, `OSScan`, `SubnetScan`, `ProcessScan`, `NoOp`), hashing on `str(self)` so actions can
 live in sets.
 
 These patches are applied by `setattr` **on import of this module** and are global to the process.
-Importing this environment changes NASim's behaviour for everything else in the same interpreter —
+Importing this environment changes NASim's behaviour for everything else in the same interpreter,
 worth knowing if you also use NASim directly.
 
 ## State representation
@@ -94,12 +94,12 @@ worth knowing if you also use NASim directly.
 
 | Literal | Meaning |
 |---|---|
-| `at(x,y,val)` | Cell `(x, y)` of the state tensor holds `val` — one per cell |
+| `at(x,y,val)` | Cell `(x, y)` of the state tensor holds `val`; one per cell |
 | `compromised_host_N` | Sensitive host `N` is owned at `AccessLevel.ROOT` |
 
 The `at(...)` literals are a direct, lossless transcription of the NASim tensor: one literal per cell,
 covering every host's discovery/reachability/compromise flags, OS, services, and processes. Nothing
-is abstracted away — which makes the literal set large but exact, so a planner's visited set is
+is abstracted away, which makes the literal set large but exact, so a planner's visited set is
 precise. The `compromised_host_N` literals are the goal-relevant summary layered on top.
 
 ## Actions
@@ -113,31 +113,31 @@ the scenario.
 | `OSScan` | Reveal the host OS |
 | `SubnetScan` | Discover hosts in a subnet (requires a compromised foothold) |
 | `ProcessScan` | Reveal running processes |
-| `Exploit` | Compromise a host through a service — grants access, subject to firewall rules |
+| `Exploit` | Compromise a host through a service; grants access, subject to firewall rules |
 | `PrivilegeEscalation` | Raise access on a compromised host, given the right OS/process |
 | `NoOp` | Do nothing |
 
 `successors` applies each action through `env.generative_step(state, action)` and **drops any action
-that leaves the state unchanged** — failed preconditions produce no successor. This is what keeps the
+that leaves the state unchanged**: failed preconditions produce no successor. This is what keeps the
 branching factor manageable: only actions that actually accomplish something are offered.
 
 ## Goal and terminal
 
-- **Goal** (`is_goal`) — `env.network.all_sensitive_hosts_compromised(state)`: every sensitive host
+- **Goal** (`is_goal`): `env.network.all_sensitive_hosts_compromised(state)`, every sensitive host
   owned at root.
-- **Terminal** (`is_terminal`) — always `False`. The source comment ("there are stuck states in this
-  environment") flags this as a known gap: dead ends exist but aren't detected, so a planner must
+- **Terminal** (`is_terminal`): always `False`. The source comment ("there are stuck states in this
+  environment") flags this as a known gap: dead ends exist but are not detected, so a planner must
   bound its own search.
 
 ## Known quirks
 
 - **`reset()` rebuilds the environment every call**, re-running `make_benchmark`. It is not cheap;
-  don't call it inside a loop.
+  do not call it inside a loop.
 - **`successors` needs `reset()` first.** It reads `self.actionslist`, which is `None` until reset.
 - **Requires the fork, not upstream NASim.** `generative_step` and the patched internals
   (`_perform_wiretapping`, `has_required_remote_permission`) come from
   `MFaisalZaki/NetworkAttackSimulator`. Upstream `nasim` will not work.
-- **`is_terminal` always `False`** — see above.
+- **`is_terminal` always `False`**; see above.
 
 ## Files
 

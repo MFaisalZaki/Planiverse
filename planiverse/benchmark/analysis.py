@@ -1,8 +1,8 @@
 """Reading a sandbox full of result files back into tables.
 
 The one thing this does that a `glob` would not is account for **missing** results. A
-benchmark's most common failure is a job that never ran — cancelled, evicted, submitted to a
-partition that does not exist — and if the analysis only reads the files that are there, a
+benchmark's most common failure is a job that never ran (cancelled, evicted, submitted to a
+partition that does not exist), and if the analysis only reads the files that are there, a
 planner that crashed on half the set shows up with excellent coverage over the half it
 survived. So the expected set of pairs comes from `tasks.json`, and anything without a file is
 `MISSING`.
@@ -67,8 +67,8 @@ def coverage(records):
         expansions = [entry.get("statistics", {}).get("expansions", 0) for entry in solved]
         # Completeness is a property of the run, not of the planner: `IteratedWidth` proves
         # unsolvability on the runs where it exhausted the space and proves nothing on the
-        # ones the budget stopped. So the flag here answers the question the footnote asks —
-        # "can I read this planner's UNSOLVED rows as proofs?" — which is only yes when every
+        # ones the budget stopped. So the flag here answers the question the footnote asks,
+        # "can I read this planner's UNSOLVED rows as proofs?", which is only yes when every
         # one of them was.
         unsolved = [entry for entry in entries if entry.get("status") == "UNSOLVED"]
         rows.append({
@@ -156,7 +156,7 @@ def ipc_score(records, agile=False):
     on runtime, clipped at 1, which is the IPC agile-track rule.
 
     Both are relative to the field, so a score only means something next to the other planners
-    in the same table — adding a planner changes everyone's numbers.
+    in the same table; adding a planner changes everyone's numbers.
     """
     best = {}
     for record in records:

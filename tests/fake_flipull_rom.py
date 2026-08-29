@@ -11,14 +11,14 @@ that puts the *same facts at the same addresses*:
     $FFD2/$FFD3  completed-throw count           $C000  the player and hand sprites
 
 It is **not** a Flipull clone, and it does not try to guess the rule that decides what a
-throw hits — nobody has established that. What it reproduces is the *shape* of the game as
+throw hits; nobody has established that. What it reproduces is the *shape* of the game as
 the environment sees it, including the four things that made the environment wrong against
 the real cartridge until it was driven on one:
 
     * the player starts on the bottom row, where `down` is a wall
     * he and the block in his hand are two sprites that move together
     * a thrown block is a sprite, so the field sits still for the whole flight
-    * `$FFD2`/`$FFD3` count completed throws — they stay 0 in flight, and a throw that
+    * `$FFD2`/`$FFD3` count completed throws: they stay 0 in flight, and a throw that
       changes nothing never advances them
 
 What it exercises is the *interface* between the environment and a Game Boy: booting,
@@ -55,7 +55,7 @@ H_THROW_A, H_THROW_B, H_HELD = 0xD2, 0xD3, 0xD4
 H_INFLIGHT_Y, H_INFLIGHT_X = 0xDE, 0xDF
 
 # WRAM scratch. Kept well clear of $C000-$C09F: that is the OAM DMA buffer, and a variable
-# parked in it is read back as sprite data — which is exactly what happened the first time,
+# parked in it is read back as sprite data, which is exactly what happened the first time,
 # and what made `probe_player_sprite` refuse to name a player sprite.
 OAM = 0xC000                   # sprite 0 is the player, sprite 1 the block in his hand
 PLAYER_ROW = 0xC700
@@ -75,7 +75,7 @@ THROW_FRAMES = 12              # frames the block spends flying out, and again c
 TOP_ROW = 1                    # rows 1..12 are playable; 0 is the ceiling, 13 the floor
 BOTTOM_ROW = 12
 START_ROW = BOTTOM_ROW         # the cartridge starts him on the floor, where `down` is a
-                               # wall — the case that defeated the first sprite probe
+                               # wall, the case that defeated the first sprite probe
 HAND_REST_X = 132              # the hand block sits here and flies left from it
 HAND_START_TILE = 0x82         # not a block value: the real cartridge shows this until the
                                # first throw, which is why the opening hand has to be probed
@@ -153,7 +153,7 @@ def block_count(field):
 def stage_n(index):
     """Stages 2 and up: the same shape with fewer rows, so each has its own block count.
 
-    They only have to differ — `read_stage_table` reads the count out of ROM and `reset`
+    They only have to differ: `read_stage_table` reads the count out of ROM and `reset`
     checks the stage that loaded against it, so a selection that silently failed shows up
     as the wrong number of blocks rather than as a board that merely looks unfamiliar.
     """
@@ -660,7 +660,7 @@ def build_rom(title=b"FLIPULLFAKE"):
     asm.org(0x0134)
     asm.db(title[:16].ljust(16, b"\0"))
     asm.org(0x0147)
-    asm.db([0x00, 0x00, 0x00])            # ROM only, 32 KiB, no cartridge RAM — like Flipull
+    asm.db([0x00, 0x00, 0x00])            # ROM only, 32 KiB, no cartridge RAM, like Flipull
     asm.org(0x014A)
     asm.db([0x01, 0x00, 0x00])            # non-Japan
 
@@ -677,7 +677,7 @@ def build_rom(title=b"FLIPULLFAKE"):
 
     # The pointer table, and the descriptors it points at. A fifth entry points at bytes
     # that are not decimal digits, so `read_stage_table` stops after four rather than
-    # walking into whatever follows — the same way it stops on the real cartridge.
+    # walking into whatever follows, the same way it stops on the real cartridge.
     asm.org(STAGE_TABLE)
     for index in range(len(STAGES) + 1):
         asm.dw(STAGE_DESCRIPTORS + STAGE_DESCRIPTOR_BYTES * index)
