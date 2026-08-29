@@ -989,6 +989,26 @@ def test_every_default_width_planner_is_the_iterated_version(tmp_path):
     assert "width" not in planners["bfws"].params, "no pinned width anywhere"
 
 
+def test_init_records_an_environment_selection(tmp_path, capsys):
+    """`--environments` is how the setup script's "which environments?" answer travels: it
+    lands in the experiment as `include_environments`, which discovery already honours."""
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--environments", "puzznic, super_mario_land") == 0
+    selection = ExperimentConfig.load(tmp_path / "exp").tasks
+    assert selection.include_environments == ("puzznic", "super_mario_land"), \
+        "recorded, with the space after the comma forgiven"
+
+
+def test_init_refuses_an_unknown_environment(tmp_path, capsys):
+    """Refused at init, not discovery: a typo that silently selects nothing costs an empty
+    experiment, the same argument as refusing a bad cartridge path there and then."""
+    assert run_cli("init", "--exp-dir", str(tmp_path / "exp"),
+                   "--environments", "puzznic,super_marioland") == 2
+    assert "super_marioland" in capsys.readouterr().err
+    assert not os.path.exists(tmp_path / "exp" / "exp-details.json"), \
+        "nothing written on a refusal"
+
+
 def test_the_qos_and_setup_command_flags_reach_the_experiment(tmp_path, capsys):
     assert run_cli("init", "--exp-dir", str(tmp_path / "exp"), "--qos", "debug",
                    "--setup-command", "module load python",

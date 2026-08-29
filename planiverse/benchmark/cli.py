@@ -132,6 +132,10 @@ def main(argv=None):
     init.add_argument("--max-expansions", type=int, default=100000)
     init.add_argument("--max-instances", type=int, default=0,
                       help="instances per environment; 0 means every one")
+    init.add_argument("--environments", default=None, metavar="ENV[,ENV...]",
+                      help="restrict the experiment to these registry names, "
+                           "comma-separated; the default is every environment. The rest "
+                           "are reported as skipped rather than silently dropped.")
     init.add_argument("--no-roms", action="store_true",
                       help="leave out the environments that need a cartridge")
     add_rom_arguments(init)
@@ -203,6 +207,21 @@ def _init(arguments):
     if os.path.exists(details) and not arguments.force:
         print(f"{details} already exists. Pass --force to overwrite it.", file=sys.stderr)
         return 1
+
+    # Refused here rather than at discovery, for the same reason a bad cartridge path is: a
+    # typo caught while typing costs a second, and one that silently selects nothing costs
+    # an empty experiment.
+    include = ()
+    if arguments.environments:
+        include = tuple(name.strip() for name in arguments.environments.split(",")
+                        if name.strip())
+        known = {spec.name for spec in REGISTRY}
+        unknown = [name for name in include if name not in known]
+        if unknown:
+            print(f"unknown environment(s): {', '.join(unknown)}. "
+                  f"Known: {', '.join(sorted(known))}", file=sys.stderr)
+            return 2
+
     try:
         roms = collect_roms(arguments)
     except ValueError as exc:
@@ -214,6 +233,7 @@ def _init(arguments):
         limits=Limits(time=arguments.time, memory=arguments.memory,
                       max_expansions=arguments.max_expansions),
         tasks=TaskSelection(max_instances_per_environment=arguments.max_instances,
+                            include_environments=include,
                             include_rom_environments=not arguments.no_roms),
         slurm=SlurmConfig(partition=arguments.partition, account=arguments.account,
                           qos=arguments.qos,
@@ -223,10 +243,14 @@ def _init(arguments):
     )
     experiment.save(arguments.exp_dir)
     print(f"wrote {details}")
+    if include:
+        print(f"  environments: {', '.join(include)} (the rest will be "
+              f"reported as skipped)")
     for spec in experiment.planners:
         print(f"  planners/{spec.tag}.json  ({spec.planner})")
     missing = [(spec.name, flag) for spec, flag in rom_environments()
-               if not experiment.rom_for(spec)]
+               if not experiment.rom_for(spec)
+               and (not include or spec.name in include)]
     if missing and experiment.tasks.include_rom_environments:
         names = ", ".join(name for name, _ in missing)
         flags = " ".join(f"--rom-{flag} /path/to/rom.gb" for _, flag in missing)

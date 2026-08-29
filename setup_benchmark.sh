@@ -28,6 +28,7 @@ TIME_LIMIT="30m"
 MEMORY_LIMIT="8GB"
 MAX_EXPANSIONS="100000"
 MAX_INSTANCES="0"          # 0 = every instance of every environment
+ENVIRONMENTS=""            # empty = every environment; else comma-separated registry names
 PARTITION=""
 ACCOUNT=""
 QOS=""
@@ -61,6 +62,8 @@ Options:
   --memory SIZE         per-run memory                 (default: 8GB)
   --max-expansions N    per-run node budget            (default: 100000)
   --max-instances N     instances per environment, 0 for all  (default: 0)
+  --environments LIST   comma-separated registry names to run; skips the question
+                        (default: every environment)
   --partition NAME      SLURM partition
   --account NAME        SLURM account
   --qos NAME            SLURM quality of service
@@ -92,6 +95,7 @@ while [ $# -gt 0 ]; do
         --memory) MEMORY_LIMIT="$2"; shift 2 ;;
         --max-expansions) MAX_EXPANSIONS="$2"; shift 2 ;;
         --max-instances) MAX_INSTANCES="$2"; shift 2 ;;
+        --environments) ENVIRONMENTS="$2"; shift 2 ;;
         --partition) PARTITION="$2"; shift 2 ;;
         --account) ACCOUNT="$2"; shift 2 ;;
         --qos) QOS="$2"; shift 2 ;;
@@ -226,6 +230,12 @@ if [ "$ASSUME_YES" != "1" ] && [ -t 0 ]; then
     echo
     echo "Task selection."
     MAX_INSTANCES=$(ask "  instances per environment (0 = all)" "$MAX_INSTANCES")
+    if [ -z "$ENVIRONMENTS" ]; then
+        echo "  What can be benchmarked here:"
+        "${BENCH[@]}" environments 2> /dev/null | sed 's/^/    /' || true
+        ENVIRONMENTS=$(ask "  environments to run, comma-separated" "all")
+        if [ "$ENVIRONMENTS" = "all" ]; then ENVIRONMENTS=""; fi
+    fi
     echo
     echo "SLURM. Leave blank if your site does not need them, or if you are running locally."
     PARTITION=$(ask "  partition" "$PARTITION")
@@ -266,11 +276,20 @@ supplied() {
     return 1
 }
 
+# Spaces after commas are forgiven — "puzznic, flipull" means what it says.
+ENVIRONMENTS="${ENVIRONMENTS// /}"
+
 for ((i = 0; i < ${#ROM_ENTRIES[@]}; i += 4)); do
     environment="${ROM_ENTRIES[i]}"
     variable="${ROM_ENTRIES[i + 1]}"
     flag="${ROM_ENTRIES[i + 2]}"
     label="${ROM_ENTRIES[i + 3]}"
+
+    # No point asking for a cartridge the experiment will not run.
+    if [ -n "$ENVIRONMENTS" ] && [[ ",$ENVIRONMENTS," != *",$environment,"* ]]; then
+        echo "  $label: not among the selected environments."
+        continue
+    fi
 
     if supplied "$flag"; then
         echo "  $label: given on the command line."
@@ -293,6 +312,7 @@ echo
 INIT_ARGS=(init --exp-dir "$EXP_DIR" --name "$NAME"
            --time "$TIME_LIMIT" --memory "$MEMORY_LIMIT"
            --max-expansions "$MAX_EXPANSIONS" --max-instances "$MAX_INSTANCES" --force)
+if [ -n "$ENVIRONMENTS" ]; then INIT_ARGS+=(--environments "$ENVIRONMENTS"); fi
 if [ -n "$PARTITION" ]; then INIT_ARGS+=(--partition "$PARTITION"); fi
 if [ -n "$ACCOUNT" ]; then INIT_ARGS+=(--account "$ACCOUNT"); fi
 if [ -n "$QOS" ]; then INIT_ARGS+=(--qos "$QOS"); fi

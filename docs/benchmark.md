@@ -13,15 +13,17 @@ JSON, a sandbox is a directory of results, and the stages between them run indep
 ## The five minute version
 
 ```bash
-./setup_benchmark.sh                      # asks about limits and your Game Boy cartridges
+./setup_benchmark.sh                      # asks about limits, environments and cartridges
 bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
 planiverse-bench analyze   --sandbox-dir sandbox
 planiverse-bench report    --sandbox-dir sandbox
 ```
 
-`setup_benchmark.sh` is the front door. It runs the first three stages and asks the one thing
-nothing else can work out — where your cartridges are. `--yes` takes every default and asks
-nothing. The stages underneath are ordinary commands if you would rather drive them:
+`setup_benchmark.sh` is the front door. It runs the first three stages and asks the things
+nothing else can work out — which environments to run (Enter keeps all of them) and where
+your cartridges are. `--yes` takes every default and asks nothing; `--environments` answers
+the question from the command line. The stages underneath are ordinary commands if you would
+rather drive them:
 
 ```bash
 planiverse-bench init      --exp-dir experiment --rom-puzznic /path/to/Puzznic.gb
@@ -157,6 +159,14 @@ of each environment is reporting on a sample it chose, and `selection: "even"` d
 tenth. `include-rom-environments` is on, so a Game Boy environment is benchmarked next to its
 pure-Python twin — which is most of the point of having both. Without a cartridge those
 environments are skipped with a reason rather than failing.
+
+`include-environments` is empty, meaning all of them. `setup_benchmark.sh` asks which
+environments to run (Enter keeps all), and the answer arrives here through
+`init --environments puzznic,super_mario_land` — comma-separated registry names, refused at
+`init` if one is misspelled, because a typo that silently selects nothing costs an empty
+experiment. Everything not selected is reported as skipped, with the reason, rather than
+silently dropped, and the setup script stops asking for cartridges whose environments are
+not in the selection.
 
 `roms` records where the cartridges are. It lives in the experiment rather than in environment
 variables so the experiment is self-contained: a variable exported in the shell that ran
