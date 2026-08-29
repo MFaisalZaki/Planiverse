@@ -93,7 +93,7 @@ def test_a_config_from_a_later_version_still_loads(tmp_path):
     details = json.loads(path.read_text())
     details["limits"]["something-invented-later"] = 7
     path.write_text(json.dumps(details))
-    assert ExperimentConfig.load(tmp_path).limits.max_expansions == 100000
+    assert ExperimentConfig.load(tmp_path).limits.max_expansions == 1000000
 
 
 def test_a_missing_experiment_says_what_to_run(tmp_path):

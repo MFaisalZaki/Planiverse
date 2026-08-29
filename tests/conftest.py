@@ -96,9 +96,9 @@ def lolo_rom_path():
 def assert_state_contract(state):
     """Every Planiverse state exposes `literals` as a frozenset.
 
-    Planners key their visited set on it, so it has to be hashable and set-like. Native
-    environments spell literals as strings; the PDDLGym wrapper passes pddlgym Literal
-    objects straight through, so the element type is not part of the shared contract.
+    Planners key their visited set on it, so it has to be hashable and set-like. The
+    element type is not part of the shared contract; the native environments spell
+    literals as strings, which `assert_string_literals` checks separately.
     """
     assert hasattr(state, "literals"), f"{type(state).__name__} has no literals"
     assert isinstance(state.literals, frozenset), \

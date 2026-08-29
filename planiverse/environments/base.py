@@ -141,9 +141,9 @@ class Environment:
 def implements_contract(candidate):
     """Does `candidate` satisfy the contract, whether or not it inherits from `Environment`?
 
-    Kept because the PDDLGym wrapper and anything a user brings from outside are legitimate
-    environments without being subclasses. Structural, not nominal — which is the point of
-    dropping the two-base-class taxonomy in the first place.
+    Kept because anything a user brings from outside is a legitimate environment without
+    being a subclass. Structural, not nominal — which is the point of dropping the
+    two-base-class taxonomy in the first place.
 
     A base-class default that only raises does not count: a bare `Environment()` has all six
     attributes and implements none of them.

@@ -118,7 +118,7 @@ class Limits:
     memory: str = "8GB"
     #: The node allowance. Against a simulator this is usually the binding limit, because
     #: wall-clock is just however many expansions you allowed times the cost of one.
-    max_expansions: int = 100000
+    max_expansions: int = 1000000
     #: Replay every plan and check it reaches a goal. Cheap, and it catches a planner that
     #: reports success on a trace it cannot reproduce.
     validate_plans: bool = True
