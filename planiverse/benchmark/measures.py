@@ -38,16 +38,6 @@ def flipull(state):
     return max(0, state.blocks_remaining - state.clear_target)
 
 
-def boxxle2(state):
-    """Boxes not yet on a goal.
-
-    Exactly the distance in one sense (the goal is every box home) and a poor guide in
-    another: the last box is often the one that needs the other fifty moves, and this measure
-    cannot see that. It is still much better than nothing, which is what BFWS gets otherwise.
-    """
-    return len(state.boxes) - state.boxes_home
-
-
 def lolo(state):
     """Heart framers still to collect, plus one while Lolo is not on the door.
 
@@ -102,11 +92,6 @@ def flipull_gb(state):
     return state.blocks_remaining
 
 
-def boxxle2_gb(state):
-    """The same measure as its Python twin, off the cartridge's own plane buffers."""
-    return len(state.boxes) - state.boxes_home
-
-
 def lolo_gb(state):
     """The same measure as its Python twin, off the cartridge's own heart counter."""
     return lolo(state)
@@ -152,8 +137,6 @@ MEASURES = {
     "puzznic_gb": puzznic_gb,
     "flipull": flipull,
     "flipull_gb": flipull_gb,
-    "boxxle2": boxxle2,
-    "boxxle2_gb": boxxle2_gb,
     "lolo": lolo,
     "lolo_gb": lolo_gb,
     "amazing_tater": amazing_tater,
@@ -167,10 +150,10 @@ MEASURES = {
 }
 
 #: Environments with no measure. Named rather than merely absent, so that "we have not written
-#: one" is distinguishable from "we forgot this environment exists".
-#:
-#: - `manufacturing`: the objective is a cost over a whole schedule, not a distance.
-WITHOUT_MEASURE = ("manufacturing",)
+#: one" is distinguishable from "we forgot this environment exists". Empty since the
+#: manufacturing environment was withdrawn; the reporting path that flags an unmeasured
+#: environment is kept, because the next environment added may well need it.
+WITHOUT_MEASURE = ()
 
 
 def DEFAULT_MEASURE(state):

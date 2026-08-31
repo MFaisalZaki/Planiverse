@@ -15,6 +15,33 @@ service.
 - **Dependencies:** `wntr`, and nothing else. The benchmark networks ship inside it, so
   unlike the Game Boy environments there is nothing to supply.
 
+## A solved instance
+
+BFWS solves instance `0` in 3 moves. There is no image checked in for it: `wntr` imports
+`pkg_resources`, which setuptools removed in version 81, so the environment would not build
+on the machine the other renders were made on. Pin `setuptools<81` in your environment and
+the snippet below produces the same pair of files as every other environment here.
+
+```python
+from planiverse.environments.water_network.environment import WaterNetworkEnv
+from planiverse.benchmark import measures
+from planiverse.planners.width import IteratedBFWS
+
+env = WaterNetworkEnv()
+env.fix_index(0)
+env.reset()
+
+result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
+trace = env.simulate(result.plan)
+
+env.render_trace(trace, "water_network.gif")                             # animated
+env.render_trace(trace, "water_network.png", actions=result.plan, env=env)   # contact sheet
+```
+
+Frames are the state's own text, typeset: `render_trace` falls back to `str(state)` for an
+environment with no screen to photograph. See [docs/rendering.md](../rendering.md) for the
+other output formats.
+
 ## Why this is not a PDDL domain
 
 Not "PDDL would be verbose here". Two properties, both measured on the shipped networks:

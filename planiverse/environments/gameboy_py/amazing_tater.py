@@ -1,8 +1,8 @@
 """Amazing Tater in pure Python: no ROM, no emulator, no dependencies.
 
 The sibling [`amazing_tater_gb`](../gameboy/amazing_tater_gb.py) drives the real cartridge.
-This one implements the rules directly, the way [`boxxle2`](boxxle2.py) stands beside
-`boxxle2_gb`. Use this one for a dependency-free benchmark; use that one when you want the
+This one implements the rules directly, the way [`puzznic`](puzznic.py) stands beside
+`puzznic_gb`. Use this one for a dependency-free benchmark; use that one when you want the
 cartridge's own transition function.
 
 ## The rules, stated

@@ -1,7 +1,7 @@
 """Adventures of Lolo in pure Python: no ROM, no emulator, no dependencies.
 
 The sibling [`lolo_gb`](../gameboy/lolo_gb.py) drives the real cartridge. This one implements
-the rules directly, the way [`boxxle2`](boxxle2.py) stands beside `boxxle2_gb`. Use this one
+the rules directly, the way [`puzznic`](puzznic.py) stands beside `puzznic_gb`. Use this one
 for a dependency-free benchmark; use that one for the cartridge's actual behaviour.
 
 ## The rules, stated
@@ -651,6 +651,12 @@ class LoloState:
         literals += [f"at(egg, {row}, {col})" for row, col in sorted(self.eggs)]
         literals += [f"at(sunken-egg, {row}, {col})" for row, col in sorted(self.sunk)]
         literals += [f"at(enemy, {row}, {col})" for row, col in sorted(self.alive)]
+        # `facing` is part of `__eq__` for the reason given there -- it decides where the next
+        # shot goes -- so it has to be here too. A planner reasons over these predicates and
+        # nothing else: leave a field out of them and two positions that really are different
+        # become one, and a search can run out of frontier and call that a proof.
+        if self.facing is not None:
+            literals.append(f"facing({self.facing})")
         if self.door_open:
             literals.append("door-open")
         if self.solved:

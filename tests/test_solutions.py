@@ -20,14 +20,11 @@ import os
 
 import pytest
 
-from planiverse.environments.gameboy_py.boxxle2 import LEVELS, Boxxle2Game
 from planiverse.environments.gameboy_py.flipull import STAGES, FlipullGame
 from planiverse.environments.gameboy_py.lolo import EXACT_ROOMS, LoloGame
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
-from conftest import (
-    boxxle2_rom_path, flipull_rom_path, lolo_rom_path, puzznic_rom_path,
-)
+from conftest import flipull_rom_path, lolo_rom_path, puzznic_rom_path
 
 DATA = os.path.join(os.path.dirname(__file__), "data")
 
@@ -39,7 +36,6 @@ def solutions(name):
 
 PUZZNIC_SOLUTIONS = solutions("puzznic")
 FLIPULL_SOLUTIONS = solutions("flipull")
-BOXXLE2_SOLUTIONS = solutions("boxxle2")
 
 
 @pytest.mark.parametrize("index", sorted(PUZZNIC_SOLUTIONS))
@@ -62,16 +58,6 @@ def test_the_stored_flipull_solution_still_clears_its_stage(index):
         f"flipull stage {index} is no longer cleared by its stored {len(plan)}-action plan"
 
 
-@pytest.mark.parametrize("index", sorted(BOXXLE2_SOLUTIONS))
-def test_the_stored_boxxle2_solution_still_clears_its_level(index):
-    env = Boxxle2Game()
-    env.fix_index(index)
-    env.reset()
-    plan = BOXXLE2_SOLUTIONS[index]
-    assert env.validate(plan), \
-        f"boxxle2 level {index} is no longer cleared by its stored {len(plan)}-action plan"
-
-
 def test_every_flipull_stage_has_a_solution():
     """Flipull's stages were generated against a reachability check, so every one of them
     is known to be solvable and none may lose its solution."""
@@ -89,29 +75,6 @@ def test_puzznic_solution_coverage_does_not_shrink():
     # has been solved yet. They are listed here rather than silently uncovered.
     assert not set(range(50, 128)) & set(PUZZNIC_SOLUTIONS), \
         "levels 50-127 now have solutions; record them and update this test"
-
-
-#: The levels with a stored plan. Pinned as the solved set rather than the unsolved one; it is
-#: the shorter list of the two, and it is the one that must not shrink.
-BOXXLE2_SOLVED = [
-    0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 17, 20, 22, 24, 25, 26, 27, 28, 29, 30, 46, 52, 54, 55, 57,
-    58, 59, 62, 63, 67, 68, 69, 72, 76, 77, 78, 92, 97, 113, 114, 115, 116,
-]
-
-
-def test_boxxle2_solution_coverage_does_not_shrink():
-    """Not every Boxxle II level has a stored plan, and that is a known gap rather than an
-    accepted one.
-
-    Most of the plans that exist were reconstructed from a human walkthrough's box-push
-    notation; the rest came out of a solver. What is left over is the tail of the cartridge:
-    levels running to fifty-nine boxes, where Sokoban stops being searchable at any budget
-    this repository spends. Pinning the set means a level *losing* its plan fails here rather
-    than quietly widening the gap, which is the failure that matters: it means the level
-    changed.
-    """
-    assert sorted(BOXXLE2_SOLUTIONS) == BOXXLE2_SOLVED, \
-        "the set of Boxxle II levels with a stored solution changed"
 
 
 # ------------------------------------------------------------------------------- Lolo
@@ -183,7 +146,7 @@ def test_most_lolo_plans_for_approximated_rooms_do_not_survive_the_cartridge():
 
 @pytest.mark.parametrize("name,count", [
     ("puzznic", 128), ("flipull", len(STAGES)), ("puzznic_gb", 128), ("flipull_gb", 32),
-    ("boxxle2", 120), ("boxxle2_gb", 120), ("lolo", 163), ("lolo_gb", 163),
+    ("lolo", 163), ("lolo_gb", 163),
 ])
 def test_solution_indices_are_in_range(name, count):
     for index in solutions(name):
@@ -197,7 +160,6 @@ def test_solution_indices_are_in_range(name, count):
 
 PUZZNIC_GB_SOLUTIONS = solutions("puzznic_gb")
 FLIPULL_GB_SOLUTIONS = solutions("flipull_gb")
-BOXXLE2_GB_SOLUTIONS = solutions("boxxle2_gb")
 LOLO_GB_SOLUTIONS = solutions("lolo_gb")
 
 
@@ -244,22 +206,6 @@ def test_a_cartridge_flipull_plan_still_clears_its_stage():
 
 @pytest.mark.slow
 @pytest.mark.skipif(
-    boxxle2_rom_path() is None,
-    reason='set PLANIVERSE_BOXXLE2_ROM to a "Boxxle II (USA, Europe).gb" ROM to run '
-           "cartridge tests")
-def test_a_cartridge_boxxle2_plan_still_clears_its_level():
-    from planiverse.environments.gameboy.boxxle2_gb import Boxxle2GBEnv
-
-    index = min(BOXXLE2_GB_SOLUTIONS)
-    env = Boxxle2GBEnv(boxxle2_rom_path())
-    env.fix_index(index)
-    trace = env.simulate([as_button_string(a) for a in BOXXLE2_GB_SOLUTIONS[index]])
-    env.close()
-    assert trace[-1].solved, f"boxxle2_gb level {index} was not cleared on the ROM"
-
-
-@pytest.mark.slow
-@pytest.mark.skipif(
     lolo_rom_path() is None,
     reason='set PLANIVERSE_LOLO_ROM to an "Adventures of Lolo (U) [S][!].gb" ROM to run '
            "cartridge tests")
@@ -292,8 +238,3 @@ def test_the_lolo_files_agree_about_which_plans_the_cartridge_confirmed():
             f"the two files disagree about how long room {index}'s plan is"
 
 
-def test_every_boxxle2_plan_was_replayed_on_the_cartridge():
-    """The Python twin and the cartridge agree move for move, so every plan that solves a
-    level here was checked on the ROM as well. A plan in one file and not the other means one
-    of them was regenerated without the other."""
-    assert sorted(BOXXLE2_GB_SOLUTIONS) == sorted(BOXXLE2_SOLUTIONS)

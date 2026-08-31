@@ -384,8 +384,8 @@ network is. And they are visible: `planiverse-bench environments` prints which e
 have one, so a weak result on an environment without a measure is legible as such instead of
 looking like a weak planner.
 
-One environment has none, and the reason is recorded next to it:
-`manufacturing` (the objective is a cost over a whole schedule, not a distance).
+Every environment currently has one, so `WITHOUT_MEASURE` is empty; the path is kept because
+the next environment added may not.
 Without a measure BFWS becomes
 breadth-first search ordered by novelty alone and SIW becomes a single IW call. That is a real
 result, not a broken one, but it is a different experiment, and the reports mark the rows with
@@ -404,14 +404,12 @@ There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
 |---|---|---|
 | `--rom-puzznic PATH` | `puzznic_gb` | `PLANIVERSE_PUZZNIC_ROM` |
 | `--rom-flipull PATH` | `flipull_gb` | `PLANIVERSE_FLIPULL_ROM` |
-| `--rom-boxxle2 PATH` | `boxxle2_gb` | `PLANIVERSE_BOXXLE2_ROM` |
 | `--rom-lolo PATH` | `lolo_gb` | `PLANIVERSE_LOLO_ROM` |
 | `--rom-super-mario-land PATH`, `--rom-mario PATH` | `super_mario_land_gb` | `PLANIVERSE_SUPER_MARIO_LAND_ROM` |
 
 ```bash
 ./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
                      --rom-flipull ~/roms/"Flipull (USA).gb" \
-                     --rom-boxxle2 ~/roms/"Boxxle II (USA, Europe).gb" \
                      --rom-lolo    ~/roms/"Adventures of Lolo (U) [S][!].gb" \
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
@@ -423,7 +421,6 @@ The same flags work on `init` directly:
 planiverse-bench init --exp-dir experiment --force \
     --rom-puzznic "/path/to/Puzznic (J).gb" \
     --rom-flipull "/path/to/Flipull (USA).gb" \
-    --rom-boxxle2 "/path/to/Boxxle II (USA, Europe).gb" \
     --rom-lolo    "/path/to/Adventures of Lolo (U) [S][!].gb" \
     --rom-mario   "/path/to/Super Mario Land.gb"
 ```
@@ -494,7 +491,6 @@ Solved per environment
 environment       bfws-1  bfws-2  fsx   iw    mcts  siw-1  siw-2
 crop_management   2/2     2/2     0/2   2/2   2/2   1/2    1/2
 flipull           2/2     2/2     0/2   1/2   1/2   1/2    1/2
-manufacturing †   2/2     2/2     2/2   2/2   2/2   2/2    2/2
 super_mario_land  2/2     2/2     0/2   2/2   1/2   0/2    0/2
 power_grid        2/2     2/2     0/2   2/2   1/2   1/2    0/2
 puzznic           1/2     1/2     0/2   1/2   0/2   0/2    1/2
