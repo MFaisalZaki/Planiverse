@@ -150,6 +150,18 @@ def _caption(image, title, subtitle=None, colour=_INK):
     return canvas
 
 
+def _spelling(action):
+    """How the environment itself spells this action.
+
+    Most environments hand out plain strings and this is a no-op. The Game Boy actions are
+    objects built from `"a+right,16"`, and that is the spelling their environment offers and
+    accepts back -- but their `__str__` renders it as `a_with_right_for_16`, which nothing
+    parses. A caption is for reading a plan against the environment you would replay it in,
+    so it uses the spelling that environment answers to.
+    """
+    return getattr(action, "action", action)
+
+
 def trace_frames(trace, actions=None, env=None, gamerom=None, max_states=None,
                  font_size=14, captions=True):
     """Every state of a trace as an image, captioned unless you ask otherwise.
@@ -187,7 +199,8 @@ def trace_frames(trace, actions=None, env=None, gamerom=None, max_states=None,
             title = "start"
         else:
             action = actions[index - 1] if actions and index - 1 < len(actions) else None
-            title = f"{index}. {action}" if action is not None else f"step {index}"
+            title = f"{index}. {_spelling(action)}" if action is not None \
+                else f"step {index}"
 
         colour, note = _INK, None
         if env is not None:
