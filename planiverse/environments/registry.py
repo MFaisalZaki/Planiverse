@@ -9,7 +9,7 @@ responsible for), and `security`.
 
     >>> from planiverse.environments import list_environments, make
     >>> [spec.name for spec in list_environments(tag="operational")]
-    ['crop_management', 'manufacturing', 'power_grid', 'water_network']
+    ['crop_management', 'power_grid', 'water_network']
     >>> env = make("puzznic")
 
 Nothing here imports an environment module. The specs are declarative and `make` imports
@@ -161,16 +161,6 @@ REGISTRY = (
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
     EnvironmentSpec(
-        name="boxxle2",
-        factory="planiverse.environments.gameboy_py.boxxle2:Boxxle2Game",
-        summary="Boxxle II's Sokoban, re-implemented in pure Python",
-        instances="120 levels",
-        deterministic=True,
-        state_identity="value",
-        docs="docs/environments/boxxle2.md",
-        tags=frozenset({"game", "puzzle", "dependency-free"}),
-    ),
-    EnvironmentSpec(
         name="amazing_tater",
         factory="planiverse.environments.gameboy_py.amazing_tater:AmazingTaterGame",
         summary="Amazing Tater's blocks, pits and turnstiles, re-implemented in pure Python",
@@ -191,19 +181,6 @@ REGISTRY = (
         needs_rom=True,
         rom_variable="PLANIVERSE_AMAZING_TATER_ROM",
         docs="docs/environments/amazing-tater-gb.md",
-        tags=frozenset({"game", "puzzle", "emulator"}),
-    ),
-    EnvironmentSpec(
-        name="boxxle2_gb",
-        factory="planiverse.environments.gameboy.boxxle2_gb:Boxxle2GBEnv",
-        summary="Boxxle II played on the Game Boy cartridge, through PyBoy",
-        instances="120 levels",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_BOXXLE2_ROM",
-        docs="docs/environments/boxxle2-gb.md",
         tags=frozenset({"game", "puzzle", "emulator"}),
     ),
     EnvironmentSpec(
@@ -262,17 +239,6 @@ REGISTRY = (
         requires=("nasim",),
         docs="docs/environments/network-attack.md",
         tags=frozenset({"security", "policy"}),
-    ),
-    EnvironmentSpec(
-        name="manufacturing",
-        factory="planiverse.environments.manufacturing.mfenv:MfgEnv",
-        summary="Buying and scheduling machine configurations against a demand deadline",
-        instances="7 demand/capacity instances",
-        deterministic=True,
-        state_identity="value",
-        requires=("numpy",),
-        docs="docs/environments/manufacturing.md",
-        tags=frozenset({"operational", "scheduling"}),
     ),
     EnvironmentSpec(
         name="water_network",

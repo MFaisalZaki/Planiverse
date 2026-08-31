@@ -258,7 +258,7 @@ def test_a_dead_platformer_state_scores_worse_than_any_live_one():
 
 
 def test_an_environment_without_a_measure_gets_a_flat_one():
-    measure = measure_for("manufacturing")
+    measure = measure_for("an_environment_with_no_measure")
     assert measure(object()) == 0
 
 
@@ -896,11 +896,11 @@ def test_missing_runs_are_called_out_rather_than_buried():
 
 
 def test_an_unmeasured_environment_is_flagged():
-    records = records_for([("p", "manufacturing@0", "UNSOLVED", 1.0, None)])
+    records = records_for([("p", "unmeasured@0", "UNSOLVED", 1.0, None)])
     records[0]["has_progress_measure"] = False
     summary = analysis.summarise("", records)
     text = report.text_tables(summary, records)
-    assert "†" in text and "manufacturing" in text
+    assert "†" in text and "unmeasured" in text
 
 
 def test_an_unseeded_randomised_run_is_flagged():
@@ -1161,7 +1161,7 @@ def test_every_cartridge_environment_gets_its_own_flag():
     from planiverse.benchmark.cli import rom_environments
 
     flags = dict((spec.name, flag) for spec, flag in rom_environments())
-    assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull", "boxxle2_gb": "boxxle2",
+    assert flags == {"puzznic_gb": "puzznic", "flipull_gb": "flipull",
                      "lolo_gb": "lolo", "amazing_tater_gb": "amazing-tater",
                      "super_mario_land_gb": "super-mario-land"}
 
@@ -1235,7 +1235,20 @@ def test_several_cartridges_at_once(tmp_path, capsys):
         "puzznic_gb": str(first), "flipull_gb": str(second)}
 
 
-def test_the_missing_cartridge_hint_names_the_flags(tmp_path, capsys):
+def no_cartridges(monkeypatch):
+    """Unset every cartridge variable the registry knows about.
+
+    Derived from the registry rather than listed, for the same reason the tests below give:
+    a second list of cartridge names falls out of step with the first one. A developer with
+    `PLANIVERSE_LOLO_ROM` exported should not see a different result from CI.
+    """
+    for spec in REGISTRY:
+        if spec.needs_rom:
+            monkeypatch.delenv(spec.rom_variable, raising=False)
+
+
+def test_the_missing_cartridge_hint_names_the_flags(tmp_path, capsys, monkeypatch):
+    no_cartridges(monkeypatch)
     run_cli("init", "--exp-dir", str(tmp_path / "exp"))
     printed = capsys.readouterr().out
     assert "--rom-puzznic" in printed and "--rom-flipull" in printed
@@ -1284,8 +1297,10 @@ def test_the_setup_script_takes_the_same_rom_flags(tmp_path):
          "--entry-point", "python -m planiverse.benchmark.cli"],
         capture_output=True, text=True,
         env={**os.environ, "PYTHONPATH": str(SETUP_SCRIPT.parent),
-             "PLANIVERSE_PUZZNIC_ROM": "", "PLANIVERSE_FLIPULL_ROM": "",
-             "PLANIVERSE_SUPER_MARIO_LAND_ROM": ""})
+             # Every cartridge variable, taken from the registry: this test asserts on the
+             # exact set of ROMs the script resolved, so one left set in the developer's own
+             # shell puts an extra entry in it and fails a run that CI passes.
+             **{spec.rom_variable: "" for spec in REGISTRY if spec.needs_rom}})
     assert result.returncode == 0, result.stderr[-2000:]
     assert "given on the command line" in result.stdout
     assert ExperimentConfig.load(tmp_path / "exp").roms == {"puzznic_gb": str(cartridge)}

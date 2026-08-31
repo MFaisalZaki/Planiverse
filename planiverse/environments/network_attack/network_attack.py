@@ -102,6 +102,12 @@ setattr(NoOp, "__hash__", lambda self: hash(str(self)))
 setattr(Network, 'perform_action', perform_action)
 
 
+#: Fixes both the generated networks and NASim's own reset. Nine of the eighteen benchmark
+#: scenarios are generated rather than loaded, so without this the environment is a different
+#: problem each time it is built, and no plan survives a replay.
+SCENARIO_SEED = 0
+
+
 class NASimState(State):
     def __init__(self, state, network):
         super().__init__(state.tensor, state.host_num_map)
@@ -156,8 +162,14 @@ class EnvNASim(Environment):
         if self.scenario_yaml is not None:
             self.env = nasim.load(self.scenario_yaml)
         else:
-            self.env = nasim.make_benchmark(self.scenario_name)
-        _, _ = self.env.reset(seed=0)
+            # The seed is what makes a `*-gen` scenario a *problem* rather than a draw:
+            # NASim generates those networks on demand, so an unseeded `make_benchmark`
+            # hands out a different topology, service layout and OS layout on every call.
+            # Search would then run on one network and `simulate` replay the plan against
+            # another, which is exactly how a correct plan comes back INVALID. The fixed
+            # scenarios load from file and ignore this.
+            self.env = nasim.make_benchmark(self.scenario_name, seed=SCENARIO_SEED)
+        _, _ = self.env.reset(seed=SCENARIO_SEED)
         self.actionslist = self.env.action_space.actions
         return NASimState(self.env.current_state, self.env.network), {}
     

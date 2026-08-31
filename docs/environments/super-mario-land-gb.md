@@ -11,6 +11,33 @@ console's RAM. States are emulator save-states, so search can branch by rewindin
 - **Planner:** [`planiverse/planners/super_mario_planner_gb.py`](../../planiverse/planners/super_mario_planner_gb.py)
 - **Counterpart:** [`SuperMarioLandGame`](super-mario-land.md) is the dependency-free pure-Python model with cartridge-fitted physics
 
+## A solved instance
+
+There is not one to show. No planner in the library has solved instance `0` of this
+environment inside a 30-minute, 100,000-expansion budget: every run so far has ended in a
+timeout. The emulator settles roughly **5 expansions a second**, so half an hour buys about
+ten thousand of them, which is not many for a side-scroller whose goal is off the right-hand
+edge of the level.
+
+The rendering itself works — [`SuperMarioLandGBEnv`](super-mario-land-gb.md) states carry
+`save(rom, path)` like every other cartridge environment, so any trace you do produce renders
+as real console screenshots. Its pure-Python counterpart has a rendered plan:
+[Super Mario Land](super-mario-land.md).
+
+```python
+import os
+from planiverse.environments.gameboy.super_mario_land_gb import SuperMarioLandGBEnv
+
+env = SuperMarioLandGBEnv(romfile=os.environ["PLANIVERSE_SUPER_MARIO_LAND_ROM"])
+env.fix_index(0)
+env.reset()
+
+# ... once you have a plan from somewhere:
+env.render_trace(env.simulate(plan), "super_mario_land_gb.gif")
+```
+
+See [docs/rendering.md](../rendering.md) for the other output formats.
+
 ## The ROM
 
 **Not included, and cannot be.** Super Mario Land is Nintendo's copyrighted work; the repo ships no

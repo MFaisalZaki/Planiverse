@@ -1,19 +1,31 @@
 # Rendering a trace
 
 A plan is a list of actions, which is not much to look at. A **trace** is what those actions
-did, and this turns one into pictures. Rendering is deliberately nothing more than one image
-per state, written to disk:
+did, and this turns one into pictures. The target's extension picks the format, and the
+choice is really about how many frames you want in front of you at once:
 
 ```python
 trace = env.simulate(plan)
-env.render_trace(trace, "plan.gif")        # an animated GIF, one frame per state
-env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
+env.render_trace(trace, "plan.png", actions=plan, env=env)   # every frame on one sheet
+env.render_trace(trace, "plan.pdf", actions=plan, env=env)   # paginated, for a long plan
+env.render_trace(trace, "plan.gif")                          # one frame at a time
+env.render_trace(trace, "plan-frames/")                      # a directory of PNGs
 ```
 
-A `.gif` target gets the animation (`duration_ms=` per frame, looping); anything else is
-treated as a directory receiving `state-000.png` onward, in trace order. There used to be
-captions, contact sheets, PDF pagination and trace thinning here; they dressed the frames up
-without showing any state the frames did not already show, so they are gone.
+A **contact sheet** is the one that answers "what did the planner actually do": the whole
+plan is visible at once, and passing `actions=` and `env=` captions each frame with its step
+number, the action that produced it, and a green `goal` or red `dead end` note. A `.pdf`
+paginates instead (`per_page=` tiles several frames onto a page). A `.gif` animates
+(`duration_ms=` per frame, looping), which is the right thing for watching a plan and the
+wrong thing for reading one. Anything without an extension is treated as a directory
+receiving `state-000.png` onward, in trace order.
+
+`max_states=` thins a long trace to the first, the last, and an even spread between —
+worth having when a frame is a 640x576 console screenshot. The captions keep the real step
+numbers, so a thinned sheet still says which step is which.
+
+Every environment's own page carries a rendered plan for its first instance and the exact
+snippet that produced it; the images live in [`docs/renders/`](renders/).
 
 - **Dependencies:** Pillow, which the library already requires. Not matplotlib, though the
   monospace font is borrowed from it so that there is always one.
@@ -61,3 +73,4 @@ than one colour, which is the assertion that would have caught it.
 |---|---|
 | [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state` |
 | [`tests/test_rendering.py`](../tests/test_rendering.py) | Tests, including the blank-image check |
+| [`renders/`](renders/) | The rendered plans the environment pages embed |

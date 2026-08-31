@@ -607,9 +607,13 @@ class LoloGBState(GBState):
         predicates = [f"at(lolo, {self.cell.row}, {self.cell.col})",
                       f"hearts-left({self.hearts_left})",
                       f"shots({self.shots})"]
+        # Both heart glyphs, not just `HEART`: the magic heart counts towards `hearts_left`
+        # and sits on the board like any other, so leaving it out left a state whose own
+        # counter said two hearts and whose predicates named one. A planner reads only the
+        # predicates, so the second heart may as well not have existed.
         predicates += [f"at(heart, {row}, {col})"
                        for row, line in enumerate(self.grid)
-                       for col, glyph in enumerate(line) if glyph == HEART]
+                       for col, glyph in enumerate(line) if glyph in HEART_GLYPHS]
         predicates += [f"at(framer, {row}, {col})"
                        for row, line in enumerate(self.grid)
                        for col, glyph in enumerate(line) if glyph == FRAMER]

@@ -13,6 +13,36 @@ environment wraps [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator)
 
 Related upstream work: [PenGym](https://github.com/cyb3rlab/PenGym).
 
+## A solved instance
+
+![BFWS's plan for network_attack instance 0](../renders/network_attack.png)
+
+BFWS's plan for instance `0` (`tiny`): 6 actions, shown as a contact sheet rather than an
+animation, because there is nothing here to animate. `render_trace` falls back to
+`str(state)` for an environment with no screen, and NASim's own `State.__str__` prints host
+addresses and nothing else — so all seven states typeset identically and the GIF is a single
+frame. The captions still carry the attack: exploit, subnet scan, exploit, privilege
+escalation, exploit, privilege escalation, and the goal.
+
+What changes between those states lives in `state.literals`, which the text does not show.
+Giving `NASimState` a `__str__` that prints the compromised set would make this render.
+
+```python
+from planiverse.environments.network_attack.network_attack import EnvNASim
+from planiverse.benchmark import measures
+from planiverse.planners.width import IteratedBFWS
+
+env = EnvNASim()
+env.fix_index(0)
+env.reset()
+
+result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
+trace = env.simulate(result.plan)
+env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
+```
+
+See [docs/rendering.md](../rendering.md) for the other output formats.
+
 ## Quickstart
 
 ```python

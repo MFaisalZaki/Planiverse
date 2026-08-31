@@ -260,6 +260,19 @@ def find(buffer, codes):
                  for index, code in enumerate(buffer) if code in codes)
 
 
+def pivots(buffer):
+    """Every turnstile, as `(pivot position, arm mask)`.
+
+    The mask is the twin's: bit 8 up, 4 right, 2 down, 1 left, read straight out of
+    `ARM_MASKS`. Turning a turnstile rotates its arms and so changes this mask, which makes
+    it *state* rather than scenery -- and a state a planner has to be told about, because
+    which arms are where decides what a tater can walk through.
+    """
+    return tuple((Position(index // ROW_STRIDE, index % ROW_STRIDE),
+                  ARM_MASKS[code - PIVOT_CODES.start])
+                 for index, code in enumerate(buffer) if code in PIVOT_CODES)
+
+
 def taters(buffer):
     """The taters still on the board, as `{character: position}`."""
     return {code - TATER_CODES.start: Position(index // ROW_STRIDE, index % ROW_STRIDE)
@@ -643,6 +656,7 @@ class AmazingTaterGBState(GBState):
         self.exit = exits[0] if exits else None
         self.block_squares = find(buffer, list(BLOCK_CODES) + list(SETTLED_BLOCK_CODES))
         self.pits = find(buffer, [CODE_PIT])
+        self.turnstiles = pivots(buffer)
 
         # Sampled here, while the emulator still holds this position. Read later from live
         # memory they would describe whichever state was applied last.
@@ -652,6 +666,12 @@ class AmazingTaterGBState(GBState):
         predicates += [f"at(tater{who + 1}, {cell.row}, {cell.col})"
                        for who, cell in sorted(self.taters.items())]
         predicates += [f"at(block, {cell.row}, {cell.col})" for cell in self.block_squares]
+        # Spelled exactly as the twin spells it. Without this a position that differs only
+        # in how its turnstiles are turned is invisible to a planner, which reasons over
+        # these predicates alone: it closes the two as one and can empty its frontier while
+        # calling that a proof there is no plan.
+        predicates += [f"turnstile({cell.row}, {cell.col}, {mask})"
+                       for cell, mask in self.turnstiles]
         predicates += [f"pit({cell.row}, {cell.col})" for cell in self.pits]
         if self.exit is not None:
             predicates.append(f"exit({self.exit.row}, {self.exit.col})")

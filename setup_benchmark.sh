@@ -26,7 +26,7 @@ SANDBOX_DIR="sandbox"
 NAME="planiverse-bench"
 TIME_LIMIT="30m"
 MEMORY_LIMIT="8GB"
-MAX_EXPANSIONS="100000"
+MAX_EXPANSIONS="500000"
 MAX_INSTANCES="0"          # 0 = every instance of every environment
 ENVIRONMENTS=""            # empty = every environment; else comma-separated registry names
 PARTITION=""
@@ -51,7 +51,6 @@ Options:
   --python BIN          interpreter to build the venv with          (default: python3)
   --rom-puzznic PATH    Puzznic cartridge; skips the question for it
   --rom-flipull PATH    Flipull cartridge
-  --rom-boxxle2 PATH    Boxxle II cartridge
   --rom-lolo PATH       Adventures of Lolo cartridge
   --rom-amazing-tater PATH  Amazing Tater cartridge
   --rom-super-mario-land PATH  Super Mario Land cartridge (--rom-mario and --rom-sml work too)
@@ -60,7 +59,7 @@ Options:
   --name NAME           experiment name, used in job names
   --time DURATION       per-run wall clock             (default: 30m)
   --memory SIZE         per-run memory                 (default: 8GB)
-  --max-expansions N    per-run node budget            (default: 100000)
+  --max-expansions N    per-run node budget            (default: 500000)
   --max-instances N     instances per environment, 0 for all  (default: 0)
   --environments LIST   comma-separated registry names to run; skips the question
                         (default: every environment)
@@ -245,7 +244,7 @@ if [ "$ASSUME_YES" != "1" ] && [ -t 0 ]; then
 fi
 
 echo "Game Boy cartridges."
-echo "  Puzznic, Flipull, Boxxle II, Adventures of Lolo, Amazing Tater and Super Mario Land are"
+echo "  Puzznic, Flipull, Adventures of Lolo, Amazing Tater and Super Mario Land are"
 echo "  copyrighted and are not in this"
 echo "  repo, so their paths have to come from you. Each one you give is benchmarked alongside"
 echo "  its pure-Python twin; each one you skip is reported as skipped rather than silently"
@@ -258,7 +257,6 @@ echo
 ROM_ENTRIES=(
     puzznic_gb        PLANIVERSE_PUZZNIC_ROM  puzznic  "Puzznic"
     flipull_gb        PLANIVERSE_FLIPULL_ROM  flipull  "Flipull"
-    boxxle2_gb        PLANIVERSE_BOXXLE2_ROM  boxxle2  "Boxxle II"
     lolo_gb           PLANIVERSE_LOLO_ROM     lolo     "Adventures of Lolo"
     amazing_tater_gb  PLANIVERSE_AMAZING_TATER_ROM  amazing-tater  "Amazing Tater"
     super_mario_land_gb  PLANIVERSE_SUPER_MARIO_LAND_ROM  super-mario-land  "Super Mario Land"
