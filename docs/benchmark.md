@@ -1,14 +1,14 @@
 # Benchmarking
 
-`planiverse-bench` runs every planner in the library over every environment, on a SLURM cluster
-or on one machine, and turns the results into tables and plots. It is modelled on
+`planiverse-bench` runs every planner in the library over every environment, on a SLURM cluster or
+on one machine, and turns the results into tables and plots. We modelled it on
 [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit): an experiment is a directory of
 JSON, a sandbox is a directory of results, and the stages between them run independently.
 
 - **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/)
-- **Command:** `planiverse-bench` (installed with the library)
-- **Dependencies:** none beyond the library. Plots need matplotlib, which is already a
-  dependency; without it the tables are still written.
+- **Command:** `planiverse-bench`, installed with the library
+- **Dependencies:** none beyond the library. Plots need matplotlib, which is already a dependency;
+  without it the tables are still written.
 
 ## The five minute version
 
@@ -19,11 +19,11 @@ planiverse-bench analyze   --sandbox-dir sandbox
 planiverse-bench report    --sandbox-dir sandbox
 ```
 
-`setup_benchmark.sh` is the front door. It runs the first three stages and asks the things
-nothing else can work out: which environments to run (Enter keeps all of them) and where
-your cartridges are. `--yes` takes every default and asks nothing; `--environments` answers
-the question from the command line. The stages underneath are ordinary commands if you would
-rather drive them:
+`setup_benchmark.sh` is the front door. It runs the first three stages and asks the two things
+nothing else can work out: which environments to run, where Enter keeps all of them, and where
+your cartridges are. `--yes` takes every default and asks nothing, and `--environments` answers
+the question from the command line. The stages underneath are ordinary commands, if you would
+rather drive them yourself:
 
 ```bash
 planiverse-bench init      --exp-dir experiment --rom-puzznic /path/to/Puzznic.gb
@@ -31,38 +31,41 @@ planiverse-bench discover  --exp-dir experiment --sandbox-dir sandbox
 planiverse-bench generate  --exp-dir experiment --sandbox-dir sandbox
 ```
 
-`init` writes a default experiment; `discover` resolves which `(environment, index)` pairs
-exist here; `generate` writes the commands and the SLURM job arrays; `analyze` collects the
-result files into tables and a CSV; `report` adds LaTeX and plots. `solve` is the one stage you
-do not normally type; it is what each array element runs.
+`init` writes a default experiment; `discover` resolves which `(environment, index)` pairs exist
+here; `generate` writes the commands and the SLURM job arrays; `analyze` collects the result files
+into tables and a CSV; `report` adds LaTeX and plots. `solve` is what each array element runs.
+
+Each stage writes files the next one reads, so no stage needs another to be running. That is what
+lets a benchmark be prepared on a laptop, run on a cluster, and analysed somewhere else again. It
+is also what makes a run reproducible: the sandbox records which experiment produced it, so a
+result can always be traced back to the limits it was obtained under.
 
 ## Installing
 
-`setup_benchmark.sh` builds a virtualenv and installs the library into it, before it does
-anything else. There is no flag to turn that on: it is the first thing it does.
+`setup_benchmark.sh` builds a virtualenv and installs the library into it before it does anything
+else:
 
 ```
 == creating virtualenv at /path/to/repo/.venv
 == installing planiverse from /path/to/repo
 ```
 
-The venv defaults to `.venv` beside the script, is **reused** if it is already there, and gets
-an editable install (`pip install -e`), so editing the library and re-running the benchmark
-does not need a reinstall.
+The venv defaults to `.venv` beside the script, is reused if it is already there, and gets an
+editable install (`pip install -e`), so editing the library and re-running the benchmark does not
+need a reinstall.
 
-What the generated jobs then call is the venv's own console script, **by absolute path**:
+The generated jobs call the venv's own console script by absolute path:
 
 ```bash
 /path/to/repo/.venv/bin/planiverse-bench solve --exp-dir ... --task puzznic@0
 ```
 
-That is deliberate, and it is the part that makes this work on a cluster. "Activate, then run
-`planiverse-bench`" depends on the activation having happened in that shell, and a job runs in
-a shell that never saw yours. It either fails, or worse, silently finds some other
-`planiverse-bench` on `PATH` and benchmarks a different version of the library. An absolute
-path can do neither. The venv is activated in the jobs **as well**, so anything they run after
-the CLI gets the same interpreter; `run_local.sh` activates it too, so a local run and a
-cluster run use the same Python rather than differing by whatever was on `PATH`.
+That is deliberate, and it is the part that makes this work on a cluster. An activation depends on
+the shell it happened in, and a job runs in a shell that never saw yours, so it either fails or,
+worse, silently finds some other `planiverse-bench` on `PATH` and benchmarks a different version
+of the library. An absolute path can do neither. The venv is activated in the jobs as well, so
+anything they run after the CLI gets the same interpreter, and `run_local.sh` activates it too, so
+a local run and a cluster run use the same Python rather than differing by whatever was on `PATH`.
 
 | Flag | |
 |---|---|
@@ -70,22 +73,15 @@ cluster run use the same Python rather than differing by whatever was on `PATH`.
 | `--no-venv` | do not build one; use whatever `planiverse` is already importable |
 | `--python BIN` | interpreter to build it with (default `python3`) |
 
-**On a cluster, `--venv` has to name a filesystem the compute nodes can see.** A virtualenv
-under `/tmp` on the login node does not exist on the node that runs the job, and every array
-element fails identically. The script cannot tell which of your paths is shared, so the default
-is next to the repository and moving it is your call.
+On a cluster, `--venv` has to name a filesystem the compute nodes can see. A virtualenv under
+`/tmp` on the login node does not exist on the node that runs the job, and every array element
+fails identically. The script cannot tell which of your paths is shared, so the default sits next
+to the repository and moving it is your call.
 
 `--no-venv` uses the current environment and stops with instructions if the library is not
-importable, rather than picking an entry point that fails three stages later. `--setup-command`
-on `init` adds arbitrary lines to the top of every job (`module load python/3.11`), repeatable
-and in order.
-
-## Why the stages are separate
-
-Each writes files the next one reads, so no stage needs another to be running. That is what
-lets a benchmark be prepared on a laptop, run on a cluster, and analysed somewhere else again.
-It is what makes a run reproducible, because the sandbox records which experiment produced
-it, and a result can always be traced back to the limits it was obtained under.
+importable, rather than picking an entry point that fails three stages later. `--setup-command` on
+`init` adds arbitrary lines to the top of every job, for example `module load python/3.11`,
+repeatable and in order.
 
 ## The experiment directory
 
@@ -136,9 +132,8 @@ experiment/
 }
 ```
 
-Durations take either spelling (`"30m"` or `"00:30:00"`) because SLURM writes one and people
-write the other. Sizes take `"8GB"`. Unknown keys are ignored, so a config written for a later
-version still loads.
+Durations take either spelling, `"30m"` or `"00:30:00"`. Sizes take `"8GB"`. Unknown keys are
+ignored, so a config written for a later version still loads.
 
 A planner file:
 
@@ -153,68 +148,66 @@ A planner file:
 }
 ```
 
-`max-instances-per-environment` is `0`, meaning **every instance of every environment**. Set
-a number for a quick look, but be clear about what it costs: a benchmark that samples a tenth
-of each environment is reporting on a sample it chose, and `selection: "even"` decides which
-tenth. `include-rom-environments` is on, so a Game Boy environment is benchmarked next to its
-pure-Python twin, which is most of the point of having both. Without a cartridge those
-environments are skipped with a reason rather than failing.
+`max-instances-per-environment` is `0`, meaning every instance of every environment. Setting a
+number gives a quick look, at a cost worth being clear about: a benchmark that samples a tenth of
+each environment is reporting on a sample it chose, and `selection: "even"` decides which tenth.
+`include-rom-environments` is on, so a Game Boy environment is benchmarked next to its Python
+twin, which is most of the point of having both, and without a cartridge those environments are
+skipped with a reason rather than failing.
 
-`include-environments` is empty, meaning all of them. `setup_benchmark.sh` asks which
-environments to run (Enter keeps all), and the answer arrives here through
-`init --environments puzznic,super_mario_land`: comma-separated registry names, refused at
-`init` if one is misspelled, because a typo that silently selects nothing costs an empty
-experiment. Everything not selected is reported as skipped, with the reason, rather than
-silently dropped, and the setup script stops asking for cartridges whose environments are
-not in the selection.
+`include-environments` is empty, meaning all of them. The answer to `setup_benchmark.sh`'s
+question arrives here through `init --environments puzznic,super_mario_land`, as comma-separated
+registry names, refused at `init` if one is misspelled, because a typo that silently selects
+nothing costs an empty experiment. Everything not selected is reported as skipped, with the
+reason, rather than silently dropped, and the setup script stops asking for cartridges whose
+environments are not in the selection.
 
 `roms` records where the cartridges are. It lives in the experiment rather than in environment
-variables so the experiment is self-contained: a variable exported in the shell that ran
-`generate` is not there on the compute node, and the whole array would come back
-`UNSUPPORTED`. A variable is still honoured as a fallback, and a recorded path that does not
-exist falls back to one; a path written on the machine that made the config is a promise
-about a different filesystem until it is checked.
+variables so that the experiment is self-contained: a variable exported in the shell that ran
+`generate` is not there on the compute node, and the whole array would come back `UNSUPPORTED`. A
+variable is still honoured as a fallback, and a recorded path that does not exist falls back to
+one, because a path written on the machine that made the config is a promise about a different
+filesystem until it is checked.
 
-`tag` names the planner everywhere afterwards (result filenames, sbatch job name, every table),
-so it must be filesystem-safe and stable. `planner` is a name from the catalogue
-(`planiverse-bench planners` lists them). A misspelled parameter is **refused**, not ignored: a
-benchmark that quietly drops `"widht": 2` reports a width-1 result under a width-2 name and
-nothing downstream can tell.
+`tag` names the planner everywhere afterwards, in result filenames, the sbatch job name and every
+table, so it must be filesystem-safe and stable. `planner` is a name from the catalogue, and
+`planiverse-bench planners` lists them. A misspelled parameter is refused rather than ignored,
+because a benchmark that quietly drops `"widht": 2` reports a width-1 result under a width-2 name
+and nothing downstream can tell.
 
-`tags` and `exclude-environments` narrow one planner's task list, so a single experiment can run
-a cheap planner over everything and an expensive one over a subset.
+`tags` and `exclude-environments` narrow one planner's task list, so a single experiment can run a
+cheap planner over everything and an expensive one over a subset.
 
 ### Why no default planner has a pinned width
 
-Because IW does not have one. IW(k) is a family, and which member you need is a property of the
-problem, not a setting. The default experiment runs `iterated_width` for that reason: it tries
-IW(1), IW(2), … up to `max_width`, set to 1000. Every width planner in the default spread is the
-iterated version of itself, for reasons that differ per planner; the sampling planners `fsx`
-and `mcts` have no width to iterate and run as themselves.
+No default planner has a pinned width, because IW does not have one. IW(k) is a family, and which
+member you need is a property of the problem rather than a setting. The default experiment runs
+`iterated_width` for that reason, which tries IW(1), IW(2), … up to `max_width`, set to 1000.
+Every width planner in the default spread is the iterated version of itself, for reasons that
+differ per planner, while the sampling planners `fsx` and `mcts` have no width to iterate and run
+as themselves.
 
-That bound is a bound, not a plan. The loop stops as soon as any of three things happens: a
-width solves the problem; the budget runs out (the usual outcome above width 2, since IW(k)
-enumerates every k-tuple of every state's atoms); or **a width exhausts the reachable space
-without discarding anything for novelty**, at which point no larger width can reach further and
-there is no plan. In practice it stops at 1 or 2 and the 1000 is never approached.
+That bound is a bound rather than a plan. The loop stops as soon as any of three things happens:
+(1) a width solves the problem; (2) the budget runs out, which is the usual outcome above width 2
+since IW(k) enumerates every k-tuple of every state's atoms; or (3) a width exhausts the reachable
+space without discarding anything for novelty, at which point no larger width can reach further
+and there is no plan. In practice it stops at 1 or 2 and the 1000 is never approached.
 
 Widths above 2 need `strict: false`. `NoveltyTable` refuses them otherwise, on the grounds that
 C(n, k) tuples per state is usually more expensive than the simulator it is meant to be saving,
 which is true, and is exactly why the bound has to be discovered rather than assumed.
 
-**`siw` iterates for the same reason**, because each of its legs *is* an IW search. Novelty is
-a filter there too, so if no state within IW(k)'s pruned reach improves progress, the leg fails
-and the whole search fails, even though a wider leg would have found one. `SIWSearch` takes a
+**`siw` iterates for the same reason**, because each of its legs is an IW search. Novelty is a
+filter there too, so if no state within IW(k)'s pruned reach improves progress, the leg fails and
+the whole search fails, even though a wider leg would have found one. `SIWSearch` takes a
 `max_width`, and a leg tries increasing widths until it makes progress, runs out of budget, or
 finds that a width covered everything reachable from its start without pruning anything. The
-last case means no wider leg could do better either. The widths share one budget, so a stubborn leg
-cannot spend more than a leg that succeeded immediately. `statistics.widths_tried` then reports
-the widths the legs actually needed: a problem whose hardest leg needed IW(2) is a different
-problem from one every leg solved at IW(1), and pinning the width hid that.
+widths share one budget, so a stubborn leg cannot spend more than a leg that succeeded
+immediately. `statistics.widths_tried` reports the widths the legs needed.
 
-**`bfws` iterates for a different reason than either.** Plain BFWS uses novelty as a *sort
-key* rather than as a filter: nothing is ever discarded, so no width can make it miss anything,
-and iterating *it* would be pointless. Measured over a few tasks at a 3000-expansion budget:
+**`bfws` iterates for a different reason.** Plain BFWS uses novelty as a sort key rather than as a
+filter, so nothing is ever discarded, no width can make it miss anything, and iterating it would
+be pointless. Measured over a few tasks at a 3000-expansion budget:
 
 ```
 task              w status           exp  pruned_novelty  plan
@@ -230,33 +223,29 @@ flipull@9         2 out_of_budget   3000               0     -
 IW(1) puzznic@1: exhausted, pruned_novelty=47
 ```
 
-Three things follow. `pruned_novelty` is zero at every width: plain BFWS discards nothing,
-where IW(1) threw away 47 states on the same task. There is no "the width was too small"
-outcome to escalate from: BFWS(1) ends solved, `exhausted` (it covered the reachable space,
-which is a proof there is no plan), or `out_of_budget`, and all three are stop conditions.
-Iterating *unpruned* BFWS under one budget would then spend it at width 1 and never reach width 2.
-It would be exactly BFWS(1) with extra machinery.
+Three things follow. `pruned_novelty` is zero at every width, since plain BFWS discards nothing,
+where IW(1) threw away 47 states on the same task. There is no "the width was too small" outcome
+to escalate from, because BFWS(1) ends solved, `exhausted` (it covered the reachable space, which
+proves there is no plan), or `out_of_budget`, and all three are stop conditions. And iterating
+unpruned BFWS under one budget would spend it at width 1 and never reach width 2, making it
+exactly BFWS(1) with extra machinery.
 
-What the default runs instead is `iterated_bfws`, whose rounds are the **pruned** variant,
-k-BFWS: IW's novelty filter with BFWS's ordering inside it. A pruned round has IW's bounded
-frontier, so it is cheap, and unlike unpruned BFWS it *can* run out of width, so escalating it
-means something. The rounds run at widths 1 and 2, and whatever budget they leave goes to one
-unpruned round, which is complete: the polynomial-first, complete-last shape of Dual-BFWS
-(Lipovetzky and Geffner, 2017). The bound is the same 1000 as the others', but `strict` is
-deliberately left **on**, unlike theirs: here escalation competes with the final complete
-round for the same budget, and pruned rounds above width 2 would spend it enumerating tuples
-instead. The strict refusal at width 3 is what hands the leftover budget to the complete
-round.
+The default runs `iterated_bfws`, whose rounds are the pruned variant, k-BFWS: IW's novelty filter
+with BFWS's ordering inside it. A pruned round has IW's bounded frontier, so it is cheap, and it
+can run out of width, so escalating it means something. The rounds run at widths 1 and 2, and
+whatever budget they leave goes to one unpruned round, which is complete. The bound is the same
+1000 as the others', but `strict` is left on: here escalation competes with the final complete
+round for the same budget, and pruned rounds above width 2 would spend it enumerating tuples.
 
-And wider is not stronger: on `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and
-above run out of budget. A higher width discriminates more finely and so changes the search
-*order*, and on those tasks the coarser order is the better one. Width in BFWS is a dial, not
-a ladder, which is why the final complete round runs at width 1, the cheapest member of a
-family whose members are all complete.
+Wider is not stronger. On `puzznic@30` and `flipull@9`, BFWS(1) solves where BFWS(2) and above run
+out of budget: a higher width discriminates more finely and so changes the search *order*, and on
+those tasks the coarser order is the better one. Width in BFWS is a dial rather than a ladder,
+which is why the final complete round runs at width 1, the cheapest member of a family whose
+members are all complete.
 
-For IW and SIW novelty is a filter, so a width too low genuinely loses states and climbing is
-the only way to find out what the problem needs. That asymmetry is the whole reason `iw` and
-`siw` climb with `strict: false` while `bfws` keeps the strict guard and stops climbing at 2.
+For IW and SIW novelty is a filter, so a width too low genuinely loses states and climbing is the
+only way to find out what the problem needs. That is why `iw` and `siw` climb with `strict: false`
+while `bfws` keeps the strict guard and stops climbing at 2.
 
 ## The sandbox
 
@@ -276,10 +265,10 @@ sandbox/
 
 ## SLURM
 
-One **job array per planner**, not one job per run. A benchmark is thousands of short runs, and
-a scheduler handling them as thousands of jobs spends longer scheduling than computing. Line
-*n* of `cmds/<planner>.txt` is array index *n*, and nothing re-derives that ordering, which is
-what lets a failed element be re-run by hand.
+We generate one job array per planner rather than one job per run. A benchmark is thousands of
+short runs, and a scheduler handling them as thousands of jobs spends longer scheduling than
+computing. Line *n* of `cmds/<planner>.txt` is array index *n*, and nothing re-derives that
+ordering, which is what lets a failed element be re-run by hand.
 
 ```bash
 #SBATCH --job-name=planiverse-bench-bfws
@@ -293,25 +282,24 @@ COMMAND=$(sed -n "$(( INDEX + 1 ))p" "$COMMANDS")
 eval "$COMMAND"
 ```
 
-Three things a generated array has to get right, none of them obvious the first time:
+A generated array has to get three things right, none of them obvious the first time:
 
-- **Array size.** `MaxArraySize` is a site limit, commonly 1001, and an array over it is
-  rejected at submission with a message that does not name the cause. Long lists are split
-  across several `sbatch` files with an offset baked in. Check yours with
-  `scontrol show config | grep MaxArraySize` and set `max-array-size` to match.
-- **Throttling.** `--array=0-999%50` runs fifty at a time. Without the `%`, a benchmark
-  submitted on a shared cluster takes every free node on the partition.
-- **Headroom.** SLURM's `--time` and `--mem` are set *above* the harness's own limits. The
-  harness wants to notice its own timeout and write a `TIMEOUT` result; if SLURM kills it at
-  the same instant, the row is missing instead, and a missing row reads as an infrastructure
-  problem rather than a slow planner.
+- **Array size.** `MaxArraySize` is a site limit, commonly 1001, and an array over it is rejected
+  at submission with a message that does not name the cause. Long lists are split across several
+  `sbatch` files with an offset baked in. Check yours with `scontrol show config | grep
+  MaxArraySize` and set `max-array-size` to match.
+- **Throttling.** `--array=0-999%50` runs fifty at a time. Without the `%`, a benchmark submitted
+  on a shared cluster takes every free node on the partition.
+- **Headroom.** SLURM's `--time` and `--mem` are set above the harness's own limits, so the
+  harness notices its own timeout and writes a `TIMEOUT` result rather than being killed at the
+  same instant and leaving a missing row.
 
-`setup-commands` are prepended to every job body **and to `run_local.sh`**, so a local run and
-a cluster run use the same interpreter. `setup_benchmark.sh` puts its virtualenv activation
-there; add your own with `--setup-command` on `init`, repeatable and in order.
-`--per-task-scripts` writes one file per run instead of arrays, for sites that disable them.
-`${SLURM_ARRAY_TASK_ID:-0}` means a script run directly executes its first element, which is
-how you debug one without a scheduler.
+`setup-commands` are prepended to every job body and to `run_local.sh`, so a local run and a
+cluster run use the same interpreter. `setup_benchmark.sh` puts its virtualenv activation there,
+and your own go in with `--setup-command` on `init`, repeatable and in order. `--per-task-scripts`
+writes one file per run instead of arrays, for sites that disable them.
+`${SLURM_ARRAY_TASK_ID:-0}` means a script run directly executes its first element, which is how
+to debug one without a scheduler.
 
 `--entry-point` changes how the jobs invoke the CLI, for a checkout that is not pip-installed:
 
@@ -322,13 +310,13 @@ planiverse-bench generate --exp-dir experiment --sandbox-dir sandbox \
 
 ## Statuses
 
-Every run ends in one, because a failure has to be *recorded* rather than raised: a planner
-that dies on instance 12 must not take the other 400 runs with it.
+Every run ends in one, because a failure has to be recorded rather than raised: a planner that
+dies on instance 12 must not take the other 400 runs with it.
 
 | Status | Meaning |
 |---|---|
 | `SOLVED` | a plan, and one that replays to a goal |
-| `INVALID` | a plan that does **not** replay to a goal. A planner bug, reported as one |
+| `INVALID` | a plan that does not replay to a goal. A planner bug, reported as one |
 | `UNSOLVED` | the planner stopped of its own accord without a plan |
 | `TIMEOUT` | the wall-clock limit ran out first |
 | `NODEOUT` | the expansion limit ran out first |
@@ -337,68 +325,65 @@ that dies on instance 12 must not take the other 400 runs with it.
 | `UNSUPPORTED` | the environment could not be built here |
 | `MISSING` | no result file. Assigned at analysis time, never written by a run |
 
-`TIMEOUT` and `NODEOUT` are separate because they say different things about the same planner:
-one is too slow per node, the other is looking in the wrong place.
+`TIMEOUT` and `NODEOUT` are separate because they say different things about the same planner: one
+is too slow per node, the other is looking in the wrong place.
 
-`UNSOLVED` deliberately does **not** mean "unsolvable". It means the planner stopped of its
-own accord without a plan, and whether that is a proof depends on the planner:
+`UNSOLVED` should not be confused with "unsolvable". It means the planner stopped of its own
+accord without a plan, and whether that counts as a proof depends on the planner:
 
-- **BFWS** is complete: it uses novelty as a sort key rather than as a filter, so nothing is
-  ever discarded. Its `UNSOLVED` rows are proofs.
-- **Iterated Width** is complete *on the runs where it says so*. It reports `exhausted` when
-  one of its widths covered the reachable space without discarding anything for novelty; that
-  is a proof. Stopped by the budget instead, it proves nothing. Each result carries its own
-  `complete` flag rather than inheriting one from the planner.
+- **BFWS** is complete: it uses novelty as a sort key rather than as a filter, so nothing is ever
+  discarded. Its `UNSOLVED` rows are proofs.
+- **Iterated Width** is complete on the runs where it says so. It reports `exhausted` when one of
+  its widths covered the reachable space without discarding anything for novelty; stopped by the
+  budget instead, it proves nothing. Each result carries its own `complete` flag.
 - **IW at a fixed width, SIW, FSX and MCTS** prove nothing either way.
 
 The coverage table stars a planner when at least one of its `UNSOLVED` rows is not a proof, and
 `results.csv` has the per-run `complete` and `search_status` columns behind it.
 
-`MISSING` is the one worth watching. A benchmark's most common failure is a job that never ran
-(cancelled, evicted, submitted to a partition that does not exist). An analysis that reads
-only the files that are there gives a planner that crashed on half the set excellent coverage
-over the half it survived. The expected set comes from `tasks.json`, so anything without a file
-is counted as a failure and called out in the report.
+`MISSING` is the one worth watching, because a benchmark's most common failure is a job that never
+ran, whether cancelled, evicted, or submitted to a partition that does not exist. An analysis that
+reads only the files that are there would give a planner which crashed on half the set excellent
+coverage over the half it survived. The expected set comes from `tasks.json`, so anything without
+a file is counted as a failure and called out in the report.
 
 ### Limits, and how they are enforced
 
 - **Time.** The planner's own `Budget(max_seconds=...)`, plus a `SIGALRM` on top. The budget is
   only checked between expansions, which is enough right up until one expansion is itself slow:
   the power grid environment spends 8 to 19 seconds inside one.
-- **Memory.** `RLIMIT_AS`, so an overrun raises `MemoryError` and can be recorded. Without it
-  the OOM killer ends the process and the run leaves no trace.
+- **Memory.** `RLIMIT_AS`, so an overrun raises `MemoryError` and can be recorded. Without it the
+  OOM killer ends the process and the run leaves no trace.
 - **Nodes.** `max-expansions`. Against a simulator this is usually the binding limit, because
-  wall-clock is just however many expansions you allowed times the cost of one.
+  wall-clock time is however many expansions were allowed times the cost of one.
 
 ## Progress measures
 
-`SIWSearch` and `BFWSSearch` take a `progress(state)` callback standing in for the
-unachieved-goal count that classical width-based planners lean on. Against a simulator that
-count does not exist, because `is_goal` is a black-box predicate, so the measure is supplied per
-environment, in [`measures.py`](../planiverse/benchmark/measures.py). Lower is better.
+`SIWSearch` and `BFWSSearch` take a `progress(state)` callback standing in for the unachieved-goal
+count that classical width-based planners lean on. Against a simulator that count does not exist,
+because `is_goal` is a black-box predicate, so the measure is supplied per environment in
+[`measures.py`](../planiverse/benchmark/measures.py). Lower is better.
 
-They live in the benchmark rather than in the environments for two reasons. They are a property
-of how you choose to *search* an environment, not of the environment: two people can disagree
-about the right measure for the water network without either being wrong about what the water
-network is. And they are visible: `planiverse-bench environments` prints which environments
-have one, so a weak result on an environment without a measure is legible as such instead of
-looking like a weak planner.
+They live in the benchmark rather than in the environments for two reasons. First, they are a
+property of how you choose to *search* an environment rather than of the environment itself, so
+two people can disagree about the right measure for the water network without either being wrong
+about what the water network is. Second, they are visible: `planiverse-bench environments` prints
+which environments have one, so a weak result on an environment without a measure can be read as
+such rather than looking like a weak planner.
 
-Every environment currently has one, so `WITHOUT_MEASURE` is empty; the path is kept because
-the next environment added may not.
-Without a measure BFWS becomes
-breadth-first search ordered by novelty alone and SIW becomes a single IW call. That is a real
-result, not a broken one, but it is a different experiment, and the reports mark the rows with
-`†`.
+Every environment currently has one, so `WITHOUT_MEASURE` is empty, and we keep the path because
+the next environment added may not. Without a measure BFWS becomes breadth-first search ordered by
+novelty alone and SIW becomes a single IW call, which is a real result rather than a broken one
+but a different experiment, so the reports mark those rows with `†`.
 
 ## Game Boy environments
 
-They need a cartridge, which is copyrighted and cannot ship here, so the path can only come
-from you. `./setup_benchmark.sh` asks for all three, checks each file exists, and records the
-paths in the experiment. That is the recommended route, and it is why the script exists.
+These environments need a cartridge, which is copyrighted and cannot ship here, so the path can
+only come from you. `./setup_benchmark.sh` asks for all of them, checks each file exists, and
+records the paths in the experiment, which is the recommended route and why the script exists.
 
-There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
-`planiverse-bench init`:
+There is a flag per cartridge, and it works on both `setup_benchmark.sh` and `planiverse-bench
+init`:
 
 | Flag | Environment | Variable |
 |---|---|---|
@@ -414,8 +399,7 @@ There is a flag per cartridge, and it works on both `setup_benchmark.sh` and
                      --rom-mario   ~/roms/"Super Mario Land.gb"
 ```
 
-Give one on the command line and the script does not ask about it; leave it out and it does.
-The same flags work on `init` directly:
+Give one on the command line and the script does not ask about it. The same flags work on `init`:
 
 ```bash
 planiverse-bench init --exp-dir experiment --force \
@@ -426,93 +410,48 @@ planiverse-bench init --exp-dir experiment --force \
 ```
 
 The flags are generated from the registry, so a new Game Boy environment gets one by existing.
-Each is the same name as its environment variable in a different spelling, which is where
-`--rom-super-mario-land` comes from. `--rom-mario` is a shorter alias, and `--rom-sml` is kept
-for anyone still typing the old abbreviation. A path
-that does not exist is refused there and then: a typo caught while typing costs a second, and
-one caught after submitting four thousand jobs costs rather more.
+Each is its environment variable's name in a different spelling, which is where
+`--rom-super-mario-land` comes from, while `--rom-mario` is a shorter alias and `--rom-sml` is
+kept for the old abbreviation. A path that does not exist is refused there and then, because a
+typo caught while typing costs a second and one caught after submitting four thousand jobs costs
+rather more.
 
-`--rom puzznic_gb=PATH` keys the same thing by environment name, which is easier in a loop
-where the environment is itself a variable.
+`--rom puzznic_gb=PATH` keys the same thing by environment name, which is easier in a loop where
+the environment is itself a variable.
 
-Environment variables still work as a fallback, but they are the weaker option for a cluster
-run: a variable exported in your shell is not there on the compute node unless you also put it
-in `setup-commands`. The recorded path travels with the experiment.
+Environment variables still work as a fallback, but a variable exported in your shell is not there
+on the compute node unless you also put it in `setup-commands`. The recorded path travels with the
+experiment.
 
-Each of these has a pure-Python counterpart (`puzznic`, `flipull`, `super_mario_land`), so
-supplying a cartridge is what lets you compare an emulated environment against an implemented
-one under the same planners and the same limits. Skip one and it is reported as skipped, with
-the reason, rather than quietly dropped.
+Each of these has a Python counterpart (`puzznic`, `flipull`, `super_mario_land`), so supplying a
+cartridge is what lets you compare an emulated environment against an implemented one under the
+same planners and the same limits. Skip one and it is reported as skipped, with the reason, rather
+than quietly dropped.
 
 ## Reading the report
 
-`report/results.txt` has coverage, an outcome breakdown, solved-per-environment, head to head,
-and IPC scores.
+`report/results.txt` has coverage, an outcome breakdown, solved-per-environment, head to head, and
+IPC scores.
 
-**Head to head** is there because coverage totals hide the interesting part: two planners can
-each solve 40 of 60 and have only 20 in common, which is a completely different situation from
-solving the same 40.
+**Head to head** is there because coverage totals hide the interesting part: two planners can each
+solve 40 of 60 and have only 20 in common, which is a completely different situation from solving
+the same 40.
 
-**Runtime** is summarised over solved runs only. Averaging in the timeouts would reward a
-planner for failing quickly.
+**Runtime** is summarised over solved runs only. Averaging in the timeouts would reward a planner
+for failing quickly.
 
-**IPC scores** follow the competition rules (quality is `best_length / this_length`, agile is
-`1 / (1 + log10(t/t*))`), and both are relative to the planners in the same table. Adding a
-planner changes everyone's numbers, so a score means nothing on its own.
+**IPC scores** follow the competition rules: quality is `best_length / this_length`, and agile is
+`1 / (1 + log10(t/t*))`. Both are relative to the planners in the same table, so adding a planner
+changes everyone's numbers and a score means nothing on its own.
 
-**The plots** are the conventional pair: a survival ("cactus") plot of tasks solved against
-time, and a runtime scatter between two planners with failures drawn on the border rather than
-dropped. Coverage alone cannot distinguish a planner that solves 40 tasks quickly from one that
-solves the same 40 just inside the limit.
-
-## A worked example
-
-7 planners over 18 tasks (two instances from each environment, a Puzznic cartridge supplied),
-at a 20-second limit, run locally.
-
-This was recorded before SIW was changed to iterate its width, before the two pinned BFWS
-entries were replaced by a single iterated one, and before the `epidemic` and
-`urban_planning` environments were removed over licensing. The `siw-1`/`siw-2` and
-`bfws-1`/`bfws-2` rows are the pinned configurations, and `urban_planning` no longer exists
-in the tree. Everything else is current.
-
-```
-Coverage
-planner       solved  of   coverage  total time  median   plan len
-bfws-1        15      18   83%       76.7s       4.49s    16.3
-bfws-2        15      18   83%       75.2s       3.58s    16.3
-iw            14      18   78%       98.4s       4.93s    12.2
-mcts          8       18   44%       145.3s      20.03s   4.6
-siw-1 *       7       18   39%       33.8s       0.56s    17.6
-siw-2 *       7       18   39%       13.6s       0.06s    6.3
-fsx           2       18   11%       26.8s       13.42s   2.0
-
-Solved per environment
-environment       bfws-1  bfws-2  fsx   iw    mcts  siw-1  siw-2
-crop_management   2/2     2/2     0/2   2/2   2/2   1/2    1/2
-flipull           2/2     2/2     0/2   1/2   1/2   1/2    1/2
-super_mario_land  2/2     2/2     0/2   2/2   1/2   0/2    0/2
-power_grid        2/2     2/2     0/2   2/2   1/2   1/2    0/2
-puzznic           1/2     1/2     0/2   1/2   0/2   0/2    1/2
-puzznic_gb        1/2     1/2     0/2   1/2   0/2   0/2    1/2
-urban_planning †  1/2     1/2     0/2   1/2   0/2   1/2    0/2
-water_network     2/2     2/2     0/2   2/2   1/2   1/2    1/2
-```
-
-Worth noticing. `iw` (Iterated Width, not a width someone picked) lands within one task of
-BFWS, and finds shorter plans than either BFWS configuration while doing it; an earlier run
-with IW pinned at 1 and 2 had each managing well under half of what BFWS did. `mcts` finds much
-shorter plans than anything else and spends the entire limit doing it. `siw-2` is an order of
-magnitude faster than `siw-1` at identical coverage. And `puzznic` and `puzznic_gb` come out
-identical planner for planner, which is the cartridge and its pure-Python twin agreeing: the
-comparison you can only make by supplying a ROM.
-
-None of that is visible from a coverage column alone, which is the argument for the rest of the
-tables.
+**The plots** are the conventional pair: a survival, or cactus, plot of tasks solved against time,
+and a runtime scatter between two planners with failures drawn on the border rather than dropped.
+Coverage alone cannot distinguish a planner that solves 40 tasks quickly from one that solves the
+same 40 just inside the limit.
 
 ## Python API
 
-Every stage is importable, if you would rather script it than shell out:
+Every stage is importable, for scripting rather than shelling out:
 
 ```python
 from planiverse.benchmark import (

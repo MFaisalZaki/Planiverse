@@ -262,8 +262,17 @@ env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 Rendering a trace is one image per state, nothing more: a real console screenshot when the
 state can produce one (`env.render_trace` passes a cartridge-backed environment's own ROM
 automatically), the state's own text typeset otherwise. The free-standing
-`planiverse.rendering.render_trace` takes `gamerom=` explicitly. See
-[docs/rendering.md](docs/rendering.md).
+`planiverse.rendering.render_trace` takes `gamerom=` explicitly.
+
+On a Game Boy environment, `env.render()` does the same for the positions `step` has played
+through, returning the console's own frames rather than the text board:
+
+```python
+frames = env.render()          # PIL images, one per de-duplicated step
+env.render("play.gif")         # or write them, in any format render_trace spells
+```
+
+See [docs/rendering.md](docs/rendering.md).
 
 ## Planners
 
