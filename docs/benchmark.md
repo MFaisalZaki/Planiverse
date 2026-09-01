@@ -380,7 +380,7 @@ but a different experiment, so the reports mark those rows with `†`.
 
 These environments need a cartridge, which is copyrighted and cannot ship here, so the path can
 only come from you. `./setup_benchmark.sh` asks for all of them, checks each file exists, and
-records the paths in the experiment, which is the recommended route and why the script exists.
+records the paths in the experiment.
 
 There is a flag per cartridge, and it works on both `setup_benchmark.sh` and `planiverse-bench
 init`:

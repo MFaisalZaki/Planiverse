@@ -44,15 +44,12 @@ dead ends structurally rather than by being told to: a state one move from losin
 futures, so it scores badly long before it is reached. FSX would steer away from those states even
 if it were never told they were terminal.
 
-The cost is that it is a policy rather than a search: it commits to one action at a time and never
-backtracks. On Puzznic level 1 it does solve, but in 128 actions where IW(2) takes 10. That is not
+It is a policy rather than a search: it commits to one action at a time and never backtracks. On Puzznic level 1 it does solve, but in 128 actions where IW(2) takes 10. That is not
 a bug to be tuned away but what a goal-free agent looks like. Its strength is the opposite case,
 staying alive and mobile where the danger is getting stuck rather than reaching a specific narrow
 target, since a goal down a corridor is by construction in a place with few futures.
 
-`option_count(env, state)` exposes the measure on its own, which is arguably the more useful
-export: a goal-free difficulty signal saying how close a state is to being stuck, and so a
-heuristic for the other planners in exactly the case where heuristics are hardest to write.
+`option_count(env, state)` exposes the measure on its own: a goal-free signal saying how close a state is to being stuck.
 
 ## Monte Carlo Tree Search (UCT)
 

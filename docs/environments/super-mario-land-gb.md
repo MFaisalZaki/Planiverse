@@ -19,6 +19,33 @@ half an hour buys about ten thousand of them, which is not many for a side-scrol
 off the right-hand edge of the level. The rendering itself works, and the [Python
 counterpart](super-mario-land.md) does carry a solved instance.
 
+## A solved instance
+
+There is not one to show. No planner in the library has solved instance `0` of this
+environment inside a 30-minute, 100,000-expansion budget: every run so far has ended in a
+timeout. The emulator settles roughly **5 expansions a second**, so half an hour buys about
+ten thousand of them, which is not many for a side-scroller whose goal is off the right-hand
+edge of the level.
+
+The rendering itself works , [`SuperMarioLandGBEnv`](super-mario-land-gb.md) states carry
+`save(rom, path)` like every other cartridge environment, so any trace you do produce renders
+as real console screenshots. Its pure-Python counterpart has a rendered plan:
+[Super Mario Land](super-mario-land.md).
+
+```python
+import os
+from planiverse.environments.gameboy.super_mario_land_gb import SuperMarioLandGBEnv
+
+env = SuperMarioLandGBEnv(romfile=os.environ["PLANIVERSE_SUPER_MARIO_LAND_ROM"])
+env.fix_index(0)
+env.reset()
+
+# ... once you have a plan from somewhere:
+env.render_trace(env.simulate(plan), "super_mario_land_gb.gif")
+```
+
+See [docs/rendering.md](../rendering.md) for the other output formats.
+
 ## The ROM
 
 The repo ships no ROM, because Super Mario Land is Nintendo's copyrighted work, so you supply your
@@ -79,8 +106,7 @@ Without `fix_index`, `world_level` stays `None` and the game boots at its defaul
 `SuperMarioLandGBState` carries the entire emulator save-state (`gb_state`, the bytes from
 `pyboy.save_state`) plus a set of facts scraped from RAM. The save-state is what makes branching
 possible, since applying an action loads the parent's bytes back into the emulator first, so
-siblings expand from an identical machine. The cost is a state that is kilobytes rather than
-bytes.
+siblings expand from an identical machine.
 
 We derived the memory map behaviourally, by recording all 8 KiB of work RAM once per frame while
 driving scripted input and then correlating against the input phases, rather than from a
@@ -239,17 +265,7 @@ so this is a starting point rather than a working agent.
 ## Rendering
 
 `state.save(gamerom, file)` writes a PNG screenshot of the state by booting a throwaway emulator,
-loading the save-state, and upscaling the frame 4×. `render_trace` supplies this environment's own
-cartridge:
-
-```python
-import os
-env = SuperMarioLandGBEnv(romfile=os.environ["PLANIVERSE_SUPER_MARIO_LAND_ROM"])
-env.fix_index(0)
-env.reset()
-
-env.render_trace(env.simulate(plan), "super_mario_land_gb.gif")
-```
+loading the save-state, and upscaling the frame four times. It needs Pillow.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 
