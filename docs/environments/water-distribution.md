@@ -31,6 +31,33 @@ A third property is softer: which pipes matter is not readable off the topology.
 source has four pipes on it, two of which carry essentially all the contamination and two of which
 do nothing at all, and nothing structural distinguishes them.
 
+## A solved instance
+
+BFWS solves instance `0` in 3 moves. There is no image checked in for it: `wntr` imports
+`pkg_resources`, which setuptools removed in version 81, so the environment would not build
+on the machine the other renders were made on. Pin `setuptools<81` in your environment and
+the snippet below produces the same pair of files as every other environment here.
+
+```python
+from planiverse.environments.water_network.environment import WaterNetworkEnv
+from planiverse.benchmark import measures
+from planiverse.planners.width import IteratedBFWS
+
+env = WaterNetworkEnv()
+env.fix_index(0)
+env.reset()
+
+result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
+trace = env.simulate(result.plan)
+
+env.render_trace(trace, "water_network.gif")                             # animated
+env.render_trace(trace, "water_network.png", actions=result.plan, env=env)   # contact sheet
+```
+
+Frames are the state's own text, typeset: `render_trace` falls back to `str(state)` for an
+environment with no screen to photograph. See [docs/rendering.md](../rendering.md) for the
+other output formats.
+
 ## Quickstart
 
 ```python
@@ -172,26 +199,13 @@ has to be simulated for.
 
 ## Rendering
 
-`str(state)` describes the network in a few lines. `render_trace` typesets it into a contact
-sheet, PDF, GIF or directory of PNGs:
+`str(state)` describes the network in a few lines: which pipes are closed, the share of
+contaminated water delivered, and the service level.
 
-```python
-from planiverse.planners.width import IteratedBFWS
-from planiverse.benchmark import measures
+Note that `wntr` imports `pkg_resources`, which setuptools removed in version 81, so pin
+`setuptools<81` in your environment before rendering.
 
-env = WaterNetworkEnv()
-env.fix_index(0)
-env.reset()
-
-result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
-trace = env.simulate(result.plan)
-
-env.render_trace(trace, "water_network.gif")                                 # animated
-env.render_trace(trace, "water_network.png", actions=result.plan, env=env)   # contact sheet
-```
-
-`wntr` imports `pkg_resources`, which setuptools removed in version 81, so pin `setuptools<81` in
-your environment. See [docs/rendering.md](../rendering.md) for the other output formats.
+See [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Housekeeping
 
