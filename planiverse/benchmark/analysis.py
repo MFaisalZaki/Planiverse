@@ -84,10 +84,14 @@ def coverage(records):
             "total": len(entries),
             "solved": len(solved),
             "coverage": len(solved) / len(entries) if entries else 0.0,
+            "timeouts": counts.get("TIMEOUT", 0),
+            "memouts": counts.get("MEMOUT", 0),
             "statuses": {status: counts.get(status, 0) for status in STATUSES
                          if counts.get(status)},
             "total_seconds": sum(times),
             "median_seconds": _median(times),
+            "mean_seconds": sum(times) / len(times) if times else None,
+            "std_seconds": _std(times),
             "mean_plan_length": sum(lengths) / len(lengths) if lengths else None,
             "total_expansions": sum(expansions),
         })
@@ -95,21 +99,30 @@ def coverage(records):
 
 
 def per_environment(records):
-    """Solved counts split by environment, which is where planners actually differ."""
+    """Solved counts split by environment, which is where planners actually differ.
+
+    Mean runtime is over the *solved* runs only, for the same reason `coverage` summarises
+    that way: averaging in the failures rewards failing fast.
+    """
     grouped = defaultdict(Counter)
-    totals = Counter()
+    times = defaultdict(list)
     for record in records:
         key = (record["planner"], record["environment"])
         grouped[key]["total"] += 1
-        totals[record["environment"]] += 1
         if record.get("status") == "SOLVED":
             grouped[key]["solved"] += 1
+            if isinstance(record.get("seconds"), (int, float)):
+                times[key].append(record["seconds"])
 
     rows = []
     for (planner, environment), counts in sorted(grouped.items()):
+        solved_times = times[(planner, environment)]
         rows.append({"planner": planner, "environment": environment,
                      "solved": counts["solved"], "total": counts["total"],
                      "coverage": counts["solved"] / counts["total"] if counts["total"] else 0,
+                     "mean_seconds": (sum(solved_times) / len(solved_times)
+                                      if solved_times else None),
+                     "std_seconds": _std(solved_times),
                      "has_progress_measure": next(
                          (r.get("has_progress_measure") for r in records
                           if r["environment"] == environment
@@ -237,3 +250,11 @@ def _median(values):
     if len(values) % 2:
         return values[middle]
     return (values[middle - 1] + values[middle]) / 2
+
+
+def _std(values):
+    """Population standard deviation; None until there are two values to spread."""
+    if len(values) < 2:
+        return None
+    mean = sum(values) / len(values)
+    return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
