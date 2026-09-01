@@ -7,7 +7,7 @@ parent state first. This module owns everything that is a property of *driving P
 planning* rather than of any particular cartridge:
 
 - the emulator lifecycle and save-state plumbing (`create_pyboy`, `save_state`,
-  `load_state`);
+  `load_state`), and the screen grab built on it (`screen`, `screens`);
 - OAM sprite decoding (`sprites`): the buffer address stays a per-game fact, because each
   cartridge chooses its own OAM DMA source;
 - the ROM revision check (`verify_rom`);
@@ -56,6 +56,51 @@ def load_state(pyboy, state_bytes, render=False):
     with io.BytesIO(state_bytes) as handle:
         pyboy.load_state(handle)
         pyboy.tick(1, render)
+
+
+def screen(pyboy, scale=4):
+    """The emulator's current frame as a PIL image, magnified `scale` times.
+
+    Nearest-neighbour, not Pillow's default bicubic. A Game Boy frame is 160x144 pixels of
+    four-colour pixel art, and interpolating it invents colours the console never drew: the
+    block edges Puzznic's grid is read from come out as grey mush. The one thing a
+    screenshot of a console is for is showing what the console showed.
+
+    The caller owns the result. `pyboy.screen.image` hands back a view onto the live frame
+    buffer, so keeping it across a tick would quietly mutate a frame already collected;
+    `resize` copies, which is what makes a list of these safe to hold.
+    """
+    image = pyboy.screen.image
+    if image is None:
+        raise RuntimeError("PyBoy could not render the screen — is Pillow installed?")
+    from PIL import Image
+
+    return image.convert("RGB").resize((160 * scale, 144 * scale), Image.NEAREST)
+
+
+def screens(romfile, states, scale=4):
+    """The console's own screen for each of `states`, in order.
+
+    One throwaway emulator for the whole list rather than one per state: booting PyBoy is
+    the expensive part and a save-state carries everything, so loading each in turn into
+    the same machine gives identical frames for a fraction of the work. A forty-step
+    history is forty `load_state` calls instead of forty cold boots.
+
+    Deliberately not `self.pyboy`: the environment's own emulator is parked on whatever
+    `step` last left it on, and rewinding it here to draw a picture would move the state
+    out from under the caller.
+    """
+    if not states:
+        return []
+    dummy = create_pyboy(romfile, False)
+    try:
+        frames = []
+        for state in states:
+            load_state(dummy, state.gb_state, render=True)
+            frames.append(screen(dummy, scale))
+        return frames
+    finally:
+        dummy.stop(save=False)
 
 
 def sprites(pyboy, oam_addr=OAM_BUFFER_ADDR, visible_only=False):
@@ -114,10 +159,7 @@ class GBState:
         dummy = create_pyboy(gamerom, False)
         try:
             load_state(dummy, self.gb_state, render=True)
-            image = dummy.screen.image
-            if image is None:
-                raise RuntimeError("PyBoy could not render the screen — is Pillow installed?")
-            image.resize((160 * scale, 144 * scale)).save(file)
+            screen(dummy, scale).save(file)
         finally:
             dummy.stop(save=False)
 
@@ -265,18 +307,52 @@ class GBEnv(Environment):
     def get_actions(self):
         return list(self.actions)
 
-    def render(self):
-        """Print the de-duplicated history of `step` calls, and return it as strings."""
-        rendered = []
+    def __played__(self):
+        """The history of `step` calls with consecutive repeats dropped.
+
+        Keyed on the state, not on `str(state)`. The text board is derived from a subset of
+        what a state knows, so two genuinely different positions can typeset identically --
+        Mario's does, since the board says nothing about where in a screen he is -- and
+        de-duplicating on the text threw away frames the console drew differently. A state
+        already compares on exactly the facts that make it that position, which is the
+        question being asked here.
+        """
+        played = []
         for state in self.state_history:
-            if rendered and rendered[-1] == str(state):
+            if played and played[-1] == state:
                 continue
-            rendered.append(str(state))
-        for step, text in enumerate(rendered):
+            played.append(state)
+        return played
+
+    def render(self, target=None, scale=4, **kwargs):
+        """The game's own screen for every position `step` has played through.
+
+        This used to return `str(state)` per step and stop there, which made the one family
+        of environments that *has* real pixels the one family that threw them away: a
+        cartridge draws the position, and the text board is a reading of RAM taken next to
+        it, not a picture of it. So the frames are the return value now -- one PIL image per
+        de-duplicated step, at console resolution magnified `scale` times.
+
+        The text board is still printed alongside, one block per frame. A terminal cannot
+        show a picture and a caption that survives a copy-paste is worth keeping; it is a
+        caption now rather than the whole product.
+
+        `target` writes the frames instead of returning them, in any format
+        `planiverse.rendering.render_trace` spells -- `"play.gif"`, `"play.png"` for a
+        contact sheet, `"play.pdf"`, or a directory for one PNG per step -- and returns
+        whatever `render_trace` returns. Remaining keyword arguments go to it, so
+        `env.render("play.png", actions=plan, env=env)` captions the sheet. `scale` is for
+        the returned frames only: written ones go through each state's own `save`, which is
+        where a game that wants a bigger default sets one (Super Mario Land does).
+        """
+        played = self.__played__()
+        for step, state in enumerate(played):
             print(f"Step: {step}")
-            print(text)
+            print(str(state))
             print("--------------")
-        return rendered
+        if target is not None:
+            return self.render_trace(played, target, **kwargs)
+        return screens(self.romfile, played, scale=scale)
 
     def close(self):
         if self.pyboy is not None:

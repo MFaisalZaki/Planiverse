@@ -12,6 +12,7 @@ import pytest
 
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
+from planiverse.environments.gameboy.gb import screens  # noqa: E402
 from planiverse.environments.gameboy.puzznic_gb import (  # noqa: E402
     STAGE_LOADER_ENTRY, _force_stage, boot, create_pyboy, cursor_of, stage_is_loaded,
     BLOCK_MIN, CELL_CLEARING, CELL_EMPTY, CELL_LEDGE, CELL_OUTSIDE, CELL_WALL, Calibration,
@@ -346,15 +347,61 @@ def test_simulate_agrees_with_successors(env):
 
 
 def test_step_and_render_track_the_history(env):
+    """`render` returns the console's own frames, one per de-duplicated step.
+
+    It used to return the text board and nothing else, so the environments that can show a
+    real screen were the ones that never did. The text is still printed as a caption, and
+    the board itself is `str(state)`, which is what this checks it against.
+    """
     env.reset()
     state, cleared = env.step("left,6")
     assert cleared == 0
     assert state.cursor == (5, 4)
     env.step("left,6")
-    rendered = env.render()
-    assert len(rendered) == 3
-    assert rendered[0].splitlines()[2] == "#1.c1#"        # the cursor walks left...
-    assert rendered[-1].splitlines()[2] == "#¢..1#"       # ...onto the block
+
+    played = env.__played__()
+    assert len(played) == 3
+    assert str(played[0]).splitlines()[2] == "#1.c1#"      # the cursor walks left...
+    assert str(played[-1]).splitlines()[2] == "#¢..1#"     # ...onto the block
+
+    frames = env.render()
+    assert len(frames) == len(played)
+    assert all(frame.size == (160 * 4, 144 * 4) for frame in frames)
+
+
+def test_render_writes_the_played_frames_when_given_a_target(env, tmp_path):
+    """With a target, `render` hands the played history to `render_trace` and writes it.
+
+    The frames are the console's, not typeset text: the environment supplies its own
+    cartridge, so a directory target comes out at screen resolution.
+    """
+    pytest.importorskip("PIL", reason="Pillow is not installed")
+    from PIL import Image
+
+    env.reset()
+    env.step("left,6")
+    paths = env.render(tmp_path / "play")
+    assert len(paths) == len(env.__played__())
+    with Image.open(paths[0]) as frame:
+        assert frame.width >= 160 and frame.height >= 144
+
+    assert env.render(tmp_path / "play.gif") == tmp_path / "play.gif"
+
+
+def test_a_screenshot_is_magnified_without_inventing_colours(env):
+    """Nearest-neighbour, not Pillow's default bicubic.
+
+    A Game Boy frame is four-colour pixel art. Interpolating it on the way up produces
+    shades the console never drew, which is the one thing a screenshot of a console must
+    not do.
+    """
+    pytest.importorskip("PIL", reason="Pillow is not installed")
+    state, _ = env.reset()
+    scaled = screens(env.romfile, [state], scale=4)[0]
+    native = screens(env.romfile, [state], scale=1)[0]
+    assert scaled.size == (640, 576)
+    assert {colour for _, colour in scaled.getcolors(maxcolors=100000)} == \
+           {colour for _, colour in native.getcolors(maxcolors=100000)}
 
 
 def test_get_actions(env):
