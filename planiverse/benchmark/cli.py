@@ -396,7 +396,7 @@ def _report(arguments):
     summary = analysis.summarise(arguments.sandbox_dir, records)
     written = report.write_report(arguments.sandbox_dir, summary, records)
     for kind, path in written.items():
-        print(f"  {kind:8} {path}")
+        print(f"  {kind:20} {path}")
     if not report.PLOTTING:
         print("\nmatplotlib did not import, so the plots were skipped.")
     return 0
