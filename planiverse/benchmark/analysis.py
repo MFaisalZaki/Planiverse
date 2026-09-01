@@ -13,7 +13,7 @@ import math
 import os
 from collections import Counter, defaultdict
 
-from planiverse.benchmark.catalogue import is_complete
+from planiverse.benchmark.catalogue import PLANNERS, is_complete
 from planiverse.benchmark.discovery import read_tasks, task_filename
 from planiverse.benchmark.runner import STATUSES
 
@@ -161,6 +161,47 @@ def head_to_head(records):
     return rows
 
 
+def width_planners(records):
+    """The planner tags in this run whose class comes from the width family."""
+    tags = {}
+    for record in records:
+        module, _, _ = PLANNERS.get(record.get("planner_class", ""), ("", "", ()))
+        if module.endswith(".width"):
+            tags[record["planner"]] = True
+    return sorted(tags)
+
+
+def solver_sets(records, planners):
+    """Per environment: how many tasks each exact subset of `planners` solved.
+
+    The unit is the subset, not the planner, so the rows partition the tasks: a task solved
+    by BFWS and IW counts once, under "bfws+iw", and not under either planner's own key. That
+    is what makes the counts stackable, and it is the question the coverage table cannot
+    answer, whether the planners solve the same tasks or different ones. Keys are the
+    planners joined with "+", and "" is the tasks none of them solved. A final row with
+    `environment` None sums over every domain. Only tasks every one of `planners` has a
+    record for are counted.
+    """
+    planners = list(planners)
+    by_task = defaultdict(dict)
+    environment_of = {}
+    for record in records:
+        if record["planner"] in planners:
+            by_task[record["task"]][record["planner"]] = record.get("status") == "SOLVED"
+            environment_of[record["task"]] = record["environment"]
+
+    sets = defaultdict(Counter)
+    for task, statuses in by_task.items():
+        if any(planner not in statuses for planner in planners):
+            continue
+        key = "+".join(planner for planner in planners if statuses[planner])
+        sets[environment_of[task]][key] += 1
+        sets[None][key] += 1
+    return [{"environment": environment, "tasks": sum(sets[environment].values()),
+             "sets": dict(sets[environment])}
+            for environment in sorted(sets, key=lambda name: (name is None, name or ""))]
+
+
 def ipc_score(records, agile=False):
     """IPC-style scores in [0, 1] per run, summed per planner.
 
@@ -229,8 +270,16 @@ def summarise(sandbox_dir, records=None):
         "head_to_head": head_to_head(records),
         "ipc_quality": ipc_score(records, agile=False),
         "ipc_agile": ipc_score(records, agile=True),
+        "width_overlap": _width_overlap(records),
         "statuses": dict(Counter(record.get("status", "MISSING") for record in records)),
     }
+
+
+def _width_overlap(records):
+    planners = width_planners(records)
+    if len(planners) < 2:
+        return None
+    return {"planners": planners, "rows": solver_sets(records, planners)}
 
 
 def write_summary(sandbox_dir, summary):
