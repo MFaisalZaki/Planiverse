@@ -475,7 +475,11 @@ class SuperMarioLandGame(Environment):
 
 
 #: Levels, in rising order of difficulty. Each was checked by search before being shipped:
-#: see `tests/test_platformer.py`, which re-derives a route through every one of them.
+#: see `tests/test_super_mario_land.py`, which re-derives a route through every one of them.
+#: There are twelve of them, which is what the cartridge offers through
+#: `SuperMarioLandGBEnv` (four worlds of three levels). The count is all that matches: these
+#: levels are original, and index `i` is the `i`th step of a difficulty ramp rather than the
+#: cartridge's world `i // 3 + 1`, level `i % 3 + 1`.
 LEVELS = (
     """\
 
@@ -549,6 +553,42 @@ M  ####^#           #### E      EE        G
 M      ####E           ##   E             G
 #############     ############   ###########
 #############     ############   ###########""",
+    """\
+
+
+
+            E
+         ######                     #####
+M                 E   ##############       E   E   G
+###      ############################################
+###      ############################################""",
+    """\
+
+
+
+                E   #######               ####                  ####
+             #######                              #######
+M      ######          E              E           #######             G
+###^^^^##########################^^######################   ^^^^########
+#########################################################   ############""",
+    """\
+
+
+                                #####
+        ######                       ######
+                  #######
+M    E                                  E     E    G
+#########################       #####################
+#########################       #####################""",
+    """\
+
+
+
+           E
+         ####     ######          #######
+M              E  ######  E       #######      E     G
+###      ################################^^^###########
+###      ##############################################""",
 )
 
 #: BFWS(w=2) expansions when each level was accepted, in the same order: the ramp,
@@ -556,4 +596,4 @@ M      ####E           ##   E             G
 #: through every one of them, so a level that stops being finishable fails the suite.
 #: Re-measured when the physics were refitted to the cartridge, which is also when the
 #: levels were re-ordered: one horizontal speed and one jump arc redistributed the search.
-MEASURED_EXPANSIONS = (5, 6, 7, 15, 16, 17, 92, 406)
+MEASURED_EXPANSIONS = (5, 6, 7, 15, 16, 17, 92, 406, 750, 1564, 2552, 7356)

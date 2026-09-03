@@ -318,7 +318,7 @@ def test_instance_counts_are_probed_from_the_environment():
     from planiverse.environments import get_spec
 
     assert discovery.count_instances(get_spec("flipull")) == 32
-    assert discovery.count_instances(get_spec("super_mario_land")) == 8
+    assert discovery.count_instances(get_spec("super_mario_land")) == 12
     assert discovery.count_instances(get_spec("puzznic")) == 128
 
 
