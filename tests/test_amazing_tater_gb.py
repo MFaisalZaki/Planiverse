@@ -223,7 +223,7 @@ def test_the_tables_read_off_the_real_cartridge_match_the_constants():
 
 @needs_rom
 def test_booting_reaches_the_first_room(env):
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     assert info["level"] == "A-01" and info["mode"] == 0
     assert info["size"] == (15, 5)
@@ -234,14 +234,14 @@ def test_booting_reaches_the_first_room(env):
 
 @needs_rom
 def test_the_board_read_off_the_cartridge_is_the_room_the_twin_ships(env):
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     assert state.rows == tuple(row.rstrip() for row in twin.LEVELS[0])
 
 
 @needs_rom
 def test_calibration_finds_the_hold_that_moves_exactly_one_cell(env):
-    env.fix_index(0)
+    env.set_index(0)
     _, info = env.reset()
     calibration = info["calibration"]
     assert calibration.hold_window is not None
@@ -253,14 +253,14 @@ def test_calibration_finds_the_hold_that_moves_exactly_one_cell(env):
 @needs_rom
 def test_the_room_is_waited_out_before_the_first_press(env):
     """The loader fills the board before the room listens; `reset` reports how long it took."""
-    env.fix_index(0)
+    env.set_index(0)
     _, info = env.reset()
     assert info["intro_ticks"] is not None and info["intro_ticks"] > 0
 
 
 @needs_rom
 def test_successors_are_the_moves_the_cartridge_accepts(env):
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     successors = env.successors(state)
     assert_successors_contract(successors)
@@ -271,7 +271,7 @@ def test_successors_are_the_moves_the_cartridge_accepts(env):
 @needs_rom
 def test_a_room_with_a_walled_in_tater_still_offers_the_switch(env):
     """A-14 opens with its first tater boxed in, which is why SELECT has to be an action."""
-    env.fix_index(13)
+    env.set_index(13)
     state, _ = env.reset()
     assert state.total == 2
     assert SWITCH in {str(action).split("_")[0] for action, _ in env.successors(state)}
@@ -281,7 +281,7 @@ def test_a_room_with_a_walled_in_tater_still_offers_the_switch(env):
 def test_two_switches_in_a_row_both_land(env):
     """The cartridge ignores anything pressed within 33 frames of a SELECT, and nothing on
     the board says so, which silently turned every second switch into a no-op."""
-    env.fix_index(13)
+    env.set_index(13)
     state, _ = env.reset()
     once = env.__advance__(state, f"{SWITCH},5")
     twice = env.__advance__(once, f"{SWITCH},5")
@@ -299,7 +299,7 @@ def test_the_dumped_rooms_are_the_ones_the_twin_ships(env):
 def test_reaching_the_flag_solves_the_room(env):
     """`is_goal` reads `$C2AD`, not the board: a tater in mid-step is off the board entirely."""
     plan = twin.solve(1)
-    env.fix_index(1)
+    env.set_index(1)
     state, _ = env.reset()
     for name in plan[:-1]:
         state = env.__advance__(state, f"{name},5")
@@ -311,7 +311,7 @@ def test_reaching_the_flag_solves_the_room(env):
 
 @needs_rom
 def test_a_solved_room_is_absorbing(env):
-    env.fix_index(1)
+    env.set_index(1)
     state, _ = env.reset()
     for name in twin.solve(1):
         state = env.__advance__(state, f"{name},5")
@@ -328,14 +328,14 @@ def test_label_for_names_a_room_the_way_the_cartridge_does(env):
 
 
 @needs_rom
-def test_fix_index_rejects_a_room_that_is_not_there(env):
+def test_set_index_rejects_a_room_that_is_not_there(env):
     with pytest.raises(AssertionError):
-        env.fix_index(LEVEL_COUNT)
+        env.set_index(LEVEL_COUNT)
 
 
 @needs_rom
 def test_a_position_reached_two_ways_compares_equal(env):
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     there = env.__advance__(state, "left,5")
     back = env.__advance__(there, "right,5")

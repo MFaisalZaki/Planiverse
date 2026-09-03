@@ -45,7 +45,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = make("crop_management")
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.crop_management).solve(env)
@@ -65,7 +65,7 @@ an environment with no screen to photograph. See
 from planiverse.environments.crop_management.environment import CropEnv, CropAction
 
 env = CropEnv()
-env.fix_index(10)                     # the 1986 season
+env.set_index(10)                     # the 1986 season
 state, info = env.reset()
 info["rainfed"], info["reference"], info["target"]
 # (6758.3, 9456.3, 9267.2)
@@ -77,7 +77,7 @@ env.close()
 
 ## Seasons
 
-`fix_index(i)` picks a growing season, meaning the same field under a different year's weather.
+`set_index(i)` picks a growing season, meaning the same field under a different year's weather.
 There are twenty-two of them, covering 1976 to 1999; 1990 and 1991 are absent because the bundled
 weather has gaps.
 

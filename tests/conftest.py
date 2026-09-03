@@ -114,6 +114,6 @@ def puzznic_env():
     from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
     env = PuzznicGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 

@@ -35,7 +35,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = PuzznicGame()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.puzznic).solve(env)
@@ -55,7 +55,7 @@ an environment with no screen to photograph. See
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
 env = PuzznicGame()
-env.fix_index(0)
+env.set_index(0)
 state, info = env.reset()
 
 print(state)
@@ -83,9 +83,9 @@ env.render()          # prints the de-duplicated state history
 
 ## Levels
 
-`fix_index(i)` selects level `i` from `PuzznicGame.levelsstr`, a list of 128 ASCII level strings
+`set_index(i)` selects level `i` from `PuzznicGame.levelsstr`, a list of 128 ASCII level strings
 embedded in the module. Indices run from `0` to `127` and match the cartridge's rounds, so
-`fix_index(7)` here and on [`puzznic_gb`](puzznic-gb.md) select the same board.
+`set_index(7)` here and on [`puzznic_gb`](puzznic-gb.md) select the same board.
 
 Level strings use this alphabet:
 

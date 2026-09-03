@@ -297,7 +297,7 @@ class SuperMarioLandGBEnv(GBEnv):
         self.__restart_emulator__()
         self.game = self.pyboy.game_wrapper
         self.game.game_area_mapping(self.game.mapping_compressed, 0)
-        # world_level is None until fix_index is called, which starts the game at its default level.
+        # world_level is None until set_index is called, which starts the game at its default level.
         self.game.start_game(world_level=self.world_level)
         self.game.set_lives_left(0) # to avoid replays
         self.pyboy.tick() # To render screen after `.start_game`
@@ -306,7 +306,7 @@ class SuperMarioLandGBEnv(GBEnv):
         self.state_history = [self.state]
         return self.state, {}
 
-    def fix_index(self, index):
+    def set_index(self, index):
         assert index in self.world_level_map.keys(), "Invalid index"
         self.world_level = self.world_level_map[index]
 

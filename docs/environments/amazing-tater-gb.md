@@ -38,7 +38,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = AmazingTaterGBEnv(romfile=os.environ["PLANIVERSE_AMAZING_TATER_ROM"])
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.amazing_tater_gb).solve(env)
@@ -79,7 +79,7 @@ when it is not that dump. Pass `verify_rom=False` to silence it.
 from planiverse.environments.gameboy.amazing_tater_gb import AmazingTaterGBEnv
 
 env = AmazingTaterGBEnv("Amazing Tater (U).gb", render=False)  # render=True opens a window
-env.fix_index(0)                                               # choose the room before reset
+env.set_index(0)                                               # choose the room before reset
 state, info = env.reset()
 
 print(state)
@@ -106,7 +106,7 @@ for action, successor in env.successors(state):
 
 ## Rooms
 
-`fix_index(n)` selects one of 105 rooms: indices 0 to 40 are PUZZLE MODE's `A-01` to `A-41`, and
+`set_index(n)` selects one of 105 rooms: indices 0 to 40 are PUZZLE MODE's `A-01` to `A-41`, and
 41 to 104 are BEGINNER and ACTION MODE's `C-01` to `C-64`. The same index selects the same room on
 the twin, and `env.label_for()` gives the cartridge's own name for it.
 

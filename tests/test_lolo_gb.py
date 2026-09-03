@@ -260,17 +260,17 @@ def test_a_wrong_rom_is_warned_about_not_refused():
 
 
 @needs_rom
-def test_fix_index_refuses_a_room_that_does_not_exist():
+def test_set_index_refuses_a_room_that_does_not_exist():
     env = LoloGBEnv(lolo_rom_path())
     with pytest.raises(IndexError):
-        env.fix_index(ROOM_COUNT)
+        env.set_index(ROOM_COUNT)
 
 
 @needs_rom
 def test_booting_reaches_the_room_it_was_asked_for():
     """The boot has to land in the graded rooms, not the tutorial's self-playing demos."""
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(38)
+    env.set_index(38)
     try:
         state, info = env.reset()
         assert info["room"] == "int 1-1"
@@ -285,7 +285,7 @@ def test_booting_reaches_the_room_it_was_asked_for():
 def test_the_cartridge_agrees_with_the_rom_decoder_on_the_board_it_loaded():
     """The environment reads the room off the screen; `read_rooms` reads it out of bank 13."""
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(108)
+    env.set_index(108)
     try:
         state, _ = env.reset()
         expected = read_rooms(lolo_rom_path())[108]
@@ -304,7 +304,7 @@ def test_the_cartridge_agrees_with_the_rom_decoder_on_the_board_it_loaded():
 @needs_rom
 def test_successors_drop_the_actions_that_change_nothing():
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(38)
+    env.set_index(38)
     try:
         state, _ = env.reset()
         successors = env.successors(state)
@@ -320,7 +320,7 @@ def test_successors_drop_the_actions_that_change_nothing():
 @needs_rom
 def test_a_known_plan_clears_int_1_1_on_the_cartridge():
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(38)
+    env.set_index(38)
     try:
         plan = ([f"right,{PRESS_TICKS}"] * 5 + [f"up,{PRESS_TICKS}"] * 2
                 + [f"left,{PRESS_TICKS}"] * 2 + [f"up,{PRESS_TICKS}"] * 3
@@ -337,7 +337,7 @@ def test_a_known_plan_clears_int_1_1_on_the_cartridge():
 def test_walking_into_a_medusas_line_is_noticed_as_a_death():
     """int 1-2's Medusa at (4, 6): entering column 6 is fatal on the action after."""
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(39)
+    env.set_index(39)
     try:
         trace = env.simulate([f"right,{PRESS_TICKS}"] * 3 + [f"up,{PRESS_TICKS}"])
         assert not any(state.died for state in trace[:-1])
@@ -351,7 +351,7 @@ def test_walking_into_a_medusas_line_is_noticed_as_a_death():
 def test_a_magic_heart_framer_gives_two_shots_and_a_plain_one_gives_none():
     """The `$90`/`$91` split, on the cartridge. tutorial 1a has one of each."""
     env = LoloGBEnv(lolo_rom_path())
-    env.fix_index(0)
+    env.set_index(0)
     try:
         state, _ = env.reset()
         assert state.shots == 0
@@ -365,7 +365,7 @@ def test_a_magic_heart_framer_gives_two_shots_and_a_plain_one_gives_none():
 @needs_rom
 def test_seeding_the_magic_shot_meter_works():
     env = LoloGBEnv(lolo_rom_path(), magic_shots=2)
-    env.fix_index(38)
+    env.set_index(38)
     try:
         state, info = env.reset()
         assert info["shots"] == 2 and state.shots == 2
@@ -377,7 +377,7 @@ def test_seeding_the_magic_shot_meter_works():
 def test_the_d_pad_hold_that_moves_one_cell_is_still_the_documented_one():
     """`PRESS_TICKS` is a measurement, not a preference. This is the measurement."""
     env = LoloGBEnv(lolo_rom_path(), calibrate=True)
-    env.fix_index(38)
+    env.set_index(38)
     try:
         _, info = env.reset()
         low, high = info["calibration"].hold_window

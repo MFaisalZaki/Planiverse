@@ -32,7 +32,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = LoloGame()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.lolo).solve(env)
@@ -115,7 +115,7 @@ not standing still.
 from planiverse.environments.gameboy_py.lolo import LoloGame
 
 game = LoloGame()
-game.fix_index(38)                    # int 1-1
+game.set_index(38)                    # int 1-1
 state, info = game.reset()
 
 print(info)
@@ -146,7 +146,7 @@ game = make("lolo", index=38)
 ## Rooms
 
 The environment ships 163 rooms at indices `0` to `162`, at the same indices
-[`lolo_gb`](lolo-gb.md) uses, so `fix_index(38)` selects the same room in both. They are decoded
+[`lolo_gb`](lolo-gb.md) uses, so `set_index(38)` selects the same room in both. They are decoded
 out of the ROM by `lolo_gb.read_rooms` rather than transcribed by hand.
 
 | Indices | `label` | What |

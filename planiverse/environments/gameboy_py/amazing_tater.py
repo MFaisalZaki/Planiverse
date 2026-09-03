@@ -60,7 +60,7 @@ over the top of a cleared one. Here a solved room is simply terminal.
 
 All 105 were read out of `Amazing Tater (U).gb` by booting it and dumping the board the
 cartridge itself composes in work RAM (`amazing_tater_gb.AmazingTaterGBEnv.levels`) at
-matching indices, so `fix_index(7)` here and there are the same room. Nothing was transcribed
+matching indices, so `set_index(7)` here and there are the same room. Nothing was transcribed
 by hand.
 
 They are the cartridge's two puzzle sets: 41 rooms behind PUZZLE MODE (`A-01` to `A-41`) and
@@ -1923,7 +1923,7 @@ class AmazingTaterGame(Environment):
         self.state = None
         self.state_history = []
 
-    def fix_index(self, index):
+    def set_index(self, index):
         if not 0 <= index < LEVEL_COUNT:
             raise IndexError(
                 f"Invalid index: {index}. There are {LEVEL_COUNT} rooms, so the index must "
@@ -2010,7 +2010,7 @@ def solve(index, limit=2_000_000):
     new one can be checked; `tests/test_amazing_tater.py` replays what it produced.
     """
     game = AmazingTaterGame()
-    game.fix_index(index)
+    game.set_index(index)
     state, _ = game.reset()
     queue, seen = deque([(state, ())]), {state}
     while queue:

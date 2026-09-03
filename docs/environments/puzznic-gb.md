@@ -36,7 +36,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = PuzznicGBEnv(romfile=os.environ["PLANIVERSE_PUZZNIC_ROM"])
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.puzznic_gb).solve(env)
@@ -77,7 +77,7 @@ when it is not that dump. Pass `verify_rom=False` to silence it.
 from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv, PuzznicGBAction
 
 env = PuzznicGBEnv("Puzznic (J).gb", render=False)   # render=True opens an SDL2 window
-env.fix_index(0)                                     # choose the stage before reset
+env.set_index(0)                                     # choose the stage before reset
 state, info = env.reset()
 
 print(state)              # the playfield, trimmed to its bounding box:
@@ -112,12 +112,12 @@ for the board to accept input, calibrates, and snapshots.
 
 ## Rounds
 
-`Puzznic (J)` has 128 rounds, and `fix_index(i)` selects one of them zero-based, so `fix_index(3)`
+`Puzznic (J)` has 128 rounds, and `set_index(i)` selects one of them zero-based, so `set_index(3)`
 selects round 4. `reset()` reaches it the way a player would, by picking `PASSWORD` on the title
 menu and typing the round's password.
 
 ```python
-env.fix_index(49)
+env.set_index(49)
 env.password_for(49)        # 'PASSWORD'
 state, info = env.reset()
 info["boot_route"], info["stage_index"]

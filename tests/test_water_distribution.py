@@ -21,7 +21,7 @@ from conftest import (  # noqa: E402
 @pytest.fixture
 def env():
     game = WaterNetworkEnv()
-    game.fix_index(0)          # Net1 / node 23: the smallest scenario, solved at depth 2
+    game.set_index(0)          # Net1 / node 23: the smallest scenario, solved at depth 2
     yield game
     game.close()
 
@@ -60,7 +60,7 @@ def test_two_environments_agree(env):
     state, info = env.reset()
     other = WaterNetworkEnv()
     try:
-        other.fix_index(0)
+        other.set_index(0)
         again, other_info = other.reset()
         assert (again.contaminated, again.service) == (state.contaminated, state.service)
         assert other_info == info
@@ -86,7 +86,7 @@ def test_every_scenario_loads_with_the_baseline_it_records():
     env = WaterNetworkEnv()
     try:
         for index, scenario in enumerate(SCENARIOS):
-            env.fix_index(index)
+            env.set_index(index)
             state, info = env.reset()
             assert info["network"] == scenario.network
             assert info["source"] == scenario.source
@@ -110,17 +110,17 @@ def test_every_scenario_has_a_known_solution_depth():
     assert not any(s.network.startswith("Net2") for s in SCENARIOS)
 
 
-def test_fix_index_refuses_a_scenario_that_is_not_there():
+def test_set_index_refuses_a_scenario_that_is_not_there():
     env = WaterNetworkEnv()
     try:
         for index in (-1, len(SCENARIOS), 99):
             with pytest.raises(IndexError, match="Invalid index"):
-                env.fix_index(index)
+                env.set_index(index)
     finally:
         env.close()
 
 
-def test_reset_without_fix_index_takes_the_first_scenario():
+def test_reset_without_set_index_takes_the_first_scenario():
     env = WaterNetworkEnv()
     try:
         _, info = env.reset()
@@ -217,7 +217,7 @@ def test_closing_a_pipe_can_make_the_contamination_worse(env):
     """
     game = WaterNetworkEnv()
     try:
-        game.fix_index(6)                      # Net1 / node 12
+        game.set_index(6)                      # Net1 / node 12
         state, _ = game.reset()
         worse = [child for _, child in game.successors(state)
                  if child.contaminated > state.contaminated + 1e-6]
@@ -302,7 +302,7 @@ def test_the_simulator_does_not_litter_the_working_directory(tmp_path, monkeypat
     monkeypatch.chdir(tmp_path)
     game = WaterNetworkEnv()
     try:
-        game.fix_index(0)
+        game.set_index(0)
         state, _ = game.reset()
         game.successors(state)
     finally:
@@ -314,7 +314,7 @@ def test_close_removes_the_scratch_directory():
     import os
 
     game = WaterNetworkEnv()
-    game.fix_index(0)
+    game.set_index(0)
     game.reset()
     workdir = game._workdir
     assert os.path.isdir(workdir)

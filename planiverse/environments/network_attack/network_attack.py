@@ -131,7 +131,7 @@ class EnvNASim(Environment):
         self.scenario_name = scenario_name
         self.scenario_yaml = scenario_yaml
         
-    def fix_index(self, index):
+    def set_index(self, index):
         # based on the value pick from the scenario.
         index_scenario_map = {
             0:"tiny",

@@ -43,7 +43,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = make("power_grid")
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.power_grid).solve(env)
@@ -63,7 +63,7 @@ an environment with no screen to photograph. See
 from planiverse.environments.power_grid.environment import PowerGridEnv
 
 env = PowerGridEnv()
-env.fix_index(4)                      # chronic 1, line 6 trips
+env.set_index(4)                      # chronic 1, line 6 trips
 state, info = env.reset()
 
 print(state)
@@ -80,7 +80,7 @@ env.close()
 
 ## Scenarios
 
-`fix_index(i)` picks a time series (i.e., a *chronic*, grid2op's name for one recorded run of
+`set_index(i)` picks a time series (i.e., a *chronic*, grid2op's name for one recorded run of
 demand) together with the line that trips. The set came from N-1 analysis, meaning we tripped
 every line of every chronic in turn.
 

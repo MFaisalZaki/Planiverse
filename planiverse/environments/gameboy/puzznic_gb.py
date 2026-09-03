@@ -12,7 +12,7 @@ The addresses below come from a reverse-engineering pass over `Puzznic (J).gb`
 garbage, which is why `PuzznicGBEnv` checks the ROM's MD5 and warns when it differs.
 
     env = PuzznicGBEnv("Puzznic (J).gb")
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     print(state)
     for action, successor in env.successors(state):
@@ -926,7 +926,7 @@ class PuzznicGBEnv(GBEnv):
     """Puzznic, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your
-    own dump. `fix_index` selects the stage the cartridge's loader will build.
+    own dump. `set_index` selects the stage the cartridge's loader will build.
     """
 
     rom_md5 = ROM_MD5
@@ -975,8 +975,8 @@ class PuzznicGBEnv(GBEnv):
         if verify_rom:
             self.__verify_rom__()
 
-    def fix_index(self, index):
-        """Select the round, zero-based: `fix_index(3)` is round 4.
+    def set_index(self, index):
+        """Select the round, zero-based: `set_index(3)` is round 4.
 
         `reset()` reaches it the way a player would, by typing the round's password on the
         title screen's PASSWORD entry. The cartridge carries 128 of them, so that is the
@@ -988,7 +988,7 @@ class PuzznicGBEnv(GBEnv):
         self.stage_index = index
 
     def password_for(self, index):
-        """The password `fix_index(index)` would type."""
+        """The password `set_index(index)` would type."""
         return self.passwords[index] if index < len(self.passwords) else None
 
     def reset(self):
@@ -1056,7 +1056,7 @@ def _report(romfile, stage=None, render=False):
     try:
         for index in ([stage] if stage is not None else [None]):
             if index is not None:
-                env.fix_index(index)
+                env.set_index(index)
             state, info = env.reset()
             calibration = info["calibration"]
             print(f"stage {info['stage_index']}: {state.total_blocks} blocks\n")

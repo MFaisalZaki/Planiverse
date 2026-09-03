@@ -84,7 +84,7 @@ CLEAR_TARGET = 9
 START_MINUTES, START_SECONDS = 2, 59
 
 # The cartridge's own stage machinery, at the cartridge's own addresses, so that
-# `fix_index` is exercised here rather than only against a copyrighted ROM.
+# `set_index` is exercised here rather than only against a copyrighted ROM.
 STAGE_TABLE = 0x3A0E           # 2-byte pointers, indexed by 10*tens + ones - 1
 STAGE_DESCRIPTORS = 0x3A80     # each: clear target, blocks ones, blocks tens
 STAGE_LOADER = 0x2D55          # what FlipullGBEnv hooks to write the stage digits

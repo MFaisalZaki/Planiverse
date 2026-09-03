@@ -292,7 +292,7 @@ class SuperMarioLandGame(Environment):
 
     # ------------------------------------------------------------------- the contract
 
-    def fix_index(self, index):
+    def set_index(self, index):
         if not 0 <= index < len(self.levels):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(self.levels)} levels, so the index "

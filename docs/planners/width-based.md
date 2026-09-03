@@ -19,7 +19,7 @@ in a new way has novelty 2.
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
 
-env.fix_index(0)
+env.set_index(0)
 result = IWSearch(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
 if result:
     env.validate(result.plan)

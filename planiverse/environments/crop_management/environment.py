@@ -20,7 +20,7 @@ Two things make the decision genuinely hard, both measured on the shipped weathe
   crop's response depends on the growth stage it is in when the water arrives.
 
     env = CropEnv()
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     for action, successor in env.successors(state):
         print(action, successor.water_used)
@@ -229,7 +229,7 @@ class CropEnv(Environment):
 
     # ------------------------------------------------------------------ instances
 
-    def fix_index(self, index):
+    def set_index(self, index):
         """Choose the growing season: the same field, a different year's weather."""
         if not 0 <= index < len(SCENARIOS):
             raise IndexError(
@@ -329,7 +329,7 @@ class CropEnv(Environment):
 
     def reset(self):
         if self.scenario_index is None:
-            self.fix_index(0)
+            self.set_index(0)
         self.state = self.__state__(())
         self.state_history = [self.state]
         scenario = self.scenario()

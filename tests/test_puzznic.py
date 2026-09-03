@@ -36,7 +36,7 @@ def test_every_cartridge_round_has_a_level():
 @pytest.mark.parametrize("index", range(128))
 def test_every_level_parses_and_resets(index):
     env = PuzznicGame()
-    env.fix_index(index)
+    env.set_index(index)
     state, info = env.reset()
     assert_state_contract(state)
     # A fresh level is neither won nor lost.
@@ -55,7 +55,7 @@ def test_the_levels_match_the_cartridge(index, expected):
     """The 50 Python levels are transcriptions of the cartridge's first 50 rounds, so a
     cell that disagrees with the ROM is a transcription slip, not a design choice."""
     env = PuzznicGame()
-    env.fix_index(index)
+    env.set_index(index)
     state, _ = env.reset()
     for pos in expected.get("walls", []):
         assert isinstance(state.grid[pos[0]][pos[1]], Wall), \
@@ -82,7 +82,7 @@ def test_level_without_cursor_is_rejected():
 
 def test_reset_is_repeatable():
     env = PuzznicGame()
-    env.fix_index(3)
+    env.set_index(3)
     first, _ = env.reset()
     second, _ = env.reset()
     assert first == second

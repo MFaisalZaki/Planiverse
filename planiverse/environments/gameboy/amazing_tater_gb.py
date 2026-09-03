@@ -12,7 +12,7 @@ The addresses below come from a reverse-engineering pass over `Amazing Tater (U)
 `AmazingTaterGBEnv` checks the ROM's MD5 and warns when it differs.
 
     env = AmazingTaterGBEnv("Amazing Tater (U).gb")
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     print(state)
     for action, successor in env.successors(state):
@@ -95,7 +95,7 @@ LEVEL_DATA_BANK = 3
 # Three sets on the cartridge; two of them are rooms. Set B, behind PRACTICE MODE, is a timed
 # climb through ten floors whose board buffer holds the corridors of the neighbouring floors
 # as well as the room, and whose tater starts outside the room (a different game, not a
-# different level), so this environment does not offer it. The index `fix_index` takes runs
+# different level), so this environment does not offer it. The index `set_index` takes runs
 # over set A and then set C, which is also the order `amazing_tater.LEVELS` is in.
 
 #: `(letter, the game mode that reaches the set, how many rooms)`, in index order.
@@ -753,7 +753,7 @@ class AmazingTaterGBEnv(GBEnv):
     """Amazing Tater, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your own
-    dump. `fix_index` selects which of the 105 rooms the cartridge's loader will build: 0-40
+    dump. `set_index` selects which of the 105 rooms the cartridge's loader will build: 0-40
     are PUZZLE MODE's and 41-104 are BEGINNER and ACTION MODE's, which is the order
     `amazing_tater.LEVELS` is in.
     """
@@ -785,7 +785,7 @@ class AmazingTaterGBEnv(GBEnv):
 
     # ------------------------------------------------------------------ level choice
 
-    def fix_index(self, index):
+    def set_index(self, index):
         """Select the room, zero-based over set A and then set C."""
         assert 0 <= index < LEVEL_COUNT, \
             f"Invalid index: this environment offers {LEVEL_COUNT} rooms, so " \
@@ -821,7 +821,7 @@ class AmazingTaterGBEnv(GBEnv):
         """Boot to one room and read its board, leaving the environment's selection alone."""
         chosen = self.index
         try:
-            self.fix_index(index)
+            self.set_index(index)
             self.__restart_emulator__()
             self.pyboy.hook_register(0, LOAD_LEVEL, _force_level,
                                      (self.pyboy, self.level_index))
@@ -831,7 +831,7 @@ class AmazingTaterGBEnv(GBEnv):
             settle(self.pyboy, self.render_window, **self.settle_kwargs)
             return read_board(self.pyboy)
         finally:
-            self.fix_index(chosen)
+            self.set_index(chosen)
 
     # ------------------------------------------------------------------------- play
 

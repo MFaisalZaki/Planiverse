@@ -160,7 +160,7 @@ def solve(planner_spec, task, limits, sandbox_dir=None, seed=None, roms=None):
                            note=f"{environment_name} has no cartridge on this machine")
         try:
             environment = spec.build(**({spec.rom_argument: rom} if rom else {}))
-            environment.fix_index(index)
+            environment.set_index(index)
         except Exception as exc:
             return _finish(record, "UNSUPPORTED", started_wall, sandbox_dir,
                            note=f"{type(exc).__name__}: {exc}")

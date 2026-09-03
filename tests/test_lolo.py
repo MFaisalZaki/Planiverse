@@ -36,7 +36,7 @@ needs_rom = pytest.mark.skipif(
 
 def game(index, magic_shots=0):
     instance = LoloGame(magic_shots=magic_shots)
-    instance.fix_index(index)
+    instance.set_index(index)
     instance.reset()
     return instance
 
@@ -49,7 +49,7 @@ def board(rows, magic_shots=0):
     """
     instance = LoloGame(magic_shots=magic_shots)
     instance._rooms[0] = Room(0, "|".join(rows))
-    instance.fix_index(0)
+    instance.set_index(0)
     state, _ = instance.reset()
     return instance, state
 
@@ -385,10 +385,10 @@ def test_reset_reports_what_the_room_is():
     assert_string_literals(state)
 
 
-def test_fix_index_refuses_a_room_that_does_not_exist():
+def test_set_index_refuses_a_room_that_does_not_exist():
     instance = LoloGame()
     with pytest.raises(IndexError):
-        instance.fix_index(len(ROOMS))
+        instance.set_index(len(ROOMS))
 
 
 def test_successors_are_pairs_and_never_the_state_itself():

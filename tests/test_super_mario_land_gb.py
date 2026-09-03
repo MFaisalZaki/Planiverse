@@ -156,19 +156,19 @@ def test_world_level_map_is_four_worlds_of_three_levels():
         assert 1 <= world <= 4 and 1 <= level <= 3
 
 
-def test_fix_index_selects_the_world_and_level():
-    """fix_index used to set world_level and reset() never read it, so the level
+def test_set_index_selects_the_world_and_level():
+    """set_index used to set world_level and reset() never read it, so the level
     selection silently did nothing."""
     env = SuperMarioLandGBEnv("unused.gb", verify_rom=False)
     assert env.world_level is None
-    env.fix_index(4)
+    env.set_index(4)
     assert env.world_level == (2, 2)
 
 
-def test_fix_index_rejects_unknown_index():
+def test_set_index_rejects_unknown_index():
     env = SuperMarioLandGBEnv("unused.gb", verify_rom=False)
     with pytest.raises(AssertionError, match="Invalid index"):
-        env.fix_index(12)
+        env.set_index(12)
 
 
 # --------------------------------------------------------------------------- emulator
@@ -183,7 +183,7 @@ def test_reset_boots_the_rom(env):
 
 @needs_rom
 def test_reset_starts_the_selected_level(env):
-    env.fix_index(3)                      # world 2, level 1
+    env.set_index(3)                      # world 2, level 1
     state, _ = env.reset()
     assert env.game.world == (2, 1)
 
@@ -338,10 +338,10 @@ def test_states_from_different_levels_are_different():
     every level; $FFB4 is the byte PyBoy's own wrapper reads, high nibble world and
     low nibble level, and it was verified against all 12 levels on the cartridge."""
     first_env = SuperMarioLandGBEnv(sml_rom_path(), render=False)
-    first_env.fix_index(0)
+    first_env.set_index(0)
     first, _ = first_env.reset()
     third_env = SuperMarioLandGBEnv(sml_rom_path(), render=False)
-    third_env.fix_index(2)
+    third_env.set_index(2)
     third, _ = third_env.reset()
 
     assert (first.world, first.level) == (1, 1)

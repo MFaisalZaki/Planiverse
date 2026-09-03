@@ -41,7 +41,7 @@ FLIPULL_SOLUTIONS = solutions("flipull")
 @pytest.mark.parametrize("index", sorted(PUZZNIC_SOLUTIONS))
 def test_the_stored_puzznic_solution_still_clears_its_level(index):
     env = PuzznicGame()
-    env.fix_index(index)
+    env.set_index(index)
     env.reset()
     plan = PUZZNIC_SOLUTIONS[index]
     assert env.validate(plan), \
@@ -51,7 +51,7 @@ def test_the_stored_puzznic_solution_still_clears_its_level(index):
 @pytest.mark.parametrize("index", sorted(FLIPULL_SOLUTIONS))
 def test_the_stored_flipull_solution_still_clears_its_stage(index):
     env = FlipullGame()
-    env.fix_index(index)
+    env.set_index(index)
     env.reset()
     plan = FLIPULL_SOLUTIONS[index]
     assert env.validate(plan), \
@@ -98,7 +98,7 @@ LOLO_CARTRIDGE_VALIDATED = [0, 1, 12, 13, 20, 38, 39, 41, 54, 57]
 @pytest.mark.parametrize("index", sorted(LOLO_SOLUTIONS))
 def test_the_stored_lolo_solution_still_clears_its_room(index):
     game = LoloGame(magic_shots=2)
-    game.fix_index(index)
+    game.set_index(index)
     game.reset()
     plan = LOLO_SOLUTIONS[index]
     assert game.validate(plan), \
@@ -183,7 +183,7 @@ def test_a_cartridge_plan_still_clears_its_round():
 
     index = min(PUZZNIC_GB_SOLUTIONS)
     env = PuzznicGBEnv(puzznic_rom_path())
-    env.fix_index(index)
+    env.set_index(index)
     trace = env.simulate([as_button_string(a) for a in PUZZNIC_GB_SOLUTIONS[index]])
     env.close()
     assert trace[-1].stage_cleared, f"puzznic_gb round {index} was not cleared on the ROM"
@@ -198,7 +198,7 @@ def test_a_cartridge_flipull_plan_still_clears_its_stage():
 
     index = min(FLIPULL_GB_SOLUTIONS)
     env = FlipullGBEnv(flipull_rom_path())
-    env.fix_index(index)
+    env.set_index(index)
     trace = env.simulate([as_button_string(a) for a in FLIPULL_GB_SOLUTIONS[index]])
     env.close()
     assert env.is_goal(trace[-1]), f"flipull_gb stage {index} was not cleared on the ROM"
@@ -217,7 +217,7 @@ def test_a_cartridge_lolo_plan_still_clears_its_room(index):
     from planiverse.environments.gameboy.lolo_gb import LoloGBEnv
 
     env = LoloGBEnv(lolo_rom_path(), magic_shots=2)
-    env.fix_index(index)
+    env.set_index(index)
     try:
         trace = env.simulate([as_button_string(a) for a in LOLO_GB_SOLUTIONS[index]])
         assert env.is_goal(trace[-1]), f"lolo_gb room {index} was not cleared on the ROM"

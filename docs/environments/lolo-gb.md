@@ -36,7 +36,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = LoloGBEnv(romfile=os.environ["PLANIVERSE_LOLO_ROM"])
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.lolo_gb).solve(env)
@@ -83,7 +83,7 @@ env = make("lolo_gb", index=38)
 from planiverse.environments.gameboy.lolo_gb import LoloGBEnv
 
 env = LoloGBEnv("Adventures of Lolo (U) [S][!].gb")   # render=True opens an SDL2 window
-env.fix_index(38)                                     # choose the room before reset
+env.set_index(38)                                     # choose the room before reset
 state, info = env.reset()
 
 print(info)
@@ -126,7 +126,7 @@ same indices [`lolo.py`](lolo.md) uses:
 | 108–157 | `adv 1-1` … `adv 10-5` | 10 advanced floors of 5 |
 | 158–162 | `pro 1` … `pro 5` | the Pro rooms |
 
-That gives 144 distinct puzzles in 163 slots. `fix_index` takes the slot, and `env.rooms()`
+That gives 144 distinct puzzles in 163 slots. `set_index` takes the slot, and `env.rooms()`
 decodes all of them straight out of the ROM without booting anything.
 
 ## Booting

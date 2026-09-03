@@ -41,7 +41,7 @@ def fake_rom():
 @pytest.fixture
 def env(fake_rom):
     game = FlipullGBEnv(fake_rom, verify_rom=False)
-    game.fix_index(0)
+    game.set_index(0)
     yield game
     game.close()
 
@@ -203,7 +203,7 @@ def test_the_stage_number_is_two_decimal_digits():
         assert stage_number(*stage_digits(stage)) == stage
 
 
-def test_fix_index_selects_the_stage_the_loader_builds(fake_rom):
+def test_set_index_selects_the_stage_the_loader_builds(fake_rom):
     """Each stage comes up with its own block count, checked against the ROM's table.
 
     The counts differ per stage precisely so that a selection which silently failed is
@@ -212,7 +212,7 @@ def test_fix_index_selects_the_stage_the_loader_builds(fake_rom):
     game = FlipullGBEnv(fake_rom, verify_rom=False)
     try:
         for index, want in enumerate(game.stages):
-            game.fix_index(index)
+            game.set_index(index)
             state, info = game.reset()
             assert state.stage == want.number
             assert state.blocks_remaining == want.blocks
@@ -223,22 +223,22 @@ def test_fix_index_selects_the_stage_the_loader_builds(fake_rom):
         game.close()
 
 
-def test_fix_index_refuses_a_stage_that_is_not_there(fake_rom):
+def test_set_index_refuses_a_stage_that_is_not_there(fake_rom):
     """Past the end of the table the loader reads whatever follows it in ROM and builds
     some other stage, so an out-of-range index has to fail rather than do that."""
     game = FlipullGBEnv(fake_rom, verify_rom=False)
-    game.fix_index(len(game.stages) - 1)
+    game.set_index(len(game.stages) - 1)
     for index in (-1, len(game.stages), 99):
         with pytest.raises(IndexError, match="Invalid index"):
-            game.fix_index(index)
+            game.set_index(index)
 
 
-def test_fix_index_refuses_a_rom_with_no_stage_table(tmp_path):
+def test_set_index_refuses_a_rom_with_no_stage_table(tmp_path):
     rom = tmp_path / "not-flipull.gb"
     rom.write_bytes(b"\x00" * 32768)
     game = FlipullGBEnv(str(rom), verify_rom=False)
     with pytest.raises(RuntimeError, match="no stage table"):
-        game.fix_index(0)
+        game.set_index(0)
 
 
 def test_a_foreign_rom_warns_because_the_addresses_are_revision_specific(tmp_path):
@@ -434,7 +434,7 @@ def test_get_actions(env):
 @pytest.fixture
 def cartridge():
     game = FlipullGBEnv(flipull_rom_path())
-    game.fix_index(0)
+    game.set_index(0)
     yield game
     game.close()
 
@@ -575,7 +575,7 @@ def test_cartridge_row_for_y_names_the_row_a_throw_hits(cartridge):
 
 @needs_rom
 def test_cartridge_has_thirty_two_stages_and_every_one_of_them_loads(cartridge):
-    """The whole point of `fix_index`, checked against the ROM's own table.
+    """The whole point of `set_index`, checked against the ROM's own table.
 
     Each stage's block total and CLEAR target come from the descriptor table at `$3A0E`,
     so this is not "a different board appeared": it is the board the cartridge itself
@@ -585,7 +585,7 @@ def test_cartridge_has_thirty_two_stages_and_every_one_of_them_loads(cartridge):
     assert len(cartridge.stages) == 32
     for index in range(32):
         want = cartridge.stage_for(index)
-        cartridge.fix_index(index)
+        cartridge.set_index(index)
         state, info = cartridge.reset()
         assert state.stage == want.number == index + 1
         assert state.blocks_remaining == want.blocks
@@ -604,11 +604,11 @@ def test_cartridge_the_stage_number_reaches_the_hud(cartridge):
         tilemap = cartridge.pyboy.tilemap_background
         return [tilemap[x, 13] - 0x100 for x in (16, 17)]
 
-    cartridge.fix_index(0)
+    cartridge.set_index(0)
     cartridge.reset()
     assert displayed()[1] == 1, "stage 1"
 
-    cartridge.fix_index(22)
+    cartridge.set_index(22)
     cartridge.reset()
     assert displayed() == [2, 3], "stage 23"
 
@@ -617,7 +617,7 @@ def test_cartridge_the_stage_number_reaches_the_hud(cartridge):
 def test_cartridge_selecting_a_stage_stops_forcing_once_it_is_up(cartridge):
     """The hook is for the boot only. Left armed it would rewrite the stage number every
     time the loader ran, so a cleared stage would reload itself instead of advancing."""
-    cartridge.fix_index(4)
+    cartridge.set_index(4)
     cartridge.reset()
     assert cartridge.forcing_stage is None
 
@@ -666,7 +666,7 @@ def test_the_clear_target_is_part_of_the_state_identity(env):
     with different goals as the same position, and stringifies them identically."""
     import copy
 
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     harder = copy.copy(state)
     harder.clear_target = state.clear_target + 1
@@ -685,7 +685,7 @@ def test_each_stage_draws_its_own_board():
     its own board, and deterministically: the same index still builds the same board."""
     def field(index):
         env = FlipullGBEnv(flipull_rom_path(), calibrate=False)
-        env.fix_index(index)
+        env.set_index(index)
         state, _ = env.reset()
         env.close()
         return state.field

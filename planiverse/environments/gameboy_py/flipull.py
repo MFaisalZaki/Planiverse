@@ -276,7 +276,7 @@ class FlipullGame(Environment):
         self.state = None
         self.state_history = []
 
-    def fix_index(self, index):
+    def set_index(self, index):
         if not 0 <= index < len(STAGES):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(STAGES)} stages, so the index must "

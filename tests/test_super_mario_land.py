@@ -21,7 +21,7 @@ FLAT = "\n".join([" " * 20, " " * 20, " " * 20, "M" + " " * 18 + "G", "#" * 20])
 
 def game_on(text):
     game = SuperMarioLandGame(levels=[text])
-    game.fix_index(0)
+    game.set_index(0)
     state, _ = game.reset()
     return game, state
 
@@ -35,7 +35,7 @@ def play(game, state, *actions):
 @pytest.fixture
 def env():
     game = SuperMarioLandGame()
-    game.fix_index(0)
+    game.set_index(0)
     return game
 
 
@@ -275,7 +275,7 @@ def test_every_shipped_level_starts_mario_over_solid_ground():
     begin the level already falling out of it."""
     for index in range(len(LEVELS)):
         game = SuperMarioLandGame()
-        game.fix_index(index)
+        game.set_index(index)
         state, _ = game.reset()
         assert state.on_ground, f"level {index} starts Mario in mid-air"
         assert not state.dead, f"level {index} starts Mario dead"
@@ -288,7 +288,7 @@ def test_every_shipped_level_can_be_finished(index):
     then measured for exactly this reason: a level whose flag cannot be reached is not a
     benchmark, it is a budget sink."""
     game = SuperMarioLandGame()
-    game.fix_index(index)
+    game.set_index(index)
     _, info = game.reset()
     width = info["width"]
     result = BFWSSearch(width=2, progress=lambda s: width - s.tile_x).solve(
@@ -309,18 +309,18 @@ def test_the_levels_are_a_ramp_and_the_ramp_is_recorded():
 
 # ------------------------------------------------------------------------- the contract
 
-def test_fix_index_rejects_a_level_that_does_not_exist(env):
+def test_set_index_rejects_a_level_that_does_not_exist(env):
     with pytest.raises(IndexError, match="Invalid index"):
-        env.fix_index(len(LEVELS))
+        env.set_index(len(LEVELS))
     with pytest.raises(IndexError):
-        env.fix_index(-1)
+        env.set_index(-1)
 
 
 def test_a_custom_level_set_replaces_the_shipped_one():
     game = SuperMarioLandGame(levels=["M  G\n####"])
-    game.fix_index(0)
+    game.set_index(0)
     with pytest.raises(IndexError):
-        game.fix_index(1)
+        game.set_index(1)
     assert game.reset()[1]["width"] == 4
 
 
@@ -364,7 +364,7 @@ def test_simulate_and_step_agree(env):
         plan.append(action)
 
     stepped = SuperMarioLandGame()
-    stepped.fix_index(0)
+    stepped.set_index(0)
     stepped.reset()
     for action in plan:
         stepped.step(action)
@@ -386,7 +386,7 @@ def test_step_reports_the_ground_gained(env):
 
 def test_step_before_reset_is_an_error():
     game = SuperMarioLandGame()
-    game.fix_index(0)
+    game.set_index(0)
     with pytest.raises(ValueError, match="reset"):
         game.step("nop,4")
 

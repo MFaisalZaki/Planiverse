@@ -233,7 +233,7 @@ def test_a_measure_is_a_number_that_falls_as_the_goal_nears():
     from planiverse.environments.gameboy_py.flipull import FlipullGame
 
     env = FlipullGame()
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     measure = measure_for("flipull")
     start = measure(state)
@@ -249,7 +249,7 @@ def test_a_dead_platformer_state_scores_worse_than_any_live_one():
     from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
 
     env = SuperMarioLandGame()
-    env.fix_index(0)
+    env.set_index(0)
     state, _ = env.reset()
     measure = measure_for("super_mario_land")
     dead = type(state)(state.tiles, state.x, state.y, 0, 0, False, state.enemies,
@@ -593,7 +593,7 @@ class Tiny:
         self.behaviour = behaviour
         self.states = [_TinyState(i) for i in range(3)]
 
-    def fix_index(self, index):
+    def set_index(self, index):
         if index:
             raise IndexError("one instance only")
 
@@ -1108,7 +1108,7 @@ def test_the_runner_builds_a_rom_environment_from_the_experiments_path(tmp_path,
     built = {}
 
     class Fake:
-        def fix_index(self, index): raise IndexError("far enough — it was constructed")
+        def set_index(self, index): raise IndexError("far enough — it was constructed")
 
     spec = EnvironmentSpec(name="romy", factory="x:Y", summary="", instances="",
                            deterministic=True, state_identity="value", needs_rom=True,

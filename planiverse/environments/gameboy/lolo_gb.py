@@ -11,7 +11,7 @@ The addresses below come from a reverse-engineering pass over
 revision-specific, which is why `LoloGBEnv` checks the ROM's MD5 and warns when it differs.
 
     env = LoloGBEnv("Adventures of Lolo (U) [S][!].gb")
-    env.fix_index(38)                 # intermediate 1-1
+    env.set_index(38)                 # intermediate 1-1
     state, info = env.reset()
     print(state)
     for action, successor in env.successors(state):
@@ -693,8 +693,8 @@ class LoloGBEnv(GBEnv):
     """Adventures of Lolo, played on the cartridge.
 
     The ROM is copyrighted and is not distributed with this repo; pass the path to your own
-    dump. `fix_index` selects which of the 163 rooms the cartridge's loader will build: the
-    same indices `gameboy_py/lolo.py` uses, so `fix_index(38)` is the same room in both.
+    dump. `set_index` selects which of the 163 rooms the cartridge's loader will build: the
+    same indices `gameboy_py/lolo.py` uses, so `set_index(38)` is the same room in both.
     """
 
     rom_md5 = ROM_MD5
@@ -736,7 +736,7 @@ class LoloGBEnv(GBEnv):
         """The 163 rooms, decoded out of this cartridge. Needs no emulator."""
         return read_rooms(self.romfile)
 
-    def fix_index(self, index):
+    def set_index(self, index):
         """Select the room, zero-based. See `room_label` for how the game numbers them."""
         if not 0 <= index < ROOM_COUNT:
             raise IndexError(
@@ -827,7 +827,7 @@ def _report(romfile, index=None, render=False, calibrate=False):
     env = LoloGBEnv(romfile, render=render, calibrate=calibrate)
     try:
         if index is not None:
-            env.fix_index(index)
+            env.set_index(index)
         state, info = env.reset()
         print(f"room {info['room']} (index {info['room_index']}): {info['hearts']} hearts, "
               f"door at {info['door']}, Lolo starts at {info['start']}\n")

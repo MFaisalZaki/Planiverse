@@ -99,7 +99,7 @@ def stage_number(tens, ones):
 
 #: `0:2D55` is the loader. It reads both digits, indexes a table of 32 pointers at `$3A0E`,
 #: and copies the three bytes each one points at into the HUD counters. Hooking it is how
-#: `fix_index` selects a stage; see `FlipullGBEnv.fix_index`.
+#: `set_index` selects a stage; see `FlipullGBEnv.set_index`.
 STAGE_LOADER_ADDR = 0x2D55
 STAGE_TABLE_ADDR = 0x3A0E
 STAGE_COUNT = 32
@@ -864,8 +864,8 @@ class FlipullGBEnv(GBEnv):
         """What the cartridge says stage `index` (0-based) holds, before loading it."""
         return self.stages[index]
 
-    def fix_index(self, index):
-        """Select the stage, zero-based: `fix_index(7)` is stage 8.
+    def set_index(self, index):
+        """Select the stage, zero-based: `set_index(7)` is stage 8.
 
         The cartridge keeps its stage number as two decimal digits (`$FFC7` tens, `$FFC6`
         ones), and the loader at `0:2D55` turns them into an index into a 32-entry table.
@@ -893,7 +893,7 @@ class FlipullGBEnv(GBEnv):
     def reset(self):
         self.__restart_emulator__()
         # The arrangement RNG is seeded by boot timing (see SEED_TICKS_PER_INDEX), so this
-        # per-index delay is what makes fix_index select a distinct board rather than only
+        # per-index delay is what makes set_index select a distinct board rather than only
         # a distinct CLEAR target.
         for _ in range(SEED_TICKS_PER_INDEX * (self.stage_index or 0)):
             self.pyboy.tick()
@@ -996,7 +996,7 @@ def _report(romfile, stage=None, render=False):
     env = FlipullGBEnv(romfile, render=render)
     try:
         print(f"{len(env.stages)} stages in the table at ${STAGE_TABLE_ADDR:04X}\n")
-        env.fix_index(0 if stage is None else stage)
+        env.set_index(0 if stage is None else stage)
         state, info = env.reset()
         calibration = info["calibration"]
         print(f"stage {info['stage']}: {state.blocks_remaining} blocks, "

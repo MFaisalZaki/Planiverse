@@ -22,7 +22,7 @@ def boxes(state):
 @pytest.fixture
 def env():
     game = PuzznicGame()
-    game.fix_index(0)
+    game.set_index(0)
     return game
 
 
@@ -131,7 +131,7 @@ class _Step:
 class _Chain:
     """Three states in a line, no goal. IW(1) covers it without pruning for novelty."""
 
-    def fix_index(self, index): pass
+    def set_index(self, index): pass
 
     def reset(self): return _Step(0), {}
 
@@ -266,7 +266,7 @@ def test_an_already_solved_state_needs_no_plan(env):
             return True
 
     game = Solved()
-    game.fix_index(0)
+    game.set_index(0)
     result = IWSearch(width=1).solve(game)
     assert result.solved and result.plan == []
     assert len(result.states) == 1
@@ -464,7 +464,7 @@ def test_iw_solves_the_water_network():
 
     game = WaterNetworkEnv()
     try:
-        game.fix_index(0)                     # solvable at depth 2
+        game.set_index(0)                     # solvable at depth 2
         result = IWSearch(width=1).solve(game, Budget(max_expansions=200, max_seconds=120))
         assert result.solved, f"expected a plan, got {result.status}"
         assert game.validate(result.plan)
@@ -481,7 +481,7 @@ def test_bfws_solves_a_growing_season():
 
     game = CropEnv()
     try:
-        game.fix_index(10)                    # 1986: irrigation is worth 2698 kg/ha
+        game.set_index(10)                    # 1986: irrigation is worth 2698 kg/ha
         result = BFWSSearch(width=1, progress=lambda s: -s.biomass).solve(
             game, Budget(max_expansions=400, max_seconds=240))
         assert result.solved, f"expected a plan, got {result.status}"

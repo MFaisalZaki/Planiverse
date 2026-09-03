@@ -27,7 +27,7 @@ def text_of(grid):
 @pytest.fixture
 def env():
     game = FlipullGame()
-    game.fix_index(0)
+    game.set_index(0)
     return game
 
 
@@ -142,7 +142,7 @@ def test_every_stage_opens_with_a_move_available():
     """Resetting into a position with nothing to do would be a cruel joke."""
     for index in range(len(STAGES)):
         game = FlipullGame()
-        game.fix_index(index)
+        game.set_index(index)
         state, _ = game.reset()
         assert not game.is_terminal(state), f"stage {index} is dead on arrival"
         assert game.successors(state), f"stage {index} has no successors"
@@ -151,7 +151,7 @@ def test_every_stage_opens_with_a_move_available():
 def test_every_stage_starts_short_of_its_goal():
     for index, (_, target) in enumerate(STAGES):
         game = FlipullGame()
-        game.fix_index(index)
+        game.set_index(index)
         state, _ = game.reset()
         assert state.blocks_remaining > target, f"stage {index} is already solved"
 
@@ -162,7 +162,7 @@ def test_every_stage_can_actually_be_solved(index):
     generated rather than hand-drawn precisely so this can hold: hand-drawn boards kept
     turning out to have unreachable targets, which makes for a useless benchmark."""
     game = FlipullGame()
-    game.fix_index(index)
+    game.set_index(index)
     result = BFWSSearch(width=2, progress=lambda s: s.blocks_remaining).solve(
         game, Budget(max_expansions=400000, max_seconds=180))
     assert result.solved, f"stage {index}: {result.status}"
@@ -189,16 +189,16 @@ def test_the_stages_match_the_cartridge_contract():
 
 # ---------------------------------------------------------------------- the environment
 
-def test_fix_index_rejects_a_stage_that_does_not_exist(env):
+def test_set_index_rejects_a_stage_that_does_not_exist(env):
     with pytest.raises(IndexError, match="Invalid index"):
-        env.fix_index(len(STAGES))
+        env.set_index(len(STAGES))
     with pytest.raises(IndexError):
-        env.fix_index(-1)
+        env.set_index(-1)
 
 
 def test_reset_reports_the_stage_it_set_up():
     game = FlipullGame()
-    game.fix_index(2)
+    game.set_index(2)
     state, info = game.reset()
     assert info["stage"] == 2
     assert info["blocks"] == state.blocks_remaining
@@ -210,7 +210,7 @@ def test_the_opening_hand_always_makes_the_first_throw_legal():
     with the player having to guess which row to walk to."""
     for index in range(len(STAGES)):
         game = FlipullGame()
-        game.fix_index(index)
+        game.set_index(index)
         state, _ = game.reset()
         assert state.can_throw(), f"stage {index} cannot open with a throw"
 
@@ -260,7 +260,7 @@ def test_simulate_and_step_agree(env):
         plan.append(action)
 
     stepped = FlipullGame()
-    stepped.fix_index(0)
+    stepped.set_index(0)
     stepped.reset()
     for action in plan:
         stepped.step(action)
@@ -285,7 +285,7 @@ def test_step_reports_how_many_blocks_went(env):
 
 def test_step_before_reset_is_an_error():
     game = FlipullGame()
-    game.fix_index(0)
+    game.set_index(0)
     with pytest.raises(ValueError, match="reset"):
         game.step(FlipullAction("throw"))
 
@@ -304,7 +304,7 @@ def test_is_terminal_is_exact_and_agrees_with_the_successors():
     """The thing this environment has that the cartridge one does not: because the rules
     are known here, a dead end can be *computed* rather than waited for."""
     game = FlipullGame()
-    game.fix_index(0)
+    game.set_index(0)
     state, _ = game.reset()
 
     seen, frontier, dead_ends = {state}, [state], 0
@@ -325,7 +325,7 @@ def test_is_terminal_is_exact_and_agrees_with_the_successors():
 def test_a_dead_end_is_recognised_immediately():
     """A board where every remaining block is a lone survivor of its type."""
     game = FlipullGame()
-    game.fix_index(0)
+    game.set_index(0)
     grid = parse_stage("#####\n#   #\n#12 #\n#####")
     state = FlipullState(grid, 2, "3", clear_target=0)
     assert not state.any_throw_connects()

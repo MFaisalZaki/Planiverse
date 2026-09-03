@@ -49,7 +49,7 @@ def fake_rom():
 def env(fake_rom):
     """The default: button presses, which is what the console has."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False)
-    game.fix_index(0)
+    game.set_index(0)
     yield game
     game.close()
 
@@ -58,7 +58,7 @@ def env(fake_rom):
 def roomy_env(fake_rom):
     """Stage 3: an 8x10 room, which is the one with space to probe a push in."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False)
-    game.fix_index(3)
+    game.set_index(3)
     yield game
     game.close()
 
@@ -181,17 +181,17 @@ def test_action_string_is_filename_safe():
 
 # ---------------------------------------------------------------------------- stages
 
-def test_fix_index_accepts_the_whole_byte_the_loader_indexes_with():
+def test_set_index_accepts_the_whole_byte_the_loader_indexes_with():
     game = PuzznicGBEnv("unused.gb")
     assert game.stage_index is None
-    game.fix_index(0x2A)
+    game.set_index(0x2A)
     assert game.stage_index == 0x2A
 
 
 @pytest.mark.parametrize("index", [-1, 0x100])
-def test_fix_index_rejects_values_that_do_not_fit_in_the_byte(index):
+def test_set_index_rejects_values_that_do_not_fit_in_the_byte(index):
     with pytest.raises(AssertionError, match="Invalid index"):
-        PuzznicGBEnv("unused.gb").fix_index(index)
+        PuzznicGBEnv("unused.gb").set_index(index)
 
 
 def test_a_foreign_rom_warns_because_the_addresses_are_revision_specific(tmp_path):
@@ -253,12 +253,12 @@ def test_literals_carry_no_step_counter(env):
     assert not any("depth" in literal for literal in state.literals)
 
 
-def test_fix_index_selects_the_stage_the_loader_builds(env, fake_rom):
+def test_set_index_selects_the_stage_the_loader_builds(env, fake_rom):
     """The title screen rewrites $D003 and calls the loader in the same frame, so this
     only works because the environment hooks the loader rather than poking memory."""
     first, _ = env.reset()
     other = PuzznicGBEnv(fake_rom, verify_rom=False)
-    other.fix_index(1)
+    other.set_index(1)
     try:
         second, _ = other.reset()
         assert second.grid != first.grid
@@ -423,7 +423,7 @@ def test_a_won_stage_expands_to_nothing(env):
 def test_a_stage_with_a_lone_block_is_a_dead_end(fake_rom):
     """Stage 2 of the synthetic cartridge holds one block, which can never be matched."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False)
-    game.fix_index(2)
+    game.set_index(2)
     try:
         state, _ = game.reset()
         assert game.is_terminal(state)
@@ -496,13 +496,13 @@ def test_every_password_character_is_on_the_screen(fake_rom):
         assert all(character in PASSWORD_ALPHABET for character in password)
 
 
-def test_fix_index_is_bounded_by_the_table(fake_rom):
+def test_set_index_is_bounded_by_the_table(fake_rom):
     game = PuzznicGBEnv(fake_rom, verify_rom=False)
     try:
-        game.fix_index(len(FAKE_PASSWORDS) - 1)
+        game.set_index(len(FAKE_PASSWORDS) - 1)
         assert game.password_for(0) == FAKE_PASSWORDS[0]
         with pytest.raises(AssertionError, match="rounds"):
-            game.fix_index(len(FAKE_PASSWORDS))
+            game.set_index(len(FAKE_PASSWORDS))
     finally:
         game.close()
 
@@ -542,7 +542,7 @@ def test_the_board_is_readable_before_it_is_playable(fake_rom):
     """Which is exactly why the wait cannot be skipped: nothing about the RAM says 'not
     yet'. Booting without the wait leaves a stage whose cursor will not move."""
     game = PuzznicGBEnv(fake_rom, verify_rom=False, calibrate=False)
-    game.fix_index(0)
+    game.set_index(0)
     try:
         game.pyboy = create_pyboy(fake_rom, False)
         game.pyboy.hook_register(0, STAGE_LOADER_ENTRY, _force_stage, (game.pyboy, 0))
@@ -669,7 +669,7 @@ def test_button_actions_use_the_calibrated_hold(env):
 
 def test_calibration_can_be_turned_off(fake_rom):
     game = PuzznicGBEnv(fake_rom, verify_rom=False, calibrate=False)
-    game.fix_index(0)
+    game.set_index(0)
     try:
         _, info = game.reset()
         assert info["calibration"] is None
@@ -803,7 +803,7 @@ def test_push_probe_candidates_still_guard_the_calibration():
 @pytest.fixture
 def cartridge():
     game = PuzznicGBEnv(puzznic_rom_path())
-    game.fix_index(0)
+    game.set_index(0)
     yield game
     game.close()
 
@@ -851,7 +851,7 @@ def test_cartridge_reaches_a_round_by_typing_its_password(index):
     """The route a player would take, rather than poking the loader: the game sets itself up
     for that round instead of having a different layout swapped in underneath it."""
     game = PuzznicGBEnv(puzznic_rom_path())
-    game.fix_index(index)
+    game.set_index(index)
     try:
         state, info = game.reset()
         assert info["boot_route"] == "password"
@@ -865,14 +865,14 @@ def test_cartridge_reaches_a_round_by_typing_its_password(index):
 @needs_rom
 def test_cartridge_rejects_a_round_it_has_no_password_for(cartridge):
     with pytest.raises(AssertionError, match="128 rounds"):
-        cartridge.fix_index(128)
+        cartridge.set_index(128)
 
 
 @needs_rom
 def test_cartridge_stages_differ(cartridge, tmp_path):
     first, _ = cartridge.reset()
     other = PuzznicGBEnv(puzznic_rom_path())
-    other.fix_index(1)
+    other.set_index(1)
     try:
         second, _ = other.reset()
         assert second.grid != first.grid

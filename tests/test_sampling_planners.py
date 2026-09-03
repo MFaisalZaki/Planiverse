@@ -18,7 +18,7 @@ def boxes(state):
 @pytest.fixture
 def env():
     game = PuzznicGame()
-    game.fix_index(0)
+    game.set_index(0)
     return game
 
 
@@ -70,7 +70,7 @@ def test_fsx_takes_a_goal_when_one_is_adjacent(env):
             return state is not self._start
 
     game = AlmostDone()
-    game.fix_index(0)
+    game.set_index(0)
     game._start, _ = game.reset()
     result = FSXPlanner(horizon=3, walkers=2, seed=0).solve(
         game, Budget(max_expansions=500), state=game._start)
@@ -162,7 +162,7 @@ def test_mcts_returns_immediately_from_a_goal(env):
             return True
 
     game = Solved()
-    game.fix_index(0)
+    game.set_index(0)
     result = MCTSPlanner(iterations=10, seed=0).solve(game)
     assert result.solved and result.plan == []
 
@@ -195,7 +195,7 @@ def test_the_rollout_keeps_the_best_reward_it_saw():
     class Chain(Environment):
         """start -> middle -> end, where end is a dead end. The best moment was the middle."""
 
-        def fix_index(self, index): pass
+        def set_index(self, index): pass
 
         def reset(self): return start, {}
 

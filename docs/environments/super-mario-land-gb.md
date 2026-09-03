@@ -37,7 +37,7 @@ import os
 from planiverse.environments.gameboy.super_mario_land_gb import SuperMarioLandGBEnv
 
 env = SuperMarioLandGBEnv(romfile=os.environ["PLANIVERSE_SUPER_MARIO_LAND_ROM"])
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 # ... once you have a plan from somewhere:
@@ -92,14 +92,14 @@ self.game.set_lives_left(0)
 
 ## Levels
 
-`fix_index(i)` selects one of the 12 world/level pairs. Super Mario Land has 4 worlds of 3 levels,
-both 1-indexed on the console, while `fix_index` takes a zero-based index.
+`set_index(i)` selects one of the 12 world/level pairs. Super Mario Land has 4 worlds of 3 levels,
+both 1-indexed on the console, while `set_index` takes a zero-based index.
 
 | Index | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | World, level | 1-1 | 1-2 | 1-3 | 2-1 | 2-2 | 2-3 | 3-1 | 3-2 | 3-3 | 4-1 | 4-2 | 4-3 |
 
-Without `fix_index`, `world_level` stays `None` and the game boots at its default 1-1.
+Without `set_index`, `world_level` stays `None` and the game boots at its default 1-1.
 
 ## State
 

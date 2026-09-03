@@ -47,7 +47,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = FlipullGBEnv(romfile=os.environ["PLANIVERSE_FLIPULL_ROM"])
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.flipull_gb).solve(env)
@@ -135,11 +135,11 @@ waits for the stage to start accepting input, calibrates, and snapshots.
 
 ## Stages
 
-`Flipull (USA)` has 32 stages, and `fix_index(i)` selects one of them zero-based, so
-`fix_index(7)` is stage 8.
+`Flipull (USA)` has 32 stages, and `set_index(i)` selects one of them zero-based, so
+`set_index(7)` is stage 8.
 
 ```python
-env.fix_index(7)
+env.set_index(7)
 state, info = env.reset()
 info["stage"], state.blocks_remaining, state.clear_target
 # (8, 36, 7)
@@ -227,7 +227,7 @@ Here the two bytes written are the game's own stage number, and they are written
 reads them, so every place that reads them agrees afterwards, including the field builder and the
 HUD.
 
-`fix_index` refuses anything outside `0`–`31`. Past the end of the table the loader reads whatever
+`set_index` refuses anything outside `0`–`31`. Past the end of the table the loader reads whatever
 follows it in ROM: the second table at `$3A4E` begins with a pointer back to stage 1's descriptor,
 so stage 33 would be stage 1.
 
@@ -513,7 +513,7 @@ See [docs/rendering.md](../rendering.md) for the other output formats.
 - **What a throw hits is not modelled.** A planner gets throw outcomes by expanding, never by
   predicting, so it cannot prune a throw without spending a state on it.
 - **Only the 32 main stages.** A second, shorter table at `$3A4E` is picked from by a routine that
-  consults the RNG at `$FFAF`. `fix_index` reaches the main table only.
+  consults the RNG at `$FFAF`. `set_index` reaches the main table only.
 - **No score.** Not located in RAM. `step` returns `blocks_initial - blocks_remaining`.
 - **No dead-end detection.** A field that can no longer reach its target is not terminal until the
   clock runs out.
