@@ -593,9 +593,10 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
     short of the d-pad's auto-repeat, past which one action walks two cells. In a game
     where a block shoved into the wrong pit is gone for good, that is not a longer plan but a
     different one. Neither bound is in the memory map, so both are measured here.
-    `Amazing Tater (U)` reports `(1, 11)`.
+    `Amazing Tater (U)` reports `(1, 9)` from any room with a corridor to measure in.
 
-    Returns `(low, high)`, or None if no hold moves a tater exactly one cell.
+    Returns `(low, high)`, or None when the window was not measured — either because no
+    hold moved a tater exactly one cell, or because the probe never saw the pad repeat.
     """
     direction = _open_direction(pyboy, state, render, settle_kwargs, max_hold)
     if direction is None:
@@ -609,7 +610,16 @@ def measure_hold_window(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **s
             low = hold
         elif moved > 1 and low is not None:
             return (low, hold - 1)
-    return None if low is None else (low, max_hold)
+    # Nothing in the probe's range walked two cells, so auto-repeat was never seen — and the
+    # upper bound of this window is precisely the frame auto-repeat starts. Reporting
+    # `max_hold` as if it had been measured is how a room the tater starts boxed into ends
+    # up driving the cartridge past the repeat: `_open_direction` has no direction with two
+    # clear cells to offer, falls back to one with a wall a single step away, and every hold
+    # there looks alike. Room C-52 (index 92) is one, and at the `(1, 24)` that came back
+    # its 12-frame hold walked the tater three cells per action; the search was expanding a
+    # game the cartridge does not play and emptied its frontier calling the room unsolvable.
+    # Unknown is the honest answer, and `calibrate` has a documented default for it.
+    return None
 
 
 def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwargs):

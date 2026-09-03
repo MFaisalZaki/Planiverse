@@ -150,6 +150,23 @@ in a game where a block shoved into the wrong pit is gone for good that is not a
 different one. `press_ticks` is the middle of the window. Pass `calibrate=False` to skip the
 couple of dozen probe presses and take the documented default.
 
+The probe needs somewhere for a repeat to happen. `_open_direction` looks for a direction with two
+clear cells, because with a wall one cell away every hold walks the same single step and the
+measurement cannot tell them apart. Some rooms have no such direction: C-52 (index 92) starts its
+tater boxed in on all four sides. There `hold_window` comes back `None` and `press_ticks` falls
+back to the documented 5:
+
+```python
+Calibration(press_ticks=5, hold_window=None)
+```
+
+`None` is the point. The window used to be reported as `(1, 24)` in that case — the ceiling of the
+probe's own range, not anything observed — and the 12-frame hold in the middle of it is past the
+repeat, so one action walked the tater three cells. The successors an expansion produced were not
+the game's moves, and a complete search exhausted that distorted space and reported C-52
+unsolvable, which it is not: the twin's 72-step plan replays on the cartridge move for move and
+brings the tater home. An upper bound that was never seen is not a measurement.
+
 ## Settling
 
 The settle predicate watches the board buffer and nothing else. Every other Game Boy environment

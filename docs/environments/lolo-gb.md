@@ -159,6 +159,17 @@ Tile numbers are per-environment, because the cartridge ships eight terrain them
 learns the four numbers it needs from the freshly loaded room, while the board buffer and the
 tilemap still describe the same thing, and decodes every later frame against that.
 
+A state also carries **which way Lolo faces**, which is not read back off the console but carried
+along from the action that set it. The memory map's facing probe
+([§5](lolo-gb-memory-map.md#5-rules)) says what sets it: a d-pad press turns Lolo whether or not
+the step it asked for happened, and the magic shot goes wherever he is pointing. Nothing on screen
+distinguishes a Lolo who has just walked into a rock from one who has not tried — `read_grid`
+decodes terrain and `lolo_position` reads coordinates, and neither sees the sprite's facing — so
+leaving it out of the state made those two positions compare equal. Search then closed the turn as
+a duplicate of the position it came from, and the branch that could have fired that shot was never
+looked at, which is why an `exhausted` reported without it was not a proof that a room has no plan.
+Walking into a wall to turn is a real move in this game, and several rooms need it.
+
 ### The alphabet
 
 A state prints as eight rows of eight, in the alphabet shared with [`lolo.py`](lolo.md):

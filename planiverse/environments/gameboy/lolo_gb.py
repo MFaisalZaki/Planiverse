@@ -584,11 +584,19 @@ def calibrate(pyboy, state, render=False, max_hold=PROBE_MAX_HOLD, **settle_kwar
 class LoloGBState(GBState):
     """A settled position: the emulator save-state plus the room read back off the screen."""
 
-    def __init__(self, pyboy, depth, tiles, door, died=False):
+    def __init__(self, pyboy, depth, tiles, door, died=False, facing=None):
         super().__init__(pyboy, depth)
         self.tiles = tiles
         self.door = door
         self.died = died
+        #: Which way Lolo is pointing, and so where the next magic shot goes. Not read off
+        #: the cartridge but carried along with the action that set it, because the memory
+        #: map's facing probe (§5, "Facing") says exactly what sets it: "Lolo faces the
+        #: direction of his last move action, whether or not it succeeded." Nothing on the
+        #: screen or in the sprite coordinates distinguishes a Lolo who has just walked into
+        #: a rock from one who has not tried, so leaving this out made the two positions
+        #: compare equal, and a search that closes them can never turn on the spot to shoot.
+        self.facing = facing
         self.__update__(pyboy)
 
     def __update__(self, pyboy):
@@ -618,6 +626,11 @@ class LoloGBState(GBState):
                        for row, line in enumerate(self.grid)
                        for col, glyph in enumerate(line) if glyph == FRAMER]
         predicates += [f"at(enemy, {round(row)}, {round(col)})" for row, col in self.enemies]
+        # A planner reads the predicates and nothing else, so the facing has to be here as
+        # well as in `__eq__`: leave it out and two positions that differ only in where the
+        # next shot would go look like one position to the novelty filter.
+        if self.facing is not None:
+            predicates.append(f"facing({self.facing})")
         if self.door_open:
             predicates.append("door-open")
         if self.solved:
@@ -627,19 +640,24 @@ class LoloGBState(GBState):
         self.literals = frozenset(predicates)
 
     def __eq__(self, other):
-        # The position is the board, where Lolo is, where the enemies are, and how many hearts
-        # are left. Depth and history are not part of it, so a state reached two ways compares
-        # equal and search can close. `died` is part of it, because a room that has just been
-        # restarted after a death looks exactly like a fresh one and must not be mistaken for
-        # somewhere worth expanding.
+        # The position is the board, where Lolo is, which way he faces, where the enemies are,
+        # and how many hearts are left. Depth and history are not part of it, so a state
+        # reached two ways compares equal and search can close. `died` is part of it, because
+        # a room that has just been restarted after a death looks exactly like a fresh one and
+        # must not be mistaken for somewhere worth expanding. `facing` is part of it because
+        # it decides where the next shot goes: without it a refused move -- Lolo walking into
+        # a rock to turn, which the cartridge allows and several rooms need -- produces a
+        # state equal to the one it came from, search closes it as a duplicate, and the whole
+        # branch that could have fired that shot is never looked at. An `exhausted` reported
+        # under that identity is not a proof that the room has no plan.
         return (isinstance(other, LoloGBState) and self.grid == other.grid
                 and self.lolo == other.lolo and self.enemies == other.enemies
                 and self.hearts_left == other.hearts_left and self.shots == other.shots
-                and self.died == other.died)
+                and self.facing == other.facing and self.died == other.died)
 
     def __hash__(self):
         return hash((self.grid, self.lolo, self.enemies, self.hearts_left, self.shots,
-                     self.died))
+                     self.facing, self.died))
 
     def __str__(self):
         return render_grid(self.grid, self.lolo,
@@ -668,7 +686,20 @@ class LoloGBAction(GBAction):
 
     def __next_state__(self, pyboy, state):
         return LoloGBState(pyboy, state.depth + 1, state.tiles, state.door,
-                           died=self.__died__(pyboy, state))
+                           died=self.__died__(pyboy, state),
+                           facing=self.__facing__(state))
+
+    def __facing__(self, state):
+        """Which way Lolo points after this action.
+
+        Straight off the memory map's facing probe (§5): a d-pad press turns him whether or
+        not the step it asked for happened, and `a` fires along whatever he was already
+        facing without changing it. Taken from the action rather than read back from the
+        cartridge because the answer is not on the screen: `read_grid` decodes terrain and
+        `lolo_position` reads coordinates, and neither sees which of the four sprites is up.
+        """
+        turns = [button for button, _ in self.actions_tick_list if button in DIRECTIONS]
+        return turns[-1] if turns else state.facing
 
     def __died__(self, pyboy, state):
         """Whether Lolo lost a life during this action.
@@ -777,7 +808,9 @@ class LoloGBEnv(GBEnv):
         self.door = door_cell(read_board(self.pyboy))
         if self.magic_shots:
             self.pyboy.memory[MAGIC_SHOTS_ADDR] = self.magic_shots
-        self.state = LoloGBState(self.pyboy, 0, self.tiles, self.door)
+        # Facing nothing to begin with, as `gameboy_py/lolo.py` does: the cartridge will
+        # not fire a shot before the first move.
+        self.state = LoloGBState(self.pyboy, 0, self.tiles, self.door, facing=None)
 
         if self.should_calibrate and self.calibration is None:
             # A property of the cartridge, not of the room, so once is enough.

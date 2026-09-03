@@ -862,6 +862,71 @@ def test_cartridge_reaches_a_round_by_typing_its_password(index):
         game.close()
 
 
+#: Round 56 cleared on the cartridge, as `left` to put the cursor where the twin starts it
+#: followed by the twin's own 41-step plan for index 55. Kept here rather than searched for:
+#: the round takes BFWS 8542 expansions to solve, which is not a unit test, and what needs
+#: pinning is that the cartridge still plays this witness out to a cleared stage.
+ROUND_56_PLAN = (
+    "left right down down down down down right-hold left up up up up up right-hold left down "
+    "right-hold down down right-hold left down down left-hold left-hold left down down "
+    "right-hold left right-hold left up up up up up up right-hold left right-hold"
+).split()
+
+
+def _twin_action(game, name):
+    """One of the twin's action names as the action string this cartridge wants."""
+    hold = (push_hold(game.calibration) if name.endswith("-hold")
+            else game.calibration.press_ticks)
+    return (f"a+{name[:-len('-hold')]},{hold}" if name.endswith("-hold") else f"{name},{hold}")
+
+
+@needs_rom
+def test_round_56_is_settled_before_it_is_snapshotted():
+    """Index 55 drops seven blocks as the round opens, and `reset` used to snapshot the fall.
+
+    A cell holding a block in motion reads `$01`, which is not a block as far as
+    `decode_blocks` is concerned, so the position came back with six of its thirteen blocks
+    and two types down to a single block each. That is `is_dead_end`, which makes the state
+    absorbing, so it expanded to nothing and a complete search reported a round the
+    cartridge plays perfectly well as having no plan.
+    """
+    game = PuzznicGBEnv(puzznic_rom_path())
+    game.set_index(55)
+    try:
+        state, info = game.reset()
+        assert info["stage_index"] == 55
+        assert not any(cell == CELL_CLEARING for row in state.grid for cell in row), \
+            "reset snapshotted the round while blocks were still falling"
+        assert len(state.blocks) == state.blocks_remaining == state.total_blocks == 13
+        assert state.is_consistent()
+        assert sorted(block_counts(state.blocks).values()) == [3, 3, 3, 4]
+        assert not game.is_terminal(state), "a settled round 56 is not a dead end"
+        assert game.successors(state)
+    finally:
+        game.close()
+
+
+@needs_rom
+def test_round_56_is_solvable_on_the_cartridge():
+    """The other half of the same disagreement: the round has a plan, and here it is.
+
+    The twin solves index 55 and BFWS proved the cartridge could not, which cannot be true
+    of both. Replaying the twin's plan on the cartridge settles it -- one `left` first,
+    because the cartridge starts its cursor on a block and the twin's text format cannot
+    write that, so the twin starts one cell over.
+    """
+    game = PuzznicGBEnv(puzznic_rom_path())
+    game.set_index(55)
+    try:
+        state, _ = game.reset()
+        for name in ROUND_56_PLAN:
+            state = game.__advance__(state, _twin_action(game, name))
+        assert game.is_goal(state)
+        assert state.blocks_remaining == 0 and not state.blocks
+    finally:
+        game.close()
+
+
 @needs_rom
 def test_cartridge_rejects_a_round_it_has_no_password_for(cartridge):
     with pytest.raises(AssertionError, match="128 rounds"):

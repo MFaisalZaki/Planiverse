@@ -1017,6 +1017,15 @@ class PuzznicGBEnv(GBEnv):
                 f"{self.romfile} loaded a stage but never accepted a button press. The board "
                 "is readable during the round intro, so this usually means the intro is "
                 "longer than INTRO_MAX_TICKS, or the game is paused.")
+        # Settle again. The intro is not only a wait: a round whose layout starts with
+        # unsupported blocks drops them as it begins, and `wait_until_interactive` hands
+        # back the frame the cursor first answered on, which can be in the middle of that
+        # fall. A cell holding a block in motion reads `$01`, so `decode_blocks` cannot see
+        # it, and a round that is merely mid-animation reads as a position with fewer blocks
+        # than it has. Round 56 (index 55) drops seven, which leaves two types on a single
+        # block each; `is_dead_end` calls that a stage that can no longer be cleared, and
+        # search expands nothing from it and reports the round unsolvable.
+        settle(self.pyboy, self.render_window, **self.settle_kwargs)
         self.state = PuzznicGBState(self.pyboy, 0)
         if self.should_calibrate and self.calibration is None:
             # A property of the cartridge, not of the stage, so once is enough.

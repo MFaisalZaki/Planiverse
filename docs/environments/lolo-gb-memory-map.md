@@ -222,6 +222,10 @@ the Medusa:
 
 A rock does not block a Medusa; a tree does.
 
+An **egg** was not in that sweep, but it shields: five of the plans in `tests/data/lolo_solutions.json`
+depend on one standing between Lolo and a Medusa, and all five cleared their room on the cartridge.
+A **marker** (`$97`-`$9C`) was not in the sweep either and is still untested; see §9.
+
 ### Clearing a room
 
 The door tile changes on the frame the last heart framer is taken, from *n* to *n*+2 in every
@@ -287,6 +291,8 @@ the tutorial, and `is_playing` is what catches it.
 
 | Item | Status |
 |---|---|
+| **How the six mobile enemies move** | Nothing here records it. §3 says *that* Leeper, Rocky, Alma and Don Medusa move when Lolo moves, and sketches each in a clause -- "walks toward Lolo, then stops dead", "charges, and shoves Lolo across the board", "chases, then leaves the board", "patrols a path of its own" -- but no probe fixes a trigger, a range, a tie-break between two equally close routes, or what ends the walk. Gol and Skull have the row below. Until somebody probes them, `lolo.py` cannot move them without guessing, and leaves all six standing |
+| Whether a **marker** blocks a Medusa's line | Not tested. It matters: `tutorial 13a` is cleared on the cartridge by walking column 0 under a marker at `(3, 0)` that would otherwise be a Medusa's clear line, and treating the marker as a shield is the one change that makes `lolo.py` clear that room too. It would also say what `$97`-`$9C` are |
 | The hammer | int 1-5 starts with one in the status bar's PWR meter and cannot be cleared without it. What button uses it, and what it breaks, is not established |
 | `$97`–`$9C` | walkable and inert in the environment tested. "ENEMY HOLES" and "JEWEL BOXES" are both in the cartridge's own object list and unaccounted for |
 | Gol and Skull waking | both are dormant while hearts remain; whether they move once the last one is taken was not tested |

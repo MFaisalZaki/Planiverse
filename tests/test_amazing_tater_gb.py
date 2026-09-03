@@ -16,12 +16,13 @@ import pytest
 pytest.importorskip("pyboy", reason="pyboy is not installed")
 
 from planiverse.environments.gameboy.amazing_tater_gb import (  # noqa: E402
-    ARM_CODES, ARM_MASKS, ARM_OVER_PIT_CODES, BLOCK_CODES, BOARD_BYTES, CODE_FLOOR,
-    CODE_OUTSIDE, CODE_PIT, EXIT_CODES, GLYPH_BY_CODE, LEVEL_COUNT, LEVEL_SETS, MODE_MENU_ROW,
-    PIVOT_CODES, ROM_MD5, ROW_STRIDE, SET_COUNTS, SETTLED_BLOCK_CODES, SHAPE_TABLE,
-    SHAPE_TABLE_ADDR, SWITCH, TATER_CODES, WALL_CODES, AmazingTaterGBAction,
-    AmazingTaterGBEnv, Calibration, action_cost_map, action_list, board_bounds, button_actions,
-    cell_glyph, decode_board, find, is_solved, level_counts, read_rom, render_board,
+    ARM_CODES, ARM_MASKS, ARM_OVER_PIT_CODES, BLOCK_CODES, BOARD_ADDR, BOARD_BYTES, CODE_FLOOR,
+    CODE_OUTSIDE, CODE_PIT, DIRECTIONS, EXIT_CODES, GLYPH_BY_CODE, LEVEL_COUNT, LEVEL_SETS,
+    MODE_MENU_ROW, PIVOT_CODES, PRESS_TICKS, PROBE_MAX_HOLD, ROM_MD5, ROW_STRIDE, SET_COUNTS,
+    SETTLED_BLOCK_CODES, SHAPE_TABLE, SHAPE_TABLE_ADDR, SWITCH, TATER_CODES,
+    TATERS_ON_BOARD_ADDR, WALL_CODES, AmazingTaterGBAction, AmazingTaterGBEnv, Calibration,
+    Position, action_cost_map, action_list, board_bounds, button_actions, calibrate, cell_glyph,
+    decode_board, find, is_solved, level_counts, measure_hold_window, read_rom, render_board,
     set_descriptors, shape_table, taters,
 )
 from planiverse.environments.gameboy_py import amazing_tater as twin  # noqa: E402
@@ -198,6 +199,70 @@ def test_the_default_action_list_covers_every_button():
     assert len(action_list) == 5
 
 
+# ------------------------------------------------------------------------- calibration
+
+class _PocketEmulator:
+    """An emulator whose tater sits in a plus-shaped pocket: floor one cell out, wall beyond.
+
+    Whatever the hold, one press walks it exactly one cell and it stops against the wall, so
+    the pad's auto-repeat has nowhere to show itself. Room C-52 is this shape on the real
+    cartridge, and it is the case `measure_hold_window` has to decline to answer rather than
+    answer with the ceiling of its own probe.
+    """
+
+    def __init__(self, origin=Position(8, 9)):
+        self.origin = origin
+        self.memory = bytearray(0x10000)
+        self.__place__(origin)
+
+    def __place__(self, cell):
+        buffer = bytearray([CODE_OUTSIDE] * BOARD_BYTES)
+        for row in range(self.origin.row - 2, self.origin.row + 3):
+            for col in range(self.origin.col - 2, self.origin.col + 3):
+                reach = abs(row - self.origin.row) + abs(col - self.origin.col)
+                buffer[row * ROW_STRIDE + col] = CODE_FLOOR if reach <= 1 else min(WALL_CODES)
+        buffer[cell.row * ROW_STRIDE + cell.col] = TATER_CODES.start
+        self.memory[BOARD_ADDR:BOARD_ADDR + BOARD_BYTES] = buffer
+        self.memory[TATERS_ON_BOARD_ADDR] = 1
+
+    def load_state(self, handle):
+        self.__place__(self.origin)
+
+    def button(self, name, hold):
+        step = DIRECTIONS[name]
+        self.__place__(Position(self.origin.row + step[0], self.origin.col + step[1]))
+
+    def tick(self, count=1, render=False):
+        return True
+
+
+class _PocketState:
+    """Just the three things the probes read off a state."""
+
+    gb_state = b""
+    active = 0
+    taters = {0: Position(8, 9)}
+
+
+def test_a_hold_window_is_only_reported_when_the_pad_was_seen_to_repeat():
+    """A probe that could not observe auto-repeat has not measured where it starts.
+
+    Returning the probe's own ceiling instead is what made index 92 unsolvable: no direction
+    out of C-52 has two clear cells, every hold looked alike, the window came back `(1, 24)`
+    and the 12-frame hold it settled on walked the tater three cells per action. The search
+    was then expanding a game the cartridge does not play.
+    """
+    assert measure_hold_window(_PocketEmulator(), _PocketState(),
+                               max_ticks=40, stable_ticks=2) is None
+
+
+def test_an_unmeasurable_window_falls_back_to_the_documented_hold():
+    calibration = calibrate(_PocketEmulator(), _PocketState(), max_ticks=40, stable_ticks=2)
+    assert calibration == Calibration(PRESS_TICKS, None)
+    assert calibration.press_ticks < PROBE_MAX_HOLD // 2, \
+        "the fallback has to sit below the pad's repeat, not in the middle of the probe"
+
+
 # -------------------------------------------------------------------------- the cartridge
 
 @pytest.fixture(scope="module")
@@ -248,6 +313,40 @@ def test_calibration_finds_the_hold_that_moves_exactly_one_cell(env):
     low, high = calibration.hold_window
     assert low <= calibration.press_ticks <= high
     assert high < 12                     # past this the d-pad repeats and one press walks two
+
+
+@needs_rom
+def test_a_room_with_no_corridor_to_probe_still_gets_a_workable_hold():
+    """C-52 (index 92) starts its tater boxed in: a wall one cell away in every direction.
+
+    Nothing there can show the pad repeating, so calibration has nothing to measure and has
+    to say so. It used to report the ceiling of its own probe, `(1, 24)`, and drive the
+    cartridge at the 12-frame hold in the middle of it -- past the repeat, so one action
+    walked the tater three cells. The successors were not the game's moves, and BFWS
+    exhausted that distorted space and called a solvable room unsolvable.
+
+    Its own environment rather than the shared one: calibration is measured once per
+    instance, so reusing a machine already calibrated in a roomier level would measure
+    nothing here and prove nothing.
+    """
+    game = AmazingTaterGBEnv(amazing_tater_rom_path())
+    game.set_index(92)
+    try:
+        state, info = game.reset()
+        assert info["level"] == "C-52"
+        assert info["calibration"].hold_window is None, \
+            "there is no corridor here to measure a repeat in"
+        assert info["calibration"].press_ticks < 10, "past this the pad repeats"
+
+        # The step the two twins first disagreed on: up, then left, one cell each.
+        twin_level = twin.Level(92, twin.LEVELS[92])
+        expected = twin.initial_state(twin_level)
+        for name in ("up", "left"):
+            state = game.__advance__(state, f"{name},{info['calibration'].press_ticks}")
+            expected = twin.advance(twin_level, expected, name)
+        assert state.rows == twin.board(twin_level, expected)
+    finally:
+        game.close()
 
 
 @needs_rom

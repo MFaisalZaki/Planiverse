@@ -329,16 +329,27 @@ falls back to `PRESS_TICKS` and the `modifier` scheme.
 ### Waiting for the round to accept input
 
 The stage loader fills work RAM before the round has finished announcing itself. For 210 frames on
-`Puzznic (J)` the board is completely readable, with grid, records, counters and cursor all
-correct and cross-checking, while every button is ignored, and nothing in RAM says so. A state
-snapshotted in that window looks perfectly normal and answers no action, so a planner sees a stage
-with no legal moves rather than an error.
+`Puzznic (J)` the board is readable, with grid, records, counters and cursor all in place, while
+every button is ignored, and nothing in RAM says so. A state snapshotted in that window looks
+perfectly normal and answers no action, so a planner sees a stage with no legal moves rather than
+an error.
 
 `reset()` calls `wait_until_interactive`, which presses a direction from a snapshot at increasing
 offsets until the cursor answers, then rewinds and replays only the waiting, so the cursor stays
 where the loader put it. `info["intro_ticks"]` reports how long it took. It retries having pressed
 START first, because START is the pause button once a round is running and the boot sequence taps
 it while getting through the title screens.
+
+Then `reset()` settles the board a second time, because waiting out the intro is not only waiting.
+A round whose layout starts with unsupported blocks drops them as it begins, and
+`wait_until_interactive` hands back the frame the cursor first answered on, which can be in the
+middle of that fall. A cell holding a block in motion reads `$01`, and `decode_blocks` does not
+see a block there, so the position comes back with fewer blocks than the round has — three of the
+128 rounds land mid-drop, and round 56 drops seven at once. That leaves two of its four types on a
+single block each, which is exactly what `is_dead_end` looks for, so the round came back terminal
+and absorbing: no successors at all, and a complete search reporting no plan for a round the
+cartridge plays. Settled, round 56 reads all thirteen blocks, is not a dead end, and clears in the
+41 moves the twin finds for it. `state.is_consistent()` is the cheap check that this went right.
 
 ### Applying an action
 
