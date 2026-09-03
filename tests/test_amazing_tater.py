@@ -308,7 +308,7 @@ def test_switch_hands_the_controls_to_the_next_tater():
 
 def test_switch_is_not_offered_with_one_tater():
     game = AmazingTaterGame()
-    game.fix_index(0)
+    game.set_index(0)
     state, _ = game.reset()
     assert len(state.taters) == 1
     assert SWITCH not in [action.name for action, _ in game.successors(state)]
@@ -388,7 +388,7 @@ def test_a_room_is_the_size_the_cartridge_says_it_is():
     `LoadLevel` writes to `$C2BD` and `$C2BE`."""
     game = AmazingTaterGame()
     for index in (0, 3, 40, 41, 104):
-        game.fix_index(index)
+        game.set_index(index)
         _, info = game.reset()
         height, width = Level(index, LEVELS[index]).shape
         assert info["size"] == (width - 2, height - 2)
@@ -399,7 +399,7 @@ def test_a_room_is_the_size_the_cartridge_says_it_is():
 @pytest.fixture
 def game():
     game = AmazingTaterGame()
-    game.fix_index(0)
+    game.set_index(0)
     game.reset()
     return game
 
@@ -431,9 +431,9 @@ def test_a_position_reached_two_ways_compares_equal(game):
     assert back == state and hash(back) == hash(state)
 
 
-def test_fix_index_rejects_a_room_that_is_not_there(game):
+def test_set_index_rejects_a_room_that_is_not_there(game):
     with pytest.raises(IndexError):
-        game.fix_index(LEVEL_COUNT)
+        game.set_index(LEVEL_COUNT)
 
 
 def test_an_unknown_action_is_rejected():
@@ -448,7 +448,7 @@ def test_switch_is_free_and_a_step_is_not():
 
 def test_step_reports_how_many_taters_got_home():
     game = AmazingTaterGame()
-    game.fix_index(0)
+    game.set_index(0)
     game.reset()
     _, gained = game.step(AmazingTaterAction("left"))
     assert gained == 0
@@ -471,21 +471,21 @@ def test_the_stored_solutions_solve_their_rooms(index):
     assert plan is not None, label_for(index)
     assert len(plan) == SOLUTIONS[index], label_for(index)
     game = AmazingTaterGame()
-    game.fix_index(index)
+    game.set_index(index)
     game.reset()
     assert game.validate(plan)
 
 
 def test_a_plan_that_stops_short_does_not_validate():
     game = AmazingTaterGame()
-    game.fix_index(0)
+    game.set_index(0)
     game.reset()
     assert not game.validate(solve(0)[:-1])
 
 
 def test_simulate_returns_one_state_more_than_the_plan():
     game = AmazingTaterGame()
-    game.fix_index(1)
+    game.set_index(1)
     game.reset()
     plan = solve(1)
     trace = game.simulate(plan)
@@ -517,7 +517,7 @@ def test_a_solution_found_here_also_solves_the_cartridge():
     plan = solve(1)
     env = AmazingTaterGBEnv(amazing_tater_rom_path(), calibrate=False)
     try:
-        env.fix_index(1)
+        env.set_index(1)
         state, _ = env.reset()
         for name in plan:
             state = env.__advance__(state, f"{name},5")

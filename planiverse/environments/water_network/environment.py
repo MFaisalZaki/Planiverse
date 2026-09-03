@@ -23,7 +23,7 @@ On `Net3` the source has four pipes on it, of which two carry essentially all th
 contamination and two do nothing at all.
 
     env = WaterNetworkEnv()
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     for action, successor in env.successors(state):
         print(action, successor.contaminated, successor.service)
@@ -69,7 +69,7 @@ def network_library():
     return os.path.join(os.path.dirname(wntr.__file__), "library", "networks")
 
 
-#: The scenarios `fix_index` chooses between: a shipped network and the junction the
+#: The scenarios `set_index` chooses between: a shipped network and the junction the
 #: contaminant enters at.
 #:
 #: The sources are not arbitrary: they were measured with `rank_sources` below, which runs
@@ -225,7 +225,7 @@ class WaterNetworkEnv(Environment):
 
     # ------------------------------------------------------------------ instances
 
-    def fix_index(self, index):
+    def set_index(self, index):
         """Choose the scenario: which network, and where the contaminant enters."""
         if not 0 <= index < len(SCENARIOS):
             raise IndexError(
@@ -246,7 +246,7 @@ class WaterNetworkEnv(Environment):
 
         if self._wn is None:
             if self.network_file is None:
-                raise ValueError("Call fix_index() before reset().")
+                raise ValueError("Call set_index() before reset().")
             wn = wntr.network.WaterNetworkModel(self.network_file)
             wn.options.time.duration = 3600 * self.duration_hours
             wn.options.hydraulic.demand_model = "PDD"
@@ -341,7 +341,7 @@ class WaterNetworkEnv(Environment):
 
     def reset(self):
         if self.scenario_index is None:
-            self.fix_index(0)
+            self.set_index(0)
         self.candidates = self.__candidates__()
         self.state = self.__state__(frozenset(), 0)
         self.baseline = self.state

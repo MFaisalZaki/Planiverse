@@ -44,7 +44,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = WaterNetworkEnv()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
@@ -64,7 +64,7 @@ other output formats.
 from planiverse.environments.water_network.environment import WaterNetworkEnv
 
 env = WaterNetworkEnv()
-env.fix_index(0)                      # Net1, contaminant at junction 23
+env.set_index(0)                      # Net1, contaminant at junction 23
 state, info = env.reset()
 
 print(state)
@@ -82,7 +82,7 @@ env.close()                           # removes the simulator's scratch director
 
 ## Scenarios
 
-`fix_index(i)` picks a network together with the junction the contaminant enters at. There are
+`set_index(i)` picks a network together with the junction the contaminant enters at. There are
 nine scenarios, ordered by how deep a solution is:
 
 | Index | Network | Source | Contaminated at t=0 | Solved at depth |

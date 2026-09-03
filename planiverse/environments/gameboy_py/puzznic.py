@@ -5,7 +5,7 @@ implements the rules directly, so it is the dependency-free way to plan in this 
 
 ## Where the levels came from
 
-All 128 of them are the cartridge's 128 rounds, at matching indices: `fix_index(7)` here
+All 128 of them are the cartridge's 128 rounds, at matching indices: `set_index(7)` here
 and on `puzznic_gb` are the same board. The first 50 were transcribed by hand; the rest
 were read out of `Puzznic (J)` at `$DF00` by booting each round through `PuzznicGBEnv`.
 
@@ -459,12 +459,12 @@ class PuzznicGame(Environment):
         assert 0 <= index < len(self.levelsstr), "Invalid level index."
         return self.levelsstr[index]
 
-    def fix_index(self, index:int):
+    def set_index(self, index:int):
         """Select a level. Out of range is refused here, not later.
 
         It used to be accepted and only rejected at `reset()`, by an assertion inside
         `_levels_str_`, which `python -O` strips, and which meant anything asking the
-        environment how many levels it has by walking `fix_index` upwards (the benchmark
+        environment how many levels it has by walking `set_index` upwards (the benchmark
         harness does exactly that) got told there was no limit.
         """
         if not 0 <= index < len(self.levelsstr):

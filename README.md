@@ -128,7 +128,7 @@ Puzznic is the dependency-free environment, so it is the fastest way to see the 
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
 env = PuzznicGame()
-env.fix_index(0)              # choose the instance *before* reset
+env.set_index(0)              # choose the instance *before* reset
 state, info = env.reset()
 
 print(state)
@@ -165,8 +165,8 @@ contract, since dispatch is structural) and implements as much of this contract 
 
 | Method | Returns | Notes |
 |---|---|---|
-| `reset()` | `(state, info)` | Builds the initial state. Call `fix_index` first. |
-| `fix_index(index)` | — | Selects which scenario/level/instance to load. |
+| `reset()` | `(state, info)` | Builds the initial state. Call `set_index` first. |
+| `set_index(index)` | — | Selects which scenario/level/instance to load. |
 | `successors(state)` | `[(action, next_state), ...]` | The expansion step. Self-loops are filtered out. |
 | `is_goal(state)` | `bool` | |
 | `is_terminal(state)` | `bool` | Dead end: no goal reachable from here. |
@@ -177,7 +177,7 @@ contract, since dispatch is structural) and implements as much of this contract 
 
 Not every environment implements every method. What is actually there today:
 
-| | `reset` | `fix_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `step` | `validate` | `get_actions` |
+| | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `step` | `validate` | `get_actions` |
 |---|---|---|---|---|---|---|---|---|---|
 | `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -230,14 +230,14 @@ section spelling out what it chose and what that costs you.
 States also commonly expose `depth`, and define `__eq__` (and sometimes `__hash__` and `__lt__`, the
 latter so they can be tie-broken inside a priority queue).
 
-### The `fix_index` pattern
+### The `set_index` pattern
 
 Environments are constructed empty and loaded by integer index:
 
 ```python
 env = EnvNASim()
-env.fix_index(3)        # 'small' benchmark
-state, _ = env.reset()  # fix_index must come first — reset asserts on it
+env.set_index(3)        # 'small' benchmark
+state, _ = env.reset()  # set_index must come first — reset asserts on it
 ```
 
 The index is a stable handle for "instance *n* of this environment", which is what a benchmark runner
@@ -286,7 +286,7 @@ See [docs/rendering.md](docs/rendering.md).
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
 
-env.fix_index(0)
+env.set_index(0)
 result = IWSearch(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
 if result:
     env.validate(result.plan)
@@ -453,7 +453,7 @@ outside works without inheriting from anything.
 1. Subclass `Environment` (`planiverse/environments/base.py`) and implement the six methods.
 2. Define a state class exposing `literals`, `__eq__`, and, if search will hash it, `__hash__`.
    Decide deliberately how coarse `literals` should be; that decision is your state space.
-3. Implement `reset`, `fix_index`, `successors`, `is_goal`, `is_terminal`, and `simulate`.
+3. Implement `reset`, `set_index`, `successors`, `is_goal`, `is_terminal`, and `simulate`.
 4. Filter self-loops out of `successors` (`if successor_state == state: continue`); every bundled
    environment does this, and planners rely on it. Check that it can actually fire: if `literals`
    include a step counter, no successor ever equals its parent and the filter is dead code.

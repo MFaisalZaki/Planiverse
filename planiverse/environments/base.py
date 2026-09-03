@@ -13,7 +13,7 @@ contract; `EnvironmentSpec` in `registry.py` carries everything a caller might w
 on, including the tags that used to be package directories.
 """
 #: Methods a planner may always call.
-REQUIRED_METHODS = ("reset", "fix_index", "successors", "is_goal", "is_terminal", "simulate")
+REQUIRED_METHODS = ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate")
 
 #: Methods a planner should check for. `capabilities()` reports which are present.
 OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close")
@@ -62,9 +62,9 @@ class Environment:
     # an environment half-written is still worth poking at in a REPL.
 
     @_stub
-    def fix_index(self, index):
+    def set_index(self, index):
         """Select which instance (level, scenario, stage) `reset` will build."""
-        raise NotImplementedError(f"{type(self).__name__} must implement fix_index()")
+        raise NotImplementedError(f"{type(self).__name__} must implement set_index()")
 
     @_stub
     def reset(self):

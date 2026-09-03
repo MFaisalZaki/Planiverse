@@ -61,7 +61,7 @@ here, which was never tested on the cartridge and is refused rather than guessed
 ## Where the rooms came from
 
 All 163 of them were decoded out of `Adventures of Lolo (U) [S][!].gb` by
-`lolo_gb.read_rooms`, at matching indices: `fix_index(38)` here and on `lolo_gb` are the
+`lolo_gb.read_rooms`, at matching indices: `set_index(38)` here and on `lolo_gb` are the
 same room. Nothing was transcribed by hand. `tests/test_lolo.py` re-decodes the ROM and
 compares, when a ROM is available, so a room cannot drift away from the cartridge unnoticed.
 
@@ -819,7 +819,7 @@ class LoloGame(Environment):
         #: would ever equal anything found in another.
         self._rooms = {}
 
-    def fix_index(self, index):
+    def set_index(self, index):
         if not 0 <= index < len(ROOMS):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(ROOMS)} rooms, so the index must be "
@@ -911,7 +911,7 @@ if __name__ == "__main__":
     indices = range(len(ROOMS)) if args.room is None else [args.room]
     for index in indices:
         game = LoloGame()
-        game.fix_index(index)
+        game.set_index(index)
         state, info = game.reset()
         flag = "" if info["exact"] else f"  (unmodelled: {' '.join(info['unmodelled_enemies'])})"
         print(f"--- {index:3d} {info['room']}  {info['hearts']} hearts{flag}")

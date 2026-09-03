@@ -32,7 +32,7 @@ class IWSearch:
     ```python
     from planiverse.planners.width import IWSearch
 
-    env.fix_index(0)
+    env.set_index(0)
     result = IWSearch(width=1).solve(env)
     if result:
         env.validate(result.plan)

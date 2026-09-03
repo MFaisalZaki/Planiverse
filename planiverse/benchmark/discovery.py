@@ -39,7 +39,7 @@ def count_instances(spec, ceiling=PROBE_CEILING, rom=None):
     Probed rather than declared. The registry's `instances` field is prose written for a
     human ("50 levels", "9 contingencies"), and a second, machine-readable copy would be one
     more thing that can drift out of step with the code. So this constructs the environment
-    once and walks `fix_index` upwards until it refuses.
+    once and walks `set_index` upwards until it refuses.
 
     Environments differ in how they refuse (`IndexError`, `AssertionError`, a bare
     `ValueError`), so anything raised counts as the end of the range.
@@ -49,7 +49,7 @@ def count_instances(spec, ceiling=PROBE_CEILING, rom=None):
         count = 0
         while count < ceiling:
             try:
-                environment.fix_index(count)
+                environment.set_index(count)
             except Exception:
                 break
             count += 1

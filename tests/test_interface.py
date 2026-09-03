@@ -14,7 +14,7 @@ def puzznic():
     from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
     env = PuzznicGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -26,7 +26,7 @@ def puzznic_gb():
     # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
     # in `fake_puzznic_rom.py` rather than the real one.
     env = PuzznicGBEnv(synthetic_rom(), verify_rom=False)
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -34,7 +34,7 @@ def flipull():
     from planiverse.environments.gameboy_py.flipull import FlipullGame
 
     env = FlipullGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -46,7 +46,7 @@ def flipull_gb():
     # Flipull is copyrighted too, so the contract is checked against the synthetic
     # cartridge in `fake_flipull_rom.py`.
     env = FlipullGBEnv(synthetic_rom(), verify_rom=False)
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -55,7 +55,7 @@ def super_mario_land():
     from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
 
     env = SuperMarioLandGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -64,7 +64,7 @@ def water_network():
     from planiverse.environments.water_network.environment import WaterNetworkEnv
 
     env = WaterNetworkEnv()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -73,7 +73,7 @@ def power_grid():
     from planiverse.environments.power_grid.environment import PowerGridEnv
 
     env = PowerGridEnv()
-    env.fix_index(4)
+    env.set_index(4)
     return env
 
 
@@ -82,7 +82,7 @@ def crop_management():
     from planiverse.environments.crop_management.environment import CropEnv
 
     env = CropEnv()
-    env.fix_index(10)
+    env.set_index(10)
     return env
 
 
@@ -92,7 +92,7 @@ def network_attack():
     from planiverse.environments.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
@@ -120,7 +120,7 @@ def environment_params():
 @pytest.mark.parametrize("factory", environment_params())
 def test_implements_the_core_interface(factory):
     env = factory()
-    for method in ("reset", "fix_index", "successors", "is_goal", "is_terminal", "simulate"):
+    for method in ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate"):
         assert callable(getattr(env, method, None)), \
             f"{type(env).__name__} does not implement {method}()"
 
@@ -147,7 +147,7 @@ def test_an_outside_environment_needs_no_subclassing():
     and implements none of them, so it must not count."""
 
     class Outsider:
-        reset = fix_index = successors = is_goal = is_terminal = simulate = lambda *a: None
+        reset = set_index = successors = is_goal = is_terminal = simulate = lambda *a: None
 
     assert not isinstance(Outsider(), Environment)
     assert implements_contract(Outsider())

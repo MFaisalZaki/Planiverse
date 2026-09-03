@@ -20,7 +20,7 @@ from conftest import (  # noqa: E402
 @pytest.fixture(scope="module")
 def env():
     game = PowerGridEnv()
-    game.fix_index(4)          # chronic 1 / line 6: a four-step deadline, solved at depth 1
+    game.set_index(4)          # chronic 1 / line 6: a four-step deadline, solved at depth 1
     yield game
     game.close()
 
@@ -45,8 +45,8 @@ def test_two_environments_agree():
     """Determinism across separate simulator instances."""
     one, two = PowerGridEnv(), PowerGridEnv()
     try:
-        one.fix_index(4)
-        two.fix_index(4)
+        one.set_index(4)
+        two.set_index(4)
         first, first_info = one.reset()
         second, second_info = two.reset()
         assert first.rhos == second.rhos
@@ -76,7 +76,7 @@ def test_every_scenario_reproduces_its_recorded_measurements():
     game = PowerGridEnv()
     try:
         for index, scenario in enumerate(SCENARIOS):
-            game.fix_index(index)
+            game.set_index(index)
             state, info = game.reset()
             assert info["chronic"] == scenario.chronic
             assert info["tripped_line"] == scenario.line
@@ -104,12 +104,12 @@ def test_doing_nothing_really_does_black_the_grid_out(env):
     assert env.is_terminal(node)
 
 
-def test_fix_index_refuses_a_scenario_that_is_not_there():
+def test_set_index_refuses_a_scenario_that_is_not_there():
     game = PowerGridEnv()
     try:
         for index in (-1, len(SCENARIOS), 99):
             with pytest.raises(IndexError, match="Invalid index"):
-                game.fix_index(index)
+                game.set_index(index)
     finally:
         game.close()
 

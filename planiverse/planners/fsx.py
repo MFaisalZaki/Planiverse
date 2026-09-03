@@ -61,7 +61,7 @@ class FSXPlanner:
     ```python
     from planiverse.planners.fsx import FSXPlanner
 
-    env.fix_index(0)
+    env.set_index(0)
     result = FSXPlanner(horizon=8, walkers=12, seed=0).solve(env, Budget(max_seconds=60))
     ```
 

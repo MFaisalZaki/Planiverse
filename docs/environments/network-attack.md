@@ -35,7 +35,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = EnvNASim()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
@@ -51,7 +51,7 @@ See [docs/rendering.md](../rendering.md) for the other output formats.
 from planiverse.environments.network_attack.network_attack import EnvNASim
 
 env = EnvNASim()
-env.fix_index(0)             # 'tiny'
+env.set_index(0)             # 'tiny'
 state, info = env.reset()
 
 for action, successor in env.successors(state):
@@ -60,7 +60,7 @@ for action, successor in env.successors(state):
 trace = env.simulate([a for a, _ in env.successors(state)][:3])
 ```
 
-You can name a scenario directly instead of calling `fix_index`, or load your own scenario file:
+You can name a scenario directly instead of calling `set_index`, or load your own scenario file:
 
 ```python
 env = EnvNASim(scenario_name="small-honeypot")
@@ -72,7 +72,7 @@ state, _ = env.reset()
 
 ## Scenarios
 
-`fix_index(i)` maps to NASim's benchmark scenarios, loaded via `nasim.make_benchmark(name)` with
+`set_index(i)` maps to NASim's benchmark scenarios, loaded via `nasim.make_benchmark(name)` with
 `seed=0`:
 
 | Index | Scenario | | Index | Scenario |
@@ -171,7 +171,7 @@ from planiverse.planners.width import IteratedBFWS
 from planiverse.benchmark import measures
 
 env = EnvNASim()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)

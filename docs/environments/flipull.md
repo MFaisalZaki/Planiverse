@@ -31,7 +31,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = FlipullGame()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.flipull).solve(env)
@@ -79,7 +79,7 @@ planning problem; for predicting the cartridge, use [`FlipullGBEnv`](flipull-gb.
 from planiverse.environments.gameboy_py.flipull import FlipullGame
 
 env = FlipullGame()
-env.fix_index(0)
+env.set_index(0)
 state, info = env.reset()
 
 print(state)
@@ -98,7 +98,7 @@ env.render()          # prints the state history
 
 ## Stages
 
-`fix_index(i)` selects stage `i`. Indices run from `0` to `31` and match the cartridge's stage
+`set_index(i)` selects stage `i`. Indices run from `0` to `31` and match the cartridge's stage
 table, giving the same board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6),
 stage for stage. `STAGES` is a literal tuple of `(ascii, clear_target)` pairs in the module, so
 the indices are stable.

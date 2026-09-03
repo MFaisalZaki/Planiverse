@@ -41,7 +41,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = SuperMarioLandGame()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.super_mario_land).solve(env)
@@ -61,7 +61,7 @@ an environment with no screen to photograph. See
 from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
 
 env = SuperMarioLandGame()
-env.fix_index(3)
+env.set_index(3)
 state, info = env.reset()
 
 print(state)
@@ -114,7 +114,7 @@ landed on.
 
 ## Levels
 
-`fix_index(i)` selects level `i`. We generated the shipped levels, explored each with a planner,
+`set_index(i)` selects level `i`. We generated the shipped levels, explored each with a planner,
 and kept a level only when the flag can be reached, then ranked them by how much search that took,
 so the set is a ramp rather than eight variations on one board. `MEASURED_EXPANSIONS` records what
 each level cost BFWS(w=2) when it was accepted:
@@ -149,7 +149,7 @@ env = SuperMarioLandGame(levels=["""
         M    E        G
         ####   #########
 """])
-env.fix_index(0)
+env.set_index(0)
 ```
 
 ## State

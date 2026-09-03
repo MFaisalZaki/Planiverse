@@ -14,7 +14,7 @@ from conftest import puzznic_rom_path  # noqa: E402
 @pytest.fixture
 def env():
     game = PuzznicGame()
-    game.fix_index(0)
+    game.set_index(0)
     return game
 
 
@@ -125,7 +125,7 @@ def test_a_game_boy_state_screenshots_the_actual_console():
     rom = puzznic_rom_path()
     game = PuzznicGBEnv(rom)
     try:
-        game.fix_index(0)
+        game.set_index(0)
         state, _ = game.reset()
         image = render_state(state, gamerom=rom)
         colours = image.convert("RGB").getcolors(maxcolors=100000)
@@ -145,7 +145,7 @@ def test_env_render_trace_supplies_its_own_cartridge(tmp_path):
 
     game = PuzznicGBEnv(puzznic_rom_path())
     try:
-        game.fix_index(0)
+        game.set_index(0)
         state, _ = game.reset()
         action, _next = game.successors(state)[0]
         paths = game.render_trace(game.simulate([action]), tmp_path / "frames")

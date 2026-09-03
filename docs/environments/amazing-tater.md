@@ -32,7 +32,7 @@ from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
 env = AmazingTaterGame()
-env.fix_index(0)
+env.set_index(0)
 env.reset()
 
 result = IteratedBFWS(max_width=1000, progress=measures.amazing_tater).solve(env)
@@ -79,7 +79,7 @@ the top of a cleared one are all absent. Here a solved room is simply terminal.
 from planiverse.environments.gameboy_py.amazing_tater import AmazingTaterGame
 
 game = AmazingTaterGame()
-game.fix_index(0)                  # choose the room before reset
+game.set_index(0)                  # choose the room before reset
 state, info = game.reset()
 
 print(state)
@@ -114,7 +114,7 @@ Its default budget is four hundred thousand states, which most of the later room
 ## Rooms
 
 The environment ships 105 rooms: 41 behind the cartridge's PUZZLE MODE (`A-01` to `A-41`) and 64
-behind BEGINNER and ACTION MODE (`C-01` to `C-64`). `fix_index(n)` here and on
+behind BEGINNER and ACTION MODE (`C-01` to `C-64`). `set_index(n)` here and on
 [`amazing_tater_gb`](amazing-tater-gb.md) select the same room. We left out the 96 rooms behind
 PRACTICE MODE. That mode is a timed climb through ten floors, its board buffer holds the corridors
 of the neighbouring floors as well as the room, and the tater starts outside the room, which makes

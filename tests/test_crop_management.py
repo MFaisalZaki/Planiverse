@@ -20,7 +20,7 @@ from conftest import (  # noqa: E402
 @pytest.fixture(scope="module")
 def env():
     game = CropEnv()
-    game.fix_index(10)          # 1986: the season where irrigation matters most
+    game.set_index(10)          # 1986: the season where irrigation matters most
     yield game
     game.close()
 
@@ -51,8 +51,8 @@ def test_a_whole_season_replays_identically(env):
 def test_two_environments_agree():
     one, two = CropEnv(), CropEnv()
     try:
-        one.fix_index(10)
-        two.fix_index(10)
+        one.set_index(10)
+        two.set_index(10)
         assert one.simulate(one.reference_plan())[-1].yield_kg == \
                two.simulate(two.reference_plan())[-1].yield_kg
     finally:
@@ -90,17 +90,17 @@ def test_the_seasons_span_wet_and_dry():
     assert min(gains.values()) < 100 and max(gains.values()) > 2500
 
 
-def test_fix_index_refuses_a_season_that_is_not_there():
+def test_set_index_refuses_a_season_that_is_not_there():
     game = CropEnv()
     try:
         for index in (-1, len(SCENARIOS), 99):
             with pytest.raises(IndexError, match="Invalid index"):
-                game.fix_index(index)
+                game.set_index(index)
     finally:
         game.close()
 
 
-def test_reset_without_fix_index_takes_the_first_season():
+def test_reset_without_set_index_takes_the_first_season():
     game = CropEnv()
     try:
         _, info = game.reset()
@@ -211,7 +211,7 @@ def test_doing_nothing_is_enough_in_a_wet_year():
     at all; knowing when *not* to act is part of the problem."""
     game = CropEnv()
     try:
-        game.fix_index(4)                      # 1980
+        game.set_index(4)                      # 1980
         game.reset()
         final = game.simulate([CropAction(0.0)] * DECISION_COUNT)[-1]
         assert game.is_goal(final), "no irrigation should already clear the target"

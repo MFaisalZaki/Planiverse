@@ -23,7 +23,7 @@ Two properties make this hard for a declarative model, both measured on the ship
   line 6 climbs from 1.08 to 1.98 while the operator does nothing.
 
     env = PowerGridEnv()
-    env.fix_index(0)
+    env.set_index(0)
     state, info = env.reset()
     for action, successor in env.successors(state):
         print(action, successor.max_rho)
@@ -196,7 +196,7 @@ class PowerGridEnv(Environment):
 
     # ------------------------------------------------------------------ instances
 
-    def fix_index(self, index):
+    def set_index(self, index):
         """Choose which line trips, on which time series."""
         if not 0 <= index < len(SCENARIOS):
             raise IndexError(
@@ -290,7 +290,7 @@ class PowerGridEnv(Environment):
 
     def reset(self):
         if self.scenario_index is None:
-            self.fix_index(0)
+            self.set_index(0)
         self.__release_cursor__()
         self._cache = {}
         self.state = self.__state__(())

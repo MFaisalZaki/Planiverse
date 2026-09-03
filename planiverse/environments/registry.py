@@ -308,7 +308,7 @@ def make(name, index=None, **kwargs):
     """
     environment = get_spec(name).build(**kwargs)
     if index is not None:
-        environment.fix_index(index)
+        environment.set_index(index)
     return environment
 
 

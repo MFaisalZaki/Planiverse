@@ -71,7 +71,7 @@ class MCTSPlanner:
     ```python
     from planiverse.planners.mcts import MCTSPlanner
 
-    env.fix_index(0)
+    env.set_index(0)
     result = MCTSPlanner(
         iterations=2000,
         reward=lambda s: 1.0 - len(s.blocks) / 6,   # denser than goal/no-goal
