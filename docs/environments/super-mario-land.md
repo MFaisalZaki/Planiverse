@@ -21,7 +21,7 @@ cartridge's own behaviour.
 - **Class:** `SuperMarioLandGame`
 - **Import:** `from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame`
 - **Source:** [`planiverse/environments/gameboy_py/super_mario_land.py`](../../planiverse/environments/gameboy_py/super_mario_land.py)
-- **Instances:** 8 levels, indices `0`–`7`, plus any you supply yourself
+- **Instances:** 12 levels, indices `0`–`11`, plus any you supply yourself
 - **Dependencies:** none
 - **Counterpart:** [`SuperMarioLandGBEnv`](super-mario-land-gb.md) plays the real Game Boy cartridge
 
@@ -116,15 +116,21 @@ landed on.
 
 `set_index(i)` selects level `i`. We generated the shipped levels, explored each with a planner,
 and kept a level only when the flag can be reached, then ranked them by how much search that took,
-so the set is a ramp rather than eight variations on one board. `MEASURED_EXPANSIONS` records what
+so the set is a ramp rather than twelve variations on one board. `MEASURED_EXPANSIONS` records what
 each level cost BFWS(w=2) when it was accepted:
 
-| Level | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|---|---|---|---|---|---|---|---|---|
-| Expansions | 5 | 6 | 7 | 15 | 16 | 17 | 92 | 406 |
+| Level | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Expansions | 5 | 6 | 7 | 15 | 16 | 17 | 92 | 406 | 750 | 1564 | 2552 | 7356 |
 
 Note that those numbers are data rather than a promise: changing a physics constant moves them,
 which is what happened when we refitted the physics to the cartridge and re-measured the set.
+
+There are twelve levels because that is how many instances the cartridge offers through
+[`SuperMarioLandGBEnv`](super-mario-land-gb.md), four worlds of three levels. The count is all
+that the two sets share. These levels are original, and index `i` is the `i`th step of a
+difficulty ramp, not the cartridge's world `i // 3 + 1`, level `i % 3 + 1`; reproducing the
+cartridge's own twelve would mean reading its level data out of the ROM, which we have not done.
 
 Level strings use this alphabet:
 

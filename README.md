@@ -30,7 +30,7 @@ Every environment answers the same four questions:
 | Adventures of Lolo (Game Boy) | `lolo_gb` | 163 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/lolo-gb.md) |
 | Amazing Tater | `amazing_tater` | 105 rooms | game | [docs](docs/environments/amazing-tater.md) |
 | Amazing Tater (Game Boy) | `amazing_tater_gb` | 105 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/amazing-tater-gb.md) |
-| Super Mario Land | `super_mario_land` | 8 levels | game, platformer | [docs](docs/environments/super-mario-land.md) |
+| Super Mario Land | `super_mario_land` | 12 levels | game, platformer | [docs](docs/environments/super-mario-land.md) |
 | Super Mario Land (Game Boy) | `super_mario_land_gb` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land-gb.md) |
 
 ```python
