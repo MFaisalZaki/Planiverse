@@ -34,21 +34,22 @@ needs_rom = pytest.mark.skipif(
 )
 
 
-def game(index, magic_shots=0):
-    instance = LoloGame(magic_shots=magic_shots)
+def game(index, magic_shots=0, rafts=False):
+    instance = LoloGame(magic_shots=magic_shots, rafts=rafts)
     instance.set_index(index)
     instance.reset()
     return instance
 
 
-def board(rows, magic_shots=0):
+def board(rows, magic_shots=0, rafts=False):
     """A LoloGame on a hand-written room, for testing one rule at a time.
 
     Goes through `reset` so that the initial state gets the same treatment a real room's does,
-    including the Medusa check, which can kill Lolo before he has pressed anything.
+    including the Medusa check, which can kill Lolo before he has pressed anything. The cache
+    is keyed by `(index, rafts)`, so the injected room has to be too.
     """
-    instance = LoloGame(magic_shots=magic_shots)
-    instance._rooms[0] = Room(0, "|".join(rows))
+    instance = LoloGame(magic_shots=magic_shots, rafts=rafts)
+    instance._rooms[(0, rafts)] = Room(0, "|".join(rows), rafts)
     instance.set_index(0)
     state, _ = instance.reset()
     return instance, state
@@ -314,11 +315,67 @@ def test_shooting_before_the_first_move_does_nothing():
     assert shoot(state) is None
 
 
-def test_an_egg_is_not_pushed_into_a_river():
-    """Rafts are refused rather than modelled (see the docs). This pins that choice."""
+def test_an_egg_pushed_into_a_river_floats():
+    """The raft. The egg leaves the board and the river cell becomes standable."""
+    _, state = board(room_with(**{"4_1": "@", "4_3": "S", "4_4": "~"}), magic_shots=1, rafts=True)
+    state = shoot(move(state, "right"))
+    afloat = move(state, "right")
+    assert afloat is not None, "the egg was refused by the river"
+    assert afloat.eggs == frozenset(), "the egg should be afloat, not still an egg"
+    assert afloat.sunk == frozenset({(4, 4)}), "the river cell should be holding a raft"
+    assert afloat.lolo == (4, 3), "Lolo takes the cell the egg was pushed out of"
+
+
+def test_rafts_are_off_unless_asked_for():
+    """The default keeps the old refusal, so no room silently gains a plan."""
     _, state = board(room_with(**{"4_1": "@", "4_3": "S", "4_4": "~"}), magic_shots=1)
     state = shoot(move(state, "right"))
-    assert move(state, "right") is None, "the egg was pushed into the river"
+    assert move(state, "right") is None, "the egg was floated with rafts off"
+
+
+def test_the_raft_clears_int_1_3_with_the_cartridges_own_plan():
+    """`lolo_gb` solved `int 1-3` in twelve actions. With rafts on, this finds the same twelve.
+
+    The plan is the cartridge's, transcribed from `sandbox/results/bfws/lolo_gb__40.json` with
+    each `<button>_for_20` read as the move it is and `a_for_6` as the shot. That it clears the
+    room here as well is the whole evidence that the raft is modelled the way the cartridge
+    plays it, so it is pinned rather than described.
+    """
+    cartridge = ["right", "right", "up", "shoot", "up", "up", "up",
+                 "left", "left", "up", "up", "up"]
+    plan = [LoloAction(name) for name in cartridge]
+    instance = game(40, rafts=True)
+    assert instance.is_goal(instance.simulate(plan)[-1]), \
+        "int 1-3 is not cleared by the cartridge's own plan"
+    off = game(40)
+    assert not off.is_goal(off.simulate(plan)[-1]), \
+        "int 1-3 should still be out of reach with rafts off"
+
+
+def test_a_framer_pushed_into_a_river_is_still_refused():
+    """The push table separates the two: a river floats an egg and refuses a Framer.
+
+    A refused step still turns Lolo, so the successor is not `None`; what says the push was
+    refused is that the Framer is where it was and Lolo has not moved.
+    """
+    _, state = board(room_with(**{"4_1": "@", "4_2": "O", "4_3": "~"}))
+    successor = move(state, "right")
+    assert successor.lolo == (4, 1), "the Framer was pushed into the river"
+    assert successor.framers == frozenset({(4, 2)})
+    assert successor.sunk == frozenset(), "a Framer must not become a raft"
+
+
+def test_lolo_may_stand_on_a_raft_and_it_drifts_away_behind_him():
+    """A bridge that works once, which is what carries him over a one-cell river."""
+    _, state = board(room_with(**{"4_1": "@", "4_3": "S", "4_4": "~"}), magic_shots=1, rafts=True)
+    state = move(shoot(move(state, "right")), "right")
+    aboard = move(state, "right")
+    assert aboard.lolo == (4, 4), "Lolo should have stepped onto the raft"
+    ashore = move(aboard, "right")
+    assert ashore.lolo == (4, 5), "and off it again onto the far bank"
+    assert ashore.sunk == frozenset(), "the raft should have drifted away behind him"
+
+
 
 
 # ---------------------------------------------------------------------------- medusa
@@ -381,7 +438,8 @@ def test_reset_reports_what_the_room_is():
     instance = game(38)
     state, info = instance.reset()
     assert info == {"room_index": 38, "room": "int 1-1", "hearts": 6, "shots": 0,
-                    "door": (1, 1), "start": (6, 1), "exact": True, "unmodelled_enemies": ()}
+                    "door": (1, 1), "start": (6, 1), "exact": True, "unmodelled_enemies": (),
+                    "rafts": False}
     assert_string_literals(state)
 
 

@@ -53,6 +53,8 @@ an environment with no screen to photograph. See
    allowed from the other three sides.
 3. A step into an **Emerald Framer** `O` or an **egg** `e` pushes it one cell the same way, if the
    cell behind is empty walkable ground. Nothing can be pulled and no chain of two can be pushed.
+   A river refuses both, unless the environment is built with `rafts=True`, which floats an egg
+   into a raft Lolo may stand on and which drifts away once he steps off it.
 4. A step onto a **heart framer** collects it. `h`, the second of the cartridge's two heart codes,
    also gives Lolo two magic shots; plain `H` gives none.
 5. A step into an **enemy** is refused. Enemies never move.
@@ -83,11 +85,33 @@ info["exact"]                  # True when the model is faithful for this room
 info["unmodelled_enemies"]     # ('K', 'R'), the kinds that would have moved
 ```
 
-**Rafts are refused.** On the cartridge an egg shoved into a river floats, and Lolo can step onto
-it and ride across, which is how `int 1-3` is cleared. Five of the six river codes accept one, and
-two of those then carry the raft one cell every few frames. Modelling a moving raft means
-modelling time, which nothing else here needs, so this module refuses the push and the rooms
-needing a raft cannot be cleared. [`lolo_gb`](lolo-gb.md) clears them.
+**Rafts are off by default.** On the cartridge an egg shoved into a river floats, and Lolo can step
+onto it and ride across, which is how `int 1-3` is cleared. `LoloGame(rafts=True)` models that: the
+egg becomes a raft, Lolo may stand on it, and it drifts away behind him, so it is a bridge that
+works once. It needs no notion of time, because the rooms that want a raft want it to cross a river
+one cell wide by stepping straight over. With the flag on, BFWS finds the cartridge's own
+twelve-action plan for `int 1-3`, action for action:
+
+```python
+game = LoloGame(rafts=True)
+game.set_index(40)                     # int 1-3
+# right right up shoot up up up left left up up up
+```
+
+It is off by default because of a room it gets wrong. The cartridge floats an egg on five of its six
+river codes and refuses it on `$82`, and two of the five then carry the raft away on a current. The
+rooms here spell all six `~`, because `lolo_gb.decode_room` maps `$82`–`$87` onto one glyph, so this
+module cannot tell which river it is looking at: it floats an egg on every one of them and holds
+every raft still. On `int 1-3` that lands exactly on the cartridge's answer. On `tutorial 14a` it
+does not — that river is `$83`, it drifts, and the memory map [§6](lolo-gb-memory-map.md#6-rafts)
+records that it cannot be crossed by stepping straight over, which is what a still raft would have
+Lolo do. One right and one wrong is not a rule, so the default keeps the rule this module can hold,
+and a plan found with `rafts=True` has to be replayed on [`lolo_gb`](lolo-gb.md) before it is
+believed.
+
+Five rooms that are otherwise proved unsolvable here get a plan with the flag on: `tutorial 14a`
+(known wrong, above), `int 1-3` (matches the cartridge), and `int 4-8`, `int 5-4` and `adv 3-1`,
+which have not been replayed on hardware.
 
 **The hammer is not modelled.** A few rooms start with one in the cartridge's PWR meter, `int 1-5`
 among them, and we have not established what it breaks.
@@ -96,6 +120,16 @@ Two smaller divergences run in the safe direction. Medusa's shot is instant here
 cartridge gives one move of grace, but that move cannot be used to escape, so no plan is lost. An
 Emerald Framer is not pushed onto a heart framer, a door or a marker, which we never tested and
 refuse rather than guess.
+
+**A marker may block a Medusa, and here it does not.** The probe that established what stops a
+Medusa's line (memory map §5) tried a tree, a Framer, a heart framer, an enemy, a rock, a river, a
+bridge, a desert, a flower bed, a one-way pass and a break tile. It never tried a **marker**, the
+`$97`-`$9C` codes whose meaning is unresolved, and this module treats one as transparent. That is
+the only assumption that separates this module's verdict on `tutorial 13a` from the cartridge's:
+the cartridge clears that room by walking column 0 underneath a marker at `(3, 0)` that would
+otherwise be a Medusa's clear line, and adding the marker to the shield set is the one change that
+makes BFWS clear it here too. Until somebody probes it, `tutorial 13a` is an open question rather
+than a room with no plan.
 
 We measured what these approximations cost. Breadth-first search over this module found a plan for
 32 of the 163 rooms, and we replayed every one of those plans on the real cartridge:
@@ -120,7 +154,7 @@ state, info = game.reset()
 
 print(info)
 # {'room_index': 38, 'room': 'int 1-1', 'hearts': 6, 'shots': 0, 'door': (1, 1),
-#  'start': (6, 1), 'exact': True, 'unmodelled_enemies': ()}
+#  'start': (6, 1), 'exact': True, 'unmodelled_enemies': (), 'rafts': False}
 
 print(state)
 # ##.#####

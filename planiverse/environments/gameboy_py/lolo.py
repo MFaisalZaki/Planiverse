@@ -15,7 +15,8 @@ measured on the cartridge (the probes are listed in
    the other three sides.
 3. A step into an **Emerald Framer** or an **egg** pushes it one cell the same way, but only
    if the cell behind is empty walkable ground. Nothing can be pulled, and no chain of two
-   can be pushed at once.
+   can be pushed at once. A river refuses both, unless `rafts=True`, which floats an egg into a
+   raft Lolo may stand on and which drifts away once he steps off.
 4. A step onto a **heart framer** collects it. A *magic* heart framer (the cartridge stores
    two heart codes and this is the second) also gives Lolo **two magic shots**; a plain one
    gives none.
@@ -43,12 +44,22 @@ and it may well die on the cartridge. That is the wrong direction for an approxi
 err in, so it is flagged rather than smoothed over: `Room.exact` says which rooms the model
 is faithful for, and `lolo_gb` is the authority for the rest.
 
-**Rafts are refused.** On the cartridge an egg shoved into a river floats, and Lolo can step
-onto it and ride across; that is how int 1-3 is cleared. Five of the six river codes accept
-one; two of them then *carry* the raft, one cell every few frames, in a direction the code
-picks. Modelling a moving raft means modelling time, which nothing else here needs, so this
-module refuses to push an egg into a river at all. Rooms that need a raft cannot be cleared
-here; `lolo_gb` clears them.
+**Rafts are off by default.** On the cartridge an egg shoved into a river floats, and Lolo can
+step onto it and ride across; that is how int 1-3 is cleared. `LoloGame(rafts=True)` models
+that much: the egg becomes a raft, Lolo may stand on it, and it drifts away the moment he steps
+off, so it is a bridge that works once. No notion of time is needed for it, because the rooms
+that need one need it to cross a river one cell wide by stepping straight over. Turn it on and
+BFWS finds the cartridge's own twelve-action plan for int 1-3, action for action.
+
+It is off by default because of a room it gets wrong. The cartridge floats an egg on five of
+its six river codes and refuses it on `$82`, and two of the five then carry the raft away on a
+current. The rooms here spell all six `~` (`lolo_gb.decode_room` maps `$82`-`$87` onto one
+glyph), so this module cannot tell which river it is looking at: it floats an egg on every one
+of them and holds every raft still. On int 1-3 that lands on the cartridge's own answer. On
+tutorial 14a it does not -- that river is `$83`, it drifts, and the memory map (§6) records
+that it cannot be crossed by stepping straight over, which is exactly what a still raft would
+have Lolo do. So the flag is here to be switched on deliberately for a room known to need a
+raft, and a plan it finds has to be replayed on `lolo_gb` before it is believed.
 
 Two smaller divergences, both in the safe direction. Medusa's shot is modelled as instant,
 where the cartridge gives one move of grace, but that move cannot be used to escape, so no
@@ -537,9 +548,11 @@ def occupied(state, cell):
 class Room:
     """The part of a room that never moves, worked out once when it is loaded."""
 
-    def __init__(self, index, text):
+    def __init__(self, index, text, rafts=False):
         self.index = index
         self.text = text
+        #: Whether an egg pushed at a river floats here. Off by default; see `LoloGame`.
+        self.rafts = rafts
         terrain, hearts, framers, enemies, lolo, door = parse_room(text)
         self.terrain, self.door, self.start = terrain, door, lolo
         self.start_hearts, self.start_framers, self.enemies = hearts, framers, enemies
@@ -696,7 +709,7 @@ def render(state):
     rows = [list(row) for row in state.room.terrain]
     for row, col in state.alive:
         rows[row][col] = state.room.enemies[(row, col)]
-    for row, col in state.eggs:
+    for row, col in state.eggs | state.sunk:
         rows[row][col] = EGG
     for row, col in state.framers:
         rows[row][col] = FRAMER
@@ -743,12 +756,19 @@ def move(state, direction):
         if not inside(behind):
             return turned()
         beyond = room.terrain[behind[0]][behind[1]]
-        if beyond not in PUSHABLE_ONTO:
+        # An egg shoved into a river floats rather than being refused, and Lolo can then
+        # stand on it. A Framer pushed at a river is refused; the push table in the memory
+        # map (§5) separates the two, and §6 is the raft itself.
+        afloat = room.rafts and beyond == RIVER and target in eggs
+        if beyond not in PUSHABLE_ONTO and not afloat:
             return turned()
         if occupied(state, behind) or behind in state.sunk:
             return turned()
         if target in framers:
             framers = frozenset(framers - {target} | {behind})
+        elif afloat:
+            eggs = frozenset(eggs - {target})
+            sunk = frozenset(sunk | {behind})
         else:
             eggs = frozenset(eggs - {target} | {behind})
 
@@ -802,7 +822,7 @@ def _settle(state, lolo, hearts, framers, eggs, alive, sunk, shots, facing):
 class LoloGame(Environment):
     """Adventures of Lolo, implemented rather than emulated. Needs nothing installed."""
 
-    def __init__(self, magic_shots=0):
+    def __init__(self, magic_shots=0, rafts=False):
         super().__init__("lolo")
         #: Magic shots Lolo starts a room with. Zero, like the cartridge on a cold boot: the
         #: meter belongs to the player, not to the room, and on a real playthrough whatever
@@ -810,6 +830,21 @@ class LoloGame(Environment):
         #: need a shot they cannot earn in-room and can only be cleared with this set.
         #: `lolo_gb.LoloGBEnv` takes the same argument and means the same thing by it.
         self.magic_shots = magic_shots
+        #: Whether an egg shoved at a river floats into a raft Lolo can stand on.
+        #:
+        #: Off by default, and the reason is a room this would get wrong. The cartridge
+        #: floats an egg on five of its six river codes and refuses it on `$82`, and two of
+        #: the five then carry the raft away on a current. The rooms here spell all six `~`,
+        #: because `lolo_gb.decode_room` maps `$82`-`$87` onto one glyph, so this module
+        #: cannot tell which river it is looking at and floats an egg on all of them and
+        #: holds every raft still. On `int 1-3` that is exactly right: turn this on and BFWS
+        #: finds the cartridge's own twelve-action plan, action for action. On `tutorial
+        #: 14a` it is exactly wrong: that river is `$83`, it drifts, and the memory map (§6)
+        #: records that it cannot be crossed by stepping straight on -- which is what this
+        #: would have Lolo do. One right and one wrong is not a rule, so the default stays
+        #: with the rule this module can actually keep, and the raft is here to be switched
+        #: on deliberately for a room known to need one.
+        self.rafts = rafts
         self.index = 0
         self.room = None
         self.state = None
@@ -827,7 +862,11 @@ class LoloGame(Environment):
         self.index = index
 
     def reset(self):
-        self.room = self._rooms.setdefault(self.index, Room(self.index, ROOMS[self.index]))
+        # Keyed by the raft flag as well as the index: two rooms that disagree about whether
+        # a river floats an egg are two different puzzles, and states compare their room by
+        # identity, so they must not share one.
+        self.room = self._rooms.setdefault(
+            (self.index, self.rafts), Room(self.index, ROOMS[self.index], self.rafts))
         # Lolo starts facing nowhere: the cartridge will not fire a shot before the first
         # move, and neither will this. He can, however, start dead: a room that puts him in a
         # Medusa's line kills him before he has pressed anything, which the cartridge does too.
@@ -845,7 +884,8 @@ class LoloGame(Environment):
                             "door": self.room.door,
                             "start": self.room.start,
                             "exact": self.room.exact,
-                            "unmodelled_enemies": tuple(sorted(self.room.unmodelled))}
+                            "unmodelled_enemies": tuple(sorted(self.room.unmodelled)),
+                            "rafts": self.room.rafts}
 
     def is_goal(self, state):
         return state.solved
