@@ -13,7 +13,7 @@ import math
 import os
 from collections import Counter, defaultdict
 
-from planiverse.benchmark.catalogue import PLANNERS, is_complete
+from planiverse.benchmark.catalogue import is_complete
 from planiverse.benchmark.discovery import read_tasks, task_filename
 from planiverse.benchmark.runner import STATUSES
 
@@ -130,47 +130,6 @@ def per_environment(records):
     return rows
 
 
-def head_to_head(records):
-    """For each pair of planners: tasks solved by one and not the other.
-
-    Coverage totals hide this. Two planners can each solve 40 of 60 and have only 20 in
-    common, which is a completely different situation from solving the same 40.
-    """
-    by_task = defaultdict(dict)
-    for record in records:
-        by_task[record["task"]][record["planner"]] = record.get("status") == "SOLVED"
-
-    planners = sorted({record["planner"] for record in records})
-    rows = []
-    for left in planners:
-        for right in planners:
-            if left >= right:
-                continue
-            both = only_left = only_right = neither = 0
-            for statuses in by_task.values():
-                if left not in statuses or right not in statuses:
-                    continue
-                l, r = statuses[left], statuses[right]
-                both += l and r
-                only_left += l and not r
-                only_right += r and not l
-                neither += not l and not r
-            rows.append({"left": left, "right": right, "both": both,
-                         "only_left": only_left, "only_right": only_right,
-                         "neither": neither})
-    return rows
-
-
-def width_planners(records):
-    """The planner tags in this run whose class comes from the width family."""
-    tags = {}
-    for record in records:
-        module, _, _ = PLANNERS.get(record.get("planner_class", ""), ("", "", ()))
-        if module.endswith(".width"):
-            tags[record["planner"]] = True
-    return sorted(tags)
-
-
 def solver_sets(records, planners):
     """Per environment: how many tasks each exact subset of `planners` solved.
 
@@ -202,43 +161,6 @@ def solver_sets(records, planners):
             for environment in sorted(sets, key=lambda name: (name is None, name or ""))]
 
 
-def ipc_score(records, agile=False):
-    """IPC-style scores in [0, 1] per run, summed per planner.
-
-    Quality: `best_length / this_length` over the plans found for a task, so a planner scores
-    1 on a task where it ties the shortest plan anyone found. Agile: `1 / (1 + log10(t/t*))`
-    on runtime, clipped at 1, which is the IPC agile-track rule.
-
-    Both are relative to the field, so a score only means something next to the other planners
-    in the same table; adding a planner changes everyone's numbers.
-    """
-    best = {}
-    for record in records:
-        if record.get("status") != "SOLVED":
-            continue
-        key = record["task"]
-        value = record["seconds"] if agile else record["plan_length"]
-        if not isinstance(value, (int, float)) or value is None:
-            continue
-        value = max(float(value), 1e-3 if agile else 1.0)
-        best[key] = min(best.get(key, value), value)
-
-    scores = Counter()
-    for record in records:
-        if record.get("status") != "SOLVED":
-            continue
-        reference = best.get(record["task"])
-        value = record["seconds"] if agile else record["plan_length"]
-        if reference is None or not isinstance(value, (int, float)):
-            continue
-        value = max(float(value), 1e-3 if agile else 1.0)
-        if agile:
-            scores[record["planner"]] += min(1.0, 1.0 / (1.0 + math.log10(value / reference)))
-        else:
-            scores[record["planner"]] += reference / value
-    return dict(scores)
-
-
 def write_csv(sandbox_dir, records):
     """One row per run, for anyone who would rather use pandas than these tables."""
     directory = os.path.join(sandbox_dir, "analysis")
@@ -267,19 +189,8 @@ def summarise(sandbox_dir, records=None):
         "runs": len(records),
         "coverage": coverage(records),
         "per_environment": per_environment(records),
-        "head_to_head": head_to_head(records),
-        "ipc_quality": ipc_score(records, agile=False),
-        "ipc_agile": ipc_score(records, agile=True),
-        "width_overlap": _width_overlap(records),
         "statuses": dict(Counter(record.get("status", "MISSING") for record in records)),
     }
-
-
-def _width_overlap(records):
-    planners = width_planners(records)
-    if len(planners) < 2:
-        return None
-    return {"planners": planners, "rows": solver_sets(records, planners)}
 
 
 def write_summary(sandbox_dir, summary):

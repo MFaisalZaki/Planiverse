@@ -386,7 +386,7 @@ def _analyze(arguments):
     if arguments.json:
         print(json.dumps(summary, indent=2))
     else:
-        print(report.text_tables(summary, records))
+        print(report.text_tables(summary))
     print(f"wrote {csv_path}\nwrote {summary_path}")
     return 0
 
