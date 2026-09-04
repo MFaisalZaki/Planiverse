@@ -7,11 +7,11 @@ a good reason: coverage alone cannot distinguish a planner that solves 40 tasks 
 one that solves the same 40 just inside the limit.
 """
 import json
-import math
 import os
 from collections import Counter
 from itertools import combinations
 
+from planiverse.benchmark.analysis import solver_sets
 from planiverse.benchmark.config import parse_duration
 from planiverse.benchmark.runner import STATUSES
 
@@ -26,16 +26,12 @@ except Exception:  # pragma: no cover
     PLOTTING = False
 
 
-def text_tables(summary, records):
+def text_tables(summary):
     """The whole report as plain text."""
     lines = [f"Planiverse benchmark — {summary['runs']} runs", ""]
     lines += _coverage_table(summary)
     lines += [""] + _status_table(summary)
     lines += [""] + _environment_table(summary)
-    lines += [""] + _environment_time_table(summary)
-    lines += [""] + _head_to_head_table(summary)
-    lines += [""] + _score_table(summary)
-    lines += [""] + _caveats(summary, records)
     return "\n".join(lines) + "\n"
 
 
@@ -107,87 +103,6 @@ def _environment_table(summary):
     return lines
 
 
-def _environment_time_table(summary):
-    """Solved count and mean ± std runtime per (environment, planner): `12 (3.4s ± 0.2)`.
-
-    The counts repeat the table above on purpose: reading a mean without the count it
-    averages next to it is how one lucky solve gets mistaken for a fast planner. The std is
-    absent on a single solve, where a spread does not exist rather than being zero.
-    """
-    planners = sorted({row["planner"] for row in summary["per_environment"]})
-    environments = sorted({row["environment"] for row in summary["per_environment"]})
-    lookup = {(row["planner"], row["environment"]): row
-              for row in summary["per_environment"]}
-    widths = [22] + [max(23, len(planner)) for planner in planners]
-    lines = ["Solved and mean solve time per environment",
-             _row(["environment"] + planners, widths), _rule(widths)]
-    for environment in environments:
-        cells = []
-        for planner in planners:
-            row = lookup.get((planner, environment))
-            if row is None:
-                cells.append("-")
-            elif row.get("mean_seconds") is None:
-                cells.append(f"{row['solved']}")
-            else:
-                std = row.get("std_seconds")
-                cells.append(f"{row['solved']} ({row['mean_seconds']:.2f}s"
-                             + ("" if std is None else f" ± {std:.2f}") + ")")
-        lines.append(_row([environment] + cells, widths))
-    return lines
-
-
-def _head_to_head_table(summary):
-    if not summary["head_to_head"]:
-        return ["Head to head", "(needs at least two planners)"]
-    widths = (18, 18, 7, 11, 11, 9)
-    lines = ["Head to head",
-             _row(("planner A", "planner B", "both", "only A", "only B", "neither"), widths),
-             _rule(widths)]
-    for row in summary["head_to_head"]:
-        lines.append(_row((row["left"], row["right"], row["both"], row["only_left"],
-                           row["only_right"], row["neither"]), widths))
-    return lines
-
-
-def _score_table(summary):
-    quality, agile = summary["ipc_quality"], summary["ipc_agile"]
-    if not quality:
-        return ["IPC scores", "(nothing solved)"]
-    widths = (18, 12, 12)
-    lines = ["IPC scores (relative to this field only)",
-             _row(("planner", "quality", "agile"), widths), _rule(widths)]
-    for planner in sorted(quality, key=lambda p: -quality[p]):
-        lines.append(_row((planner, f"{quality[planner]:.2f}",
-                           f"{agile.get(planner, 0):.2f}"), widths))
-    return lines
-
-
-def _caveats(summary, records):
-    """The things a reader would otherwise have to work out for themselves."""
-    lines = ["Notes"]
-    missing = summary["statuses"].get("MISSING", 0)
-    if missing:
-        lines.append(f"- {missing} runs produced no result file. Coverage percentages count "
-                     f"them as failures; check sandbox/logs before believing the totals.")
-    unsupported = summary["statuses"].get("UNSUPPORTED", 0)
-    if unsupported:
-        lines.append(f"- {unsupported} runs could not build their environment here.")
-    randomised = sorted({record["planner"] for record in records
-                         if record.get("randomised") and record.get("seed") is None})
-    if randomised:
-        lines.append(f"- {', '.join(randomised)} are randomised and ran unseeded, so these "
-                     f"numbers will not reproduce exactly.")
-    unmeasured = sorted({record["environment"] for record in records
-                         if record.get("has_progress_measure") is False})
-    if unmeasured:
-        lines.append(f"- No progress measure for {', '.join(unmeasured)}; SIW and BFWS "
-                     f"degrade to novelty-ordered search there.")
-    if len(lines) == 1:
-        lines.append("- nothing to flag.")
-    return lines
-
-
 def latex_coverage(summary):
     """A coverage table as a LaTeX tabular, ready to \\input."""
     planners = sorted({row["planner"] for row in summary["per_environment"]})
@@ -217,45 +132,6 @@ def latex_coverage(summary):
     return "\n".join(lines)
 
 
-def latex_times(summary):
-    """Mean ± std solve time per environment as a LaTeX tabular, the coverage table's twin.
-
-    Seconds, over solved runs only, for the same reason every time summary here is: averaging
-    in the failures rewards failing fast. A cell with a single solve has no spread, so it
-    shows the mean alone rather than a fictitious ± 0.
-    """
-    planners = sorted({row["planner"] for row in summary["per_environment"]})
-    environments = sorted({row["environment"] for row in summary["per_environment"]})
-    lookup = {(row["planner"], row["environment"]): row
-              for row in summary["per_environment"]}
-
-    lines = [
-        "% Generated by planiverse-bench report. Needs \\usepackage{booktabs}.",
-        "% Mean +- std solve time in seconds, over solved runs only.",
-        "\\begin{tabular}{l" + "r" * len(planners) + "}",
-        "\\toprule",
-        "Environment & " + " & ".join(_escape(p) for p in planners) + " \\\\",
-        "\\midrule",
-    ]
-    for environment in environments:
-        cells = [_time_cell(lookup.get((planner, environment))) for planner in planners]
-        lines.append(_escape(environment) + " & " + " & ".join(cells) + " \\\\")
-    lines += ["\\midrule"]
-    totals = {row["planner"]: row for row in summary["coverage"]}
-    lines.append("Total & " + " & ".join(_time_cell(totals.get(p)) for p in planners)
-                 + " \\\\")
-    lines += ["\\bottomrule", "\\end{tabular}", ""]
-    return "\n".join(lines)
-
-
-def _time_cell(row):
-    if row is None or row.get("mean_seconds") is None:
-        return "--"
-    std = row.get("std_seconds")
-    return (f"{row['mean_seconds']:.1f}"
-            + ("" if std is None else f" $\\pm$ {std:.1f}"))
-
-
 def _escape(text):
     return str(text).replace("_", "\\_")
 
@@ -268,19 +144,17 @@ def _subplots(**kwargs):
     return pyplot.subplots(**kwargs)
 
 
-def _figure(**kwargs):
-    _assert_agg()
-    return pyplot.figure(**kwargs)
-
-
 def _assert_agg():
     if matplotlib.get_backend().lower() != "agg":
         pyplot.switch_backend("Agg")
 
 
-#: Planners on a line plot are told apart by dash pattern, for the same reason domains are
-#: told apart by shape: it has to read in black and white.
+#: Told apart without colour: planners by dash pattern, domains by marker shape, each shape
+#: in black and again in mid-grey. Either cue survives a colour-vision deficiency and a
+#: black-and-white printer, and the shapes stay distinct drawn hollow as well as filled.
 _LINESTYLES = ("-", "--", ":", "-.", (0, (5, 1, 1, 1, 1, 1)))
+_MARKERS = ("o", "s", "^", "v", "D", "P", "X")
+_SHADES = ("black", "0.55")
 
 
 def time_limit_seconds(records):
@@ -343,13 +217,6 @@ def cactus_plot(records, path):
     figure.savefig(path, dpi=150)
     pyplot.close(figure)
     return path
-
-
-#: Domains are told apart without colour: seven marker shapes, each in black and again in
-#: mid-grey, which survives a colour-vision deficiency and a black-and-white printer.
-#: The shapes are ones that stay distinct when drawn hollow as well as filled.
-_MARKERS = ("o", "s", "^", "v", "D", "P", "X")
-_SHADES = ("black", "0.55")
 
 
 def _domain_styles(environments):
@@ -455,10 +322,14 @@ def runtime_twin_plots(records, directory):
 def _overlap_segments(overlap):
     """The subsets to stack, in order, each as (label, keys it absorbs).
 
-    The strongest planner (most tasks solved overall) anchors the split: everything, then
-    it with each other planner, then it alone, then whatever it did not solve at all. With
-    three planners that is five segments instead of seven, and the last one is the
-    question the figure exists to answer: what do the others add.
+    The strongest planner (most tasks solved overall) anchors the split: everything, then it
+    with each other planner, then it alone, then whatever it did not solve at all. With three
+    planners that is five segments instead of seven, and the last one is the question the
+    figure exists to answer: what do the others add.
+
+    With two there are no "strongest + other" pairs to draw, because the only pair is the
+    whole set and drawing it twice would count those tasks twice, so the split is just
+    both / strongest only / the other one.
     """
     planners = overlap["planners"]
     total = next(row for row in overlap["rows"] if row["environment"] is None)
@@ -473,9 +344,10 @@ def _overlap_segments(overlap):
         return "+".join(planner for planner in planners if planner in subset)
 
     segments = [(f"all {len(planners)}", [key_for(planners)])]
-    for other in others:
-        segments.append((f"{strongest.upper()} + {other.upper()}",
-                         [key_for({strongest, other})]))
+    if len(planners) > 2:
+        for other in others:
+            segments.append((f"{strongest.upper()} + {other.upper()}",
+                             [key_for({strongest, other})]))
     segments.append((f"{strongest.upper()} only", [key_for({strongest})]))
     absorbed = {key for _, keys in segments for key in keys}
     rest = [key for key in _all_keys(planners) if key and key not in absorbed]
@@ -492,19 +364,23 @@ def _all_keys(planners):
     return keys
 
 
-#: Monochrome fills for the stacked segments: solid, two greys, two hatches. Enough for
-#: three planners' five segments; a fourth planner would need the list extended.
-_SEGMENT_STYLES = (
-    {"facecolor": "black"},
-    {"facecolor": "0.45"},
-    {"facecolor": "0.75"},
-    {"facecolor": "white", "hatch": "///"},
-    {"facecolor": "white", "hatch": "..."},
-)
+#: Monochrome fills for the stacked segments: greys first, then hatched white. A set of k
+#: planners needs k + 2 of them, so the two lists together cover every combination a run of
+#: this size produces without reaching for colour.
+_SEGMENT_FILLS = ("black", "0.35", "0.55", "0.75", "0.88")
+_SEGMENT_HATCHES = ("///", "...", "xxx", "+++", "ooo")
+
+
+def _segment_styles(count):
+    styles = [{"facecolor": fill} for fill in _SEGMENT_FILLS[:count]]
+    shortfall = max(0, count - len(_SEGMENT_FILLS))
+    styles += [{"facecolor": "white", "hatch": hatch}
+               for hatch in _SEGMENT_HATCHES[:shortfall]]
+    return styles
 
 
 def overlap_bars_plot(overlap, path):
-    """One bar per domain, split by which subset of the width planners solved each task.
+    """One bar per domain, split by which subset of `overlap["planners"]` solved each task.
 
     Lengths are fractions of the domain, because domain sizes here range from 8 to 163 and
     absolute bars would let the two largest domains crowd out the picture; the size is on
@@ -525,7 +401,7 @@ def overlap_bars_plot(overlap, path):
     figure, axes = _subplots(figsize=(9, 0.42 * len(rows) + 1.8))
     positions = range(len(rows))
     left = [0.0] * len(rows)
-    for (label, keys), style in zip(segments, _SEGMENT_STYLES):
+    for (label, keys), style in zip(segments, _segment_styles(len(segments))):
         widths = [fraction(row, keys) for row in rows]
         axes.barh(positions, widths, left=left, edgecolor="black", linewidth=0.6,
                   label=label, **style)
@@ -547,133 +423,28 @@ def overlap_bars_plot(overlap, path):
     return path
 
 
-def upset_plot(overlap, path):
-    """An UpSet plot over every domain: a bar per exact subset, a dot matrix saying which.
+def overlap_bars_plots(records, directory):
+    """One `overlap_bars_plot` per combination of two or more planners.
 
-    The Venn diagram's replacement once sets get past two or three: the intersections are
-    read off a bar chart instead of estimated from areas, and adding a planner adds a row
-    to the matrix instead of a shape nobody can draw. Whole benchmark only; per-domain
-    detail is `overlap_bars_plot`'s job.
-    """
-    if not PLOTTING or not overlap:
-        return None
-    planners = overlap["planners"]
-    total = next(row for row in overlap["rows"] if row["environment"] is None)
-    intersections = sorted(((key, count) for key, count in total["sets"].items()
-                            if key and count), key=lambda item: -item[1])
-    if not intersections:
-        return None
-    set_sizes = Counter()
-    for key, count in total["sets"].items():
-        for planner in key.split("+") if key else ():
-            set_sizes[planner] += count
-
-    figure = _figure(figsize=(1.6 + 0.8 * len(intersections), 4.2))
-    grid = figure.add_gridspec(2, 2, width_ratios=(1.4, 0.8 * len(intersections)),
-                               height_ratios=(3, 0.55 * len(planners)),
-                               hspace=0.08, wspace=0.45)
-    bars = figure.add_subplot(grid[0, 1])
-    matrix = figure.add_subplot(grid[1, 1], sharex=bars)
-    sizes = figure.add_subplot(grid[1, 0], sharey=matrix)
-
-    columns = range(len(intersections))
-    bars.bar(columns, [count for _, count in intersections], color="black", width=0.6)
-    for column, (_, count) in zip(columns, intersections):
-        bars.text(column, count, str(count), ha="center", va="bottom", fontsize=8)
-    bars.set_ylabel("tasks solved by exactly this set")
-    bars.set_ylim(0, max(count for _, count in intersections) * 1.15)
-    bars.spines[["top", "right"]].set_visible(False)
-    bars.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
-    bars.set_title("Solved-task overlap across every domain", fontsize=10)
-
-    rows = range(len(planners))
-    for row in rows:
-        if row % 2:
-            matrix.axhspan(row - 0.5, row + 0.5, color="0.93", zorder=0)
-    for column, (key, _) in zip(columns, intersections):
-        members = [planners.index(planner) for planner in key.split("+")]
-        absent = [row for row in rows if row not in members]
-        matrix.scatter([column] * len(absent), absent, s=60, facecolors="white",
-                       edgecolors="0.6", zorder=2)
-        matrix.scatter([column] * len(members), members, s=60, color="black", zorder=3)
-        if len(members) > 1:
-            matrix.plot([column, column], [min(members), max(members)], color="black",
-                        linewidth=1.5, zorder=2)
-    matrix.set_yticks(list(rows))
-    matrix.set_yticklabels([planner.upper() for planner in planners], fontsize=9)
-    matrix.set_ylim(-0.5, len(planners) - 0.5)
-    matrix.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
-    matrix.tick_params(axis="y", which="both", left=False)
-    for spine in matrix.spines.values():
-        spine.set_visible(False)
-
-    sizes.barh(list(rows), [set_sizes[planner] for planner in planners], color="0.45",
-               height=0.6)
-    for row, planner in zip(rows, planners):
-        sizes.text(set_sizes[planner], row, f"{set_sizes[planner]} ", ha="right",
-                   va="center", fontsize=8)
-    sizes.invert_xaxis()
-    sizes.set_xlim(max(set_sizes.values()) * 1.6, 0)
-    sizes.set_xlabel("tasks solved", fontsize=8)
-    sizes.tick_params(axis="y", which="both", left=False, labelleft=False)
-    sizes.tick_params(axis="x", labelsize=7)
-    for spine in ("top", "right", "left"):
-        sizes.spines[spine].set_visible(False)
-    figure.text(0.5, 0.005, f"{total['tasks']} tasks; unsolved by all: "
-                            f"{total['sets'].get('', 0)}", ha="center", fontsize=8,
-                color="dimgrey")
-    figure.savefig(path, bbox_inches="tight")
-    pyplot.close(figure)
-    return path
-
-
-def scatter_plot(records, left, right, path):
-    """Two planners' runtimes on the same tasks, log-log.
-
-    Failures are drawn on the border at the time limit rather than dropped, because a scatter
-    of only the tasks both planners solved flatters whichever one fails more.
+    Which planners are worth comparing is a property of the run, so every combination is
+    drawn rather than the width family alone. Within each one the planner that solved the
+    most anchors the split and leads the file name, as in `runtime_twin_plots`.
     """
     if not PLOTTING:
-        return None
-    by_task = {}
-    for record in records:
-        by_task.setdefault(record["task"], {})[record["planner"]] = record
-    limit = max((r.get("seconds") or 0) for r in records) or 1.0
-
-    points = []
-    for statuses in by_task.values():
-        a, b = statuses.get(left), statuses.get(right)
-        if a is None or b is None:
-            continue
-        x = a["seconds"] if a.get("status") == "SOLVED" else limit
-        y = b["seconds"] if b.get("status") == "SOLVED" else limit
-        if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
-            continue
-        both = a.get("status") == "SOLVED" and b.get("status") == "SOLVED"
-        points.append((max(x, 1e-3), max(y, 1e-3), both))
-    if not points:
-        return None
-
-    figure, axes = _subplots(figsize=(5, 5))
-    for solved, marker, face in ((True, "o", "black"), (False, "o", "none")):
-        chosen = [(x, y) for x, y, both in points if both is solved]
-        if chosen:
-            axes.scatter([x for x, _ in chosen], [y for _, y in chosen], marker=marker,
-                         facecolors=face, edgecolors="black", alpha=0.7,
-                         label="both solved" if solved else "at least one failed")
-    span = [1e-3, limit * 1.5]
-    axes.plot(span, span, "k--", linewidth=0.8)
-    axes.set_xscale("log")
-    axes.set_yscale("log")
-    axes.set_xlabel(f"{left.upper()} (s)")
-    axes.set_ylabel(f"{right.upper()} (s)")
-    axes.set_title(f"{left.upper()} vs {right.upper()}")
-    axes.grid(alpha=0.3)
-    axes.legend(fontsize="small")
-    figure.tight_layout()
-    figure.savefig(path, dpi=150)
-    pyplot.close(figure)
-    return path
+        return {}
+    solved = Counter(record["planner"] for record in records
+                     if record.get("status") == "SOLVED")
+    planners = sorted({record["planner"] for record in records})
+    written = {}
+    for size in range(2, len(planners) + 1):
+        for chosen in combinations(planners, size):
+            ordered = sorted(chosen, key=lambda planner: (-solved[planner], planner))
+            overlap = {"planners": ordered, "rows": solver_sets(records, ordered)}
+            tag = "overlap_" + "_".join(ordered)
+            path = overlap_bars_plot(overlap, os.path.join(directory, tag + ".pdf"))
+            if path:
+                written[tag] = path
+    return written
 
 
 def write_report(sandbox_dir, summary, records):
@@ -684,18 +455,13 @@ def write_report(sandbox_dir, summary, records):
 
     text_path = os.path.join(directory, "results.txt")
     with open(text_path, "w") as handle:
-        handle.write(text_tables(summary, records))
+        handle.write(text_tables(summary))
     written["text"] = text_path
 
     tex_path = os.path.join(directory, "coverage.tex")
     with open(tex_path, "w") as handle:
         handle.write(latex_coverage(summary))
     written["latex"] = tex_path
-
-    times_path = os.path.join(directory, "times.tex")
-    with open(times_path, "w") as handle:
-        handle.write(latex_times(summary))
-    written["latex_times"] = times_path
 
     json_path = os.path.join(directory, "report.json")
     with open(json_path, "w") as handle:
@@ -706,18 +472,6 @@ def write_report(sandbox_dir, summary, records):
     cactus = cactus_plot(records, os.path.join(directory, "cactus.pdf"))
     if cactus:
         written["cactus"] = cactus
-    planners = sorted({record["planner"] for record in records})
-    if len(planners) >= 2:
-        scatter = scatter_plot(records, planners[0], planners[1],
-                               os.path.join(directory, "scatter.pdf"))
-        if scatter:
-            written["scatter"] = scatter
     written.update(runtime_twin_plots(records, directory))
-    overlap = summary.get("width_overlap")
-    bars = overlap_bars_plot(overlap, os.path.join(directory, "overlap_width_bars.pdf"))
-    if bars:
-        written["overlap_bars"] = bars
-    upset = upset_plot(overlap, os.path.join(directory, "overlap_width_upset.pdf"))
-    if upset:
-        written["overlap_upset"] = upset
+    written.update(overlap_bars_plots(records, directory))
     return written

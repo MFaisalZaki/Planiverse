@@ -370,8 +370,9 @@ iterated version instead runs cheap **pruned** rounds (k-BFWS, IW's filter with 
 ordering inside it) at widths 1 and 2, then one unpruned, complete round on whatever budget
 is left: the Dual-BFWS shape. [docs/benchmark.md](docs/benchmark.md) has the numbers.
 
-`report` writes a coverage table, a per-environment breakdown, head-to-head counts, IPC
-quality and agile scores, a survival plot and a runtime scatter, into `sandbox/report/`.
+`report` writes a coverage table, an outcome breakdown, a per-environment breakdown, a
+survival plot, a twin-axis runtime plot for every **triple** of planners and a solved-overlap
+figure for every **combination** of them, into `sandbox/report/`.
 What those come out as is a property of the run you did, not of this library, so no numbers
 are quoted here.
 
@@ -500,8 +501,8 @@ planiverse/
     ├── discovery.py                    # resolving (environment, index) task lists
     ├── runner.py                       # one run, under limits, with a status
     ├── slurm.py                        # job arrays, submit_all.sh, run_local.sh
-    ├── analysis.py                     # coverage, head to head, IPC scores, CSV
-    └── report.py                       # text and LaTeX tables, cactus and scatter plots
+    ├── analysis.py                     # coverage, per-environment breakdown, solver sets, CSV
+    └── report.py                       # text and LaTeX tables, cactus, twin and overlap plots
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark harness
 setup_benchmark.sh                      # interactive benchmark setup; asks for the cartridges

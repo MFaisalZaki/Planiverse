@@ -430,24 +430,39 @@ than quietly dropped.
 
 ## Reading the report
 
-`report/results.txt` has coverage, an outcome breakdown, solved-per-environment, head to head, and
-IPC scores.
-
-**Head to head** is there because coverage totals hide the interesting part: two planners can each
-solve 40 of 60 and have only 20 in common, which is a completely different situation from solving
-the same 40.
+`report/results.txt` has coverage, an outcome breakdown, and solved-per-environment.
 
 **Runtime** is summarised over solved runs only. Averaging in the timeouts would reward a planner
 for failing quickly.
 
-**IPC scores** follow the competition rules: quality is `best_length / this_length`, and agile is
-`1 / (1 + log10(t/t*))`. Both are relative to the planners in the same table, so adding a planner
-changes everyone's numbers and a score means nothing on its own.
+**MISSING** is a status like any other, and it is the one to read first: it counts pairs that
+`tasks.json` expected and that left no result file, which is what a cancelled or evicted job
+looks like. A planner that crashed on half the set would otherwise show excellent coverage over
+the half it survived.
 
-**The plots** are the conventional pair: a survival, or cactus, plot of tasks solved against time,
-and a runtime scatter between two planners with failures drawn on the border rather than dropped.
-Coverage alone cannot distinguish a planner that solves 40 tasks quickly from one that solves the
-same 40 just inside the limit.
+**The plots** start from the survival, or cactus, plot of tasks solved against time. Coverage
+alone cannot distinguish a planner that solves 40 tasks quickly from one that solves the same 40
+just inside the limit.
+
+The rest are drawn for **every combination** of the planners in the run, because which comparison
+is worth looking at is a property of the run rather than something the harness can know:
+
+- `overlap_<a>_<b>[_<c>...].pdf`, one per combination of two or more. A bar per domain, split by
+  which exact subset of those planners solved each task. The unit is the subset, so the segments
+  partition the domain: a task solved by BFWS and IW counts once, under "BFWS + IW", and not
+  again under either planner alone. Lengths are fractions of the domain, because domain sizes
+  range from 8 to 163 and absolute bars would let the two largest crowd out the picture; the
+  hollow remainder is what none of them solved. This is the question coverage totals cannot
+  answer — whether the planners solve the same tasks or different ones.
+- `runtime_<a>_<b>_<c>.pdf`, one per triple: a shared x-axis with two y-axes on identical scales,
+  the second planner in filled markers against the left axis and the third in hollow ones against
+  the right, so a point that moves between them shows what the third planner changes. Failures sit
+  on the limit rather than being dropped, and domains keep their marker and shade across every
+  file.
+
+In both, the planner that solved the most takes the x-axis, or anchors the split, and leads the
+file name: the stronger planner is the natural reference. Five planners therefore give ten twin
+plots and twenty-six overlap figures.
 
 ## Python API
 

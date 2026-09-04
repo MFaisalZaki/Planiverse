@@ -819,38 +819,6 @@ def test_the_status_breakdown_only_lists_what_happened():
     assert rows[0]["statuses"] == {"SOLVED": 1, "NODEOUT": 1}
 
 
-def test_head_to_head_shows_what_coverage_totals_hide():
-    """Two planners can each solve 40 of 60 with only 20 in common."""
-    rows = analysis.head_to_head(records_for([
-        ("a", "t@0", "SOLVED", 1.0, 2), ("b", "t@0", "SOLVED", 1.0, 2),
-        ("a", "t@1", "SOLVED", 1.0, 2), ("b", "t@1", "TIMEOUT", 9.0, None),
-        ("a", "t@2", "TIMEOUT", 9.0, None), ("b", "t@2", "SOLVED", 1.0, 2),
-        ("a", "t@3", "TIMEOUT", 9.0, None), ("b", "t@3", "TIMEOUT", 9.0, None),
-    ]))
-    assert rows == [{"left": "a", "right": "b", "both": 1, "only_left": 1,
-                     "only_right": 1, "neither": 1}]
-
-
-def test_ipc_quality_rewards_the_shortest_plan_found():
-    scores = analysis.ipc_score(records_for([
-        ("short", "t@0", "SOLVED", 1.0, 5),
-        ("long", "t@0", "SOLVED", 1.0, 10),
-        ("none", "t@0", "TIMEOUT", 9.0, None),
-    ]))
-    assert scores["short"] == 1.0
-    assert scores["long"] == 0.5
-    assert "none" not in scores
-
-
-def test_ipc_agile_rewards_speed_on_a_log_scale():
-    scores = analysis.ipc_score(records_for([
-        ("fast", "t@0", "SOLVED", 1.0, 5),
-        ("slow", "t@0", "SOLVED", 10.0, 5),
-    ]), agile=True)
-    assert scores["fast"] == 1.0
-    assert scores["slow"] == pytest.approx(0.5)
-
-
 def test_the_csv_has_a_row_per_run(tmp_path):
     import csv as csv_module
 
@@ -872,9 +840,8 @@ def test_the_text_report_covers_every_section():
         ("iw-1", "puzznic@1", "SOLVED", 0.3, 8),
     ])
     summary = {**analysis.summarise("", records)}
-    text = report.text_tables(summary, records)
-    for heading in ("Coverage", "Outcomes", "Solved per environment", "Head to head",
-                    "IPC scores", "Notes"):
+    text = report.text_tables(summary)
+    for heading in ("Coverage", "Outcomes", "Solved per environment"):
         assert heading in text, heading
     assert "bfws-2" in text and "iw-1" in text
 
@@ -883,31 +850,26 @@ def test_an_incomplete_planner_is_marked_in_the_table():
     records = records_for([("iw-1", "a@0", "UNSOLVED", 1.0, None)])
     records[0]["complete"] = False
     summary = analysis.summarise("", records)
-    text = report.text_tables(summary, records)
+    text = report.text_tables(summary)
     assert "iw-1 *" in text
     assert "not a proof" in text
 
 
 def test_missing_runs_are_called_out_rather_than_buried():
+    """A job that never ran must not be invisible: it gets its own Outcomes column."""
     records = records_for([("p", "a@0", "SOLVED", 1.0, 2), ("p", "a@1", "MISSING", None, None)])
     summary = analysis.summarise("", records)
-    text = report.text_tables(summary, records)
-    assert "1 runs produced no result file" in text
+    text = report.text_tables(summary)
+    assert "MISSING" in text
+    assert summary["statuses"]["MISSING"] == 1
 
 
 def test_an_unmeasured_environment_is_flagged():
     records = records_for([("p", "unmeasured@0", "UNSOLVED", 1.0, None)])
     records[0]["has_progress_measure"] = False
     summary = analysis.summarise("", records)
-    text = report.text_tables(summary, records)
+    text = report.text_tables(summary)
     assert "†" in text and "unmeasured" in text
-
-
-def test_an_unseeded_randomised_run_is_flagged():
-    records = records_for([("mcts", "a@0", "SOLVED", 1.0, 4)])
-    records[0].update(randomised=True, seed=None)
-    summary = analysis.summarise("", records)
-    assert "will not reproduce" in report.text_tables(summary, records)
 
 
 def test_the_latex_table_escapes_underscores():
@@ -930,7 +892,52 @@ def test_the_report_writes_every_artefact(tmp_path):
     assert os.path.isfile(written["json"])
     if report.PLOTTING:
         assert os.path.getsize(written["cactus"]) > 0
-        assert os.path.getsize(written["scatter"]) > 0
+        # One overlap figure per combination. Two planners, so exactly the one pair.
+        assert os.path.getsize(written["overlap_bfws-2_iw-1"]) > 0
+
+
+def test_every_combination_of_planners_gets_an_overlap_figure(tmp_path):
+    """Which planners are worth comparing is a property of the run, so all of them are drawn.
+
+    Three planners means three pairs and one triple, plus one twin-runtime plot per triple.
+    """
+    records = records_for([
+        ("bfws", "puzznic@0", "SOLVED", 1.0, 4), ("bfws", "puzznic@1", "SOLVED", 2.0, 5),
+        ("iw", "puzznic@0", "SOLVED", 0.5, 6), ("iw", "puzznic@1", "TIMEOUT", 9.0, None),
+        ("aaa", "puzznic@0", "TIMEOUT", 9.0, None), ("aaa", "puzznic@1", "TIMEOUT", 9.0, None),
+    ])
+    written = report.write_report(tmp_path, analysis.summarise("", records), records)
+    if not report.PLOTTING:
+        pytest.skip("matplotlib did not import")
+    assert {key for key in written if key.startswith("overlap_")} == {
+        "overlap_bfws_iw", "overlap_bfws_aaa", "overlap_iw_aaa", "overlap_bfws_iw_aaa"}
+    assert {key for key in written if key.startswith("runtime_")} == {"runtime_bfws_iw_aaa"}
+    assert "scatter" not in written
+    for key, path in written.items():
+        assert os.path.getsize(path) > 0, key
+
+
+def test_the_stronger_planner_anchors_the_overlap_split(tmp_path):
+    """`aaa` sorts first but solves nothing, so it must not be the anchor."""
+    records = records_for([
+        ("aaa", "a@0", "TIMEOUT", 9.0, None),
+        ("zzz", "a@0", "SOLVED", 1.0, 3),
+    ])
+    written = report.write_report(tmp_path, analysis.summarise("", records), records)
+    if not report.PLOTTING:
+        pytest.skip("matplotlib did not import")
+    assert "overlap_zzz_aaa" in written
+
+
+def test_a_pair_does_not_double_count_the_tasks_both_solved():
+    """For two planners the only pair IS the whole set; stacking both would exceed the domain."""
+    overlap = {"planners": ["a", "b"],
+               "rows": [{"environment": None, "tasks": 3,
+                         "sets": {"a+b": 1, "a": 1, "b": 1}}]}
+    segments = report._overlap_segments(overlap)
+    keys = [key for _, group in segments for key in group]
+    assert len(keys) == len(set(keys)), keys
+    assert sorted(keys) == ["a", "a+b", "b"]
 
 
 def test_plots_are_skipped_rather_than_crashing_when_nothing_solved(tmp_path):
