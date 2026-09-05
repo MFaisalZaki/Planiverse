@@ -21,9 +21,9 @@ rules are the cartridge's rules: it replays the twin's own plans on the real har
 import pytest
 
 from planiverse.environments.gameboy_py.lolo import (
-    DIRECTIONS, EXACT_ROOMS, MEDUSA_SHIELDS, PUSHABLE_ONTO, ROOMS, SHOOT,
-    SHOTS_PER_MAGIC_HEART, WALKABLE, LoloAction, LoloGame, Room, blocked_by_medusa, move,
-    one_way_allows, parse_room, render, room_label, shoot,
+    DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, MEDUSA_SHIELDS, PUSHABLE_ONTO, RIVER, ROOMS,
+    SHOOT, SHOTS_PER_MAGIC_HEART, WALKABLE, LoloAction, LoloGame, Room, blocked_by_medusa,
+    move, one_way_allows, parse_room, render, room_label, shoot,
 )
 
 from conftest import assert_string_literals, assert_successors_contract, lolo_rom_path
@@ -523,6 +523,42 @@ def test_the_rooms_still_match_the_cartridge():
     assert len(decoded) == len(ROOMS)
     for index, rows in enumerate(decoded):
         assert "|".join(rows) == ROOMS[index], f"room {index} no longer matches the cartridge"
+
+
+@needs_rom
+def test_drifting_rivers_still_match_the_cartridge():
+    """`DRIFTING_RIVERS` was read out of the ROM, not typed. This keeps it that way.
+
+    The cartridge spells six river codes and `decode_room` maps all six onto `~`, so this is
+    the only place the distinction survives on the Python side. Get it wrong and an egg floats
+    where the cartridge would carry it away, which is the one thing the raft rule must not do.
+    """
+    from planiverse.environments.gameboy.lolo_gb import read_room
+
+    with open(lolo_rom_path(), "rb") as handle:
+        rom = handle.read()
+    drifting = {0x83, 0x85}
+    for index in range(len(ROOMS)):
+        cells = read_room(rom, index)
+        expected = tuple(divmod(offset, 8)
+                         for offset, code in enumerate(cells) if code in drifting)
+        assert tuple(DRIFTING_RIVERS.get(index, ())) == expected, \
+            f"room {index} no longer matches the cartridge's river codes"
+        # Every cell named here has to be a river in the room text, or it names nothing.
+        rows = ROOMS[index].split("|")
+        for row, col in DRIFTING_RIVERS.get(index, ()):
+            assert rows[row][col] == RIVER, f"room {index} cell ({row}, {col}) is not a river"
+
+
+@needs_rom
+def test_no_room_uses_the_river_code_that_refuses_a_push():
+    """`$82` refuses an egg outright. Nothing models it, because no room contains one."""
+    from planiverse.environments.gameboy.lolo_gb import read_room
+
+    with open(lolo_rom_path(), "rb") as handle:
+        rom = handle.read()
+    for index in range(len(ROOMS)):
+        assert 0x82 not in read_room(rom, index), f"room {index} uses $82 after all"
 
 
 @needs_rom
