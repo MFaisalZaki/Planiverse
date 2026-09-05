@@ -309,10 +309,13 @@ def test_successors_drop_the_actions_that_change_nothing():
         state, _ = env.reset()
         successors = env.successors(state)
         assert_successors_contract(successors)
-        # Lolo starts in the bottom-left corner: only up and right do anything, and there is
-        # nothing to shoot at.
-        assert sorted(str(action) for action, _ in successors) == \
-            [f"right_for_{PRESS_TICKS}", f"up_for_{PRESS_TICKS}"]
+        # Lolo starts in the bottom-left corner, so only up and right take him anywhere. The
+        # other two are still successors, because a refused step turns him and the facing is
+        # what decides where the next shot goes; see `LoloGBState.__eq__`. `a` is dropped: the
+        # meter is empty on a cold boot, so the shot would change nothing at all.
+        assert sorted(str(action) for action, _ in successors) == [
+            f"down_for_{PRESS_TICKS}", f"left_for_{PRESS_TICKS}",
+            f"right_for_{PRESS_TICKS}", f"up_for_{PRESS_TICKS}"]
     finally:
         env.close()
 

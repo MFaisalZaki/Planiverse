@@ -53,8 +53,9 @@ an environment with no screen to photograph. See
    allowed from the other three sides.
 3. A step into an **Emerald Framer** `O` or an **egg** `e` pushes it one cell the same way, if the
    cell behind is empty walkable ground. Nothing can be pulled and no chain of two can be pushed.
-   A river refuses both, unless the environment is built with `rafts=True`, which floats an egg
-   into a raft Lolo may stand on and which drifts away once he steps off it.
+   A river refuses a Framer always, and refuses an egg only where the current would carry the
+   raft; elsewhere the egg floats into a raft Lolo may stand on and which drifts away once he
+   steps off it. `rafts=False` goes back to refusing every river.
 4. A step onto a **heart framer** collects it. `h`, the second of the cartridge's two heart codes,
    also gives Lolo two magic shots; plain `H` gives none.
 5. A step into an **enemy** is refused. Enemies never move.
@@ -72,9 +73,11 @@ an environment with no screen to photograph. See
 **Six of the eight enemies are frozen here.** Snakey and Medusa never move on the cartridge
 either, so rooms holding only those two are modelled exactly. The other six (Leeper, Rocky, Alma,
 Gol, Skull and Don Medusa) do move there, in lock-step with Lolo, and this module leaves them
-where they started. For a room that contains one, a plan found here is a plan against a strictly
-easier puzzle and may well die on the cartridge, which is the wrong direction for an approximation
-to err in, so we flag it rather than smooth it over:
+where they started. For a room that contains one, a plan found here is usually a plan against an
+easier puzzle and may well die on the cartridge. Freezing is not a relaxation, though, and it does
+not only err that way: a frozen enemy is a wall as well as a threat removed, so a room can also
+come out harder here than it is on the cartridge. Either direction is the wrong one for an
+approximation to err in, so we flag it rather than smooth it over:
 
 ```python
 from planiverse.environments.gameboy_py.lolo import EXACT_ROOMS
@@ -85,33 +88,44 @@ info["exact"]                  # True when the model is faithful for this room
 info["unmodelled_enemies"]     # ('K', 'R'), the kinds that would have moved
 ```
 
-**Rafts are off by default.** On the cartridge an egg shoved into a river floats, and Lolo can step
-onto it and ride across, which is how `int 1-3` is cleared. `LoloGame(rafts=True)` models that: the
-egg becomes a raft, Lolo may stand on it, and it drifts away behind him, so it is a bridge that
-works once. It needs no notion of time, because the rooms that want a raft want it to cross a river
-one cell wide by stepping straight over. With the flag on, BFWS finds the cartridge's own
-twelve-action plan for `int 1-3`, action for action:
+**Rafts float on the rivers that hold still.** On the cartridge an egg shoved into a river
+floats, and Lolo can step onto it and ride across, which is how `int 1-3` is cleared. The
+cartridge has six river codes and they do not behave alike; the memory map's raft probe
+([§6](lolo-gb-memory-map.md#6-rafts)) measured each one:
+
+| Code | Push an egg into it | Lolo steps on |
+|---|---|---|
+| `$82` | refused | n/a, and it appears in none of the 163 rooms |
+| `$84`, `$86`, `$87` | accepted | rides, and the raft stays put |
+| `$83` | accepted | rides, and the raft drifts **up** |
+| `$85` | accepted | rides, and the raft drifts **down** |
+
+`lolo_gb.decode_room` spells all six `~`, so this module could not tell one river from another
+and used to refuse every push, which lost `int 1-3`. `DRIFTING_RIVERS` closes that: it carries
+the `$83` and `$85` cells, read back out of the cartridge and pinned against it by
+[`tests/test_lolo.py`](../../tests/test_lolo.py). An egg pushed at a still river floats; an egg
+pushed at a drifting one is refused.
+
+That split is exact rather than a guess, because a current runs on frames and not on moves.
+Board the raft on `tutorial 14a`'s `$83` channel and Lolo slides one cell every 160 frames with
+no button held at all, so a module with no notion of time cannot carry him. It declines the push
+there and leaves the room to [`lolo_gb`](lolo-gb.md).
+
+Of the 111 rooms with a river, 71 have no current anywhere, and the rule this module keeps is
+the cartridge's own for every one of them. Rafts are on by default for that reason. BFWS finds
+the cartridge's own twelve-action plan for `int 1-3`, action for action, and replaying it on
+`lolo_gb` clears the room:
 
 ```python
-game = LoloGame(rafts=True)
+game = LoloGame()
 game.set_index(40)                     # int 1-3
 # right right up shoot up up up left left up up up
 ```
 
-It is off by default because of a room it gets wrong. The cartridge floats an egg on five of its six
-river codes and refuses it on `$82`, and two of the five then carry the raft away on a current. The
-rooms here spell all six `~`, because `lolo_gb.decode_room` maps `$82`–`$87` onto one glyph, so this
-module cannot tell which river it is looking at: it floats an egg on every one of them and holds
-every raft still. On `int 1-3` that lands exactly on the cartridge's answer. On `tutorial 14a` it
-does not — that river is `$83`, it drifts, and the memory map [§6](lolo-gb-memory-map.md#6-rafts)
-records that it cannot be crossed by stepping straight over, which is what a still raft would have
-Lolo do. One right and one wrong is not a rule, so the default keeps the rule this module can hold,
-and a plan found with `rafts=True` has to be replayed on [`lolo_gb`](lolo-gb.md) before it is
-believed.
-
-Five rooms that are otherwise proved unsolvable here get a plan with the flag on: `tutorial 14a`
-(known wrong, above), `int 1-3` (matches the cartridge), and `int 4-8`, `int 5-4` and `adv 3-1`,
-which have not been replayed on hardware.
+Three further rooms gain a plan this way — `int 4-8`, `int 5-4` and `adv 3-1` — and all three
+die when replayed on the cartridge. Each holds a mobile enemy, so what defeats them is the
+freeze above rather than the raft: `int 1-3` and `tutorial 14a`, the two raft rooms with no
+mobile enemy in them, both now agree with the cartridge.
 
 **The hammer is not modelled.** A few rooms start with one in the cartridge's PWR meter, `int 1-5`
 among them, and we have not established what it breaks.
@@ -139,9 +153,22 @@ We measured what these approximations cost. Breadth-first search over this modul
 | rooms in `EXACT_ROOMS` | 7 | 7 |
 | rooms whose enemies this module freezes | 25 | 3 |
 
-Where the model is faithful it is faithful, and where it is an approximation the approximation
-errs in the easy direction: the twenty-two failures are all Lolo walking into an enemy that was
-not standing still.
+Where the model is faithful it is faithful. The twenty-two failures are all Lolo walking into an
+enemy that was not standing still, so on the rooms it does find a plan for, the approximation errs
+in the easy direction. It errs the other way as well, on rooms where it finds no plan at all.
+Pairing the twins under BFWS turns that up. `tutorial 4a` is the case: the cartridge clears it in
+56 moves, and this module proves it unsolvable. Its Rocky stands in the only approach to the room's
+magic heart framer, which is one of the nine hearts the door waits for and the room's only source
+of magic shots, so freezing it walls the room off rather than making it easier. Deleting that one
+Rocky from the room is enough to make BFWS clear it here, in 37 moves. Four more rooms this module
+proves unsolvable open up once their mobile enemies are taken off the board, though taking an enemy
+off the board is more permissive than moving it, so this bounds the cost rather than measuring it:
+`tutorial 4b` is the other half of the same tutorial pair and `int 4-8` is still running on the
+cartridge, while on `int 2-10` and `int 5-2` the cartridge proves the room unsolvable too.
+
+Every other disagreement runs the expected way round: the plan found here is a plan against the
+easier puzzle, and it dies on the cartridge. Since rafts were fixed above, `tutorial 4a` is the
+only room the pairing has found where this module proves unsolvable something the cartridge clears.
 
 ## Quickstart
 
@@ -154,7 +181,7 @@ state, info = game.reset()
 
 print(info)
 # {'room_index': 38, 'room': 'int 1-1', 'hearts': 6, 'shots': 0, 'door': (1, 1),
-#  'start': (6, 1), 'exact': True, 'unmodelled_enemies': (), 'rafts': False}
+#  'start': (6, 1), 'exact': True, 'unmodelled_enemies': (), 'rafts': True}
 
 print(state)
 # ##.#####

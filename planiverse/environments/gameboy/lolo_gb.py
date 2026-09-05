@@ -85,6 +85,7 @@ MAGIC_SHOTS_ADDR = 0xC4AD        # magic shots in hand; +2 per magic heart frame
 SCENE_ADDR = 0xC3BE              # which screen the game is running
 BOARD_ADDR = 0xC3BF              # the room as loaded, 8x8 stride 8, never updated
 OAM_BUFFER_ADDR = 0xC000         # OAM DMA source: 40 sprites of 4 bytes
+LOLO_SPRITE_BYTES = 8            # Lolo is slots 0 and 1, the pair `settle` watches
 
 #: `$C3BE` while an intermediate room is being played. The tutorial's demonstration rooms run
 #: as `$14` and play themselves, which is the one boot outcome that has to be rejected rather
@@ -394,8 +395,9 @@ def is_playing(pyboy):
 
 # ----------------------------------------------------------------------- driving it
 
-SETTLE_MAX_TICKS = 300           # five seconds; one cell of walking animates for sixteen
-SETTLE_STABLE_TICKS = 8          # frames the sprite buffer must hold still
+SETTLE_MAX_TICKS = 300           # five seconds; the cap, and no longer the timing mechanism
+SETTLE_STABLE_TICKS = 8          # frames Lolo's own sprite must hold still
+SETTLE_MIN_TICKS = 18            # ... and the fewest frames any action runs, so a shot lands
 PRESS_TICKS = 20                 # frames a d-pad press is held: one whole cell
 HALF_STEP_TICKS = 8              # ... and half of one
 SHOOT_TICKS = 6                  # the magic shot is an edge, not a hold
@@ -422,23 +424,38 @@ def button_actions(calibration=None):
     return [f"{button},{ticks}" for button in DIRECTIONS] + [f"a,{SHOOT_TICKS}"]
 
 
-def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_STABLE_TICKS):
-    """Run the emulator until the room stops moving, and report whether it did.
+def settle(pyboy, render=False, max_ticks=SETTLE_MAX_TICKS, stable_ticks=SETTLE_STABLE_TICKS,
+           min_ticks=SETTLE_MIN_TICKS):
+    """Run the emulator until Lolo's move has finished, and report whether it did.
 
-    Watching the shadow OAM is enough, and watching anything else would be wrong. The tilemap
-    is updated the frame a heart is taken, so a move that ends on a heart would be called
-    finished while Lolo is still sliding, and the dropped presses that causes look exactly
-    like a planner's action having no effect. Lolo's slide, every enemy's step and the magic
-    shot in flight are all sprites, so when `$C000` holds still for eight frames, nothing on
-    the board is moving.
+    What is watched is Lolo's own sprite pair rather than the whole shadow OAM, and the
+    difference is the whole of this function. Watching the tilemap would be wrong for the
+    reason it always was: it is updated the frame a heart is taken, so a move that ends on a
+    heart would be called finished while Lolo is still sliding. Watching *everything* in
+    `$C000` is wrong for a reason that only shows up on a cartridge with a ROM to hand.
+    Six of the eight enemies patrol, and once Lolo's first move wakes them they never stop:
+    tick `int 4-11` for 1500 frames with no button held and its two Almas are still pacing.
+    A rule that waits for the whole board to hold still therefore cannot fire in those rooms,
+    and what used to end the action was whichever came first, the 300-tick cap or an enemy
+    happening to pause for eight frames at the top of its walk. Instrumenting the old rule on
+    `tutorial 4a`, `int 4-11` and `int 1-7` gives action lengths of 10, 140, 270 and 300
+    frames in no particular order, and an enemy's position is read at whatever point in its
+    patrol that lands on.
+
+    Lolo's own slide is the thing an action is actually waiting for, it always ends, and it
+    ends in the same 17 or 18 frames in every room. `min_ticks` covers the magic shot, which
+    leaves Lolo's sprite still and needs about eleven frames to fly and land.
+
+    The rooms where the old rule was well defined are unchanged by this: with no mobile enemy
+    awake the board *is* Lolo, so the two rules agree frame for frame.
     """
     previous, stable = None, 0
-    for _ in range(max_ticks):
+    for tick in range(max_ticks):
         pyboy.tick(1, render)
-        current = shadow_oam(pyboy)
+        current = bytes(pyboy.memory[OAM_BUFFER_ADDR:OAM_BUFFER_ADDR + LOLO_SPRITE_BYTES])
         if current == previous:
             stable += 1
-            if stable >= stable_ticks:
+            if stable >= stable_ticks and tick + 1 >= min_ticks:
                 return True
         else:
             previous, stable = current, 0

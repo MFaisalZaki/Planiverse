@@ -132,8 +132,22 @@ Each character occupies four consecutive codes, one per facing.
 | `$1C`–`$1F` | Medusa | never; kills at range along its row and column, see §5 |
 | `$20`–`$23` | Don Medusa | yes; patrols a path of its own |
 
-The four that move only ever move on a frame in which Lolo moved. Left alone the board is
-completely still, which is what makes a settle predicate work at all.
+A room that has not been touched is completely still: tick `int 4-11`, `int 1-6` or
+`tutorial 17a` for 600 frames from `reset` with no button held and not one sprite moves.
+
+That stillness does not survive Lolo's first move. Once woken the movers run on the frame
+clock rather than on Lolo's move count, and they do not stop: hold nothing at all after a
+single press and `int 4-11`'s two Almas are still pacing 1500 frames later, `tutorial 4a`'s
+two Rockys are still walking their columns, and `int 1-7`'s Rocky takes 285 more frames to
+come to rest after `settle` has already returned. The column headed "moves when Lolo moves?"
+should be read as "does this one ever wake?" and not as a claim that it steps in lock-step.
+
+This is what `settle` has to be written around, and why it watches Lolo's own sprite pair
+rather than the whole of `$C000`. Waiting for the whole board to hold still cannot succeed in
+a room with a woken enemy in it; the rule that did ended an action at whichever came first,
+its 300-tick cap or an enemy happening to pause for eight frames, which on `tutorial 4a`,
+`int 4-11` and `int 1-7` gives action lengths of 10, 140, 270 and 300 frames in no useful
+order. Lolo's own slide always ends, and ends in 17 or 18 frames in every room.
 
 ---
 
@@ -291,7 +305,7 @@ the tutorial, and `is_playing` is what catches it.
 
 | Item | Status |
 |---|---|
-| **How the six mobile enemies move** | Nothing here records it. §3 says *that* Leeper, Rocky, Alma and Don Medusa move when Lolo moves, and sketches each in a clause -- "walks toward Lolo, then stops dead", "charges, and shoves Lolo across the board", "chases, then leaves the board", "patrols a path of its own" -- but no probe fixes a trigger, a range, a tie-break between two equally close routes, or what ends the walk. Gol and Skull have the row below. Until somebody probes them, `lolo.py` cannot move them without guessing, and leaves all six standing |
+| **How the six mobile enemies move** | Still unfixed, and §3 now says why it is harder than it looked. The movers run on the frame clock once woken, so their position is a function of elapsed frames and not of Lolo's move count, and no probe yet fixes a trigger, a range, a tie-break between two equally close routes, or what ends the walk. What is now settled is that an action is a fixed 18 frames, so each one advances a woken enemy by a constant amount; a Python twin that wanted to move them would have to model that advance rather than a step per move. Until somebody probes them, `lolo.py` leaves all six standing |
 | Whether a **marker** blocks a Medusa's line | Not tested. It matters: `tutorial 13a` is cleared on the cartridge by walking column 0 under a marker at `(3, 0)` that would otherwise be a Medusa's clear line, and treating the marker as a shield is the one change that makes `lolo.py` clear that room too. It would also say what `$97`-`$9C` are |
 | The hammer | int 1-5 starts with one in the status bar's PWR meter and cannot be cleared without it. What button uses it, and what it breaks, is not established |
 | `$97`–`$9C` | walkable and inert in the environment tested. "ENEMY HOLES" and "JEWEL BOXES" are both in the cartridge's own object list and unaccounted for |
