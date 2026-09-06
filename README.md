@@ -307,78 +307,36 @@ write.
 
 ## Benchmarking
 
-`planiverse-bench` runs every planner over every environment, on a SLURM cluster or on one
-machine, and turns the results into tables and plots. It follows
-[pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit): an experiment is a directory of
-JSON, a sandbox is a directory of results, and the stages between them run independently, so a
-benchmark can be prepared on a laptop, run on a cluster, and analysed somewhere else again.
+`planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
+configurations the paper compares, once each on every instance of every environment, under a
+30-minute wall-clock limit, an 8 GB address-space cap and a 500,000-expansion bound, on a SLURM
+cluster or on one machine. There is no configuration file, because the protocol is the point.
 
 ```bash
-./setup_benchmark.sh                      # asks about limits and your Game Boy cartridges
-bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
-planiverse-bench analyze   --sandbox-dir sandbox
-planiverse-bench report    --sandbox-dir sandbox
+./setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
+bash sandbox/submit.sh                           # or: bash sandbox/run_local.sh 8
+planiverse-bench report --sandbox-dir sandbox
 ```
 
-`setup_benchmark.sh` runs `init`, `discover` and `generate`, and asks the one thing nothing
-else can work out: where your Puzznic, Flipull, Adventures of Lolo and Super Mario Land cartridges are. They are
-copyrighted and cannot ship here, so supplying them is what lets an emulated environment be
-compared against its pure-Python twin under the same planners and limits; skip one and it is
-reported as skipped rather than quietly dropped.
+`generate` asks each registered environment how many instances it has and writes one command
+per (planner, instance) under `sandbox/cmds/`, and one SLURM job array per planner under
+`sandbox/slurm/`. The Game Boy environments need their cartridges, which are copyrighted and
+cannot ship here: export `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
+`PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and `PLANIVERSE_SUPER_MARIO_LAND_ROM`
+before generating; an environment without one is skipped and says so.
 
-Pass them instead of being asked; the same flags work on `planiverse-bench init`:
+Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
+whatever happened: `SOLVED` (the plan replays to a goal), `INVALID` (it does not), `UNSOLVED`
+(the search stopped on its own), `TIMEOUT`, `NODEOUT`, `MEMOUT`, `ERROR`, `UNSUPPORTED` (the
+environment could not be built), and `MISSING`, which `report` assigns to a run that left no
+file, so a job that never ran cannot pass for coverage.
 
-```bash
-./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
-                     --rom-lolo ~/roms/"Adventures of Lolo (U) [S][!].gb" \
-                     --rom-flipull ~/roms/"Flipull (USA).gb" \
-                     --rom-mario   ~/roms/"Super Mario Land.gb"
-```
-
-It builds a virtualenv and installs the library into it first: `.venv` beside the script by
-default, reused if it is already there, editable. The generated jobs then call **that venv's
-`planiverse-bench` by absolute path**. That is what makes them work on a compute node whose
-shell never saw your activation, and it never lets them silently pick up a different install off
-`PATH`. The venv is activated in the jobs and in `run_local.sh` as well, so a local run and a
-cluster run use the same Python.
-
-`--venv DIR` moves it (on a cluster it has to be somewhere the compute nodes can see),
-`--no-venv` skips it and uses the current environment, and `--yes` takes every default and asks
-nothing. SLURM settings go in as `--partition`, `--account`, `--qos` and `--setup-command`.
-
-`generate` writes one **job array per planner**: a benchmark is thousands of short runs, and a
-scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
-split at the site's `MaxArraySize` and throttled with `%N` so a shared partition survives. They
-are given time and memory headroom above the harness's own limits, so that a timeout is recorded
-as a `TIMEOUT` row rather than vanishing as a killed job.
-
-Every run ends in a status (`SOLVED`, `INVALID`, `UNSOLVED`, `TIMEOUT`, `NODEOUT`, `MEMOUT`,
-`ERROR`, `UNSUPPORTED`, `MISSING`), because a failure has to be recorded rather than raised. The
-expected set of runs comes from `tasks.json`, so a job that never ran is counted as `MISSING`
-rather than quietly improving a planner's coverage.
-
-By default the benchmark covers **every instance of every environment it can run**, cartridge
-ones included, and every width planner runs as its **iterated** version, joined by the two
-sampling planners `fsx` and `mcts`. `iw` and `siw` iterate up to a bound of 1000 rather than
-at a width someone picked: novelty is a *filter* in both, so a width too low loses states
-outright, and which width is enough is a property of the problem. The loop stops when a width
-solves it, the budget runs out, or a width covers the reachable space without pruning anything
-for novelty, which for IW is also a proof that there is no plan. `bfws` iterates for a
-different reason: plain BFWS uses novelty as a *sort key*, so nothing is discarded, no width
-can make it miss anything, and iterating *it* would spend the whole budget at width 1. Its
-iterated version instead runs cheap **pruned** rounds (k-BFWS, IW's filter with BFWS's
-ordering inside it) at widths 1 and 2, then one unpruned, complete round on whatever budget
-is left: the Dual-BFWS shape. [docs/benchmark.md](docs/benchmark.md) has the numbers.
-
-`report` writes a coverage table, an outcome breakdown, a per-environment breakdown, a
-survival plot, a twin-axis runtime plot for every **triple** of planners and a solved-overlap
-figure for every **combination** of them, into `sandbox/report/`.
-What those come out as is a property of the run you did, not of this library, so no numbers
-are quoted here.
-
-The full documentation is in [docs/benchmark.md](docs/benchmark.md), including the progress
-measures SIW and BFWS need per environment, the one environment that has none and why, and
-how to point the harness at a Game Boy cartridge.
+`report` writes the paper's two tables (`coverage.tex`, `statuses.tex`), its three figures
+(`cactus.pdf`, `overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the
+numbers its prose quotes, into `sandbox/report/`. The sandbox behind the paper is attached to
+the [v0.0.1 release](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
+repository and `report` regenerates every number from it. [docs/benchmark.md](docs/benchmark.md)
+has the details.
 
 ## Writing a planner
 
@@ -493,19 +451,12 @@ planiverse/
 │   ├── mcts.py                         # MCTSPlanner (UCT)
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
 ├── rendering/                          # traces to GIF or PNG frames (env.render_trace delegates here)
-└── benchmark/                          # planiverse-bench: run the planners, generate SLURM jobs
-    ├── cli.py                          # init / discover / generate / solve / analyze / report
-    ├── config.py                       # exp-details.json and planners/*.json
-    ├── catalogue.py                    # which planners exist and how to build them
-    ├── measures.py                     # per-environment progress measures
-    ├── discovery.py                    # resolving (environment, index) task lists
-    ├── runner.py                       # one run, under limits, with a status
-    ├── slurm.py                        # job arrays, submit_all.sh, run_local.sh
-    ├── analysis.py                     # coverage, per-environment breakdown, solver sets, CSV
-    └── report.py                       # text and LaTeX tables, cactus, twin and overlap plots
+└── benchmark/                          # planiverse-bench: the paper's evaluation protocol
+    ├── __init__.py                     # generate / solve / report, and the protocol's constants
+    └── measures.py                     # per-environment progress measures for SIW and BFWS
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark harness
-setup_benchmark.sh                      # interactive benchmark setup; asks for the cartridges
+setup_benchmark.sh                      # builds the venv, installs, runs generate
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
 ├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout

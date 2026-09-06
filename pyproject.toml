@@ -35,9 +35,9 @@ dependencies = [
 dev = ["pytest (>=8.0)"]
 
 [project.scripts]
-# The benchmark harness. Generated SLURM jobs invoke this by name, so an experiment prepared
-# on one machine runs unchanged on a cluster where the package is pip-installed.
-planiverse-bench = "planiverse.benchmark.cli:main"
+# The benchmark harness; `python -m planiverse.benchmark` is the same entry point, and it
+# is what the generated jobs call, by the absolute path of the interpreter that made them.
+planiverse-bench = "planiverse.benchmark:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
