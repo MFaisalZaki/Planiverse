@@ -37,7 +37,7 @@ ASSUME_YES=0
 ENTRY_POINT=""
 VENV_DIR=""
 USE_VENV=1
-PYTHON_BIN="python3"
+PYTHON_BIN="python3.13"
 
 usage() {
     sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
