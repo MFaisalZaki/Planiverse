@@ -35,7 +35,7 @@ ENTRY_POINTS = [
     "planiverse.environments.gameboy_py.super_mario_land",
     "planiverse.environments.gameboy.super_mario_land_gb",
     "planiverse.environments.network_attack.network_attack",
-    "planiverse.benchmark.cli",
+    "planiverse.benchmark",
     "planiverse.rendering.trace",
     "planiverse.planners.super_mario_planner_gb",
 ]
