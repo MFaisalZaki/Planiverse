@@ -223,7 +223,11 @@ def solve(sandbox, tag, task, seed=None):
             statistics={"expansions": out.statistics.expansions,
                         "generated": out.statistics.generated,
                         "search_seconds": out.statistics.elapsed,
-                        "widths_tried": list(out.statistics.widths_tried)})
+                        "widths_tried": list(out.statistics.widths_tried),
+                        # Zero for every planner but Rollout IW and π-IW, whose episode count
+                        # is how much they relearned before they succeeded.
+                        "rollouts": out.statistics.rollouts,
+                        "episodes": out.statistics.episodes})
         if out.solved:
             try:
                 status = "SOLVED" if env.validate(out.plan) else "INVALID"

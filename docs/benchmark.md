@@ -187,8 +187,9 @@ What has to happen, in order:
 4. **Table 2 (coverage)** gains columns `RIW` and `PIIW`, as mean over seeds with the standard
    deviation in brackets; `coverage.tex` already emits them. The bold total may move.
 5. **Table 3 (statuses)** gains two rows and the median solve time for each; `statuses.tex`
-   already emits them. Both planners end an episode at a dead end or the step cap, so expect
-   `UNSOLVED` rather than `TIMEOUT` to dominate their rows on the puzzles.
+   already emits them. Rollout IW runs one episode, so an episode that ends at a dead end or
+   the step cap is `UNSOLVED`; π-IW keeps starting episodes, so short of a plan it ends only at
+   a limit, `NODEOUT` or `TIMEOUT`. Each result file now records `rollouts` and `episodes`.
 6. **The cactus plot** gains two curves. The overlap and runtime figures stay as they are: they
    compare the three deterministic width planners, and a seeded planner has no single time per
    instance to put on them.
