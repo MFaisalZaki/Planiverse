@@ -1,8 +1,8 @@
 #!/bin/bash
 # Build a virtualenv, install planiverse into it, and generate the benchmark's jobs.
 #
-#   ./setup_benchmark.sh [--venv DIR] [--python BIN] [generate options...]
-#   ./setup_benchmark.sh --partition gpu --qos long --parallel 100
+#   tools/setup_benchmark.sh [--venv DIR] [--python BIN] [generate options...]
+#   tools/setup_benchmark.sh --partition gpu --qos long --parallel 100
 #
 # The Game Boy environments need their cartridges, which are copyrighted and cannot ship here.
 # Export PLANIVERSE_PUZZNIC_ROM, PLANIVERSE_FLIPULL_ROM, PLANIVERSE_LOLO_ROM,
@@ -10,7 +10,7 @@
 # without one is skipped and says so. Then: bash sandbox/submit.sh, or bash sandbox/run_local.sh 8.
 set -euo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV="$REPO/.venv"
 PYTHON="python3.13"
 while [ $# -gt 0 ]; do
