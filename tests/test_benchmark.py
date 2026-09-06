@@ -32,6 +32,7 @@ def test_the_rollout_planners_run_under_the_protocol_with_a_seed(tmp_path):
         record = solve(tmp_path, tag, "puzznic@1", seed=2)
         assert record["status"] == "SOLVED", record
         assert record["seed"] == 2 and record["params"]["width"] == 1
+        assert record["statistics"]["rollouts"] > 0 and record["statistics"]["episodes"] == 1
         assert (tmp_path / f"results/{tag}/puzznic__1__s2.json").is_file()
 
 
