@@ -5,10 +5,10 @@
     planiverse-bench report   [--sandbox-dir sandbox]
 
 `generate` asks every registered environment how many instances it has and writes one command
-per (planner, instance), plus a SLURM job array per planner that runs them. `solve` is what one
-array element runs: one planner on one instance under the limits, written out as one JSON file
-whatever happens. `report` reads those files back and writes the paper's tables, its figures,
-and the numbers its prose quotes.
+per (planner, instance, seed), plus a SLURM job array for each planner, or for each of a seeded
+planner's seeds, that runs them. `solve` is what one array element runs: one planner on one
+instance under the limits, written out as one JSON file whatever happens. `report` reads those
+files back and writes the paper's tables, its figures, and the numbers its prose quotes.
 
 The protocol is the constants below. There is no configuration file: a run that changed a limit
 would not be the paper's experiment, and one that did not has nothing to configure.
@@ -22,6 +22,7 @@ import platform
 import resource
 import shlex
 import signal
+import statistics
 import sys
 import time
 import traceback
@@ -42,9 +43,18 @@ PLANNERS = {
     "bfws": (IteratedBFWS, {"max_width": 1000}),
     "iw": (IteratedWidth, {"max_width": 1000, "strict": False}),
     "siw": (SIWSearch, {"width": 1, "max_width": 1000, "strict": False}),
-    "mcts": (MCTSPlanner, {"iterations": 2000, "seed": 0}),
-    "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8, "seed": 0}),
+    "mcts": (MCTSPlanner, {"iterations": 2000}),
+    "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
 }
+
+#: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
+#: full run under the same limits, and the report averages over them; the environments are
+#: deterministic, so the seed is the only source of variance. The width planners have no seed
+#: and run once.
+SEEDS = range(5)
+
+#: The width family: deterministic, and what the overlap and runtime figures compare.
+WIDTH = ("bfws", "iw", "siw")
 
 #: The paper's environment names, in its table order. A `_gb` twin takes the same name under
 #: "Game (cartridge)"; the family itself comes from the registry's tags.
@@ -59,18 +69,27 @@ STATUSES = ("SOLVED", "INVALID", "UNSOLVED", "TIMEOUT", "NODEOUT", "MEMOUT", "ER
             "UNSUPPORTED", "MISSING")
 
 SBATCH = """#!/bin/bash
-#SBATCH --job-name=planiverse-bench-{tag}
+#SBATCH --job-name=planiverse-bench-{group}
 #SBATCH --array=0-{last}%{parallel}
 #SBATCH --time=00:35:00
 #SBATCH --mem=9216M
 #SBATCH --cpus-per-task=1
-#SBATCH --output={sandbox}/logs/{tag}/%A_%a.out
-#SBATCH --error={sandbox}/logs/{tag}/%A_%a.err
+#SBATCH --output={sandbox}/logs/{group}/%A_%a.out
+#SBATCH --error={sandbox}/logs/{group}/%A_%a.err
 {extra}{exports}
 # Line n of the command file is array element n. The five minutes and the gigabyte above the
 # harness's own limits let it record its TIMEOUT or MEMOUT before SLURM steps in.
 eval "$(sed -n "$((${{SLURM_ARRAY_TASK_ID:-0}} + 1))p" {cmds})"
 """
+
+
+def _seeds(tag):
+    """The seeds a planner runs under: SEEDS if its constructor takes one, else a single None."""
+    return list(SEEDS) if "seed" in inspect.signature(PLANNERS[tag][0]).parameters else [None]
+
+
+def _filename(environment, index, seed):
+    return f"{environment}__{index}" + ("" if seed is None else f"__s{seed}") + ".json"
 
 
 def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
@@ -96,7 +115,11 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
             roms[spec.rom_variable] = spec.rom_path()
         print(f"  {spec.name:22} {count:>4} instances")
 
-    for name in ("cmds", "slurm", *(f"logs/{tag}" for tag in PLANNERS)):
+    # One job array per planner, or per seed of a seeded planner: each is one instance long,
+    # which keeps every array under a site's MaxArraySize and finishes seed 0 first.
+    groups = {tag if seed is None else f"{tag}-s{seed}": (tag, seed)
+              for tag in PLANNERS for seed in _seeds(tag)}
+    for name in ("cmds", "slurm", *(f"logs/{group}" for group in groups)):
         os.makedirs(f"{sandbox}/{name}", exist_ok=True)
     with open(f"{sandbox}/tasks.json", "w") as handle:
         json.dump({"environments": [{"environment": env, "instances": n}
@@ -105,18 +128,19 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
     extra = "".join(f"#SBATCH --{key}={value}\n" for key, value in
                     (("partition", partition), ("qos", qos), ("account", account)) if value)
     tasks = [f"{env}@{index}" for env, n in counts.items() for index in range(n)]
-    for tag in PLANNERS:
-        with open(f"{sandbox}/cmds/{tag}.txt", "w") as handle:
+    for group, (tag, seed) in groups.items():
+        with open(f"{sandbox}/cmds/{group}.txt", "w") as handle:
             handle.writelines(
                 f"{shlex.quote(sys.executable)} -m planiverse.benchmark solve "
-                f"--sandbox-dir {shlex.quote(sandbox)} {tag} {task}\n" for task in tasks)
-        with open(f"{sandbox}/slurm/{tag}.sbatch", "w") as handle:
-            handle.write(SBATCH.format(tag=tag, last=len(tasks) - 1, parallel=parallel,
+                f"--sandbox-dir {shlex.quote(sandbox)} {tag} {task}"
+                + ("" if seed is None else f" --seed {seed}") + "\n" for task in tasks)
+        with open(f"{sandbox}/slurm/{group}.sbatch", "w") as handle:
+            handle.write(SBATCH.format(group=group, last=len(tasks) - 1, parallel=parallel,
                                        sandbox=sandbox, extra=extra, exports=exports,
-                                       cmds=shlex.quote(f"{sandbox}/cmds/{tag}.txt")))
+                                       cmds=shlex.quote(f"{sandbox}/cmds/{group}.txt")))
     scripts = {
-        "submit.sh": "#!/bin/bash\n" + "".join(f"sbatch {sandbox}/slurm/{tag}.sbatch\n"
-                                               for tag in PLANNERS),
+        "submit.sh": "#!/bin/bash\n" + "".join(f"sbatch {sandbox}/slurm/{group}.sbatch\n"
+                                               for group in groups),
         # `-L 1` hands each line to xargs as words, quotes honoured; `-I` would cap the line
         # at 255 bytes on BSD xargs, which a long sandbox path exceeds.
         "run_local.sh": "#!/bin/bash\n# bash run_local.sh [jobs-at-a-time]\n" + exports
@@ -127,24 +151,27 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
         with open(f"{sandbox}/{name}", "w") as handle:
             handle.write(body)
         os.chmod(f"{sandbox}/{name}", 0o755)
-    print(f"{len(tasks)} instances x {len(PLANNERS)} planners = {len(tasks) * len(PLANNERS)} "
-          f"runs\n  submit:  bash {sandbox}/submit.sh\n  or here: bash {sandbox}/run_local.sh 8")
+    print(f"{len(tasks)} instances x {len(groups)} arrays "
+          f"({', '.join(f'{tag} x{len(_seeds(tag))}' for tag in PLANNERS)}) "
+          f"= {len(tasks) * len(groups)} runs\n"
+          f"  submit:  bash {sandbox}/submit.sh\n  or here: bash {sandbox}/run_local.sh 8")
 
 
 def _alarm(*_):
     raise TimeoutError
 
 
-def solve(sandbox, tag, task):
+def solve(sandbox, tag, task, seed=None):
     """Run one planner on one instance under the limits and write down what happened.
 
     The result is written even when the run fails, which is the point: a benchmark that only
     records its successes cannot say that a planner crashed on a third of the set.
     """
     name, index = task.rsplit("@", 1)
+    seed = _seeds(tag)[0] if seed is None else seed   # a seeded planner run by hand gets its first
     record = {"task": task, "environment": name, "index": int(index), "planner": tag,
-              "params": PLANNERS[tag][1], "limits": LIMITS, "host": platform.node(),
-              "started": time.time()}
+              "seed": seed, "params": PLANNERS[tag][1], "limits": LIMITS,
+              "host": platform.node(), "started": time.time()}
     # An address-space cap turns an overrun into a MemoryError the run can record, instead of
     # an OOM kill that leaves no file. macOS refuses the call; the cap is for the Linux cluster.
     try:
@@ -160,6 +187,8 @@ def solve(sandbox, tag, task):
         except Exception as exc:
             return _write(sandbox, record, "UNSUPPORTED", note=f"{type(exc).__name__}: {exc}")
         cls, params = PLANNERS[tag]
+        if seed is not None:
+            params = {**params, "seed": seed}
         if "progress" in inspect.signature(cls).parameters:
             params = {**params, "progress": MEASURES.get(name)}
         planner = cls(**params)
@@ -217,7 +246,8 @@ def _write(sandbox, record, status, seconds=None, note=None):
                   seconds=time.time() - record["started"] if seconds is None else seconds)
     if note:
         record["note"] = note
-    path = f"{sandbox}/results/{record['planner']}/{record['environment']}__{record['index']}.json"
+    path = os.path.join(str(sandbox), "results", record["planner"],
+                        _filename(record["environment"], record["index"], record["seed"]))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as handle:
         json.dump(record, handle, indent=1, default=str)
@@ -235,25 +265,30 @@ def report(sandbox):
     counts = {entry["environment"]: entry["instances"] for entry in manifest["environments"]}
     rows = []
     for tag in PLANNERS:
-        for env, n in counts.items():
-            for index in range(n):
-                try:
-                    record = json.loads(
-                        pathlib.Path(sandbox, "results", tag, f"{env}__{index}.json").read_text())
-                except FileNotFoundError:
-                    record = {"status": "MISSING"}
-                except ValueError:  # a job killed mid-write leaves a truncated file behind
-                    record = {"status": "ERROR"}
-                rows.append({"planner": tag, "environment": env, "task": f"{env}@{index}",
-                             "status": record.get("status", "ERROR"),
-                             "seconds": record.get("seconds"), "width": record.get("width"),
-                             "plan_length": record.get("plan_length")})
+        for seed in _seeds(tag):
+            for env, n in counts.items():
+                for index in range(n):
+                    try:
+                        record = json.loads(pathlib.Path(
+                            sandbox, "results", tag, _filename(env, index, seed)).read_text())
+                    except FileNotFoundError:
+                        record = {"status": "MISSING"}
+                    except ValueError:  # a job killed mid-write leaves a truncated file
+                        record = {"status": "ERROR"}
+                    # An unseeded planner's runs sit under seed -1, so the column stays a
+                    # number the tables can group and average on.
+                    rows.append({"planner": tag, "seed": -1 if seed is None else seed,
+                                 "environment": env, "task": f"{env}@{index}",
+                                 "status": record.get("status", "ERROR"),
+                                 "seconds": record.get("seconds"),
+                                 "width": record.get("width"),
+                                 "plan_length": record.get("plan_length")})
     df = pd.DataFrame(rows)
     solved = df[df.status == "SOLVED"]
 
     out = pathlib.Path(sandbox, "report")
     out.mkdir(exist_ok=True)
-    (out / "coverage.tex").write_text(_coverage_tex(solved, counts))
+    (out / "coverage.tex").write_text(_coverage_tex(df, counts))
     (out / "statuses.tex").write_text(_statuses_tex(df, solved))
     (out / "facts.txt").write_text(_facts(df, counts))
     _cactus(df, out / "cactus.pdf")
@@ -276,10 +311,26 @@ def _families(counts):
     return list(groups.items())
 
 
-def _coverage_tex(solved, counts):
+def _fmt(values):
+    """A count, or a seeded planner's mean over seeds with the standard deviation in brackets."""
+    values = [float(value) for value in values]
+    if len(values) == 1:
+        return f"{values[0]:g}"
+    return f"{statistics.mean(values):.1f} ({statistics.stdev(values):.1f})"
+
+
+def _solved_per_seed(df):
+    """Instances solved per (planner, seed), zeros included: the unit the tables average over."""
+    return df.assign(ok=df.status == "SOLVED").groupby(["planner", "seed"]).ok.sum()
+
+
+def _coverage_tex(df, counts):
     """Table 2: instances solved per environment and planner, in the paper's families."""
-    n = (solved.groupby(["environment", "planner"]).size().unstack(fill_value=0)
-         .reindex(index=list(counts), columns=list(PLANNERS), fill_value=0))
+    solved = (df.assign(ok=df.status == "SOLVED")
+              .groupby(["planner", "seed", "environment"]).ok.sum()
+              .unstack("environment").reindex(columns=list(counts), fill_value=0))
+    totals = solved.sum(axis=1)
+    means = totals.groupby(level="planner").mean()
     lines = ["\\begin{tabular}{ll" + "r" * (len(PLANNERS) + 1) + "}", "\\toprule",
              "Family & Environment & Inst. & " + " & ".join(p.upper() for p in PLANNERS)
              + " \\\\", "\\midrule"]
@@ -288,12 +339,12 @@ def _coverage_tex(solved, counts):
             lines.append(f"\\multirow{{{len(envs)}}}{{*}}{{{family}}}")
         for env in envs:
             lines.append(f"{family if len(envs) == 1 else ''} & {NAMES[env.removesuffix('_gb')]}"
-                         f" & {counts[env]} & " + " & ".join(map(str, n.loc[env])) + " \\\\")
+                         f" & {counts[env]} & "
+                         + " & ".join(_fmt(solved.loc[p][env]) for p in PLANNERS) + " \\\\")
         lines.append("\\midrule")
-    total = n.sum()
-    lines += [f"& Total & {sum(counts.values())} & "
-              + " & ".join(f"\\textbf{{{v}}}" if v == total.max() else str(v) for v in total)
-              + " \\\\", "\\bottomrule", "\\end{tabular}", ""]
+    lines += [f"& Total & {sum(counts.values())} & " + " & ".join(
+        f"\\textbf{{{_fmt(totals.loc[p])}}}" if means[p] == means.max() else _fmt(totals.loc[p])
+        for p in PLANNERS) + " \\\\", "\\bottomrule", "\\end{tabular}", ""]
     return "\n".join(lines)
 
 
@@ -301,15 +352,21 @@ def _statuses_tex(df, solved):
     """Table 3: how every run ended, one row per planner, every status that occurred.
 
     The columns come from the data, so a status cannot be left out without the row totals
-    showing it. A run that never happened is counted as unsolved, as the paper does; it never
-    credits a planner, and `facts.txt` still lists it.
+    showing it. A seeded planner's counts are means per seed, so its row still sums to the
+    instance count, and its Solved cell carries the standard deviation. A run that never
+    happened is counted as unsolved, as the paper does; it never credits a planner, and
+    `facts.txt` still lists it.
     """
     import pandas as pd
+    # Divided before reindexing: aligning against the seed counts sorts the planners, and the
+    # reindex is what puts them back in the paper's order.
     n = (df.groupby(["planner", "status"]).size().unstack(fill_value=0)
+         .div(df.groupby("planner").seed.nunique(), axis=0)
          .reindex(index=list(PLANNERS), columns=STATUSES, fill_value=0))
     n["UNSOLVED"] += n.pop("MISSING")
-    n = n.loc[:, n.any()]
+    n = n.loc[:, n.any()].round(1)
     n["Median (s)"] = solved.groupby("planner").seconds.median().round(1)
+    per_seed = _solved_per_seed(df)
     heads = {"SOLVED": "Solved", "INVALID": "Invalid", "UNSOLVED": "Unsolved", "TIMEOUT": "Time",
              "NODEOUT": "Exp.", "MEMOUT": "Mem.", "ERROR": "Error", "UNSUPPORTED": "Unsup."}
     lines = ["\\begin{tabular}{l" + "r" * len(n.columns) + "}", "\\toprule"]
@@ -326,8 +383,9 @@ def _statuses_tex(df, solved):
         for column, value in row.items():
             best = (column == "SOLVED" and value == n.SOLVED.max()) or \
                    (column == "Median (s)" and value == n["Median (s)"].min())
-            cells.append("--" if pd.isna(value) else
-                         f"\\textbf{{{value:g}}}" if best else f"{value:g}")
+            text = (_fmt(per_seed.loc[tag]) if column == "SOLVED" else
+                    "--" if pd.isna(value) else f"{value:g}")
+            cells.append(f"\\textbf{{{text}}}" if best else text)
         lines.append(f"{tag.upper()} & " + " & ".join(cells) + " \\\\")
     return "\n".join(lines + ["\\bottomrule", "\\end{tabular}", ""])
 
@@ -336,19 +394,28 @@ def _facts(df, counts):
     """The numbers the paper's prose quotes, read off here rather than worked out by hand."""
     import pandas as pd
     solved = df[df.status == "SOLVED"]
-    tasks = {p: set(solved.task[solved.planner == p]) for p in PLANNERS}
-    times = (solved.pivot(index="task", columns="planner", values="seconds")
-             .reindex(columns=list(PLANNERS)))
+    per_seed = _solved_per_seed(df)
+    seeds = {p: sorted(df.seed[df.planner == p].unique()) for p in PLANNERS}
+    by_seed = solved.groupby(["planner", "seed"]).task.agg(set).to_dict()
+    sets = {p: [by_seed.get((p, s), set()) for s in seeds[p]] for p in PLANNERS}
+    union = {p: set.union(*sets[p]) for p in PLANNERS}
+    every = {p: set.intersection(*sets[p]) for p in PLANNERS}
     env = df.drop_duplicates("task").set_index("task").environment
     family = {e: f.split(" (")[0] for f, envs in _families(counts) for e in envs}
     medians = solved.groupby("planner").seconds.median()
-    lines = ["solved: " + ", ".join(f"{p} {len(tasks[p])}" for p in PLANNERS),
-             "solved outside bfws's set: " + ", ".join(
-                 f"{p} {len(tasks[p] - tasks['bfws'])}" for p in PLANNERS if p != "bfws"),
-             "solved by bfws and not by: " + ", ".join(
-                 f"{p} {len(tasks['bfws'] - tasks[p])}" for p in PLANNERS if p != "bfws"),
-             "median solve time (s): " + ", ".join(
+    lines = ["solved per seed: " + ", ".join(f"{p} {_fmt(per_seed.loc[p])}" for p in PLANNERS),
+             "solved in some seed / in every seed: " + ", ".join(
+                 f"{p} {len(union[p])} / {len(every[p])}" for p in PLANNERS
+                 if len(seeds[p]) > 1),
+             "solved in some seed but never by bfws: " + ", ".join(
+                 f"{p} {len(union[p] - union['bfws'])}" for p in PLANNERS if p != "bfws"),
+             "solved by bfws and by no seed of: " + ", ".join(
+                 f"{p} {len(union['bfws'] - union[p])}" for p in PLANNERS if p != "bfws"),
+             "median solve time over all solved runs (s): " + ", ".join(
                  f"{p} {medians.get(p, float('nan')):.1f}" for p in PLANNERS)]
+    times = (solved[solved.planner.isin(WIDTH)]
+             .pivot(index="task", columns="planner", values="seconds")
+             .reindex(columns=list(WIDTH)))
     for p in ("iw", "siw"):
         both = times[["bfws", p]].dropna()
         ratio = both[p] / both.bfws
@@ -358,7 +425,7 @@ def _facts(df, counts):
                      f"{lolo.median():.1f} on the Python lolo rooms")
     for status in ("ERROR", "MISSING"):
         where = df[df.status == status].groupby(["planner", "environment"]).size()
-        lines.append(f"{status.lower()}: " + (", ".join(
+        lines.append(f"{status.lower()} over all runs: " + (", ".join(
             f"{p} on {e} {k}" for (p, e), k in where.items()) or "none"))
     iw = solved[solved.planner == "iw"]
     widths = lambda runs: ", ".join(  # noqa: E731
@@ -369,9 +436,11 @@ def _facts(df, counts):
                  f"{solved.plan_length[solved.planner == 'bfws'].mean():.1f}")
     per_family = pd.Series(counts).groupby(pd.Series(counts).index.map(family)).sum()
     for p in ("fsx", "mcts"):
-        per = solved[solved.planner == p].groupby(solved.environment.map(family)).size()
-        lines.append(f"{p} solved per family: " + ", ".join(
-            f"{f} {per.get(f, 0)}/{k}" for f, k in per_family.items()))
+        runs = df[df.planner == p]
+        by_family = (runs.assign(ok=runs.status == "SOLVED")
+                     .groupby([runs.environment.map(family), "seed"]).ok.sum())
+        lines.append(f"{p} solved per seed, per family: " + ", ".join(
+            f"{f} {_fmt(by_family.loc[f])}/{k}" for f, k in per_family.items()))
     return "\n".join(lines) + "\n"
 
 
@@ -380,15 +449,22 @@ _MARKERS = ("o", "s", "^", "v", "D", "P", "X")
 
 
 def _cactus(df, path):
-    """Each planner's sorted solve times, then its time-outs and memory-outs charged the limit."""
+    """Each planner's sorted solve times, then its time-outs and memory-outs charged the limit.
+
+    A seeded planner's runs are pooled and the count divided by its number of seeds, which is
+    exactly the mean over seeds of instances solved within each time.
+    """
     from matplotlib import pyplot as plt
     fig, ax = plt.subplots(figsize=(7, 4.5))
     for i, (tag, runs) in enumerate(df.groupby("planner", sort=False)):
+        seeds = runs.seed.nunique()
         times = sorted(runs.seconds[runs.status == "SOLVED"].clip(lower=1e-3)) \
             + [LIMITS["seconds"]] * int(runs.status.isin(["TIMEOUT", "MEMOUT"]).sum())
-        ax.plot(range(1, len(times) + 1), times, color="black", linestyle=_LINES[i % 5],
-                linewidth=1.3, marker=_MARKERS[i % 7], markevery=(i * 9, 45), markersize=5,
-                markerfacecolor="white", markeredgewidth=0.9, label=tag.upper())
+        # The marker interval scales with the seeds, so it stays the same distance along x.
+        ax.plot([k / seeds for k in range(1, len(times) + 1)], times, color="black",
+                linestyle=_LINES[i % 5], linewidth=1.3, marker=_MARKERS[i % 7],
+                markevery=(i * 9, 45 * seeds), markersize=5, markerfacecolor="white",
+                markeredgewidth=0.9, label=tag.upper())
     ax.axhline(LIMITS["seconds"], color="grey", linestyle="--", linewidth=0.8, alpha=0.7)
     ax.set(xlabel="instances solved", ylabel="time (s)")
     ax.grid(alpha=0.3)
@@ -402,11 +478,10 @@ def _overlap(df, counts, path):
     """One bar per environment, split by which of BFWS, IW and SIW solved each instance."""
     import pandas as pd
     from matplotlib import pyplot as plt
-    width = ["bfws", "iw", "siw"]
-    solvers = (df[df.planner.isin(width) & (df.status == "SOLVED")]
+    solvers = (df[df.planner.isin(WIDTH) & (df.status == "SOLVED")]
                .groupby("task").planner.agg(frozenset))
     env = df.drop_duplicates("task").set_index("task").environment
-    segments = {"all three": [frozenset(width)],
+    segments = {"all three": [frozenset(WIDTH)],
                 "BFWS + IW": [frozenset({"bfws", "iw"})],
                 "BFWS + SIW": [frozenset({"bfws", "siw"})],
                 "BFWS only": [frozenset({"bfws"})],
@@ -433,9 +508,10 @@ def _overlap(df, counts, path):
 def _runtime(df, path):
     """BFWS's time per instance against IW (filled, left axis) and SIW (hollow, right axis)."""
     from matplotlib import pyplot as plt
-    penalised = df.seconds.where(df.status == "SOLVED", LIMITS["seconds"]).clip(lower=1e-3)
-    t = df.assign(t=penalised).pivot(index="task", columns="planner", values="t")
-    env = df.drop_duplicates("task").set_index("task").environment.reindex(t.index)
+    width = df[df.planner.isin(WIDTH)]
+    penalised = width.seconds.where(width.status == "SOLVED", LIMITS["seconds"]).clip(lower=1e-3)
+    t = width.assign(t=penalised).pivot(index="task", columns="planner", values="t")
+    env = width.drop_duplicates("task").set_index("task").environment.reindex(t.index)
     fig, left = plt.subplots(figsize=(11, 6))
     right = left.twinx()
     for i, name in enumerate(sorted(env.unique())):
@@ -476,13 +552,14 @@ def main(argv=None):
                                  help="run one planner on one instance")
     solve_.add_argument("planner", choices=list(PLANNERS))
     solve_.add_argument("task", help="environment@index")
+    solve_.add_argument("--seed", type=int, help="for mcts and fsx; the generated commands set it")
     commands.add_parser("report", parents=[common],
                         help="the paper's tables, figures and numbers")
     args = parser.parse_args(argv)
     if args.command == "generate":
         generate(args.sandbox_dir, args.partition, args.qos, args.account, args.parallel)
     elif args.command == "solve":
-        solve(args.sandbox_dir, args.planner, args.task)
+        solve(args.sandbox_dir, args.planner, args.task, args.seed)
     else:
         report(args.sandbox_dir)
     return 0

@@ -17,7 +17,13 @@ def test_a_run_is_written_out_whatever_happens(tmp_path):
     assert solve(tmp_path, "iw", "puzznic@9999")["status"] == "UNSUPPORTED"
 
 
-def test_the_report_expects_every_run_and_folds_the_missing_ones(tmp_path):
+def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
+    record = solve(tmp_path, "fsx", "puzznic@9999", seed=3)
+    assert record["seed"] == 3 and (tmp_path / "results/fsx/puzznic__9999__s3.json").is_file()
+    assert solve(tmp_path, "mcts", "puzznic@9999")["seed"] == 0   # run by hand: the first seed
+
+
+def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
     (tmp_path / "tasks.json").write_text(
         json.dumps({"environments": [{"environment": "puzznic", "instances": 2}]}))
     solve(tmp_path, "bfws", "puzznic@0")
@@ -26,15 +32,17 @@ def test_the_report_expects_every_run_and_folds_the_missing_ones(tmp_path):
     statuses = (tmp_path / "report/statuses.tex").read_text()
     facts = (tmp_path / "report/facts.txt").read_text()
     assert "BFWS & \\textbf{2} & 0" in statuses and "Missing" not in statuses
-    assert "IW & 0 & 2" in statuses
-    assert "iw on puzznic 2" in facts.split("missing:")[1].split("\n")[0]
+    # Ten missing MCTS runs are two per seed, so the row still sums to the two instances.
+    assert "IW & 0 & 2" in statuses and "MCTS & 0.0 (0.0) & 2" in statuses
+    missing = facts.split("missing")[1].split("\n")[0]
+    assert "iw on puzznic 2" in missing and "mcts on puzznic 10" in missing
 
 
 @pytest.mark.skipif(not (SANDBOX / "tasks.json").is_file(),
                     reason="the paper's sandbox is not unpacked beside the repository")
 def test_the_paper_comes_out_of_its_sandbox():
     report(SANDBOX)
-    coverage = (SANDBOX / "report/coverage.tex").read_text()
-    assert "& Total & 938 & \\textbf{435} & 325 & 193 & 65 & 50 \\\\" in coverage
+    facts = (SANDBOX / "report/facts.txt").read_text()
+    assert facts.startswith("solved per seed: bfws 435, iw 325, siw 193")
     statuses = (SANDBOX / "report/statuses.tex").read_text()
-    assert "BFWS & \\textbf{435} & 149 & 248 & 100 & 6 & 0 & 5.3 \\\\" in statuses
+    assert "BFWS & \\textbf{435} & 149 & 248 & 100 & 6 &" in statuses

@@ -308,33 +308,37 @@ write.
 ## Benchmarking
 
 `planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
-configurations the paper compares, once each on every instance of every environment, under a
-30-minute wall-clock limit, an 8 GB address-space cap and a 500,000-expansion bound, on a SLURM
-cluster or on one machine. There is no configuration file, because the protocol is the point.
+configurations the paper compares, on every instance of every environment, under a 30-minute
+wall-clock limit, an 8 GB address-space cap and a 500,000-expansion bound, with five seeds for
+the two stochastic planners, on a SLURM cluster or on one machine. There is no configuration
+file, because the protocol is the point.
 
 ```bash
-./setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
-bash sandbox/submit.sh                           # or: bash sandbox/run_local.sh 8
+tools/setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
+bash sandbox/submit.sh                               # or: bash sandbox/run_local.sh 8
 planiverse-bench report --sandbox-dir sandbox
 ```
 
 `generate` asks each registered environment how many instances it has and writes one command
-per (planner, instance) under `sandbox/cmds/`, and one SLURM job array per planner under
-`sandbox/slurm/`. The Game Boy environments need their cartridges, which are copyrighted and
-cannot ship here: export `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
-`PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and `PLANIVERSE_SUPER_MARIO_LAND_ROM`
-before generating; an environment without one is skipped and says so.
+per (planner, instance, seed) under `sandbox/cmds/`, and one SLURM job array per planner, or
+per seed of a seeded planner, under `sandbox/slurm/`. The Game Boy environments need their
+cartridges, which are copyrighted and cannot ship here: export `PLANIVERSE_PUZZNIC_ROM`,
+`PLANIVERSE_FLIPULL_ROM`, `PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and
+`PLANIVERSE_SUPER_MARIO_LAND_ROM` before generating; an environment without one is skipped and
+says so.
 
 Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
-whatever happened: `SOLVED` (the plan replays to a goal), `INVALID` (it does not), `UNSOLVED`
-(the search stopped on its own), `TIMEOUT`, `NODEOUT`, `MEMOUT`, `ERROR`, `UNSUPPORTED` (the
-environment could not be built), and `MISSING`, which `report` assigns to a run that left no
-file, so a job that never ran cannot pass for coverage.
+(`..._<i>__s<seed>.json` for MCTS and FSX) whatever happened: `SOLVED` (the plan replays to a
+goal), `INVALID` (it does not), `UNSOLVED` (the search stopped on its own), `TIMEOUT`,
+`NODEOUT`, `MEMOUT`, `ERROR`, `UNSUPPORTED` (the environment could not be built), and
+`MISSING`, which `report` assigns to a run that left no file, so a job that never ran cannot
+pass for coverage.
 
 `report` writes the paper's two tables (`coverage.tex`, `statuses.tex`), its three figures
 (`cactus.pdf`, `overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the
-numbers its prose quotes, into `sandbox/report/`. The sandbox behind the paper is attached to
-the [v0.0.1 release](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
+numbers its prose quotes, into `sandbox/report/`. A seeded planner is reported as its mean over
+seeds with the standard deviation, never its best seed. The sandbox behind the paper is attached
+to the [release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
 repository and `report` regenerates every number from it. [docs/benchmark.md](docs/benchmark.md)
 has the details.
 
@@ -456,7 +460,7 @@ planiverse/
     └── measures.py                     # per-environment progress measures for SIW and BFWS
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark harness
-setup_benchmark.sh                      # builds the venv, installs, runs generate
+tools/setup_benchmark.sh                # builds the venv, installs, runs generate
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
 ├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
