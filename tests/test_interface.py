@@ -5,63 +5,107 @@ things a planner is entitled to assume no matter which environment it is handed.
 """
 import pytest
 
-from planiverse.problems.real_world_problems.base import RealWorldProblem
-from planiverse.problems.retro_games.base import RetroGame
+from planiverse.environments import Environment, implements_contract, list_environments
 
 from conftest import assert_string_literals, assert_successors_contract
 
 
 def puzznic():
-    from planiverse.problems.retro_games.puzznic import PuzznicGame
+    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
     env = PuzznicGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
 
-def manufacturing():
-    from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
+def puzznic_gb():
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from fake_puzznic_rom import synthetic_rom
+    from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv
 
-    env = MfgEnv()
-    env.fix_index(0)
+    # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
+    # in `fake_puzznic_rom.py` rather than the real one.
+    env = PuzznicGBEnv(synthetic_rom(), verify_rom=False)
+    env.set_index(0)
     return env
 
 
-def urban_planning():
-    pytest.importorskip("pandas", reason="pandas is not installed")
-    pytest.importorskip("networkx", reason="networkx is not installed")
-    from planiverse.problems.real_world_problems.urban_planning.environment import UrbanPlanningEnv
+def flipull():
+    from planiverse.environments.gameboy_py.flipull import FlipullGame
 
-    env = UrbanPlanningEnv(horizon=100)
-    env.fix_index(0)
+    env = FlipullGame()
+    env.set_index(0)
     return env
+
+
+def flipull_gb():
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from fake_flipull_rom import synthetic_rom
+    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
+
+    # Flipull is copyrighted too, so the contract is checked against the synthetic
+    # cartridge in `fake_flipull_rom.py`.
+    env = FlipullGBEnv(synthetic_rom(), verify_rom=False)
+    env.set_index(0)
+    return env
+
+
+
+def super_mario_land():
+    from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
+
+    env = SuperMarioLandGame()
+    env.set_index(0)
+    return env
+
+
+def water_network():
+    pytest.importorskip("wntr", reason="wntr is not installed")
+    from planiverse.environments.water_network.environment import WaterNetworkEnv
+
+    env = WaterNetworkEnv()
+    env.set_index(0)
+    return env
+
+
+def power_grid():
+    pytest.importorskip("grid2op", reason="grid2op is not installed")
+    from planiverse.environments.power_grid.environment import PowerGridEnv
+
+    env = PowerGridEnv()
+    env.set_index(4)
+    return env
+
+
+def crop_management():
+    pytest.importorskip("pcse", reason="pcse is not installed")
+    from planiverse.environments.crop_management.environment import CropEnv
+
+    env = CropEnv()
+    env.set_index(10)
+    return env
+
 
 
 def network_attack():
     pytest.importorskip("nasim", reason="nasim is not installed")
-    from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import EnvNASim
+    from planiverse.environments.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
-    env.fix_index(0)
-    return env
-
-
-def epidemic():
-    pytest.importorskip("numba", reason="numba is not installed")
-    pytest.importorskip("sympy", reason="sympy is not installed")
-    from planiverse.problems.real_world_problems.epidemic_control.environment import EpiEnv
-
-    env = EpiEnv(delay_vaccination_time=30, horizon=364)
-    env.fix_index(5)          # SIR_A, the cheapest scenario
+    env.set_index(0)
     return env
 
 
 ENVIRONMENTS = {
     "puzznic": puzznic,
-    "manufacturing": manufacturing,
-    "urban_planning": urban_planning,
+    "puzznic_gb": puzznic_gb,
+    "flipull": flipull,
+    "flipull_gb": flipull_gb,
+    "super_mario_land": super_mario_land,
+    "water_network": water_network,
+    "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
+    "crop_management": crop_management,
     "network_attack": network_attack,
-    "epidemic": pytest.param(epidemic, marks=pytest.mark.slow),
 }
 
 
@@ -76,16 +120,59 @@ def environment_params():
 @pytest.mark.parametrize("factory", environment_params())
 def test_implements_the_core_interface(factory):
     env = factory()
-    for method in ("reset", "fix_index", "successors", "is_goal", "is_terminal", "simulate"):
+    for method in ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate"):
         assert callable(getattr(env, method, None)), \
             f"{type(env).__name__} does not implement {method}()"
 
 
 @pytest.mark.parametrize("factory", environment_params())
 def test_is_a_recognised_environment_type(factory):
-    """Simulator dispatches on these base classes."""
+    """One base class now, and the contract check is structural as well.
+
+    There used to be two (`RetroGame` and `RealWorldProblem`), and the split described
+    where an environment came from rather than what a planner could do with it, so the
+    `Simulator` facade that dispatched on them ended up with two isinstance branches doing
+    identical work. The facade followed the split into history once every caller took the
+    environment directly.
+    """
     env = factory()
-    assert isinstance(env, (RetroGame, RealWorldProblem))
+    assert isinstance(env, Environment)
+    assert implements_contract(env), "and it answers the contract structurally too"
+
+
+def test_an_outside_environment_needs_no_subclassing():
+    """`implements_contract` is duck typing: an environment brought from outside the
+    library counts as long as it answers the six methods, which is the point of checking
+    structurally instead of by base class. A bare `Environment()` has all six attributes
+    and implements none of them, so it must not count."""
+
+    class Outsider:
+        reset = set_index = successors = is_goal = is_terminal = simulate = lambda *a: None
+
+    assert not isinstance(Outsider(), Environment)
+    assert implements_contract(Outsider())
+    assert not implements_contract(Environment()), "stubs do not satisfy the contract"
+    assert not implements_contract(object())
+
+
+def test_every_registered_environment_is_in_the_catalogue():
+    """The registry is the catalogue, so it cannot drift from what exists."""
+    registered = {spec.name for spec in list_environments()}
+    assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb",
+            "lolo", "lolo_gb", "amazing_tater", "amazing_tater_gb", "super_mario_land",
+            "super_mario_land_gb", "network_attack",
+            "water_network", "power_grid", "crop_management"} == registered
+
+
+def test_a_spec_can_be_loaded_without_importing_the_rest():
+    """Listing the catalogue must not import pyboy, grid2op, numba and the rest; half of
+    them would not be installed."""
+    for spec in list_environments():
+        assert ":" in spec.factory
+        assert spec.deterministic, "every environment here is deterministic"
+        assert spec.state_identity in ("value", "path", "snapshot")
+        if spec.available():
+            assert issubclass(spec.load(), Environment)
 
 
 @pytest.mark.parametrize("factory", environment_params())
@@ -188,3 +275,48 @@ def test_simulate_agrees_with_successors(factory):
     action, expected = env.successors(state)[0]
     trace = env.simulate([action])
     assert trace[-1].literals == expected.literals
+
+
+def test_the_capability_matrix_can_be_derived_from_the_code():
+    """`Environment.capabilities()` exists so the README's matrix is checkable rather than
+    hand-maintained. These are the rows that claim the full set."""
+    from planiverse.environments import get_spec
+
+    full = {"step", "validate", "get_actions", "render", "close"}
+    for name in ("puzznic_gb", "flipull_gb", "super_mario_land_gb",
+                 "water_network", "power_grid", "crop_management"):
+        spec = get_spec(name)
+        if not spec.available():
+            continue
+        assert spec.load().capabilities() >= full, f"{name} claims the full capability row"
+
+
+def test_validate_comes_from_the_base_and_still_counts_as_provided():
+    """`validate` is the same sentence in every environment, so it is written once in the
+    base, but it is a *working* default, unlike `step` and `get_actions` whose defaults
+    only explain their own absence.
+
+    So "does the class override it" is the wrong test for whether a capability is offered,
+    and `capabilities()` asks whether the method would do something instead.
+    """
+    from planiverse.environments import Environment
+
+    assert "validate" in Environment.capabilities(), "the default works"
+    assert "step" not in Environment.capabilities(), "this default only raises"
+    assert "get_actions" not in Environment.capabilities()
+
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
+
+    assert FlipullGBEnv.validate is Environment.validate, "inherited, not rewritten"
+    assert "validate" in FlipullGBEnv.capabilities(), "and still offered"
+
+
+def test_specs_agree_with_the_environments_they_name():
+    """A spec that has drifted from its class is worse than no spec."""
+    from planiverse.environments import Environment, list_environments
+
+    for spec in list_environments(available_only=True):
+        cls = spec.load()
+        assert issubclass(cls, Environment), f"{spec.name} must be an Environment"
+        assert spec.docs, f"{spec.name} should point at its documentation"

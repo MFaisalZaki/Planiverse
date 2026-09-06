@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("nasim", reason="nasim is not installed")
 
-from planiverse.problems.real_world_problems.cyber_security_network_attack.network_attack import (  # noqa: E402
+from planiverse.environments.network_attack.network_attack import (  # noqa: E402
     EnvNASim, NASimState,
 )
 
@@ -21,7 +21,7 @@ TINY = 0
 @pytest.fixture(scope="module")
 def tiny_env():
     env = EnvNASim()
-    env.fix_index(TINY)
+    env.set_index(TINY)
     env.reset()
     return env
 
@@ -34,19 +34,19 @@ def tiny_state(tiny_env):
 
 # --------------------------------------------------------------------------- scenarios
 
-def test_fix_index_maps_to_benchmark_names():
+def test_set_index_maps_to_benchmark_names():
     env = EnvNASim()
-    env.fix_index(0)
+    env.set_index(0)
     assert env.scenario_name == "tiny"
-    env.fix_index(3)
+    env.set_index(3)
     assert env.scenario_name == "small"
-    env.fix_index(17)
+    env.set_index(17)
     assert env.scenario_name == "pocp-2-gen"
 
 
-def test_fix_index_rejects_unknown_index():
+def test_set_index_rejects_unknown_index():
     with pytest.raises(AssertionError, match="not found in the index_scenario_map"):
-        EnvNASim().fix_index(18)
+        EnvNASim().set_index(18)
 
 
 def test_scenario_name_can_be_given_directly():

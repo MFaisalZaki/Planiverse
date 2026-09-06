@@ -1,8 +1,8 @@
 """Shared fixtures and helpers for the Planiverse test suite.
 
-Environments differ in what they need to run: Puzznic needs nothing, the epidemic
-environment needs numba/sympy, NASim needs the NetworkAttackSimulator fork, and Super
-Mario Land needs a ROM the user supplies. Tests for an environment whose requirements
+Environments differ in what they need to run: Puzznic needs nothing, NASim needs the
+NetworkAttackSimulator fork, and the Game Boy environments need a ROM the user supplies.
+Tests for an environment whose requirements
 are missing skip rather than fail, so the suite is runnable from a partial install.
 """
 import os
@@ -19,9 +19,61 @@ def sml_rom_path():
     """Path to a Super Mario Land ROM, or None.
 
     The ROM is copyrighted and cannot ship with the repo, so it is opt-in via the
-    PLANIVERSE_SML_ROM environment variable.
+    PLANIVERSE_SUPER_MARIO_LAND_ROM environment variable.
     """
-    rom = os.environ.get("PLANIVERSE_SML_ROM")
+    rom = os.environ.get("PLANIVERSE_SUPER_MARIO_LAND_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def puzznic_rom_path():
+    """Path to a Puzznic (J) Game Boy ROM, or None.
+
+    Same deal as the Super Mario Land ROM: copyrighted, so it is opt-in via the
+    PLANIVERSE_PUZZNIC_ROM environment variable. The tests that do not need it run
+    against a synthetic cartridge built by `fake_puzznic_rom.py`.
+    """
+    rom = os.environ.get("PLANIVERSE_PUZZNIC_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def flipull_rom_path():
+    """Path to a Flipull (USA) Game Boy ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_FLIPULL_ROM. The tests that
+    do not need it run against a synthetic cartridge built by `fake_flipull_rom.py`.
+    """
+    rom = os.environ.get("PLANIVERSE_FLIPULL_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+
+def amazing_tater_rom_path():
+    """Path to an `Amazing Tater (U).gb` ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_AMAZING_TATER_ROM. The
+    pure-Python twin needs no ROM at all; the tests that compare the two against each other,
+    and the ones that replay a plan on the cartridge, skip without it.
+    """
+    rom = os.environ.get("PLANIVERSE_AMAZING_TATER_ROM")
+    if rom and os.path.isfile(rom):
+        return rom
+    return None
+
+
+def lolo_rom_path():
+    """Path to an `Adventures of Lolo (U) [S][!].gb` ROM, or None.
+
+    Copyrighted like the others, so it is opt-in via PLANIVERSE_LOLO_ROM. The pure-Python
+    twin needs no ROM at all; the tests that compare the two against each other, and the ones
+    that replay a plan on the cartridge, skip without it.
+    """
+    rom = os.environ.get("PLANIVERSE_LOLO_ROM")
     if rom and os.path.isfile(rom):
         return rom
     return None
@@ -30,9 +82,9 @@ def sml_rom_path():
 def assert_state_contract(state):
     """Every Planiverse state exposes `literals` as a frozenset.
 
-    Planners key their visited set on it, so it has to be hashable and set-like. Native
-    environments spell literals as strings; the PDDLGym wrapper passes pddlgym Literal
-    objects straight through, so the element type is not part of the shared contract.
+    Planners key their visited set on it, so it has to be hashable and set-like. The
+    element type is not part of the shared contract; the native environments spell
+    literals as strings, which `assert_string_literals` checks separately.
     """
     assert hasattr(state, "literals"), f"{type(state).__name__} has no literals"
     assert isinstance(state.literals, frozenset), \
@@ -59,17 +111,9 @@ def assert_successors_contract(successors):
 
 @pytest.fixture
 def puzznic_env():
-    from planiverse.problems.retro_games.puzznic import PuzznicGame
+    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 
     env = PuzznicGame()
-    env.fix_index(0)
+    env.set_index(0)
     return env
 
-
-@pytest.fixture
-def mfg_env():
-    from planiverse.problems.real_world_problems.manufacturing_environment.mfenv import MfgEnv
-
-    env = MfgEnv()
-    env.fix_index(0)
-    return env
