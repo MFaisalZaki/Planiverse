@@ -31,29 +31,37 @@ from planiverse.benchmark.measures import MEASURES
 from planiverse.environments import REGISTRY, get_spec
 from planiverse.planners.fsx import FSXPlanner
 from planiverse.planners.mcts import MCTSPlanner
-from planiverse.planners.width import Budget, IteratedBFWS, IteratedWidth, SIWSearch
+from planiverse.planners.width import (
+    Budget, IteratedBFWS, IteratedWidth, PiIW, RolloutIW, SIWSearch,
+)
 
 #: Per run: 30 minutes of wall clock, 8 GB of address space, 500,000 expansions.
 LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
 
-#: The five configurations, in the paper's order. Anything not named is the class's own
-#: default, which is where MCTS's exploration constant, rollout depth, backup rule and length
-#: penalty come from, and FSX's measure, temperature and step cap.
+#: The paper's five configurations in its order, then the two rollout planners. Anything not
+#: named is the class's own default, which is where MCTS's exploration constant, rollout
+#: depth, backup rule and length penalty come from, FSX's measure, temperature and step cap,
+#: and the rollout planners' discount, 200-step episodes and dead-end avoidance. Rollout IW
+#: gets the larger per-decision budget and π-IW the smaller, as in their papers: π-IW's
+#: point is that a learned policy makes a small lookahead go a long way, and its network
+#: (2048 hashed inputs, 64 hidden units, τ = 0.5) is the class default too.
 PLANNERS = {
     "bfws": (IteratedBFWS, {"max_width": 1000}),
     "iw": (IteratedWidth, {"max_width": 1000, "strict": False}),
     "siw": (SIWSearch, {"width": 1, "max_width": 1000, "strict": False}),
     "mcts": (MCTSPlanner, {"iterations": 2000}),
     "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
+    "riw": (RolloutIW, {"width": 1, "expansions_per_step": 1000}),
+    "piiw": (PiIW, {"width": 1, "expansions_per_step": 100}),
 }
 
 #: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
 #: full run under the same limits, and the report averages over them; the environments are
-#: deterministic, so the seed is the only source of variance. The width planners have no seed
-#: and run once.
+#: deterministic, so the seed is the only source of variance. The three breadth-first width
+#: planners have no seed and run once; the rollout planners draw their rollouts from one.
 SEEDS = range(5)
 
-#: The width family: deterministic, and what the overlap and runtime figures compare.
+#: The deterministic width family, and what the overlap and runtime figures compare.
 WIDTH = ("bfws", "iw", "siw")
 
 #: The paper's environment names, in its table order. A `_gb` twin takes the same name under
@@ -435,7 +443,7 @@ def _facts(df, counts):
     lines.append(f"bfws mean plan length: "
                  f"{solved.plan_length[solved.planner == 'bfws'].mean():.1f}")
     per_family = pd.Series(counts).groupby(pd.Series(counts).index.map(family)).sum()
-    for p in ("fsx", "mcts"):
+    for p in (p for p in PLANNERS if len(seeds[p]) > 1):
         runs = df[df.planner == p]
         by_family = (runs.assign(ok=runs.status == "SOLVED")
                      .groupby([runs.environment.map(family), "seed"]).ok.sum())
@@ -552,7 +560,8 @@ def main(argv=None):
                                  help="run one planner on one instance")
     solve_.add_argument("planner", choices=list(PLANNERS))
     solve_.add_argument("task", help="environment@index")
-    solve_.add_argument("--seed", type=int, help="for mcts and fsx; the generated commands set it")
+    solve_.add_argument("--seed", type=int,
+                        help="for the seeded planners; the generated commands set it")
     commands.add_parser("report", parents=[common],
                         help="the paper's tables, figures and numbers")
     args = parser.parse_args(argv)

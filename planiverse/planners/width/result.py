@@ -21,13 +21,15 @@ class SearchStatistics:
     novelty_evaluations: int = 0
     tuples_enumerated: int = 0
     elapsed: float = 0.0
+    rollouts: int = 0               #: lookahead rollouts run (Rollout IW and π-IW)
+    episodes: int = 0               #: episodes played out (the online planners)
     widths_tried: tuple = ()        #: for iterated searches
 
     def merge(self, other):
         """Accumulate another search's counters, for the iterated and serialised planners."""
         for name in ("expansions", "generated", "pruned_novelty", "pruned_terminal",
                      "pruned_duplicate", "novelty_evaluations", "tuples_enumerated",
-                     "elapsed"):
+                     "elapsed", "rollouts", "episodes"):
             setattr(self, name, getattr(self, name) + getattr(other, name))
         self.widths_tried = tuple(self.widths_tried) + tuple(other.widths_tried)
         return self

@@ -1,6 +1,6 @@
 """Width-based planners for simulators.
 
-Five searches, all against the `successors()` / `literals` contract and nothing else:
+Seven searches, all against the `successors()` / `literals` contract and nothing else:
 
 | Planner | Novelty is used as | Complete? |
 |---|---|---|
@@ -9,6 +9,8 @@ Five searches, all against the `successors()` / `literals` contract and nothing 
 | `SIWSearch` | the same, in short legs that each make progress | no |
 | `BFWSSearch` | a sort key: nothing is discarded | yes (unless `prune`) |
 | `IteratedBFWS` | a filter in cheap rounds, then a sort key in the last | yes |
+| `RolloutIW` | a depth-aware filter on rollouts, reset at every committed action | no |
+| `PiIW` | the same, with rollouts steered by a policy it learns as it goes | no |
 
 What changes when the task is a simulator rather than a PDDL model:
 
@@ -25,12 +27,15 @@ What changes when the task is a simulator rather than a PDDL model:
 from planiverse.planners.width.bfws import BFWSSearch, IteratedBFWS
 from planiverse.planners.width.iw import IteratedWidth, IWSearch, SIWSearch
 from planiverse.planners.width.novelty import (
-    MAX_PRACTICAL_WIDTH, NoveltyTable, PartitionedNovelty, path_novelty,
+    MAX_PRACTICAL_WIDTH, DepthNoveltyTable, NoveltyTable, PartitionedNovelty, path_novelty,
 )
+from planiverse.planners.width.policy import PiIW, PolicyNetwork
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
+from planiverse.planners.width.rollout import RolloutIW, RolloutNode
 
 __all__ = [
-    "BFWSSearch", "Budget", "IWSearch", "IteratedBFWS", "IteratedWidth",
-    "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "SIWSearch",
-    "SearchResult", "SearchStatistics", "path_novelty",
+    "BFWSSearch", "Budget", "DepthNoveltyTable", "IWSearch", "IteratedBFWS", "IteratedWidth",
+    "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "PiIW", "PolicyNetwork",
+    "RolloutIW", "RolloutNode", "SIWSearch", "SearchResult", "SearchStatistics",
+    "path_novelty",
 ]
