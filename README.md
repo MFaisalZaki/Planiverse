@@ -330,9 +330,11 @@ planiverse-bench report --sandbox-dir sandbox
 `generate` asks each registered environment how many instances it has and writes one command
 per (planner, instance, seed) under `sandbox/cmds/`, and one SLURM job array per planner, or
 per seed of a seeded planner, under `sandbox/slurm/`. The Game Boy environments need their
-cartridges, which are copyrighted and cannot ship here: export `PLANIVERSE_PUZZNIC_ROM`,
-`PLANIVERSE_FLIPULL_ROM`, `PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and
-`PLANIVERSE_SUPER_MARIO_LAND_ROM` before generating; an environment without one is skipped and
+cartridges, which are copyrighted and cannot ship here: pass them to the setup script as
+`--rom-puzznic`, `--rom-flipull`, `--rom-lolo`, `--rom-amazing-tater` and
+`--rom-super-mario-land`, or export `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
+`PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and `PLANIVERSE_SUPER_MARIO_LAND_ROM`
+before generating. A flag overrides the variable. An environment without one is skipped and
 says so.
 
 Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
