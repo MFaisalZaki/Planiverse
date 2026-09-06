@@ -86,7 +86,7 @@ SBATCH = """#!/bin/bash
 #SBATCH --error={sandbox}/logs/{group}/%A_%a.err
 {extra}{exports}
 # Line n of the command file is array element n. The five minutes and the gigabyte above the
-# harness's own limits let it record its TIMEOUT or MEMOUT before SLURM steps in.
+# benchmark's own limits let it record its TIMEOUT or MEMOUT before SLURM steps in.
 eval "$(sed -n "$((${{SLURM_ARRAY_TASK_ID:-0}} + 1))p" {cmds})"
 """
 

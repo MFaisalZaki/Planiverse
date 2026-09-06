@@ -348,7 +348,9 @@ numbers its prose quotes, into `sandbox/report/`. A seeded planner is reported a
 seeds with the standard deviation, never its best seed. The sandbox behind the paper is attached
 to the [release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
 repository and `report` regenerates every number from it. [docs/benchmark.md](docs/benchmark.md)
-has the details.
+has the details, and its last section lists what the paper has to change to take in Rollout IW
+and π-IW: two coverage columns, two status rows, two cactus curves, the planner descriptions,
+and the numbers its prose quotes.
 
 ## Writing a planner
 
@@ -467,7 +469,7 @@ planiverse/
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
     └── measures.py                     # per-environment progress measures for SIW and BFWS
 docs/environments/                      # per-environment documentation
-docs/benchmark.md                       # the benchmark harness
+docs/benchmark.md                       # the benchmark: protocol, statuses, report
 tools/setup_benchmark.sh                # builds the venv, installs, runs generate
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
@@ -503,50 +505,50 @@ city datasets of [a consensus-MARL paper's repository](https://github.com/mao120
 Neither upstream publishes a licence, so neither the simulator nor the data can be
 redistributed here. Both remain in git history should their upstreams ever license them.
 
-The flood/transport environment ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl))
-is referenced as a planned addition but is not yet in the tree.
-
 ## Status
 
-- [x] README and per-environment docs
-- [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
-- [x] NASim network attack
-- [x] Test suite (`poetry run pytest`)
-- [x] Water distribution, power grid and crop management: three simulator-backed
-      environments whose transitions are solves, not add/delete lists
-- [x] One flat `planiverse.environments` package with a registry, replacing the
-      `real_world_problems` / `retro_games` split
-- [ ] Flood application
-- [ ] Optional dependency groups, so one environment does not pull in all of them
-- [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
-- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
-- [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
-- [x] Run `FlipullGBEnv` against a real `Flipull (USA).gb`, and correct what the memory map had
-      wrong about the throw
-- [x] Flipull stage selection: all 32, via the loader's own stage digits, each with its own
-      board (the cartridge draws arrangements from an RNG seeded by boot timing, so `reset`
-      seeds a distinct, repeatable draw per index)
-- [x] A pure-Python Flipull twin (`FlipullGame`) whose 32 stages match the cartridge's own
-      table, size and CLEAR target for CLEAR target, with generated-and-verified boards and exact
-      dead-end detection
-- [ ] Work out what a Flipull throw actually hits: every row connects, so it is not simply the
-      first block in the player's row. Until it is settled, `FlipullGame` is a Flipull-*like*
-      environment with a stated rule set rather than a clone of the cartridge
-- [~] Boxxle II, both the cartridge environment and its pure-Python twin, **withdrawn**. Both
-      worked, and the twin agreed with the cartridge move for move over 3,000 random moves.
-      They were removed because Boxxle II is Sokoban: its transition is an add/delete list, a
-      PDDL encoding is one page long, and it is one of the most studied benchmarks in planning.
-      An environment that a declarative model handles well is not evidence for a library about
-      planning with simulators. The code is in the history if a use for it appears
-- [x] A dependency-free Super Mario Land counterpart (`SuperMarioLandGame`) whose movement
-      constants were fitted to frame-by-frame measurements of the cartridge: one speed (the
-      measured walk) and one fixed jump arc (the measured full moving jump), with
-      press-length jump control and the `b` dash deliberately left out. Still **not** a
-      twin: the levels are original and the enemies simplified, and the docs lead with that
+What is in the tree:
+
+- Fourteen environments: three simulator-backed operational ones (water distribution, power
+  grid, crop management), the NASim network attack, and five Game Boy games, each as a cartridge
+  environment and as a dependency-free Python counterpart. Four of the counterparts are twins of
+  their cartridge; the Super Mario Land one shares the genre and the measured physics, not the
+  levels.
+- Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
+  latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
+- `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
+  the four that take one, and a report that regenerates the paper's tables, figures and quoted
+  numbers from the results.
+- A test suite that skips what it cannot build, with synthetic cartridges for the two Taito
+  games so their emulator code is tested without a ROM.
+
+Open:
+
+- [ ] Benchmark runs for Rollout IW and π-IW, and the paper edits that go with them; see
+      [Bringing the paper up to date](docs/benchmark.md#bringing-the-paper-up-to-date).
+- [ ] The flood/transport environment
+      ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl)), referenced as
+      a planned addition and not yet in the tree.
+- [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
+      one dependency list and a `dev` extra.
+- [ ] `is_terminal` for the network attack, the one environment that still hard-codes `False`.
+- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`, marked unverified in the
+      code) and its enemy tile IDs.
+- [ ] `SuperMarioPlanner.search` returns nothing and has no replanning loop.
+- [ ] What a Flipull throw actually hits. Every row connects, so it is not simply the first block
+      in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
+      with a stated rule set rather than a clone of the cartridge.
+- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG: a bonus course,
+      unexplored.
 - [ ] A full pure-Python Super Mario Land twin. Deliberately not attempted: reverse-engineering
       a physics platformer move for move is a far larger job than a turn-based puzzle, and a
-      half-modelled one would look like a prediction of the cartridge without being one
-- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG: a bonus course, unexplored
+      half-modelled one would look like a prediction of the cartridge without being one.
+
+Withdrawn: Boxxle II, both the cartridge environment and its twin. Both worked and agreed move
+for move over 3,000 random moves. They were removed because Boxxle II is Sokoban, whose
+transition is an add/delete list and whose PDDL encoding is one page long; an environment a
+declarative model handles well is not evidence for a library about planning with simulators. The
+code is in the history.
 
 ## Licence
 

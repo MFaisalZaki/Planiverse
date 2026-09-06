@@ -5,8 +5,8 @@ configurations the paper compares, and the two rollout planners added since, on 
 of every environment, under the paper's limits, with five seeds for every planner that takes
 one, and turns the results into the paper's tables and figures.
 
-- **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the harness, and the progress
-  measures SIW and BFWS take per environment.
+- **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the benchmark, and the progress
+  measures SIW, BFWS, Rollout IW and π-IW take per environment.
 - **Command:** `planiverse-bench`, installed with the library. `python -m planiverse.benchmark`
   is the same thing.
 
@@ -19,7 +19,7 @@ planiverse-bench report --sandbox-dir sandbox
 ```
 
 Without a cluster, `bash sandbox/run_local.sh 8` runs the same commands eight at a time. The
-harness applies the same limits either way, so the outcomes are comparable; wall-clock times from
+benchmark applies the same limits either way, so the outcomes are comparable; wall-clock times from
 a loaded laptop are not comparable with a cluster's.
 
 ### `generate`
@@ -36,7 +36,7 @@ many instances it has. Then it writes:
   failed element can be re-run by hand from its line.
 - `sandbox/slurm/<group>.sbatch`, a job array that reads that file by `$SLURM_ARRAY_TASK_ID`,
   throttled to `--parallel` elements at a time (default 50), and given 35 minutes and 9 GB so the
-  harness records its own `TIMEOUT` or `MEMOUT` before SLURM steps in. One array per group keeps
+  benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps in. One array per group keeps
   every array one instance set long, under a site's `MaxArraySize`, and finishes seed 0 first.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
@@ -150,3 +150,57 @@ another planner did not use the union over seeds, which is the strongest form of
 The sandbox behind the paper is `sandbox.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
 repository and `report` regenerates every number in the paper from it.
+
+## Bringing the paper up to date
+
+The paper compares five planners. The code now runs seven, and the two rollout planners have no
+results in the released sandbox, so the report shows them as `MISSING` until their arrays are run.
+What has to happen, in order:
+
+1. **Run the ten new arrays.** `generate` writes `riw-s0` to `riw-s4` and `piiw-s0` to `piiw-s4`
+   beside the existing thirteen; with every cartridge present that is 9,380 runs on top of the
+   paper's 12,194. Nothing already run needs repeating: the protocol, the limits and the other
+   planners' parameters are unchanged. Re-release `sandbox.zip` afterwards.
+2. **The planner section.** Two new paragraphs, with the adaptations stated the way the paper
+   states SIW's and BFWS's:
+   - Rollout IW (Bandres, Bonet and Geffner, AAAI 2018): novelty measured against the depth an
+     atom was first seen at, rollouts instead of a breadth-first frontier, a per-decision budget
+     of 1,000 expansions, subtree reuse, the novelty table reset at every committed action. The
+     reward is the drop in the environment's progress measure, since there is no score; a goal
+     ends the search as soon as a rollout finds one; and a dead end backs up minus infinity,
+     because `is_terminal` means no goal is reachable, where the paper's Atari reading would score
+     the step into it.
+   - π-IW (Junyent, Jonsson and Gómez, ICAPS 2019): the same lookahead with a budget of 100
+     expansions per decision, rollouts sampled from a policy network trained online by
+     cross-entropy toward softmax(R/τ) over the root's returns, one Adam step per decision from a
+     replay buffer, and learning carried across episodes for as long as the budget lasts. The
+     network is a one-hidden-layer model over hashed literals rather than a convolutional one over
+     pixels; returns are scaled to [0, 1] among the root's children before the softmax so one
+     temperature serves every environment; the environment's literals are the novelty atoms,
+     with the paper's binarised hidden layer available as an option.
+   - The two citations in the bibliography.
+3. **The protocol paragraph.** "Five planner configurations" becomes seven; "five seeds for the
+   two stochastic planners" becomes five seeds for the four that take one, with the note that
+   for Rollout IW and π-IW the seed drives the rollouts and, for π-IW, the network's
+   initialisation and its training batches. The parameter table gains the two rows in
+   [The protocol](#the-protocol) above.
+4. **Table 2 (coverage)** gains columns `RIW` and `PIIW`, as mean over seeds with the standard
+   deviation in brackets; `coverage.tex` already emits them. The bold total may move.
+5. **Table 3 (statuses)** gains two rows and the median solve time for each; `statuses.tex`
+   already emits them. Both planners end an episode at a dead end or the step cap, so expect
+   `UNSOLVED` rather than `TIMEOUT` to dominate their rows on the puzzles.
+6. **The cactus plot** gains two curves. The overlap and runtime figures stay as they are: they
+   compare the three deterministic width planners, and a seeded planner has no single time per
+   instance to put on them.
+7. **The numbers in the prose**, all read from `facts.txt`: coverage per seed, what each rollout
+   planner solved in some seed that BFWS never did and the reverse, the medians, and the per-family
+   coverage line the report now writes for every seeded planner. The claims comparing the width
+   family against the sampling planners have to be reworded, since Rollout IW is a width planner
+   that samples.
+8. **The discussion.** The one result worth a paragraph is whichever way it falls: whether
+   resetting the novelty table per decision lets Rollout IW(1) reach instances Iterated Width
+   needed width 3 or 4 for, and whether π-IW's policy shortens its plans and its expansions
+   against Rollout IW's on the environments where the progress measure is dense.
+
+Unrelated to the planners but still pending: the caption of the overlap figure describes four
+groups and the figure has five, and the bar order the report writes is not the caption's.
