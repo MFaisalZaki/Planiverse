@@ -193,13 +193,18 @@ tmpfile.pddl
 sandbox*/
 sandbox*
 
+# planiverse-bench writes these wherever it is run. `sandbox*` above already covers the
+# results; this covers the experiment definition that goes with them.
+experiment/
+experiment-*/
+
 *.sas*
 *.cProfile
 
 v-env/
 venv*/
 
-# dev.py
+# (dev/ was removed; see the repository layout section of the README)
 ibm-diversescore/
 *.error
 

@@ -1,7 +1,7 @@
 """Tests for the Puzznic environment."""
 import pytest
 
-from planiverse.problems.retro_games.puzznic import (
+from planiverse.environments.gameboy_py.puzznic import (
     Box, Cursor, EmptySpace, Level, PuzznicGame, PuzznicState, Wall,
 )
 
@@ -27,19 +27,43 @@ def build(levelstr):
 
 # --------------------------------------------------------------------------- levels
 
-def test_fifty_levels_available():
-    assert len(PuzznicGame().levelsstr) == 50
+def test_every_cartridge_round_has_a_level():
+    """One level per Game Boy round. The first 50 were transcribed by hand; the rest were
+    read out of the cartridge, which is also how the hand-typed ones were checked."""
+    assert len(PuzznicGame().levelsstr) == 128
 
 
-@pytest.mark.parametrize("index", range(50))
+@pytest.mark.parametrize("index", range(128))
 def test_every_level_parses_and_resets(index):
     env = PuzznicGame()
-    env.fix_index(index)
+    env.set_index(index)
     state, info = env.reset()
     assert_state_contract(state)
     # A fresh level is neither won nor lost.
     assert not env.is_goal(state)
     assert not env.is_terminal(state)
+
+
+@pytest.mark.parametrize("index,expected", [
+    # Read out of `Puzznic (J)` at `$DF00` after booting each round, via `PuzznicGBEnv`:
+    # the two cells that are wall on the cartridge, and the four blocks whose transcribed
+    # types were transposed with their neighbour's.
+    (23, {"walls": [(1, 6), (2, 6)]}),
+    (34, {"types": {(5, 2): "1", (5, 3): "8", (10, 1): "8", (10, 2): "7"}}),
+])
+def test_the_levels_match_the_cartridge(index, expected):
+    """The 50 Python levels are transcriptions of the cartridge's first 50 rounds, so a
+    cell that disagrees with the ROM is a transcription slip, not a design choice."""
+    env = PuzznicGame()
+    env.set_index(index)
+    state, _ = env.reset()
+    for pos in expected.get("walls", []):
+        assert isinstance(state.grid[pos[0]][pos[1]], Wall), \
+            f"{pos} is a wall on the cartridge"
+    for pos, letter in expected.get("types", {}).items():
+        cell = state.grid[pos[0]][pos[1]]
+        assert isinstance(cell, Box) and cell.letter == letter, \
+            f"{pos} is a type-{letter} block on the cartridge"
 
 
 def test_level_parsing_maps_the_alphabet():
@@ -58,7 +82,7 @@ def test_level_without_cursor_is_rejected():
 
 def test_reset_is_repeatable():
     env = PuzznicGame()
-    env.fix_index(3)
+    env.set_index(3)
     first, _ = env.reset()
     second, _ = env.reset()
     assert first == second
@@ -186,7 +210,7 @@ def test_match_cascades_after_gravity():
     """Clearing lets boxes fall, which can form a new match, which clears in the same step."""
     game = build("#####\n#1  #\n#1  #\n#   #\n#  c#\n#####")
     after = game._compute_successor_state_(game.state, "left")
-    # Both boxes fell together, matched, and cleared -- the level is now won.
+    # Both boxes fell together, matched, and cleared: the level is now won.
     assert after.is_goal()
     assert len(after.cleared_boxes) == 2
 
