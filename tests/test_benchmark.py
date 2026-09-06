@@ -1,4 +1,4 @@
-"""The harness's own job: one file per run whatever happened, and a report that adds up."""
+"""The benchmark's own job: one file per run whatever happened, and a report that adds up."""
 import json
 import pathlib
 
@@ -24,7 +24,7 @@ def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
 
 
 def test_the_rollout_planners_run_under_the_protocol_with_a_seed(tmp_path):
-    """Both take a seed, so the harness gives them the five like MCTS and FSX, and the
+    """Both take a seed, so the benchmark gives them the five like MCTS and FSX, and the
     progress measure like SIW and BFWS."""
     from planiverse.benchmark import _seeds
     assert _seeds("riw") == [0, 1, 2, 3, 4] and _seeds("piiw") == [0, 1, 2, 3, 4]

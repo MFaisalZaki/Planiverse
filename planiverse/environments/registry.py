@@ -46,14 +46,14 @@ class EnvironmentSpec:
     #: Constructor keyword arguments, as `(name, value)` pairs, for the environments whose
     #: `__init__` takes a required argument. Without these `make(name)` works for most of the
     #: catalogue and raises a `TypeError` for the rest, which makes "build every registered
-    #: environment" (what the benchmark harness does) impossible to write generically.
+    #: environment" (what the benchmark does) impossible to write generically.
     #: Pairs rather than a dict so the spec stays hashable.
     defaults: tuple = ()
     #: For a `needs_rom` environment, the environment variable holding the path to the
     #: cartridge, and the constructor argument to pass it as. The file is copyrighted and
     #: cannot ship, so the path can only come from the user. Without somewhere to put it
     #: these environments cannot be constructed by name at all, which makes them invisible to
-    #: anything generic (the benchmark harness, most obviously).
+    #: anything generic (the benchmark, most obviously).
     rom_variable: str = ""
     rom_argument: str = "romfile"
 

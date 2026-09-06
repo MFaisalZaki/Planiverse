@@ -465,7 +465,7 @@ class PuzznicGame(Environment):
         It used to be accepted and only rejected at `reset()`, by an assertion inside
         `_levels_str_`, which `python -O` strips, and which meant anything asking the
         environment how many levels it has by walking `set_index` upwards (the benchmark
-        harness does exactly that) got told there was no limit.
+        does exactly that) got told there was no limit.
         """
         if not 0 <= index < len(self.levelsstr):
             raise IndexError(
