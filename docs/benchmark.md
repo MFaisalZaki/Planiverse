@@ -1,9 +1,9 @@
 # Benchmarking
 
 `planiverse-bench` is the tool paper's evaluation protocol as code. It runs the five planner
-configurations the paper compares on every instance of every environment, under the paper's
-limits, with five seeds for the two stochastic planners, and turns the results into the paper's
-tables and figures.
+configurations the paper compares, and the two rollout planners added since, on every instance
+of every environment, under the paper's limits, with five seeds for every planner that takes
+one, and turns the results into the paper's tables and figures.
 
 - **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the harness, and the progress
   measures SIW and BFWS take per environment.
@@ -40,8 +40,8 @@ many instances it has. Then it writes:
   every array one instance set long, under a site's `MaxArraySize`, and finishes seed 0 first.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
-The suite's 938 instances make 13 arrays: three for the width planners and five each for MCTS
-and FSX, 12,194 runs. The commands call the interpreter that ran `generate` by absolute path, so
+The suite's 938 instances make 23 arrays: three for the deterministic width planners and five
+each for MCTS, FSX, Rollout IW and π-IW, 21,574 runs. The commands call the interpreter that ran `generate` by absolute path, so
 the jobs need no activation and cannot pick up a different install. An environment that cannot be
 built here (a missing dependency, or a Game Boy environment with no cartridge) is skipped, and
 `generate` says so.
@@ -77,7 +77,7 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 | Memory | 8 GB, as an address-space limit, so an overrun is a `MemoryError` the run records |
 | Expansions | 500,000 |
 | Cores | one per run |
-| Seeds | 0 to 4 for MCTS and FSX, each (instance, seed) a full run under the limits above; the width planners are deterministic and run once |
+| Seeds | 0 to 4 for MCTS, FSX, Rollout IW and π-IW, each (instance, seed) a full run under the limits above; BFWS, IW and SIW are deterministic and run once |
 | Solved | only if the returned plan, replayed through `simulate`, reaches a goal |
 
 | Planner | Class | Parameters |
@@ -87,11 +87,18 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 | `siw` | `SIWSearch` | `width=1, max_width=1000, strict=False` |
 | `mcts` | `MCTSPlanner` | `iterations=2000`, the run's seed; the exploration constant √2, 30-step rollouts, max backup and the 0.001 length penalty are the class defaults |
 | `fsx` | `FSXPlanner` | `horizon=6, walkers=8`, the run's seed; the distinct-state count, zero temperature and 200 committed steps are the class defaults |
+| `riw` | `RolloutIW` | `width=1, expansions_per_step=1000`, the run's seed; the 0.99 discount, 200-step episodes, one episode, subtree reuse and dead-end avoidance are the class defaults |
+| `piiw` | `PiIW` | `width=1, expansions_per_step=100`, the run's seed; the network (2048 hashed inputs, 64 hidden units), τ = 0.5, one Adam step per decision on a batch of 32 from a replay of 10,000, episodes until the budget ends, and the environment's literals as the novelty atoms are the class defaults |
 
 SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count a classical
-planner would use. [`measures.py`](../planiverse/benchmark/measures.py) supplies one per
-environment, lower is better; they are search guides, not admissible heuristics. The environments
-are deterministic, so for MCTS and FSX the seed is the only source of variance.
+planner would use, and Rollout IW and π-IW take the same callback in place of the score their
+papers' Atari games provide: a transition's reward is the drop in it.
+[`measures.py`](../planiverse/benchmark/measures.py) supplies one per environment, lower is
+better; they are search guides, not admissible heuristics. The environments are deterministic, so
+for the seeded planners the seed is the only source of variance. Rollout IW gets the larger
+per-decision budget and π-IW the smaller, as in their papers: π-IW's claim is that a learned
+policy makes a small lookahead go a long way, and it keeps learning across episodes for as long
+as the budget lasts. See [rollout-width.md](planners/rollout-width.md).
 
 ## Statuses
 
@@ -109,9 +116,11 @@ Every run ends in exactly one:
 | `UNSUPPORTED` | the environment could not be built |
 | `MISSING` | no result file; assigned by `report` |
 
-`UNSOLVED` says the planner stopped looking, not that there is no plan: only BFWS is complete. A
-search that reports `out_of_budget` without reaching either limit (an iterated search whose
-per-width allowances ran out, or FSX at its step cap or a dead end) is filed as `NODEOUT`.
+`UNSOLVED` says the planner stopped looking, not that there is no plan: only BFWS is complete. For
+Rollout IW it means its one episode ended at a dead end or the step cap, or its lookahead solved
+the root without a goal beneath it. A search that reports `out_of_budget` without reaching either
+limit (an iterated search whose per-width allowances ran out, or FSX at its step cap or a dead
+end) is filed as `NODEOUT`.
 
 ## `report`
 
@@ -135,7 +144,8 @@ another planner did not use the union over seeds, which is the strongest form of
   (hollow, right axis), with failures on the limit.
 - `facts.txt`: the numbers the paper's prose quotes: coverage per seed and in some or every
   seed, what each planner solved outside BFWS's set, medians, the per-instance speed ratios,
-  errors and missing runs, IW's widths, plan lengths.
+  errors and missing runs, IW's widths, plan lengths, and each seeded planner's coverage per
+  family.
 
 The sandbox behind the paper is `sandbox.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the

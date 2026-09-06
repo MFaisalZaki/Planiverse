@@ -279,6 +279,7 @@ See [docs/rendering.md](docs/rendering.md).
 | Family | Where | What it needs from an environment |
 |---|---|---|
 | Width-based: IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
+| Rollout IW, and π-IW with a policy it learns as it plans | [`planiverse/planners/width/rollout.py`](planiverse/planners/width/rollout.py), [`policy.py`](planiverse/planners/width/policy.py) | `successors` and `literals`; a `progress` callback stands in for the score |
 | MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
@@ -298,6 +299,12 @@ to count, so SIW and BFWS take a `progress` callback instead; (2) expansions are
 every search takes a budget and reports what it spent; and (3) dead ends are real, and detecting
 them is most of what makes a simulator task searchable.
 
+Rollout IW (Bandres, Bonet and Geffner, 2018) and π-IW (Junyent, Jonsson and Gómez, 2019) are
+in [docs/planners/rollout-width.md](docs/planners/rollout-width.md): the novelty filter kept,
+the breadth-first order replaced by rollouts that commit to an action every few hundred
+expansions, and in π-IW a small policy network, trained on the planner's own lookaheads, that
+steers the rollouts and can supply the atoms novelty is measured over.
+
 MCTS and Future State Maximization are in
 [docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
 given no goal and no heuristic at all and picks whichever action leaves the most futures
@@ -308,9 +315,10 @@ write.
 ## Benchmarking
 
 `planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
-configurations the paper compares, on every instance of every environment, under a 30-minute
-wall-clock limit, an 8 GB address-space cap and a 500,000-expansion bound, with five seeds for
-the two stochastic planners, on a SLURM cluster or on one machine. There is no configuration
+configurations the paper compares plus Rollout IW and π-IW, on every instance of every
+environment, under a 30-minute wall-clock limit, an 8 GB address-space cap and a
+500,000-expansion bound, with five seeds for each of the four planners that take one, on a
+SLURM cluster or on one machine. There is no configuration
 file, because the protocol is the point.
 
 ```bash
@@ -328,7 +336,7 @@ cartridges, which are copyrighted and cannot ship here: export `PLANIVERSE_PUZZN
 says so.
 
 Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
-(`..._<i>__s<seed>.json` for MCTS and FSX) whatever happened: `SOLVED` (the plan replays to a
+(`..._<i>__s<seed>.json` for a seeded planner) whatever happened: `SOLVED` (the plan replays to a
 goal), `INVALID` (it does not), `UNSOLVED` (the search stopped on its own), `TIMEOUT`,
 `NODEOUT`, `MEMOUT`, `ERROR`, `UNSUPPORTED` (the environment could not be built), and
 `MISSING`, which `report` assigns to a run that left no file, so a job that never ran cannot
@@ -450,7 +458,7 @@ planiverse/
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
 ├── planners/
-│   ├── width/                          # IW, Iterated Width, SIW, BFWS
+│   ├── width/                          # IW, Iterated Width, SIW, BFWS, Rollout IW, π-IW
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
 │   ├── mcts.py                         # MCTSPlanner (UCT)
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner

@@ -23,6 +23,18 @@ def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
     assert solve(tmp_path, "mcts", "puzznic@9999")["seed"] == 0   # run by hand: the first seed
 
 
+def test_the_rollout_planners_run_under_the_protocol_with_a_seed(tmp_path):
+    """Both take a seed, so the harness gives them the five like MCTS and FSX, and the
+    progress measure like SIW and BFWS."""
+    from planiverse.benchmark import _seeds
+    assert _seeds("riw") == [0, 1, 2, 3, 4] and _seeds("piiw") == [0, 1, 2, 3, 4]
+    for tag in ("riw", "piiw"):
+        record = solve(tmp_path, tag, "puzznic@1", seed=2)
+        assert record["status"] == "SOLVED", record
+        assert record["seed"] == 2 and record["params"]["width"] == 1
+        assert (tmp_path / f"results/{tag}/puzznic__1__s2.json").is_file()
+
+
 def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
     (tmp_path / "tasks.json").write_text(
         json.dumps({"environments": [{"environment": "puzznic", "instances": 2}]}))
