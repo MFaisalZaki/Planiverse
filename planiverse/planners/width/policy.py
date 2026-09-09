@@ -23,7 +23,9 @@ What is kept and what is changed against the paper:
   describes; it is not a claim to match its Atari numbers.
 * **Returns come from `progress`**, the improvement in the same measure SIW and BFWS take,
   because there is no score. The root's returns are scaled to `[0, 1]` before the softmax,
-  so one temperature serves every environment; the paper uses the game's raw returns.
+  so one temperature serves every environment; the paper uses the game's raw returns. A
+  dead end's return of minus infinity stays out of the scaling and enters the softmax as a
+  probability of zero, and a decision whose every child is a dead end teaches nothing.
 * **Training is online, one gradient step per decision, from a replay of recent targets**,
   and it continues across episodes: an episode that ends without a goal is not wasted, the
   next one starts with what it taught. `RolloutIW`'s `max_episodes` is therefore `None`
@@ -219,13 +221,25 @@ class PiIW(RolloutIW):
     # ---------------------------------------------------------------------- learning
 
     def __committed__(self, root, child):
-        """Turn the root's backed-up returns into a target and take a gradient step."""
+        """Turn the root's backed-up returns into a target and take a gradient step.
+
+        The returns are the ones the commit decision used, so under `avoid_dead_ends` a
+        child that is a dead end, or whose every descendant is one, is worth minus infinity.
+        Scaled naively that is NaN, and one gradient step on a NaN target turns every weight
+        NaN. So the scaling to [0, 1] runs over the finite returns only, and minus infinity
+        goes into the softmax as it is, where it becomes a probability of exactly zero: the
+        policy is taught not to go there. If no return is finite there is nothing to prefer,
+        and the decision teaches nothing.
+        """
         if not self.train or not root.children:
             return
-        returns = np.array([c.reward + self.discount * c.value for c in root.children],
-                           dtype=np.float32)
-        span = returns.max() - returns.min()
-        scaled = (returns - returns.min()) / span if span > 0 else np.zeros_like(returns)
+        returns = np.array([self.__return__(c) for c in root.children], dtype=np.float32)
+        finite = np.isfinite(returns)
+        if not finite.any():
+            return
+        low, high = returns[finite].min(), returns[finite].max()
+        scaled = np.where(finite, (returns - low) / (high - low) if high > low else 0.0,
+                          -np.inf)
         logits = scaled / self.temperature
         soft = np.exp(logits - logits.max())
         soft /= soft.sum()

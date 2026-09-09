@@ -143,9 +143,15 @@ another planner did not use the union over seeds, which is the strongest form of
 - `runtime_bfws_iw_siw.pdf`: BFWS's time per instance against IW (filled, left axis) and SIW
   (hollow, right axis), with failures on the limit.
 - `facts.txt`: the numbers the paper's prose quotes: coverage per seed and in some or every
-  seed, what each planner solved outside BFWS's set, medians, the per-instance speed ratios,
-  errors and missing runs, IW's widths, plan lengths, and each seeded planner's coverage per
-  family.
+  seed, what each planner solved outside BFWS's set, medians, the per-instance speed ratios
+  with their sign tests, errors and missing runs, IW's widths, plan lengths, and each seeded
+  planner's coverage per family; then the protocol's other aggregations (the mean fraction
+  solved over environments and the IPC quality score), each planner's plan lengths against
+  BFWS's, what the rollout planners reached by the width IW needed, π-IW against Rollout IW on
+  the runs both solved and its episodes per solved run, every planner's statuses per
+  environment, the cost of an expansion on the twins, the cartridges and the rest, and the
+  difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
+  largest width) that the paper's open-challenges section tabulates.
 
 The sandbox behind the paper is `sandbox.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
@@ -176,7 +182,8 @@ What has to happen, in order:
      replay buffer, and learning carried across episodes for as long as the budget lasts. The
      network is a one-hidden-layer model over hashed literals rather than a convolutional one over
      pixels; returns are scaled to [0, 1] among the root's children before the softmax so one
-     temperature serves every environment; the environment's literals are the novelty atoms,
+     temperature serves every environment, with a dead end's minus infinity entering the
+     softmax as a probability of zero; the environment's literals are the novelty atoms,
      with the paper's binarised hidden layer available as an option.
    - The two citations in the bibliography.
 3. **The protocol paragraph.** "Five planner configurations" becomes seven; "five seeds for the
