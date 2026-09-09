@@ -94,7 +94,10 @@ uses the atoms every other planner in this library uses.
   above zero, so a policy sure of itself cannot stop exploration.
 - **Returns come from `progress`.** They are scaled to `[0, 1]` among the root's children before
   the softmax, so one temperature serves every environment; the paper uses the game's raw
-  returns.
+  returns. A dead end's return of minus infinity stays out of the scaling and enters the softmax
+  as a probability of zero, so the policy is taught not to go there; a decision whose every
+  child is a dead end teaches nothing. Before this the minus infinity made the target NaN and
+  the network's weights with it, which is how 700 of the 2026-09 benchmark's π-IW runs ended.
 - **Training is online and continues across episodes.** One Adam step per committed action on a
   batch of 32 from a replay of the last 10,000 targets. An episode that ends without a goal is
   not wasted, the next starts with what it taught, so `max_episodes=None`: π-IW runs until it

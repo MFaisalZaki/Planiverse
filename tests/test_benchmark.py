@@ -56,6 +56,29 @@ def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
 def test_the_paper_comes_out_of_its_sandbox():
     report(SANDBOX)
     facts = (SANDBOX / "report/facts.txt").read_text()
-    assert facts.startswith("solved per seed: bfws 435, iw 325, siw 193")
+    assert facts.startswith("solved per seed: bfws 476, iw 357, siw 207")
     statuses = (SANDBOX / "report/statuses.tex").read_text()
-    assert "BFWS & \\textbf{435} & 149 & 248 & 100 & 6 &" in statuses
+    assert "BFWS & \\textbf{476} & 122 & 229 & 104 & 7 &" in statuses
+    # The open-challenges section quotes these, so they come out of the same report.
+    assert "open instances (solved by no planner in any seed): 440" in facts
+    assert "ipc quality score over the 498 instances solved by any planner: bfws 445.1" in facts
+
+
+def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):
+    """Five 2026-09 runs left empty files: `open` truncated, then `json.dump` raised MemoryError
+    under the address-space cap. The write lifts the cap and tries once more."""
+    import planiverse.benchmark as bench
+    real_dump, calls = bench.json.dump, []
+
+    def dump_once_out_of_memory(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise MemoryError
+        return real_dump(*args, **kwargs)
+
+    monkeypatch.setattr(bench.json, "dump", dump_once_out_of_memory)
+    record = {"task": "puzznic@0", "environment": "puzznic", "index": 0, "planner": "riw",
+              "seed": 0, "started": 0.0}
+    bench._write(tmp_path, record, "MEMOUT")
+    written = json.loads((tmp_path / "results/riw/puzznic__0__s0.json").read_text())
+    assert written["status"] == "MEMOUT" and len(calls) == 2

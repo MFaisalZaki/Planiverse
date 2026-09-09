@@ -169,6 +169,48 @@ def test_pi_iw_can_measure_novelty_over_what_it_learned(env):
     assert state.literals < both
 
 
+def test_a_dead_end_beneath_the_root_does_not_poison_the_policy(env):
+    """A root child that is a dead end, or whose every descendant is one, returns minus
+    infinity. That has to reach the target as a probability of zero: scaled naively it is
+    NaN, one gradient step makes every weight NaN, and the next rollout draw raises, which
+    is how 700 runs of the 2026-09 benchmark ended."""
+    from planiverse.planners.width import RolloutNode
+    planner = PiIW(expansions_per_step=10, progress=boxes, seed=0)
+    state, _ = env.reset()
+    root = RolloutNode(state)
+    good = RolloutNode(state, parent=root, action="left", depth=1, reward=1.0)
+    walled = RolloutNode(state, parent=root, action="right", depth=1, reward=2.0)
+    walled.value = float("-inf")            # every child beneath it is a dead end
+    dead = RolloutNode(state, parent=root, action="up", depth=1, reward=3.0)
+    dead.terminal = True
+    root.children = [good, walled, dead]
+    planner.__committed__(root, good)
+    _, target = planner.replay[-1]
+    assert np.isfinite(target).all() and np.isclose(target.sum(), 1.0)
+    assert target[planner.index("left")] == 1.0, "the one child with a future"
+    assert target[planner.index("right")] == 0.0 and target[planner.index("up")] == 0.0
+    assert all(np.isfinite(p).all() for p in planner.network.params.values())
+    assert planner.__pick__(root, root.children) in root.children, "weights still finite"
+    root.children = [walled, dead]
+    updates = planner.network.updates
+    planner.__committed__(root, walled)
+    assert planner.network.updates == updates, "nothing to prefer, nothing to learn"
+
+
+def test_pi_iw_survives_a_dead_end_at_its_first_decision():
+    """The benchmark's failure, reproduced: Super Mario Land's Python level 11 under seed 4
+    met a walled subtree at the first committed action and raised within a tenth of a
+    second."""
+    from planiverse.benchmark.measures import MEASURES
+    from planiverse.environments import make
+    planner = PiIW(width=1, expansions_per_step=100, seed=4,
+                   progress=MEASURES["super_mario_land"])
+    result = planner.solve(make("super_mario_land", index=11),
+                           Budget(max_expansions=2000, max_seconds=30))
+    assert result.statistics.expansions > 0
+    assert all(np.isfinite(p).all() for p in planner.network.params.values())
+
+
 def test_pi_iw_keeps_learning_across_episodes():
     """An episode that ends without a goal is not wasted: the next starts from what it
     taught, and `max_episodes` is unbounded by default."""

@@ -261,8 +261,18 @@ def _write(sandbox, record, status, seconds=None, note=None):
     path = os.path.join(str(sandbox), "results", record["planner"],
                         _filename(record["environment"], record["index"], record["seed"]))
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as handle:
-        json.dump(record, handle, indent=1, default=str)
+    try:
+        with open(path, "w") as handle:
+            json.dump(record, handle, indent=1, default=str)
+    except MemoryError:
+        # The write can be what runs out: a MEMOUT run still holds the search that filled the
+        # address space, and `open` has already truncated the file, so five runs of the
+        # 2026-09 benchmark left empty files. The cap has done its job by then; lift it to the
+        # hard limit and write again.
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        resource.setrlimit(resource.RLIMIT_AS, (hard, hard))
+        with open(path, "w") as handle:
+            json.dump(record, handle, indent=1, default=str)
     print(f"{record['task']:24} {record['planner']:6} {status:12} {record['seconds']:.2f}s")
     return record
 
@@ -289,12 +299,17 @@ def report(sandbox):
                         record = {"status": "ERROR"}
                     # An unseeded planner's runs sit under seed -1, so the column stays a
                     # number the tables can group and average on.
+                    stats = record.get("statistics") or {}
                     rows.append({"planner": tag, "seed": -1 if seed is None else seed,
                                  "environment": env, "task": f"{env}@{index}",
                                  "status": record.get("status", "ERROR"),
                                  "seconds": record.get("seconds"),
                                  "width": record.get("width"),
-                                 "plan_length": record.get("plan_length")})
+                                 "plan_length": record.get("plan_length"),
+                                 "expansions": stats.get("expansions"),
+                                 "generated": stats.get("generated"),
+                                 "search_seconds": stats.get("search_seconds"),
+                                 "episodes": stats.get("episodes")})
     df = pd.DataFrame(rows)
     solved = df[df.status == "SOLVED"]
 
@@ -405,6 +420,7 @@ def _statuses_tex(df, solved):
 def _facts(df, counts):
     """The numbers the paper's prose quotes, read off here rather than worked out by hand."""
     import pandas as pd
+    from scipy.stats import binomtest
     solved = df[df.status == "SOLVED"]
     per_seed = _solved_per_seed(df)
     seeds = {p: sorted(df.seed[df.planner == p].unique()) for p in PLANNERS}
@@ -432,9 +448,14 @@ def _facts(df, counts):
         both = times[["bfws", p]].dropna()
         ratio = both[p] / both.bfws
         lolo = ratio[env[both.index] == "lolo"]
+        slower, faster = int((ratio > 1).sum()), int((ratio < 1).sum())
+        # A sign test on the direction of each pair; ties, if any, are left out of it.
+        p_value = (f"{binomtest(slower, slower + faster).pvalue:.2g}" if slower + faster
+                   else "n/a")
         lines.append(f"{p} against bfws on the {len(both)} instances both solved: slower on "
-                     f"{(ratio > 1).sum()}, median ratio {ratio.median():.2f} overall and "
-                     f"{lolo.median():.1f} on the Python lolo rooms")
+                     f"{slower}, faster on {faster} (sign test p={p_value}), median ratio "
+                     f"{ratio.median():.2f} overall and {lolo.median():.1f} on the Python "
+                     f"lolo rooms")
     for status in ("ERROR", "MISSING"):
         where = df[df.status == status].groupby(["planner", "environment"]).size()
         lines.append(f"{status.lower()} over all runs: " + (", ".join(
@@ -453,6 +474,119 @@ def _facts(df, counts):
                      .groupby([runs.environment.map(family), "seed"]).ok.sum())
         lines.append(f"{p} solved per seed, per family: " + ", ".join(
             f"{f} {_fmt(by_family.loc[f])}/{k}" for f, k in per_family.items()))
+
+    # The protocol's other aggregations: the mean over environments of the fraction solved,
+    # which weights a 9-instance environment the same as a 163-instance one, and the IPC
+    # quality score, which credits each solved instance with the shortest known plan length
+    # over the planner's own. Both are per seed, summarised like coverage.
+    def mean_sd(values, unit=""):
+        values = [float(v) for v in values]
+        return (f"{statistics.mean(values):.1f}{unit}"
+                + (f" ({statistics.stdev(values):.1f})" if len(values) > 1 else ""))
+    per_env = (df.assign(ok=df.status == "SOLVED")
+               .groupby(["planner", "seed", "environment"]).ok.sum().unstack("environment")
+               .reindex(columns=list(counts), fill_value=0))
+    fraction = (per_env / pd.Series(counts)).mean(axis=1) * 100
+    lines.append("mean fraction solved over the environments (%): " + ", ".join(
+        f"{p} {mean_sd([fraction.get((p, s), 0.0) for s in seeds[p]])}" for p in PLANNERS))
+    best = solved.groupby("task").plan_length.min()
+    score = (solved.assign(q=best.reindex(solved.task).values / solved.plan_length.values)
+             .groupby(["planner", "seed"]).q.sum())
+    lines.append(f"ipc quality score over the {len(best)} instances solved by any planner: "
+                 + ", ".join(f"{p} {mean_sd([score.get((p, s), 0.0) for s in seeds[p]])}"
+                             for p in PLANNERS))
+    bfws_length = solved[solved.planner == "bfws"].set_index("task").plan_length
+    for p in (p for p in PLANNERS if p != "bfws"):
+        runs = solved[solved.planner == p]
+        pair = runs.assign(b=bfws_length.reindex(runs.task).values).dropna(subset=["b"])
+        lines.append(f"{p} plan length against bfws on the {len(pair)} runs both solved: "
+                     f"shorter on {(pair.plan_length < pair.b).sum()}, equal on "
+                     f"{(pair.plan_length == pair.b).sum()}, longer on "
+                     f"{(pair.plan_length > pair.b).sum()}, medians "
+                     f"{pair.plan_length.median():g} and {pair.b.median():g}")
+
+    # What the rollout planners reached, against IW's width and against each other.
+    iw_width = iw.set_index("task").width
+    for p in (p for p in ("riw", "piiw") if p in seeds):
+        need = iw_width.reindex(sorted(union[p]))
+        lines.append(f"{p} solved in some seed, by the width iw needed: " + ", ".join(
+            f"w{w:.0f} {k}" for w, k in need.value_counts().sort_index().items())
+            + f", unsolved by iw {int(need.isna().sum())}")
+    if "riw" in seeds:
+        gave_up = df[(df.planner == "riw") & (df.status == "UNSOLVED")]
+        lines.append(f"riw unsolved runs: {len(gave_up)}, median {gave_up.seconds.median():.1f} s")
+    if "riw" in seeds and "piiw" in seeds:
+        a = solved[solved.planner == "riw"].set_index(["task", "seed"])
+        b = solved[solved.planner == "piiw"].set_index(["task", "seed"])
+        both = a.join(b, lsuffix="_riw", rsuffix="_piiw", how="inner")
+        lines.append(f"piiw against riw on the {len(both)} (instance, seed) pairs both solved: "
+                     f"plan length medians {both.plan_length_piiw.median():g} and "
+                     f"{both.plan_length_riw.median():g}, piiw shorter on "
+                     f"{(both.plan_length_piiw < both.plan_length_riw).sum()} and longer on "
+                     f"{(both.plan_length_piiw > both.plan_length_riw).sum()}; expansions "
+                     f"medians {both.expansions_piiw.median():g} and "
+                     f"{both.expansions_riw.median():g}, piiw fewer on "
+                     f"{(both.expansions_piiw < both.expansions_riw).sum()}")
+    if "piiw" in seeds:
+        pi = solved[solved.planner == "piiw"]
+        lines.append(f"piiw solved runs: {len(pi)}, needing more than one episode "
+                     f"{(pi.episodes > 1).sum()}")
+        lines += [f"piiw episodes on {e}: {len(r)} solved runs, more than one episode on "
+                  f"{(r.episodes > 1).sum()}, median {r.episodes.median():g}"
+                  for e, r in pi.groupby("environment") if (r.episodes > 1).any()]
+        for p in (p for p in PLANNERS if len(seeds[p]) > 1):
+            failed = df[(df.planner == p) & (df.status == "ERROR")].groupby("task").size()
+            if len(failed):
+                lines.append(f"{p} errors: {int(failed.sum())} runs, on {len(failed)} "
+                             f"instances in some seed and {int((failed == len(seeds[p])).sum())}"
+                             f" in every seed, of which bfws solved "
+                             f"{len(set(failed.index) & union['bfws'])}")
+
+    # Where each planner's runs ended, per environment, and what an expansion cost on each
+    # side of a cartridge pair: the twins, the cartridges, and the rest of the suite.
+    for p in PLANNERS:
+        runs = df[df.planner == p]
+        lines.append(f"{p} statuses by environment: " + "; ".join(
+            f"{e} " + " ".join(f"{s} {k}" for s, k in r.status.value_counts().items())
+            for e, r in runs.groupby("environment")))
+    side = pd.Series({e: "cartridges" if e.endswith("_gb") else
+                      "twins" if e + "_gb" in counts else "other" for e in counts})
+    ran = df[df.expansions > 0].assign(ms=lambda r: r.search_seconds / r.expansions * 1000,
+                                       side=lambda r: r.environment.map(side))
+    for p in PLANNERS:
+        mine = ran[ran.planner == p]
+        lines.append(f"{p} milliseconds per expansion at the median: " + ", ".join(
+            f"{k} {v:.1f}" for k, v in mine.groupby("side").ms.median().items()))
+        mine = mine[mine.status == "SOLVED"]
+        lines.append(f"{p} expansions per solved run at the median: " + ", ".join(
+            f"{k} {v:g}" for k, v in mine.groupby("side").expansions.median().items()))
+
+    # The difficulty profile: what no planner solved, and how the solved instances look.
+    solved_tasks = set(solved.task)
+    lines.append("open instances (solved by no planner in any seed): "
+                 f"{sum(counts.values()) - len(solved_tasks)}")
+    bf = solved[solved.planner == "bfws"]
+    branching = (df[(df.planner == "bfws") & (df.expansions > 0)]
+                 .assign(b=lambda r: r.generated / r.expansions))
+    for e in counts:
+        length = bf.plan_length[bf.environment == e]
+        lines.append(f"difficulty on {e}: open "
+                     f"{counts[e] - len({t for t in solved_tasks if env[t] == e})}, bfws plan "
+                     f"length median {length.median():g} and longest {length.max():g}, "
+                     f"successors per expansion {branching.b[branching.environment == e].median():.1f}, "
+                     f"iw max width {iw.width[iw.environment == e].max():g}")
+    lines.append("bfws plan length median by side: " + ", ".join(
+        f"{k} {v:g}" for k, v in bf.groupby(bf.environment.map(side)).plan_length.median().items())
+        + f"; longest {bf.plan_length.max():g}")
+    ended = df[df.planner == "bfws"].groupby([df.environment.map(side), "status"]).size()
+    lines.append("bfws statuses by side: " + "; ".join(
+        f"{k} " + " ".join(f"{s} {n}" for s, n in r.droplevel(0).items())
+        for k, r in ended.groupby(level=0)))
+    lines.append("bfws median solve time by environment (s): " + ", ".join(
+        f"{e} {v:.1f}" for e, v in bf.groupby("environment").seconds.median().items()))
+    lines.append("bfws widths by environment: " + "; ".join(
+        f"{e} " + widths(r) + f" longest solve {r.seconds.max():.1f} s"
+        for e, r in bf.groupby("environment")))
     return "\n".join(lines) + "\n"
 
 
