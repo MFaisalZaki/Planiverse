@@ -60,8 +60,8 @@ def test_the_paper_comes_out_of_its_sandbox():
     statuses = (SANDBOX / "report/statuses.tex").read_text()
     assert "BFWS & \\textbf{476} & 122 & 229 & 104 & 7 &" in statuses
     # The open-challenges section quotes these, so they come out of the same report.
-    assert "open instances (solved by no planner in any seed): 440" in facts
-    assert "ipc quality score over the 498 instances solved by any planner: bfws 445.1" in facts
+    assert "open instances (solved by no planner in any seed): 439" in facts
+    assert "ipc quality score over the 499 instances solved by any planner: bfws 444.9" in facts
 
 
 def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):

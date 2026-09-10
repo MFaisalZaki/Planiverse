@@ -233,7 +233,8 @@ def solve(sandbox, tag, task, seed=None):
                 status = "SOLVED" if env.validate(out.plan) else "INVALID"
             except Exception:
                 status = "INVALID"
-        elif out.status in ("failed", "exhausted"):
+        elif out.status in ("failed", "exhausted", "step_limit", "dead_end"):
+            # The search stopped on its own: nothing left, or FSX at its step cap or a dead end.
             status = "UNSOLVED"
         elif out.statistics.expansions >= LIMITS["expansions"]:
             status = "NODEOUT"
@@ -241,7 +242,7 @@ def solve(sandbox, tag, task, seed=None):
             status = "TIMEOUT"
         else:
             # Out of budget with neither limit reached: an iterated search whose per-width
-            # allowances ran out, or FSX at its step cap or a dead end.
+            # allowances ran out.
             status = "NODEOUT"
         return _write(sandbox, record, status, elapsed)
     except MemoryError:
@@ -300,9 +301,16 @@ def report(sandbox):
                     # An unseeded planner's runs sit under seed -1, so the column stays a
                     # number the tables can group and average on.
                     stats = record.get("statistics") or {}
+                    status = record.get("status", "ERROR")
+                    # A search that stopped at its own step cap or at a dead end, with no
+                    # limit reached, stopped on its own: that is UNSOLVED, whatever an older
+                    # run recorded.
+                    if status == "NODEOUT" and record.get("search_status") in ("step_limit",
+                                                                                "dead_end"):
+                        status = "UNSOLVED"
                     rows.append({"planner": tag, "seed": -1 if seed is None else seed,
                                  "environment": env, "task": f"{env}@{index}",
-                                 "status": record.get("status", "ERROR"),
+                                 "status": status,
                                  "seconds": record.get("seconds"),
                                  "width": record.get("width"),
                                  "plan_length": record.get("plan_length"),
