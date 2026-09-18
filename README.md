@@ -279,6 +279,7 @@ See [docs/rendering.md](docs/rendering.md).
 | Family | Where | What it needs from an environment |
 |---|---|---|
 | Width-based: IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
+| Rollout IW, and π-IW with a policy it learns as it plans | [`planiverse/planners/width/rollout.py`](planiverse/planners/width/rollout.py), [`policy.py`](planiverse/planners/width/policy.py) | `successors` and `literals`; a `progress` callback stands in for the score |
 | MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
@@ -298,6 +299,12 @@ to count, so SIW and BFWS take a `progress` callback instead; (2) expansions are
 every search takes a budget and reports what it spent; and (3) dead ends are real, and detecting
 them is most of what makes a simulator task searchable.
 
+Rollout IW (Bandres, Bonet and Geffner, 2018) and π-IW (Junyent, Jonsson and Gómez, 2019) are
+in [docs/planners/rollout-width.md](docs/planners/rollout-width.md): the novelty filter kept,
+the breadth-first order replaced by rollouts that commit to an action every few hundred
+expansions, and in π-IW a small policy network, trained on the planner's own lookaheads, that
+steers the rollouts and can supply the atoms novelty is measured over.
+
 MCTS and Future State Maximization are in
 [docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
 given no goal and no heuristic at all and picks whichever action leaves the most futures
@@ -307,78 +314,45 @@ write.
 
 ## Benchmarking
 
-`planiverse-bench` runs every planner over every environment, on a SLURM cluster or on one
-machine, and turns the results into tables and plots. It follows
-[pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit): an experiment is a directory of
-JSON, a sandbox is a directory of results, and the stages between them run independently, so a
-benchmark can be prepared on a laptop, run on a cluster, and analysed somewhere else again.
+`planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
+configurations the paper compares plus Rollout IW and π-IW, on every instance of every
+environment, under a 30-minute wall-clock limit, an 8 GB address-space cap and a
+500,000-expansion bound, with five seeds for each of the four planners that take one, on a
+SLURM cluster or on one machine. There is no configuration
+file, because the protocol is the point.
 
 ```bash
-./setup_benchmark.sh                      # asks about limits and your Game Boy cartridges
-bash sandbox/slurm/submit_all.sh          # or: bash sandbox/run_local.sh 8
-planiverse-bench analyze   --sandbox-dir sandbox
-planiverse-bench report    --sandbox-dir sandbox
+tools/setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
+bash sandbox/submit.sh                               # or: bash sandbox/run_local.sh 8
+planiverse-bench report --sandbox-dir sandbox
 ```
 
-`setup_benchmark.sh` runs `init`, `discover` and `generate`, and asks the one thing nothing
-else can work out: where your Puzznic, Flipull, Adventures of Lolo and Super Mario Land cartridges are. They are
-copyrighted and cannot ship here, so supplying them is what lets an emulated environment be
-compared against its pure-Python twin under the same planners and limits; skip one and it is
-reported as skipped rather than quietly dropped.
+`generate` asks each registered environment how many instances it has and writes one command
+per (planner, instance, seed) under `sandbox/cmds/`, and one SLURM job array per planner, or
+per seed of a seeded planner, under `sandbox/slurm/`. The Game Boy environments need their
+cartridges, which are copyrighted and cannot ship here: pass them to the setup script as
+`--rom-puzznic`, `--rom-flipull`, `--rom-lolo`, `--rom-amazing-tater` and
+`--rom-super-mario-land`, or export `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
+`PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and `PLANIVERSE_SUPER_MARIO_LAND_ROM`
+before generating. A flag overrides the variable. An environment without one is skipped and
+says so.
 
-Pass them instead of being asked; the same flags work on `planiverse-bench init`:
+Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
+(`..._<i>__s<seed>.json` for a seeded planner) whatever happened: `SOLVED` (the plan replays to a
+goal), `INVALID` (it does not), `UNSOLVED` (the search stopped on its own), `TIMEOUT`,
+`NODEOUT`, `MEMOUT`, `ERROR`, `UNSUPPORTED` (the environment could not be built), and
+`MISSING`, which `report` assigns to a run that left no file, so a job that never ran cannot
+pass for coverage.
 
-```bash
-./setup_benchmark.sh --rom-puzznic ~/roms/"Puzznic (J).gb" \
-                     --rom-lolo ~/roms/"Adventures of Lolo (U) [S][!].gb" \
-                     --rom-flipull ~/roms/"Flipull (USA).gb" \
-                     --rom-mario   ~/roms/"Super Mario Land.gb"
-```
-
-It builds a virtualenv and installs the library into it first: `.venv` beside the script by
-default, reused if it is already there, editable. The generated jobs then call **that venv's
-`planiverse-bench` by absolute path**. That is what makes them work on a compute node whose
-shell never saw your activation, and it never lets them silently pick up a different install off
-`PATH`. The venv is activated in the jobs and in `run_local.sh` as well, so a local run and a
-cluster run use the same Python.
-
-`--venv DIR` moves it (on a cluster it has to be somewhere the compute nodes can see),
-`--no-venv` skips it and uses the current environment, and `--yes` takes every default and asks
-nothing. SLURM settings go in as `--partition`, `--account`, `--qos` and `--setup-command`.
-
-`generate` writes one **job array per planner**: a benchmark is thousands of short runs, and a
-scheduler handling them as thousands of jobs spends longer scheduling than computing. Arrays are
-split at the site's `MaxArraySize` and throttled with `%N` so a shared partition survives. They
-are given time and memory headroom above the harness's own limits, so that a timeout is recorded
-as a `TIMEOUT` row rather than vanishing as a killed job.
-
-Every run ends in a status (`SOLVED`, `INVALID`, `UNSOLVED`, `TIMEOUT`, `NODEOUT`, `MEMOUT`,
-`ERROR`, `UNSUPPORTED`, `MISSING`), because a failure has to be recorded rather than raised. The
-expected set of runs comes from `tasks.json`, so a job that never ran is counted as `MISSING`
-rather than quietly improving a planner's coverage.
-
-By default the benchmark covers **every instance of every environment it can run**, cartridge
-ones included, and every width planner runs as its **iterated** version, joined by the two
-sampling planners `fsx` and `mcts`. `iw` and `siw` iterate up to a bound of 1000 rather than
-at a width someone picked: novelty is a *filter* in both, so a width too low loses states
-outright, and which width is enough is a property of the problem. The loop stops when a width
-solves it, the budget runs out, or a width covers the reachable space without pruning anything
-for novelty, which for IW is also a proof that there is no plan. `bfws` iterates for a
-different reason: plain BFWS uses novelty as a *sort key*, so nothing is discarded, no width
-can make it miss anything, and iterating *it* would spend the whole budget at width 1. Its
-iterated version instead runs cheap **pruned** rounds (k-BFWS, IW's filter with BFWS's
-ordering inside it) at widths 1 and 2, then one unpruned, complete round on whatever budget
-is left: the Dual-BFWS shape. [docs/benchmark.md](docs/benchmark.md) has the numbers.
-
-`report` writes a coverage table, an outcome breakdown, a per-environment breakdown, a
-survival plot, a twin-axis runtime plot for every **triple** of planners and a solved-overlap
-figure for every **combination** of them, into `sandbox/report/`.
-What those come out as is a property of the run you did, not of this library, so no numbers
-are quoted here.
-
-The full documentation is in [docs/benchmark.md](docs/benchmark.md), including the progress
-measures SIW and BFWS need per environment, the one environment that has none and why, and
-how to point the harness at a Game Boy cartridge.
+`report` writes the paper's two tables (`coverage.tex`, `statuses.tex`), its three figures
+(`cactus.pdf`, `overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the
+numbers its prose quotes, into `sandbox/report/`. A seeded planner is reported as its mean over
+seeds with the standard deviation, never its best seed. The sandbox behind the paper is attached
+to the [release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
+repository and `report` regenerates every number from it. [docs/benchmark.md](docs/benchmark.md)
+has the details, and its last section lists what the paper has to change to take in Rollout IW
+and π-IW: two coverage columns, two status rows, two cactus curves, the planner descriptions,
+and the numbers its prose quotes.
 
 ## Writing a planner
 
@@ -488,24 +462,17 @@ planiverse/
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
 ├── planners/
-│   ├── width/                          # IW, Iterated Width, SIW, BFWS
+│   ├── width/                          # IW, Iterated Width, SIW, BFWS, Rollout IW, π-IW
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
 │   ├── mcts.py                         # MCTSPlanner (UCT)
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
 ├── rendering/                          # traces to GIF or PNG frames (env.render_trace delegates here)
-└── benchmark/                          # planiverse-bench: run the planners, generate SLURM jobs
-    ├── cli.py                          # init / discover / generate / solve / analyze / report
-    ├── config.py                       # exp-details.json and planners/*.json
-    ├── catalogue.py                    # which planners exist and how to build them
-    ├── measures.py                     # per-environment progress measures
-    ├── discovery.py                    # resolving (environment, index) task lists
-    ├── runner.py                       # one run, under limits, with a status
-    ├── slurm.py                        # job arrays, submit_all.sh, run_local.sh
-    ├── analysis.py                     # coverage, per-environment breakdown, solver sets, CSV
-    └── report.py                       # text and LaTeX tables, cactus, twin and overlap plots
+└── benchmark/                          # planiverse-bench: the paper's evaluation protocol
+    ├── __init__.py                     # generate / solve / report, and the protocol's constants
+    └── measures.py                     # per-environment progress measures for SIW and BFWS
 docs/environments/                      # per-environment documentation
-docs/benchmark.md                       # the benchmark harness
-setup_benchmark.sh                      # interactive benchmark setup; asks for the cartridges
+docs/benchmark.md                       # the benchmark: protocol, statuses, report
+tools/setup_benchmark.sh                # builds the venv, installs, runs generate
 tests/
 ├── sm83.py                             # minimal SM83 assembler, for the test cartridges
 ├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
@@ -540,50 +507,50 @@ city datasets of [a consensus-MARL paper's repository](https://github.com/mao120
 Neither upstream publishes a licence, so neither the simulator nor the data can be
 redistributed here. Both remain in git history should their upstreams ever license them.
 
-The flood/transport environment ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl))
-is referenced as a planned addition but is not yet in the tree.
-
 ## Status
 
-- [x] README and per-environment docs
-- [x] Super Mario Land via PyBoy, with world/level selection wired into `reset`
-- [x] NASim network attack
-- [x] Test suite (`poetry run pytest`)
-- [x] Water distribution, power grid and crop management: three simulator-backed
-      environments whose transitions are solves, not add/delete lists
-- [x] One flat `planiverse.environments` package with a registry, replacing the
-      `real_world_problems` / `retro_games` split
-- [ ] Flood application
-- [ ] Optional dependency groups, so one environment does not pull in all of them
-- [ ] `is_terminal` dead-end detection for the four environments that hard-code `False`
-- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`) and enemy tile IDs
-- [ ] `SuperMarioPlanner.search` returns `None` and has no replanning loop
-- [x] Run `FlipullGBEnv` against a real `Flipull (USA).gb`, and correct what the memory map had
-      wrong about the throw
-- [x] Flipull stage selection: all 32, via the loader's own stage digits, each with its own
-      board (the cartridge draws arrangements from an RNG seeded by boot timing, so `reset`
-      seeds a distinct, repeatable draw per index)
-- [x] A pure-Python Flipull twin (`FlipullGame`) whose 32 stages match the cartridge's own
-      table, size and CLEAR target for CLEAR target, with generated-and-verified boards and exact
-      dead-end detection
-- [ ] Work out what a Flipull throw actually hits: every row connects, so it is not simply the
-      first block in the player's row. Until it is settled, `FlipullGame` is a Flipull-*like*
-      environment with a stated rule set rather than a clone of the cartridge
-- [~] Boxxle II, both the cartridge environment and its pure-Python twin, **withdrawn**. Both
-      worked, and the twin agreed with the cartridge move for move over 3,000 random moves.
-      They were removed because Boxxle II is Sokoban: its transition is an add/delete list, a
-      PDDL encoding is one page long, and it is one of the most studied benchmarks in planning.
-      An environment that a declarative model handles well is not evidence for a library about
-      planning with simulators. The code is in the history if a use for it appears
-- [x] A dependency-free Super Mario Land counterpart (`SuperMarioLandGame`) whose movement
-      constants were fitted to frame-by-frame measurements of the cartridge: one speed (the
-      measured walk) and one fixed jump arc (the measured full moving jump), with
-      press-length jump control and the `b` dash deliberately left out. Still **not** a
-      twin: the levels are original and the enemies simplified, and the docs lead with that
+What is in the tree:
+
+- Fourteen environments: three simulator-backed operational ones (water distribution, power
+  grid, crop management), the NASim network attack, and five Game Boy games, each as a cartridge
+  environment and as a dependency-free Python counterpart. Four of the counterparts are twins of
+  their cartridge; the Super Mario Land one shares the genre and the measured physics, not the
+  levels.
+- Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
+  latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
+- `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
+  the four that take one, and a report that regenerates the paper's tables, figures and quoted
+  numbers from the results.
+- A test suite that skips what it cannot build, with synthetic cartridges for the two Taito
+  games so their emulator code is tested without a ROM.
+
+Open:
+
+- [ ] Benchmark runs for Rollout IW and π-IW, and the paper edits that go with them; see
+      [Bringing the paper up to date](docs/benchmark.md#bringing-the-paper-up-to-date).
+- [ ] The flood/transport environment
+      ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl)), referenced as
+      a planned addition and not yet in the tree.
+- [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
+      one dependency list and a `dev` extra.
+- [ ] `is_terminal` for the network attack, the one environment that still hard-codes `False`.
+- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`, marked unverified in the
+      code) and its enemy tile IDs.
+- [ ] `SuperMarioPlanner.search` returns nothing and has no replanning loop.
+- [ ] What a Flipull throw actually hits. Every row connects, so it is not simply the first block
+      in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
+      with a stated rule set rather than a clone of the cartridge.
+- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG: a bonus course,
+      unexplored.
 - [ ] A full pure-Python Super Mario Land twin. Deliberately not attempted: reverse-engineering
       a physics platformer move for move is a far larger job than a turn-based puzzle, and a
-      half-modelled one would look like a prediction of the cartridge without being one
-- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG: a bonus course, unexplored
+      half-modelled one would look like a prediction of the cartridge without being one.
+
+Withdrawn: Boxxle II, both the cartridge environment and its twin. Both worked and agreed move
+for move over 3,000 random moves. They were removed because Boxxle II is Sokoban, whose
+transition is an add/delete list and whose PDDL encoding is one page long; an environment a
+declarative model handles well is not evidence for a library about planning with simulators. The
+code is in the history.
 
 ## Licence
 
