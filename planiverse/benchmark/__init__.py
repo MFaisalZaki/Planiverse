@@ -64,8 +64,8 @@ SEEDS = range(5)
 #: The deterministic width family, and what the overlap and runtime figures compare.
 WIDTH = ("bfws", "iw", "siw")
 
-#: The paper's environment names, in its table order. A `_gb` twin takes the same name under
-#: "Game (cartridge)"; the family itself comes from the registry's tags.
+#: The paper's environment names, in its table order; the family itself comes from the
+#: registry's tags.
 NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
          "crop_management": "Crop management", "network_attack": "Network attack",
          "puzznic": "Puzznic", "flipull": "Flipull", "lolo": "Adventures of Lolo",
@@ -84,7 +84,7 @@ SBATCH = """#!/bin/bash
 #SBATCH --cpus-per-task=1
 #SBATCH --output={sandbox}/logs/{group}/%A_%a.out
 #SBATCH --error={sandbox}/logs/{group}/%A_%a.err
-{extra}{exports}
+{extra}
 # Line n of the command file is array element n. The five minutes and the gigabyte above the
 # benchmark's own limits let it record its TIMEOUT or MEMOUT before SLURM steps in.
 eval "$(sed -n "$((${{SLURM_ARRAY_TASK_ID:-0}} + 1))p" {cmds})"
@@ -103,7 +103,7 @@ def _filename(environment, index, seed):
 def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
     """Count every environment's instances, then write the commands and the arrays to run them."""
     sandbox = os.path.abspath(sandbox)
-    counts, roms = {}, {}
+    counts = {}
     for spec in REGISTRY:
         try:
             env = spec.build()
@@ -119,8 +119,6 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
                 break
         getattr(env, "close", lambda: None)()
         counts[spec.name] = count
-        if spec.needs_rom:
-            roms[spec.rom_variable] = spec.rom_path()
         print(f"  {spec.name:22} {count:>4} instances")
 
     # One job array per planner, or per seed of a seeded planner: each is one instance long,
@@ -132,7 +130,6 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
     with open(f"{sandbox}/tasks.json", "w") as handle:
         json.dump({"environments": [{"environment": env, "instances": n}
                                     for env, n in counts.items()]}, handle, indent=1)
-    exports = "".join(f"export {var}={shlex.quote(path)}\n" for var, path in roms.items())
     extra = "".join(f"#SBATCH --{key}={value}\n" for key, value in
                     (("partition", partition), ("qos", qos), ("account", account)) if value)
     tasks = [f"{env}@{index}" for env, n in counts.items() for index in range(n)]
@@ -144,16 +141,16 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
                 + ("" if seed is None else f" --seed {seed}") + "\n" for task in tasks)
         with open(f"{sandbox}/slurm/{group}.sbatch", "w") as handle:
             handle.write(SBATCH.format(group=group, last=len(tasks) - 1, parallel=parallel,
-                                       sandbox=sandbox, extra=extra, exports=exports,
+                                       sandbox=sandbox, extra=extra,
                                        cmds=shlex.quote(f"{sandbox}/cmds/{group}.txt")))
     scripts = {
         "submit.sh": "#!/bin/bash\n" + "".join(f"sbatch {sandbox}/slurm/{group}.sbatch\n"
                                                for group in groups),
         # `-L 1` hands each line to xargs as words, quotes honoured; `-I` would cap the line
         # at 255 bytes on BSD xargs, which a long sandbox path exceeds.
-        "run_local.sh": "#!/bin/bash\n# bash run_local.sh [jobs-at-a-time]\n" + exports
-                        + f"cat {shlex.quote(sandbox)}/cmds/*.txt | "
-                          f"xargs -P \"${{1:-4}}\" -L 1 sh -c 'exec \"$@\"' _\n",
+        "run_local.sh": "#!/bin/bash\n# bash run_local.sh [jobs-at-a-time]\n"
+                        f"cat {shlex.quote(sandbox)}/cmds/*.txt | "
+                        f"xargs -P \"${{1:-4}}\" -L 1 sh -c 'exec \"$@\"' _\n",
     }
     for name, body in scripts.items():
         with open(f"{sandbox}/{name}", "w") as handle:
@@ -334,15 +331,13 @@ def report(sandbox):
 
 
 def _families(counts):
-    """The paper's table rows: (family, environments) in its order, cartridge twins last."""
+    """The paper's table rows: (family, environments) in its order."""
     groups = {}
-    for name in NAMES:
-        for env in (name, name + "_gb"):
-            if env in counts:
-                family = next(tag for tag in ("operational", "security", "game")
-                              if tag in get_spec(env).tags).capitalize()
-                groups.setdefault(family + (" (cartridge)" if env.endswith("_gb") else ""),
-                                  []).append(env)
+    for env in NAMES:
+        if env in counts:
+            family = next(tag for tag in ("operational", "security", "game")
+                          if tag in get_spec(env).tags).capitalize()
+            groups.setdefault(family, []).append(env)
     return list(groups.items())
 
 
@@ -373,7 +368,7 @@ def _coverage_tex(df, counts):
         if len(envs) > 1:
             lines.append(f"\\multirow{{{len(envs)}}}{{*}}{{{family}}}")
         for env in envs:
-            lines.append(f"{family if len(envs) == 1 else ''} & {NAMES[env.removesuffix('_gb')]}"
+            lines.append(f"{family if len(envs) == 1 else ''} & {NAMES[env]}"
                          f" & {counts[env]} & "
                          + " & ".join(_fmt(solved.loc[p][env]) for p in PLANNERS) + " \\\\")
         lines.append("\\midrule")
@@ -550,24 +545,20 @@ def _facts(df, counts):
                              f" in every seed, of which bfws solved "
                              f"{len(set(failed.index) & union['bfws'])}")
 
-    # Where each planner's runs ended, per environment, and what an expansion cost on each
-    # side of a cartridge pair: the twins, the cartridges, and the rest of the suite.
+    # Where each planner's runs ended, per environment, and what an expansion cost on each.
     for p in PLANNERS:
         runs = df[df.planner == p]
         lines.append(f"{p} statuses by environment: " + "; ".join(
             f"{e} " + " ".join(f"{s} {k}" for s, k in r.status.value_counts().items())
             for e, r in runs.groupby("environment")))
-    side = pd.Series({e: "cartridges" if e.endswith("_gb") else
-                      "twins" if e + "_gb" in counts else "other" for e in counts})
-    ran = df[df.expansions > 0].assign(ms=lambda r: r.search_seconds / r.expansions * 1000,
-                                       side=lambda r: r.environment.map(side))
+    ran = df[df.expansions > 0].assign(ms=lambda r: r.search_seconds / r.expansions * 1000)
     for p in PLANNERS:
         mine = ran[ran.planner == p]
         lines.append(f"{p} milliseconds per expansion at the median: " + ", ".join(
-            f"{k} {v:.1f}" for k, v in mine.groupby("side").ms.median().items()))
+            f"{k} {v:.1f}" for k, v in mine.groupby("environment").ms.median().items()))
         mine = mine[mine.status == "SOLVED"]
         lines.append(f"{p} expansions per solved run at the median: " + ", ".join(
-            f"{k} {v:g}" for k, v in mine.groupby("side").expansions.median().items()))
+            f"{k} {v:g}" for k, v in mine.groupby("environment").expansions.median().items()))
 
     # The difficulty profile: what no planner solved, and how the solved instances look.
     solved_tasks = set(solved.task)
@@ -583,13 +574,8 @@ def _facts(df, counts):
                      f"length median {length.median():g} and longest {length.max():g}, "
                      f"successors per expansion {branching.b[branching.environment == e].median():.1f}, "
                      f"iw max width {iw.width[iw.environment == e].max():g}")
-    lines.append("bfws plan length median by side: " + ", ".join(
-        f"{k} {v:g}" for k, v in bf.groupby(bf.environment.map(side)).plan_length.median().items())
-        + f"; longest {bf.plan_length.max():g}")
-    ended = df[df.planner == "bfws"].groupby([df.environment.map(side), "status"]).size()
-    lines.append("bfws statuses by side: " + "; ".join(
-        f"{k} " + " ".join(f"{s} {n}" for s, n in r.droplevel(0).items())
-        for k, r in ended.groupby(level=0)))
+    lines.append(f"bfws plan length median {bf.plan_length.median():g}; "
+                 f"longest {bf.plan_length.max():g}")
     lines.append("bfws median solve time by environment (s): " + ", ".join(
         f"{e} {v:.1f}" for e, v in bf.groupby("environment").seconds.median().items()))
     lines.append("bfws widths by environment: " + "; ".join(

@@ -15,9 +15,9 @@ included.
 - **Class:** `PuzznicGame`
 - **Import:** `from planiverse.environments.gameboy_py.puzznic import PuzznicGame`
 - **Source:** [`planiverse/environments/gameboy_py/puzznic.py`](../../planiverse/environments/gameboy_py/puzznic.py)
-- **Instances:** 128 levels, indices `0`–`127`, one per Game Boy round
+- **Instances:** 128 levels, indices `0`–`127`, one per round of the original game
+- **Generator:** `generate_instance(seed, width=5, height=6, colours=3, ...)`; see [Generating levels](#generating-levels)
 - **Dependencies:** none
-- **Sibling:** [`PuzznicGBEnv`](puzznic-gb.md) plays the real Game Boy cartridge in an emulator
 
 ## A solved instance
 
@@ -84,8 +84,7 @@ env.render()          # prints the de-duplicated state history
 ## Levels
 
 `set_index(i)` selects level `i` from `PuzznicGame.levelsstr`, a list of 128 ASCII level strings
-embedded in the module. Indices run from `0` to `127` and match the cartridge's rounds, so
-`set_index(7)` here and on [`puzznic_gb`](puzznic-gb.md) select the same board.
+embedded in the module. Indices run from `0` to `127` and match the cartridge's rounds.
 
 Level strings use this alphabet:
 
@@ -105,6 +104,38 @@ rather than on a block, because a `c` marks an empty cell and cannot be written 
 plans found here do not transfer to the cartridge move for move. Second,
 `_check_and_remove_matches_` rescans the whole board after every step and clears every adjacent
 same-type pair, whereas the cartridge leaves some such pairs untouched.
+
+## Generating levels
+
+`generate_instance` draws a fresh level, selects it the way `set_index` selects a bundled one,
+and returns it as a level string in the alphabet above, so it can be saved and handed back to
+`set_instance` later:
+
+```python
+env = PuzznicGame()
+level = env.generate_instance(seed=7)     # or make("puzznic", seed=7)
+state, info = env.reset()                 # info["generated"] is True
+env.witness                               # the plan the draw was accepted on
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `width`, `height` | 5, 6 | interior cells inside the ring of walls |
+| `colours` | 3 | block colours, `1` upward |
+| `walls` | 0.15 | share of the interior filled with wall cells |
+| `blocks_per_colour` | `(2, 3)` | how many blocks a colour gets, one choice per colour |
+| `solvable` | `True` | search each draw and keep only one with a plan |
+| `min_plan_length` | 4 | reject a draw whose shortest plan is shorter |
+| `search_limit` | 20000 | expansions the check may spend per draw |
+| `attempts` | 200 | draws before giving up with `GenerationError` |
+
+Blocks are dropped in at rest, so the board starts settled; no two blocks of a colour touch,
+so nothing clears itself; and no colour has a single block, so no draw is born terminal. The
+check is a breadth-first search over positions, so `min_plan_length` is a lower bound on the
+shortest plan and a fair difficulty knob. A draw the search cannot decide within
+`search_limit` is rejected, which biases the generator towards levels a small search can
+solve; larger boards mostly reject, so give them a larger limit and some patience, or pass
+`solvable=False` for an unchecked draw. The same seed and options always give the same level.
 
 ## State
 

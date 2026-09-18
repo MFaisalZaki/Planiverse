@@ -45,7 +45,7 @@ def test_set_index_maps_to_benchmark_names():
 
 
 def test_set_index_rejects_unknown_index():
-    with pytest.raises(AssertionError, match="not found in the index_scenario_map"):
+    with pytest.raises(IndexError, match="18 scenarios"):
         EnvNASim().set_index(18)
 
 
@@ -56,7 +56,7 @@ def test_scenario_name_can_be_given_directly():
 
 
 def test_reset_without_a_scenario_raises():
-    with pytest.raises(AssertionError, match="Scenario name or yaml is not set"):
+    with pytest.raises(ValueError, match="set_index"):
         EnvNASim().reset()
 
 

@@ -28,6 +28,10 @@ contamination and two do nothing at all.
     for action, successor in env.successors(state):
         print(action, successor.contaminated, successor.service)
 
+`generate_instance(seed)` draws a scenario of its own: one of the shipped networks and a
+junction of it that, left alone, contaminates at least a stated share of what the network
+delivers, which is the same test the bundled scenarios were chosen by.
+
 Built on WNTR, the US EPA's Python interface to EPANET:
 https://github.com/USEPA/WNTR
 """
@@ -38,6 +42,7 @@ from collections import namedtuple
 from copy import deepcopy
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import draw_until, rng
 
 #: Hydraulics are run pressure-driven rather than demand-driven. It matters here: under the
 #: demand-driven model a node takes its full demand no matter how little pressure is left,
@@ -83,6 +88,14 @@ def network_library():
 #: entry, since a planner cannot tell "no solution" from "not yet". Every scenario below has been
 #: solved; `Net2` was dropped for exactly this reason (see the module tests).
 Scenario = namedtuple("Scenario", ["network", "source", "baseline", "solved_at"])
+
+#: The networks `generate_instance` draws from. `Net2` is left out: no source on it has been
+#: solved (see the module tests), so a scenario drawn on it could not be checked.
+GENERATOR_NETWORKS = ("Net1.inp", "Net3.inp")
+
+#: How much of the delivered water a generated scenario's source must contaminate when
+#: nothing is closed. Below this there is not enough to contain.
+MIN_BASELINE = 0.1
 
 SCENARIOS = (
     Scenario("Net1.inp", "23", 0.136, 2),
@@ -209,6 +222,9 @@ class WaterNetworkEnv(Environment):
         self.service_floor = service_floor
 
         self.scenario_index = None
+        #: The scenario `reset` builds, as `{"network": ..., "source": ...}`: a bundled one
+        #: after `set_index`, or whatever `set_instance` was given.
+        self.instance = None
         self.network_file = None
         self.source = None
         self.candidates = ()
@@ -231,12 +247,65 @@ class WaterNetworkEnv(Environment):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(SCENARIOS)} scenarios, so the "
                 f"index must be 0-{len(SCENARIOS) - 1}.")
-        self.scenario_index = index
         scenario = SCENARIOS[index]
-        self.network_file = os.path.join(network_library(), scenario.network)
-        self.source = scenario.source
+        self.set_instance({"network": scenario.network, "source": scenario.source,
+                           "baseline": scenario.baseline, "solved_at": scenario.solved_at})
+        self.scenario_index = index
+
+    def set_instance(self, instance):
+        """Select a scenario: `{"network": file, "source": junction}`.
+
+        `network` is the name of one of the networks WNTR ships, or a path to an EPANET
+        `.inp` file of your own; `source` is the name of a junction in it.
+        """
+        network, source = instance["network"], str(instance["source"])
+        path = network if os.path.isfile(network) else os.path.join(network_library(), network)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"no network at {network}, nor in WNTR's library")
+        self.instance = dict(instance)
+        self.scenario_index = None
+        self.network_file = path
+        self.source = source
         self._wn = None
         self._cache = {}
+
+    def generate_instance(self, seed=None, network=None, min_baseline=MIN_BASELINE,
+                          attempts=40):
+        """Draw a fresh scenario, select it, and return it as a dict.
+
+        `network` names the network to draw on (default: one of `GENERATOR_NETWORKS` at
+        random; a path to your own `.inp` works too). The source is a junction of it drawn at
+        random and kept only if, with nothing closed, at least `min_baseline` of the delivered
+        water comes from it: the test the bundled scenarios were chosen by, which is what
+        makes a draw a containment problem rather than a non-event. Each candidate costs one
+        hydraulic solve, so `attempts` bounds the junctions tried.
+        """
+        import wntr
+
+        random_, _ = rng(seed)
+        network = network or random_.choice(GENERATOR_NETWORKS)
+        self.set_instance({"network": network, "source": ""})
+        junctions = list(wntr.network.WaterNetworkModel(self.network_file).junction_name_list)
+        random_.shuffle(junctions)
+        measured = {}
+
+        def draw(attempt):
+            return junctions[attempt] if attempt < len(junctions) else None
+
+        def accept(junction):
+            self.set_instance({"network": network, "source": junction})
+            try:
+                _, contaminated, _ = self.__simulate__(frozenset())
+            except Exception:
+                return False              # a junction the solver cannot trace from
+            measured[junction] = contaminated
+            return contaminated >= min_baseline
+
+        source = draw_until(draw, accept, min(attempts, len(junctions)),
+                            f"contamination source on {os.path.basename(network)}")
+        instance = {"network": network, "source": source, "baseline": measured[source]}
+        self.set_instance(instance)
+        return instance
 
     # ------------------------------------------------------------------ the network
 
@@ -246,7 +315,7 @@ class WaterNetworkEnv(Environment):
 
         if self._wn is None:
             if self.network_file is None:
-                raise ValueError("Call set_index() before reset().")
+                raise ValueError("Call set_index() or set_instance() before reset().")
             wn = wntr.network.WaterNetworkModel(self.network_file)
             wn.options.time.duration = 3600 * self.duration_hours
             wn.options.hydraulic.demand_model = "PDD"
@@ -340,16 +409,17 @@ class WaterNetworkEnv(Environment):
     # ------------------------------------------------------------------ interface
 
     def reset(self):
-        if self.scenario_index is None:
+        if self.instance is None:
             self.set_index(0)
         self.candidates = self.__candidates__()
         self.state = self.__state__(frozenset(), 0)
         self.baseline = self.state
         self.state_history = [self.state]
-        scenario = SCENARIOS[self.scenario_index]
-        return self.state, {"network": scenario.network,
-                            "source": scenario.source,
-                            "solved_at": scenario.solved_at,
+        return self.state, {"network": self.instance["network"],
+                            "source": self.instance["source"],
+                            "scenario": self.scenario_index,
+                            "generated": self.scenario_index is None,
+                            "solved_at": self.instance.get("solved_at"),
                             "pipes": len(self.__model__().pipe_name_list),
                             "candidates": len(self.candidates),
                             "contaminated": self.state.contaminated,

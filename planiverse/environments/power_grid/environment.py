@@ -28,12 +28,18 @@ Two properties make this hard for a declarative model, both measured on the ship
     for action, successor in env.successors(state):
         print(action, successor.max_rho)
 
+`generate_instance(seed)` draws a contingency of its own: a time series, a step into it, and
+a line to trip there, kept only if the trip leaves the grid overloaded and, left alone,
+blacked out within a few steps, which is the same N-1 test the bundled scenarios were chosen
+by.
+
 Built on Grid2Op, the framework RTE (the French transmission operator) uses for the L2RPN
 competitions: https://github.com/Grid2Op/grid2op
 """
 from collections import namedtuple
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import draw_until, rng
 
 #: The bundled case. `test=True` uses the time series shipped inside grid2op, so nothing is
 #: downloaded and every run sees the same data.
@@ -49,6 +55,11 @@ HORIZON = 10
 
 Scenario = namedtuple("Scenario", ["chronic", "line", "rho_after_trip",
                                    "blackout_in", "solved_at"])
+
+#: How far into a time series a generated contingency may start, and how soon the untended
+#: grid has to black out for the draw to count as doomed rather than self-healing.
+MAX_OFFSET = 200
+BLACKOUT_WITHIN = 6
 
 #: Which line to trip, on which time series.
 #:
@@ -186,6 +197,9 @@ class PowerGridEnv(Environment):
         self.restrict_to_overloads = restrict_to_overloads
 
         self.scenario_index = None
+        #: The contingency `reset` builds, as `{"chronic": ..., "line": ..., "offset": ...}`:
+        #: a bundled one after `set_index`, or whatever `set_instance` was given.
+        self.instance = None
         self.state = None
         self.state_history = []
 
@@ -202,9 +216,75 @@ class PowerGridEnv(Environment):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(SCENARIOS)} scenarios, so the "
                 f"index must be 0-{len(SCENARIOS) - 1}.")
+        scenario = SCENARIOS[index]
+        self.set_instance({"chronic": scenario.chronic, "line": scenario.line, "offset": 0,
+                           "rho_after_trip": scenario.rho_after_trip,
+                           "blackout_in": scenario.blackout_in,
+                           "solved_at": scenario.solved_at})
         self.scenario_index = index
+
+    def set_instance(self, instance):
+        """Select a contingency: `{"chronic": i, "line": l, "offset": t}`.
+
+        `chronic` is one of the case's time series, `line` the line that trips, and `offset`
+        how many steps into the series it does so (0 for the start).
+        """
+        self.instance = {"chronic": int(instance["chronic"]), "line": int(instance["line"]),
+                         "offset": int(instance.get("offset", 0)), **instance}
+        self.scenario_index = None
         self._cache = {}
         self.__release_cursor__()
+
+    def generate_instance(self, seed=None, chronic=None, line=None, max_offset=MAX_OFFSET,
+                          min_rho=SECURE_RHO, blackout_within=BLACKOUT_WITHIN, attempts=30):
+        """Draw a fresh contingency, select it, and return it as a dict.
+
+        A time series (`chronic`, or one of the case's at random), a step `offset` into it
+        drawn from `0` to `max_offset`, and a line (`line`, or one at random) to trip there.
+        A draw is kept only if the trip leaves some line above `min_rho` of its rating and,
+        with the operator doing nothing, the grid blacks out within `blackout_within` steps:
+        the "standing but doomed" test the bundled scenarios were chosen by, since a grid
+        that heals itself is not an instance. Each candidate costs a fresh simulation, so
+        `attempts` bounds the draws.
+        """
+        random_, _ = rng(seed)
+        # One probe environment for every draw: building one costs seconds, resetting it to
+        # another series and step does not.
+        probe = self.__make__()
+        chronics = range(len(probe.chronics_handler.available_chronics()))
+        measured = {}
+
+        def draw(attempt):
+            return {"chronic": chronic if chronic is not None else random_.choice(chronics),
+                    "line": line if line is not None else random_.randrange(probe.n_line),
+                    "offset": random_.randint(0, max_offset)}
+
+        def accept(candidate):
+            self.set_instance(candidate)
+            try:
+                probe.set_id(candidate["chronic"])
+                probe.reset()
+                if candidate["offset"]:
+                    probe.fast_forward_chronics(candidate["offset"])
+                probe.step(probe.action_space({"set_line_status": [(candidate["line"], -1)]}))
+            except Exception:
+                return False              # the series is shorter than the offset, or the like
+            tripped = self.__measure__(probe, ())
+            if tripped.blackout or tripped.max_rho <= min_rho:
+                return False
+            for step in range(1, blackout_within + 1):
+                probe.step(probe.action_space({}))
+                if probe.done:
+                    measured.update(rho_after_trip=round(tripped.max_rho, 3), blackout_in=step)
+                    return True
+            return False
+
+        try:
+            instance = {**draw_until(draw, accept, attempts, "contingency"), **measured}
+        finally:
+            probe.close()
+        self.set_instance(instance)
+        return instance
 
     # ------------------------------------------------------------------ the grid
 
@@ -252,12 +332,13 @@ class PowerGridEnv(Environment):
         memoised, so a path is only ever walked once, and expanding a parent replays it once
         and then copies for each child.
         """
-        scenario = SCENARIOS[self.scenario_index]
         env = self.__make__()
-        env.set_id(scenario.chronic)
+        env.set_id(self.instance["chronic"])
         env.reset()
+        if self.instance["offset"]:
+            env.fast_forward_chronics(self.instance["offset"])
         # The contingency: the line that trips is what creates the problem.
-        env.step(env.action_space({"set_line_status": [(scenario.line, -1)]}))
+        env.step(env.action_space({"set_line_status": [(self.instance["line"], -1)]}))
         converter = self.__converter__()
         for action_id in path:
             env.step(converter.convert_act(action_id))
@@ -270,7 +351,10 @@ class PowerGridEnv(Environment):
             return PowerGridState(path, float("inf"), (), True, len(path) + 1, False)
         rhos = [float(value) for value in observation.rho]
         max_rho = max(rhos) if rhos else 0.0
-        step = int(observation.current_step) if hasattr(observation, "current_step") else len(path) + 1
+        # Counted from the trip, not from the start of the time series: a contingency that
+        # begins `offset` steps in has the same horizon as one that begins at the start.
+        step = (int(observation.current_step) - self.instance["offset"]
+                if hasattr(observation, "current_step") else len(path) + 1)
         return PowerGridState(path, max_rho, rhos, False, step, True)
 
     def __state__(self, path):
@@ -289,16 +373,18 @@ class PowerGridEnv(Environment):
     # ------------------------------------------------------------------ interface
 
     def reset(self):
-        if self.scenario_index is None:
+        if self.instance is None:
             self.set_index(0)
         self.__release_cursor__()
         self._cache = {}
         self.state = self.__state__(())
         self.state_history = [self.state]
-        scenario = SCENARIOS[self.scenario_index]
         return self.state, {"grid": self.grid_name,
-                            "chronic": scenario.chronic,
-                            "tripped_line": scenario.line,
+                            "chronic": self.instance["chronic"],
+                            "offset": self.instance["offset"],
+                            "tripped_line": self.instance["line"],
+                            "scenario": self.scenario_index,
+                            "generated": self.scenario_index is None,
                             "max_rho": self.state.max_rho,
                             "overloaded": list(self.state.overloaded_lines()),
                             "actions": self.__converter__().n}

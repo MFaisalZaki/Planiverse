@@ -13,15 +13,10 @@ visible at once and each frame is captioned with the step number, the action tha
 it, and whether the state is a goal or a dead end. A GIF shows one frame at a time, which
 is the right thing for an animation and the wrong thing for reading a plan.
 
-Two sources of pixels per state, tried in that order:
-
-1. **A real screenshot**, when the state can produce one. The Game Boy states have
-   `save(rom, path)`, which boots a throwaway emulator to the save-state and grabs the
-   screen; pass `gamerom=` and you get the actual console output.
-2. **The state's own text**, otherwise: `str(state)`, typeset in a monospace font. Most
-   of these environments were designed to be read as an ASCII board, and a GIF is pixels:
-   typesetting is the one step that turns the board into them, which is the only reason a
-   font appears in this file at all.
+Every frame is **the state's own text**: `str(state)`, typeset in a monospace font. Most of
+these environments were designed to be read as an ASCII board, and a GIF is pixels:
+typesetting is the one step that turns the board into them, which is the only reason a font
+appears in this file at all.
 """
 import os
 
@@ -72,37 +67,9 @@ def _font(size, bold=False):
     return ImageFont.load_default()
 
 
-def render_state(state, gamerom=None, font_size=14, min_width=160):
-    """One state as an image.
-
-    A screenshot when the state can produce one and `gamerom` is given; otherwise the
-    state's own text, typeset.
-    """
+def render_state(state, font_size=14, min_width=160):
+    """One state as an image: its own text, typeset."""
     from PIL import Image, ImageDraw
-
-    if gamerom is not None and callable(getattr(state, "save", None)):
-        import tempfile
-        import warnings
-
-        # A real file with a .png suffix, not a BytesIO: the Game Boy states' `save` ends in
-        # `image.save(file)`, and Pillow cannot infer a format from a stream. Passing one
-        # raises, and the first version of this caught that silently, so asking for
-        # screenshots quietly returned text instead. Falling back is right; doing it without
-        # saying so is not.
-        handle, temporary = tempfile.mkstemp(suffix=".png", prefix="planiverse-frame-")
-        os.close(handle)
-        try:
-            state.save(gamerom, temporary)
-            with Image.open(temporary) as shot:
-                return shot.convert("RGB")
-        except Exception as exc:
-            warnings.warn(
-                f"could not screenshot {type(state).__name__} from {gamerom}: "
-                f"{type(exc).__name__}: {exc}. Falling back to the state's text.",
-                RuntimeWarning, stacklevel=2)
-        finally:
-            if os.path.exists(temporary):
-                os.remove(temporary)
 
     text = str(state)
     font = _font(font_size)
@@ -150,20 +117,8 @@ def _caption(image, title, subtitle=None, colour=_INK):
     return canvas
 
 
-def _spelling(action):
-    """How the environment itself spells this action.
-
-    Most environments hand out plain strings and this is a no-op. The Game Boy actions are
-    objects built from `"a+right,16"`, and that is the spelling their environment offers and
-    accepts back -- but their `__str__` renders it as `a_with_right_for_16`, which nothing
-    parses. A caption is for reading a plan against the environment you would replay it in,
-    so it uses the spelling that environment answers to.
-    """
-    return getattr(action, "action", action)
-
-
-def trace_frames(trace, actions=None, env=None, gamerom=None, max_states=None,
-                 font_size=14, captions=True):
+def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
+                 captions=True):
     """Every state of a trace as an image, captioned unless you ask otherwise.
 
     `actions` labels each frame with the action that produced it — the trace is one longer
@@ -190,7 +145,7 @@ def trace_frames(trace, actions=None, env=None, gamerom=None, max_states=None,
     frames = []
     for index in indices:
         state = states[index]
-        image = render_state(state, gamerom=gamerom, font_size=font_size)
+        image = render_state(state, font_size=font_size)
         if not captions:
             frames.append(image)
             continue
@@ -199,8 +154,7 @@ def trace_frames(trace, actions=None, env=None, gamerom=None, max_states=None,
             title = "start"
         else:
             action = actions[index - 1] if actions and index - 1 < len(actions) else None
-            title = f"{index}. {_spelling(action)}" if action is not None \
-                else f"step {index}"
+            title = f"{index}. {action}" if action is not None else f"step {index}"
 
         colour, note = _INK, None
         if env is not None:
@@ -238,9 +192,8 @@ def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
     return sheet
 
 
-def render_trace(trace, target, actions=None, env=None, gamerom=None, duration_ms=400,
-                 font_size=14, max_states=None, columns=DEFAULT_COLUMNS, per_page=None,
-                 captions=None):
+def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_size=14,
+                 max_states=None, columns=DEFAULT_COLUMNS, per_page=None, captions=None):
     """Write every state of a trace to `target`. The extension decides the format.
 
     - `<name>.png` (or any other single-image extension): a **contact sheet**, `columns`
@@ -261,8 +214,8 @@ def render_trace(trace, target, actions=None, env=None, gamerom=None, duration_m
         captions = extension in (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff") \
             or actions is not None or env is not None
 
-    frames = trace_frames(trace, actions=actions, env=env, gamerom=gamerom,
-                          max_states=max_states, font_size=font_size, captions=captions)
+    frames = trace_frames(trace, actions=actions, env=env, max_states=max_states,
+                          font_size=font_size, captions=captions)
 
     if extension == ".gif":
         first, *rest = _uniform(frames)

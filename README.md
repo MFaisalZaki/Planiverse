@@ -3,9 +3,10 @@
 A Python library for **planning with simulators**.
 
 Classical planners need a declarative model of the world. Many interesting problems do not have one;
-they have a *simulator* instead: a water distribution network, a network attack emulator, a Game Boy running
-Super Mario Land. Planiverse wraps those simulators behind one small, uniform interface so that a search-based
-planner can expand states, test goals, and validate plans without knowing what is underneath.
+they have a *simulator* instead: a water distribution network, a network attack emulator, a crop
+growth model. Planiverse wraps those simulators behind one small, uniform interface so that a
+search-based planner can expand states, test goals, and validate plans without knowing what is
+underneath.
 
 Every environment answers the same four questions:
 
@@ -14,24 +15,22 @@ Every environment answers the same four questions:
 - Am I done, and did I win? (`is_goal` / `is_terminal`)
 - What does this plan actually do? (`simulate`)
 
+And every environment can make more of itself: `generate_instance(seed)` draws a fresh level,
+room, network, contingency or season, so a benchmark is not limited to what ships.
+
 ## Environment catalogue
 
-| Environment | `make()` name | Instances | Tags | Docs |
-|---|---|---|---|---|
-| Water distribution | `water_network` | 9 contamination scenarios | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
-| Power grid | `power_grid` | 9 contingencies | operational, infrastructure | [docs](docs/environments/power-grid.md) |
-| Crop management | `crop_management` | 22 growing seasons | operational, agriculture | [docs](docs/environments/crop-management.md) |
-| Network attack | `network_attack` | 18 NASim benchmarks | security | [docs](docs/environments/network-attack.md) |
-| Puzznic | `puzznic` | 128 levels | game | [docs](docs/environments/puzznic.md) |
-| Puzznic (Game Boy) | `puzznic_gb` | 128 rounds (needs a ROM you supply) | game, emulator | [docs](docs/environments/puzznic-gb.md) |
-| Flipull | `flipull` | 32 stages | game | [docs](docs/environments/flipull.md) |
-| Flipull (Game Boy) | `flipull_gb` | 32 stages (needs a ROM you supply) | game, emulator | [docs](docs/environments/flipull-gb.md) |
-| Adventures of Lolo | `lolo` | 163 rooms | game | [docs](docs/environments/lolo.md) |
-| Adventures of Lolo (Game Boy) | `lolo_gb` | 163 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/lolo-gb.md) |
-| Amazing Tater | `amazing_tater` | 105 rooms | game | [docs](docs/environments/amazing-tater.md) |
-| Amazing Tater (Game Boy) | `amazing_tater_gb` | 105 rooms (needs a ROM you supply) | game, emulator | [docs](docs/environments/amazing-tater-gb.md) |
-| Super Mario Land | `super_mario_land` | 12 levels | game, platformer | [docs](docs/environments/super-mario-land.md) |
-| Super Mario Land (Game Boy) | `super_mario_land_gb` | 12 levels (needs a ROM you supply) | game, emulator | [docs](docs/environments/super-mario-land-gb.md) |
+| Environment | `make()` name | Bundled instances | `generate_instance` draws | Tags | Docs |
+|---|---|---|---|---|---|
+| Water distribution | `water_network` | 9 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
+| Power grid | `power_grid` | 9 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
+| Crop management | `crop_management` | 22 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
+| Network attack | `network_attack` | 18 NASim benchmarks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
+| Puzznic | `puzznic` | 128 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
+| Flipull | `flipull` | 32 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
+| Adventures of Lolo | `lolo` | 163 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
+| Amazing Tater | `amazing_tater` | 105 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
+| Super Mario Land | `super_mario_land` | 12 levels | level length, gaps, platforms, hazards and enemies | game, platformer | [docs](docs/environments/super-mario-land.md) |
 
 ```python
 from planiverse.environments import list_environments, make
@@ -39,7 +38,8 @@ from planiverse.environments import list_environments, make
 [spec.name for spec in list_environments(tag="operational")]
 # ['crop_management', 'power_grid', 'water_network']
 
-env = make("water_network", index=8)
+env = make("water_network", index=8)       # the ninth bundled scenario
+env = make("puzznic", seed=7)              # a freshly generated level
 state, info = env.reset()
 ```
 
@@ -50,6 +50,10 @@ than what a planner could do with it. The catalogue falls into three families: `
 `operational` (an agent running a system it is responsible for, whether that is a power
 grid or a production line) and `security`, where the agent probes a network rather than
 operates it. See [Architecture](#architecture).
+
+The five games are commercially published Game Boy titles reimplemented in pure Python, from
+rules established by observing the originals. Nothing here runs the original programs, and no
+ROM is needed or accepted; see [Studied titles](#studied-titles).
 
 ## Installation
 
@@ -69,24 +73,13 @@ poetry env use python3.12
 poetry install --extras dev
 ```
 
-One install gets you every environment, on every supported Python.
+One install gets you every environment, on every supported Python, and nothing has to be
+supplied: the five games are self-contained, and the water, power grid and crop environments
+ship their benchmark data inside their dependencies, so they run offline.
 
 `tests/test_packaging.py` walks the import graph from each environment's entry point and fails if
 anything it reaches is undeclared; a dependency that only works because another package happens
 to pull it in cannot go missing silently.
-
-### ROMs
-
-Only the Game Boy environments need anything extra. The water, power grid and crop
-environments ship their benchmark data inside their dependencies, so they run offline with
-nothing to supply.
-
-The five Game Boy environments need a ROM each on top of that: `super_mario_land.gb`,
-`puzznic.gb`, `flipull.gb`, `adventures_of_lolo.gb` and `amazing_tater.gb`. These are
-**not** and cannot be distributed with this repo. See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
-[Puzznic (Game Boy)](docs/environments/puzznic-gb.md), [Flipull (Game Boy)](docs/environments/flipull-gb.md),
-[Adventures of Lolo (Game Boy)](docs/environments/lolo-gb.md),
-[Amazing Tater (Game Boy)](docs/environments/amazing-tater-gb.md).
 
 ## Tests
 
@@ -96,32 +89,15 @@ pytest -m "not slow"    # skip the slow search tests
 ```
 
 Tests for an environment whose dependencies are missing skip rather than fail, so the suite is
-runnable from a partial install. The tests that need a copyrighted ROM are opt-in; point the
-matching environment variable at one to run them:
-
-```bash
-PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/super_mario_land.gb pytest tests/test_super_mario_land_gb.py
-PLANIVERSE_PUZZNIC_ROM="/path/to/puzznic.gb" pytest tests/test_puzznic_gb.py
-PLANIVERSE_FLIPULL_ROM="/path/to/flipull.gb" pytest tests/test_flipull_gb.py
-PLANIVERSE_LOLO_ROM="/path/to/adventures_of_lolo.gb" pytest tests/test_lolo_gb.py
-PLANIVERSE_AMAZING_TATER_ROM="/path/to/amazing_tater.gb" pytest tests/test_amazing_tater_gb.py
-```
-
-The two Taito environments are still covered without one:
-[`tests/fake_puzznic_rom.py`](tests/fake_puzznic_rom.py) and
-[`tests/fake_flipull_rom.py`](tests/fake_flipull_rom.py) assemble synthetic cartridges that reproduce
-each game's memory layout, so booting, stage selection, field decoding, calibration and settling are
-all tested against a real emulator. Amazing Tater takes the other route and needs no
-cartridge at all: its level decoder and board decoder are pure functions of bytes, and
-[`tests/test_amazing_tater_gb.py`](tests/test_amazing_tater_gb.py) exercises them against synthetic
-ROM images and synthetic work RAM.
+runnable from a partial install.
 
 [`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
-environment; the other modules cover per-environment behaviour.
+environment, [`tests/test_generators.py`](tests/test_generators.py) checks the instance generators
+the same way, and the other modules cover per-environment behaviour.
 
 ## Quickstart
 
-Puzznic is the dependency-free environment, so it is the fastest way to see the interface:
+Puzznic is the smallest environment, so it is the fastest way to see the interface:
 
 ```python
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
@@ -154,6 +130,42 @@ trace = env.simulate(['left', 'down', 'right'])
 print(sum(trace[-1].score))     # score is a list of per-step awards
 ```
 
+## Generating instances
+
+`set_index` picks one of the instances an environment ships with. `generate_instance` makes a
+new one from a seed and selects it the same way:
+
+```python
+env = PuzznicGame()
+level = env.generate_instance(seed=7, width=6, height=6, colours=4)
+state, info = env.reset()             # info["generated"] is True
+print(level)                          # a level string, in the same alphabet as the bundled ones
+print(env.witness)                    # the plan the draw was accepted on
+```
+
+Three things hold everywhere:
+
+- **The draw is a function of the seed.** The same seed and options give the same instance on
+  any machine, because everything random comes from one `random.Random(seed)`.
+- **The instance is plain data**, the same shape as the bundled ones: a level string, a
+  `[stage, target]` pair, a tuple of rows, a dict of scenario fields. `json.dumps` it, and
+  `set_instance` takes it back later, so a generated benchmark replays exactly.
+- **A puzzle is checked before it is handed out.** A random board is usually unsolvable, and an
+  unsolvable instance is not an instance: a planner cannot tell "no plan" from "not yet". So the
+  five game generators search each draw (breadth-first, or best-first where breadth-first would
+  drown) and keep only the ones a plan was found for, within `search_limit` expansions; that plan
+  is left in `env.witness`, and `min_plan_length` turns it into a difficulty knob. The check is a
+  bias, since it favours instances a small search can solve, and it is a knob too:
+  `solvable=False` hands out the raw draw. The four simulator environments draw by the same
+  tests their bundled instances were chosen by (a source that contaminates enough, a trip that
+  leaves the grid doomed) and check nothing further, except the crop season, whose reference
+  schedule is a solution by construction.
+
+What each generator varies is in the catalogue above; the options are in each environment's
+doc. The shared machinery is [`planiverse/environments/generation.py`](planiverse/environments/generation.py).
+The benchmark runs the bundled instances; a generated benchmark is a file of instances and a
+loop over `set_instance`.
+
 ## Core concepts
 
 ### The environment interface
@@ -165,48 +177,46 @@ contract, since dispatch is structural) and implements as much of this contract 
 | Method | Returns | Notes |
 |---|---|---|
 | `reset()` | `(state, info)` | Builds the initial state. Call `set_index` first. |
-| `set_index(index)` | — | Selects which scenario/level/instance to load. |
+| `set_index(index)` | — | Selects which bundled scenario/level/instance to load. |
 | `successors(state)` | `[(action, next_state), ...]` | The expansion step. Self-loops are filtered out. |
 | `is_goal(state)` | `bool` | |
 | `is_terminal(state)` | `bool` | Dead end: no goal reachable from here. |
 | `simulate(plan)` | `[state, ...]` | Replays a plan from the initial state. |
+| `generate_instance(seed, **options)` | the instance | Optional; draws a fresh instance and selects it. |
+| `set_instance(instance)` | — | Optional; selects an instance drawn earlier. |
 | `step(action)` | `(state, reward)` | Optional; stateful stepping. |
 | `validate(plan)` | `bool` | Optional. |
 | `get_actions()` | `[action, ...]` | Optional. |
 
 Not every environment implements every method. What is actually there today:
 
-| | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `step` | `validate` | `get_actions` |
-|---|---|---|---|---|---|---|---|---|---|
-| `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `PuzznicGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `FlipullGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `LoloGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SuperMarioLandGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SuperMarioLandGBEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | — | — | — |
+| | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `generate_instance` | `step` | `validate` | `get_actions` | `render` | `close` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `AmazingTaterGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `SuperMarioLandGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | — | ✅ | — | — | — |
 
-⚠️ `is_terminal` returns a hard-coded `False` in these environments: they have no dead ends, or
-detecting them is left to the planner. The two Puzznics, `FlipullGame` and Super
-Mario Land are the ones that really compute a positional dead end; `FlipullGame`'s is *exact*,
-because the rules are known in Python and it can ask outright whether any throw would connect.
-`FlipullGBEnv` computes one too, but only the clock running out: the emulator does not know what a
-throw hits.
-The three simulator-backed environments compute real ones too: a water network whose service has
+⚠️ `is_terminal` returns a hard-coded `False` in this environment: it has no dead ends, or
+detecting them is left to the planner. Puzznic, `FlipullGame` and Super Mario Land are the ones
+that really compute a positional dead end; `FlipullGame`'s is *exact*, because the rules are
+known in Python and it can ask outright whether any throw would connect. The three
+simulator-backed environments compute real ones too: a water network whose service has
 collapsed, a blacked-out grid, and a growing season whose water budget is spent.
 
 `Environment.capabilities()` reports this per class, so the table above is checked against the code
 rather than trusted: `tests/test_interface.py` asserts the two agree.
 
-Note that `validate` is now provided by the base class for everything, derived from `simulate` and
-`is_goal`, so no environment writes it out. `step` and `get_actions` have base defaults too, but
-theirs only explain their own absence. That is why "does the class override it" is the wrong test,
-and `capabilities()` asks whether the method would actually do something.
+Note that `validate` is provided by the base class for everything, derived from `simulate` and
+`is_goal`, so no environment writes it out. `step`, `get_actions`, `generate_instance` and
+`set_instance` have base defaults too, but theirs only explain their own absence. That is why
+"does the class override it" is the wrong test, and `capabilities()` asks whether the method
+would actually do something.
 
 ### States and `literals`
 
@@ -236,19 +246,22 @@ Environments are constructed empty and loaded by integer index:
 ```python
 env = EnvNASim()
 env.set_index(3)        # 'small' benchmark
-state, _ = env.reset()  # set_index must come first — reset asserts on it
+state, _ = env.reset()  # set_index must come first — reset raises on it
 ```
 
 The index is a stable handle for "instance *n* of this environment", which is what a benchmark runner
 wants. The mapping from index to instance is listed in each environment's doc.
+`generate_instance(seed)` and `set_instance(instance)` select an instance the same way, and
+`info["generated"]` on the reset says which kind is loaded.
 
 ### Bringing your own environment
 
 Planners call environments directly; there is no wrapper to construct. An environment brought
 from outside the library counts as long as it answers the six contract methods:
-`implements_contract` checks structurally, so no subclassing is required. There used to be a
-`Simulator` facade between planners and environments; once its PDDLGym dispatch was removed it
-delegated every call one-to-one, so it went the way of the two-base-class split.
+`implements_contract` checks structurally, so no subclassing is required, and a generator is
+not required either. There used to be a `Simulator` facade between planners and environments;
+once its PDDLGym dispatch was removed it delegated every call one-to-one, so it went the way of
+the two-base-class split.
 
 ## Rendering a trace
 
@@ -258,20 +271,8 @@ env.render_trace(trace, "plan.gif")        # an animated GIF, one frame per stat
 env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 ```
 
-Rendering a trace is one image per state, nothing more: a real console screenshot when the
-state can produce one (`env.render_trace` passes a cartridge-backed environment's own ROM
-automatically), the state's own text typeset otherwise. The free-standing
-`planiverse.rendering.render_trace` takes `gamerom=` explicitly.
-
-On a Game Boy environment, `env.render()` does the same for the positions `step` has played
-through, returning the console's own frames rather than the text board:
-
-```python
-frames = env.render()          # PIL images, one per de-duplicated step
-env.render("play.gif")         # or write them, in any format render_trace spells
-```
-
-See [docs/rendering.md](docs/rendering.md).
+Rendering a trace is one image per state, nothing more: the state's own text, typeset. See
+[docs/rendering.md](docs/rendering.md).
 
 ## Planners
 
@@ -281,7 +282,7 @@ See [docs/rendering.md](docs/rendering.md).
 | Rollout IW, and π-IW with a policy it learns as it plans | [`planiverse/planners/width/rollout.py`](planiverse/planners/width/rollout.py), [`policy.py`](planiverse/planners/width/policy.py) | `successors` and `literals`; a `progress` callback stands in for the score |
 | MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
-| Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
+| Tree search / A* | [`planiverse/planners/tree_search.py`](planiverse/planners/tree_search.py) | a heuristic and a cost function |
 
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
@@ -314,7 +315,7 @@ write.
 ## Benchmarking
 
 `planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
-configurations the paper compares plus Rollout IW and π-IW, on every instance of every
+configurations the paper compares plus Rollout IW and π-IW, on every bundled instance of every
 environment, under a 30-minute wall-clock limit, an 8 GB address-space cap and a
 500,000-expansion bound, with five seeds for each of the four planners that take one, on a
 SLURM cluster or on one machine. There is no configuration
@@ -328,13 +329,8 @@ planiverse-bench report --sandbox-dir sandbox
 
 `generate` asks each registered environment how many instances it has and writes one command
 per (planner, instance, seed) under `sandbox/cmds/`, and one SLURM job array per planner, or
-per seed of a seeded planner, under `sandbox/slurm/`. The Game Boy environments need their
-cartridges, which are copyrighted and cannot ship here: pass them to the setup script as
-`--rom-puzznic`, `--rom-flipull`, `--rom-lolo`, `--rom-amazing-tater` and
-`--rom-super-mario-land`, or export `PLANIVERSE_PUZZNIC_ROM`, `PLANIVERSE_FLIPULL_ROM`,
-`PLANIVERSE_LOLO_ROM`, `PLANIVERSE_AMAZING_TATER_ROM` and `PLANIVERSE_SUPER_MARIO_LAND_ROM`
-before generating. A flag overrides the variable. An environment without one is skipped and
-says so.
+per seed of a seeded planner, under `sandbox/slurm/`. An environment whose dependencies are
+missing is skipped and says so.
 
 Every run ends in exactly one status, written to `sandbox/results/<planner>/<env>__<i>.json`
 (`..._<i>__s<seed>.json` for a seeded planner) whatever happened: `SOLVED` (the plan replays to a
@@ -355,7 +351,7 @@ and the numbers its prose quotes.
 
 ## Writing a planner
 
-Environments are planner-agnostic. [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py)
+Environments are planner-agnostic. [`planiverse/planners/tree_search.py`](planiverse/planners/tree_search.py)
 contains a small best-first `TreeSearchPlanner` that works against any environment implementing the
 contract:
 
@@ -376,8 +372,6 @@ class TreeSearchPlanner:
 ```
 
 The pieces you supply are a `Heuristic` and a `CostFunction`, both callables over states and traces.
-`SuperMarioPlanner` in the same file is a worked example (a re-implementation of Robin Baumgarten's
-A* Mario agent), and is discussed in the [Super Mario Land docs](docs/environments/super-mario-land.md#planner).
 
 Note that `PriorityQueue` pushes `(priority, item)` tuples, so ties compare the items themselves,
 which is why state and action classes define `__lt__`.
@@ -388,11 +382,11 @@ One flat package, one base class, and a registry.
 
 ```
 planiverse/environments/
-├── base.py          # Environment — the six-method contract, and nothing else
+├── base.py          # Environment — the six-method contract, the generator's two, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
-├── gameboy/         # the PyBoy-backed environments, grouped around their shared gb.py tail
-├── gameboy_py/      # their dependency-free counterparts, so each pair is easy to find
-└── <one module or subpackage per environment>
+├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
+├── gameboy_py/      # the five games, reimplemented in pure Python
+└── <one subpackage per simulator-backed environment>
 ```
 
 **Why it changed.** There used to be two base classes in two package trees,
@@ -407,17 +401,16 @@ So the taxonomy became data. `EnvironmentSpec` carries what you might select on:
 | Field | What it tells a planner |
 |---|---|
 | `deterministic` | whether expanding a state twice gives the same children |
-| `state_identity` | `value`, `path` or `snapshot`: **how branching is possible at all** |
+| `state_identity` | `value` or `path`: **how branching is possible at all** |
 | `requires` | third-party modules, so listing the catalogue imports none of them |
-| `needs_rom` | needs a copyrighted file the user supplies |
+| `generates` | what `generate_instance` draws at random, in words |
 | `tags` | the family (`game`, `operational`, `security`) plus finer ones like `continuous-dynamics` |
 
 `state_identity` is the one worth understanding. A `value` state carries its own contents and
-expanding is pure. A `snapshot` state carries a serialised simulator image, a Game Boy
-save-state. A `path` state *is* the decision sequence, replayed on demand, which is sound
-only because the simulator is deterministic. Most simulators are step-only and cannot be
-rewound; that is the property that decides whether something can be a Planiverse environment
-at all, and it now has a name.
+expanding is pure. A `path` state *is* the decision sequence, replayed on demand, which is
+sound only because the simulator is deterministic. Most simulators are step-only and cannot
+be rewound; that is the property that decides whether something can be a Planiverse
+environment at all, and it now has a name.
 
 The contract check is structural (`implements_contract`), so an environment brought from
 outside works without inheriting from anything.
@@ -431,9 +424,14 @@ outside works without inheriting from anything.
 4. Filter self-loops out of `successors` (`if successor_state == state: continue`); every bundled
    environment does this, and planners rely on it. Check that it can actually fire: if `literals`
    include a step counter, no successor ever equals its parent and the filter is dead code.
-5. Add an `EnvironmentSpec` to `planiverse/environments/registry.py`; that is what puts it
+5. Give it a generator: `set_instance` takes an instance as plain data and `generate_instance`
+   draws one from a seed and selects it. Keep the instance in one attribute that `reset` builds
+   from, so `set_index` and `set_instance` are two ways of filling the same slot. If a draw can
+   be unsolvable, check it with `planiverse.environments.generation.solvable_draw` before
+   handing it out.
+6. Add an `EnvironmentSpec` to `planiverse/environments/registry.py`; that is what puts it
    in the catalogue and in `make()`.
-6. Add a doc under `docs/environments/` and a row to the catalogue above.
+7. Add a doc under `docs/environments/` and a row to the catalogue above.
 
 ## Repository layout
 
@@ -442,20 +440,13 @@ planiverse/
 ├── environments/
 │   ├── base.py                         # Environment — the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
-│   ├── gameboy/                        # the PyBoy-backed environments
-│   │   ├── gb.py                       # GBEnv, GBState, GBAction — the shared tail
-│   │   ├── puzznic_gb.py               # PuzznicGBEnv
-│   │   ├── flipull_gb.py               # FlipullGBEnv
-│   │   ├── lolo_gb.py                  # LoloGBEnv
-│   │   ├── amazing_tater_gb.py         # AmazingTaterGBEnv
-│   │   └── super_mario_land_gb.py      # SuperMarioLandGBEnv
-│   ├── gameboy_py/                     # their dependency-free counterparts, no ROM needed
-│   │   ├── puzznic.py                  # PuzznicGame     — twin of puzznic_gb
-│   │   ├── flipull.py                  # FlipullGame     — twin of flipull_gb
-│   │   ├── lolo.py                     # LoloGame        — twin of lolo_gb
-│   │   ├── amazing_tater.py            # AmazingTaterGame — twin of amazing_tater_gb
-│   │   └── super_mario_land.py         # SuperMarioLandGame — same genre as super_mario_land_gb,
-│   │                                   #                  cartridge-fitted physics, not a twin
+│   ├── generation.py                   # rng, bounded_search, draw_until, solvable_draw
+│   ├── gameboy_py/                     # the five games in pure Python, nothing to supply
+│   │   ├── puzznic.py                  # PuzznicGame
+│   │   ├── flipull.py                  # FlipullGame
+│   │   ├── lolo.py                     # LoloGame
+│   │   ├── amazing_tater.py            # AmazingTaterGame
+│   │   └── super_mario_land.py         # SuperMarioLandGame — measured physics, original levels
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
@@ -464,18 +455,19 @@ planiverse/
 │   ├── width/                          # IW, Iterated Width, SIW, BFWS, Rollout IW, π-IW
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
 │   ├── mcts.py                         # MCTSPlanner (UCT)
-│   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
+│   └── tree_search.py                  # TreeSearchPlanner, Heuristic, CostFunction
 ├── rendering/                          # traces to GIF or PNG frames (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the paper's evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
     └── measures.py                     # per-environment progress measures for SIW and BFWS
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark: protocol, statuses, report
+docs/provenance.md                      # where the game rules and level data came from
 tools/setup_benchmark.sh                # builds the venv, installs, runs generate
 tests/
-├── sm83.py                             # minimal SM83 assembler, for the test cartridges
-├── fake_puzznic_rom.py                 # synthetic Game Boy ROM with Puzznic's memory layout
-└── fake_flipull_rom.py                 # synthetic Game Boy ROM with Flipull's memory layout
+├── test_interface.py                   # the contract, across every environment
+├── test_generators.py                  # the instance generators, across every environment
+└── test_<environment>.py               # per-environment behaviour
 ```
 
 There was a `dev/` scratch directory; it is gone. It held two files. `dev.py` was stale; it
@@ -495,7 +487,6 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Environment | Upstream |
 |---|---|
 | Network attack | [NASim](https://github.com/MFaisalZaki/NetworkAttackSimulator) (fork, MIT), [PenGym](https://github.com/cyb3rlab/PenGym) |
-| Super Mario Land, Puzznic (GB), Flipull (GB), Adventures of Lolo (GB) | [PyBoy](https://github.com/Baekalfen/PyBoy) |
 | Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
@@ -508,31 +499,29 @@ redistributed here. Both remain in git history should their upstreams ever licen
 
 ### Studied titles
 
-The Game Boy environments study commercially published titles. This repository
-ships no ROM image; you supply your own legally obtained cartridge image, which
-each environment verifies by MD5 before use.
+The five game environments reimplement commercially published titles in Python. This
+repository ships no ROM image, no original code and no original graphics, and runs none of
+the original programs.
 
 *Adventures of Lolo* (HAL Laboratory / Nintendo), *Puzznic* and *Flipull* (Taito),
 *Amazing Tater* (Atlus) and *Super Mario Land* (Nintendo) are the copyright works
 and trade marks of their respective owners, used here descriptively. This project
-is unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+is unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and
+[docs/provenance.md](docs/provenance.md).
 
 ## Status
 
 What is in the tree:
 
-- Fourteen environments: three simulator-backed operational ones (water distribution, power
-  grid, crop management), the NASim network attack, and five Game Boy games, each as a cartridge
-  environment and as a dependency-free Python counterpart. Four of the counterparts are twins of
-  their cartridge; the Super Mario Land one shares the genre and the measured physics, not the
-  levels.
+- Nine environments: three simulator-backed operational ones (water distribution, power
+  grid, crop management), the NASim network attack, and five games reimplemented in pure
+  Python. Every one ships its bundled instances and generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
   latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
 - `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
   the four that take one, and a report that regenerates the paper's tables, figures and quoted
   numbers from the results.
-- A test suite that skips what it cannot build, with synthetic cartridges for the two Taito
-  games so their emulator code is tested without a ROM.
+- A test suite that skips what it cannot build.
 
 Open:
 
@@ -544,30 +533,26 @@ Open:
 - [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
       one dependency list and a `dev` extra.
 - [ ] `is_terminal` for the network attack, the one environment that still hard-codes `False`.
-- [ ] Confirm Super Mario Land's level-complete address (`0xDFE8`, marked unverified in the
-      code) and its enemy tile IDs.
-- [ ] `SuperMarioPlanner.search` returns nothing and has no replanning loop.
 - [ ] What a Flipull throw actually hits. Every row connects, so it is not simply the first block
       in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
-      with a stated rule set rather than a clone of the cartridge.
-- [ ] Flipull's second stage table at `$3A4E`, reached through the RNG: a bonus course,
-      unexplored.
-- [ ] A full pure-Python Super Mario Land twin. Deliberately not attempted: reverse-engineering
-      a physics platformer move for move is a far larger job than a turn-based puzzle, and a
-      half-modelled one would look like a prediction of the cartridge without being one.
+      with a stated rule set rather than a clone of the original.
+- [ ] A generated benchmark: `planiverse-bench` runs the bundled instances only.
+- [ ] A solvability check for the generated water and power grid instances. Their draws pass the
+      tests the bundled ones were chosen by, but nobody has searched them.
 
-Withdrawn: Boxxle II, both the cartridge environment and its twin. Both worked and agreed move
-for move over 3,000 random moves. They were removed because Boxxle II is Sokoban, whose
-transition is an add/delete list and whose PDDL encoding is one page long; an environment a
-declarative model handles well is not evidence for a library about planning with simulators. The
-code is in the history.
+Withdrawn: the five emulator-backed environments that drove the original cartridges through
+PyBoy alongside their Python counterparts, with their memory maps, screen captures and
+synthetic test cartridges. They are kept outside the repository. Withdrawn earlier: Boxxle II,
+which worked, because Boxxle II is Sokoban, whose transition is an add/delete list and whose
+PDDL encoding is one page long; an environment a declarative model handles well is not
+evidence for a library about planning with simulators.
 
 ## Licence
 
-GPL-3.0 for this repository's own code, documentation, memory maps and benchmark
+GPL-3.0 for this repository's own code, documentation and benchmark
 definitions. See [LICENSE](LICENSE).
 
-Some files are excluded from that licence because they are third-party material
-that this project has no right to sublicense — principally the `_gb` screen
-captures in `docs/renders/`. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
-for the full list, the copyright holders, and the basis on which they are included.
+The level layouts three of the games ship are derived from the original titles and are
+third-party material that this project has no right to sublicense. See
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the copyright holders and the basis on
+which they are included.

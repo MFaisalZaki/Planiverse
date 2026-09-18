@@ -13,11 +13,10 @@ responsible for), and `security`.
     >>> env = make("puzznic")
 
 Nothing here imports an environment module. The specs are declarative and `make` imports
-lazily, so listing the catalogue costs nothing even though half of it needs PyBoy, grid2op or
-numba to run.
+lazily, so listing the catalogue costs nothing even though some of it needs grid2op, WNTR or
+PCSE to run.
 """
 import importlib
-import os
 from dataclasses import dataclass, field
 
 #: How a state is identified, which is the thing that decides whether search can branch.
@@ -25,8 +24,7 @@ from dataclasses import dataclass, field
 #: - `value`:    the state carries its own contents; expanding is pure.
 #: - `path`:     the state is the decision sequence, replayed on demand. Sound only because
 #:               the simulator is deterministic.
-#: - `snapshot`: the state carries a serialised simulator image (a Game Boy save-state).
-STATE_IDENTITIES = ("value", "path", "snapshot")
+STATE_IDENTITIES = ("value", "path")
 
 
 @dataclass(frozen=True)
@@ -36,26 +34,21 @@ class EnvironmentSpec:
     name: str
     factory: str                     #: "module:ClassName", imported on demand
     summary: str
-    instances: str                   #: how many problems it offers, in words
+    instances: str                   #: how many bundled problems it offers, in words
     deterministic: bool
     state_identity: str
     requires: tuple = ()             #: third-party modules needed to run it
-    needs_rom: bool = False          #: needs a copyrighted file the user supplies
     docs: str = ""
     tags: frozenset = field(default_factory=frozenset)
+    #: What `generate_instance` draws at random, in words. Every bundled environment has a
+    #: generator; this says what one of its fresh instances varies in.
+    generates: str = ""
     #: Constructor keyword arguments, as `(name, value)` pairs, for the environments whose
     #: `__init__` takes a required argument. Without these `make(name)` works for most of the
     #: catalogue and raises a `TypeError` for the rest, which makes "build every registered
     #: environment" (what the benchmark does) impossible to write generically.
     #: Pairs rather than a dict so the spec stays hashable.
     defaults: tuple = ()
-    #: For a `needs_rom` environment, the environment variable holding the path to the
-    #: cartridge, and the constructor argument to pass it as. The file is copyrighted and
-    #: cannot ship, so the path can only come from the user. Without somewhere to put it
-    #: these environments cannot be constructed by name at all, which makes them invisible to
-    #: anything generic (the benchmark, most obviously).
-    rom_variable: str = ""
-    rom_argument: str = "romfile"
 
     def load(self):
         """Import and return the class."""
@@ -63,54 +56,17 @@ class EnvironmentSpec:
         return getattr(importlib.import_module(module_name), class_name)
 
     def build(self, **kwargs):
-        """Construct the environment, with `defaults` filled in and `kwargs` winning.
-
-        For a ROM environment the cartridge path is read from `rom_variable` unless the
-        caller passes one.
-        """
-        arguments = dict(self.defaults)
-        if self.needs_rom and self.rom_argument not in kwargs:
-            rom = self.rom_path()
-            if rom is None:
-                raise FileNotFoundError(
-                    f"{self.name} needs a cartridge, which cannot ship with this repo. "
-                    f"Point {self.rom_variable} at one, or pass "
-                    f"{self.rom_argument}= yourself.")
-            arguments[self.rom_argument] = rom
-        return self.load()(**{**arguments, **kwargs})
-
-    def rom_path(self):
-        """The cartridge for this environment, or None. Set `rom_variable` to point at one."""
-        if not self.rom_variable:
-            return None
-        path = os.environ.get(self.rom_variable)
-        return path if path and os.path.isfile(path) else None
-
-    def rom_flag(self):
-        """The short name this environment's cartridge goes by on a command line.
-
-        Derived from `rom_variable` rather than stored, so the flag and the variable are the
-        same name in two spellings and cannot drift apart:
-        `PLANIVERSE_PUZZNIC_ROM` is `--rom-puzznic`.
-        """
-        if not self.rom_variable:
-            return None
-        name = self.rom_variable
-        for prefix in ("PLANIVERSE_",):
-            if name.startswith(prefix):
-                name = name[len(prefix):]
-        if name.endswith("_ROM"):
-            name = name[:-len("_ROM")]
-        return name.lower().replace("_", "-")
+        """Construct the environment, with `defaults` filled in and `kwargs` winning."""
+        return self.load()(**{**dict(self.defaults), **kwargs})
 
     def available(self):
-        """Can this environment run here (dependencies importable, and a ROM if it needs one)?"""
+        """Can this environment run here (are its dependencies importable)?"""
         for module_name in self.requires:
             try:
                 importlib.import_module(module_name)
             except ImportError:
                 return False
-        return not self.needs_rom or self.rom_path() is not None
+        return True
 
 
 REGISTRY = (
@@ -119,121 +75,62 @@ REGISTRY = (
         factory="planiverse.environments.gameboy_py.puzznic:PuzznicGame",
         summary="Sliding block puzzle, re-implemented in pure Python",
         instances="128 levels",
+        generates="board size, wall layout, block colours and pairs",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/puzznic.md",
         tags=frozenset({"game", "puzzle", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="puzznic_gb",
-        factory="planiverse.environments.gameboy.puzznic_gb:PuzznicGBEnv",
-        summary="Puzznic played on the Game Boy cartridge, through PyBoy",
-        instances="128 rounds",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_PUZZNIC_ROM",
-        docs="docs/environments/puzznic-gb.md",
-        tags=frozenset({"game", "puzzle", "emulator"}),
-    ),
-    EnvironmentSpec(
         name="flipull",
         factory="planiverse.environments.gameboy_py.flipull:FlipullGame",
         summary="Flipull-like throwing puzzle, re-implemented in pure Python",
-        instances="32 stages, matching the cartridge's sizes and CLEAR targets",
+        instances="32 stages",
+        generates="wall size, block types, arrangement and clear target",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/flipull.md",
         tags=frozenset({"game", "puzzle", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="flipull_gb",
-        factory="planiverse.environments.gameboy.flipull_gb:FlipullGBEnv",
-        summary="Flipull (Taito's Plotting) on the Game Boy, through PyBoy",
-        instances="32 stages",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_FLIPULL_ROM",
-        docs="docs/environments/flipull-gb.md",
-        tags=frozenset({"game", "puzzle", "emulator"}),
-    ),
-    EnvironmentSpec(
         name="amazing_tater",
         factory="planiverse.environments.gameboy_py.amazing_tater:AmazingTaterGame",
         summary="Amazing Tater's blocks, pits and turnstiles, re-implemented in pure Python",
         instances="105 rooms",
+        generates="room size, walls, blocks, pits, turnstiles and taters",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/amazing-tater.md",
         tags=frozenset({"game", "puzzle", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="amazing_tater_gb",
-        factory="planiverse.environments.gameboy.amazing_tater_gb:AmazingTaterGBEnv",
-        summary="Amazing Tater played on the Game Boy cartridge, through PyBoy",
-        instances="105 rooms",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_AMAZING_TATER_ROM",
-        docs="docs/environments/amazing-tater-gb.md",
-        tags=frozenset({"game", "puzzle", "emulator"}),
-    ),
-    EnvironmentSpec(
         name="lolo",
         factory="planiverse.environments.gameboy_py.lolo:LoloGame",
         summary="Adventures of Lolo's block-and-heart puzzle, re-implemented in pure Python",
         instances="163 rooms",
+        generates="terrain, hearts, Emerald Framers, Snakeys and Medusas",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/lolo.md",
         tags=frozenset({"game", "puzzle", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="lolo_gb",
-        factory="planiverse.environments.gameboy.lolo_gb:LoloGBEnv",
-        summary="Adventures of Lolo played on the Game Boy cartridge, through PyBoy",
-        instances="163 rooms",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_LOLO_ROM",
-        docs="docs/environments/lolo-gb.md",
-        tags=frozenset({"game", "puzzle", "emulator"}),
-    ),
-    EnvironmentSpec(
         name="super_mario_land",
         factory="planiverse.environments.gameboy_py.super_mario_land:SuperMarioLandGame",
         summary="Super Mario Land-style platformer with approximated physics, in pure Python",
         instances="12 levels",
+        generates="level length, gaps, platforms, hazards and enemies",
         deterministic=True,
         state_identity="value",
         docs="docs/environments/super-mario-land.md",
         tags=frozenset({"game", "platformer", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="super_mario_land_gb",
-        factory="planiverse.environments.gameboy.super_mario_land_gb:SuperMarioLandGBEnv",
-        summary="Super Mario Land played on the Game Boy cartridge, through PyBoy",
-        instances="12 levels",
-        deterministic=True,
-        state_identity="snapshot",
-        requires=("pyboy",),
-        needs_rom=True,
-        rom_variable="PLANIVERSE_SUPER_MARIO_LAND_ROM",
-        docs="docs/environments/super-mario-land-gb.md",
-        tags=frozenset({"game", "platformer", "emulator"}),
-    ),
-    EnvironmentSpec(
         name="network_attack",
         factory="planiverse.environments.network_attack.network_attack:EnvNASim",
         summary="Penetration testing against a simulated enterprise network",
         instances="18 NASim benchmarks",
+        generates="network topology, hosts, services, OSs and exploits",
         deterministic=True,
         state_identity="value",
         requires=("nasim",),
@@ -245,6 +142,7 @@ REGISTRY = (
         factory="planiverse.environments.water_network.environment:WaterNetworkEnv",
         summary="Containing a contaminant in a water network without cutting off supply",
         instances="9 scenarios",
+        generates="the network, and the junction the contaminant enters at",
         deterministic=True,
         state_identity="value",
         requires=("wntr",),
@@ -256,6 +154,7 @@ REGISTRY = (
         factory="planiverse.environments.power_grid.environment:PowerGridEnv",
         summary="Restoring grid security by substation topology after a line trips",
         instances="9 contingencies",
+        generates="the time series, its starting step, and the line that trips",
         deterministic=True,
         state_identity="path",
         requires=("grid2op",),
@@ -267,6 +166,7 @@ REGISTRY = (
         factory="planiverse.environments.crop_management.environment:CropEnv",
         summary="Scheduling irrigation across a growing season",
         instances="22 seasons",
+        generates="the year's weather and the sowing date",
         deterministic=True,
         state_identity="path",
         requires=("pcse",),
@@ -298,17 +198,26 @@ def get_spec(name):
     return _BY_NAME[name]
 
 
-def make(name, index=None, **kwargs):
+def make(name, index=None, seed=None, **kwargs):
     """Build an environment by name, optionally selecting its instance.
 
     ```python
-    env = make("water_network", index=8)
+    env = make("water_network", index=8)       # the ninth bundled scenario
+    env = make("puzznic", seed=7)              # a freshly generated level
     state, info = env.reset()
     ```
+
+    `index` selects a bundled instance through `set_index`; `seed` draws a new one through
+    `generate_instance`. Pass one or the other.
     """
+    if index is not None and seed is not None:
+        raise ValueError("pass index= for a bundled instance or seed= for a generated one, "
+                         "not both")
     environment = get_spec(name).build(**kwargs)
     if index is not None:
         environment.set_index(index)
+    elif seed is not None:
+        environment.generate_instance(seed=seed)
     return environment
 
 

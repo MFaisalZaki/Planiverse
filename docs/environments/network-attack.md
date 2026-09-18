@@ -9,6 +9,7 @@ make it deterministic, so a planner can reason about it rather than sampling it.
 - **Import:** `from planiverse.environments.network_attack.network_attack import EnvNASim`
 - **Source:** [`network_attack.py`](../../planiverse/environments/network_attack/network_attack.py)
 - **Instances:** 18 NASim benchmark scenarios, indices `0`–`17`
+- **Generator:** `generate_instance(seed, hosts=5, services=3, **options)`; see [Generating networks](#generating-networks)
 - **Dependencies:** `nasim`, the `MFaisalZaki/NetworkAttackSimulator` fork pinned in
   `pyproject.toml`. Upstream `nasim` will not work: `generative_step` and the patched internals
   (`_perform_wiretapping`, `has_required_remote_permission`) come from the fork.
@@ -87,8 +88,32 @@ state, _ = env.reset()
 | 7 | `medium-single-site` | | 16 | `pocp-1-gen` |
 | 8 | `medium-multi-site` | | 17 | `pocp-2-gen` |
 
-The `-gen` scenarios are procedurally generated, and the rest are hand-authored. `reset()` asserts
-that either `scenario_name` or `scenario_yaml` is set.
+The `-gen` scenarios are procedurally generated, and the rest are hand-authored. `reset()`
+raises unless an instance has been selected with `set_index`, `set_instance` or
+`generate_instance`, or named in the constructor.
+
+## Generating networks
+
+`generate_instance` hands the drawing to NASim's own scenario generator, selects the result,
+and returns it as a dict that `set_instance` accepts back:
+
+```python
+env = EnvNASim()
+network = env.generate_instance(seed=7, hosts=8, services=4, num_os=3)
+# {'hosts': 8, 'services': 4, 'seed': 7, 'num_os': 3}
+state, info = env.reset()
+```
+
+`hosts` and `services` fix the size; anything else in `options` goes straight to
+`nasim.scenarios.generator.ScenarioGenerator.generate` (`num_os`, `num_processes`,
+`num_exploits`, `num_privescs`, `r_sensitive`, `r_user`, `uniform`, `alpha_H`, `alpha_V`,
+`lambda_V`, `base_host_value`, `host_discovery_value`, `step_limit`, and the rest). The
+seed goes into the dict with them, so the same dict builds the same network every time,
+including on replay through `simulate`. NASim's generated networks always place their
+sensitive hosts where they can be reached, so nothing here checks solvability.
+
+An instance is one of three dicts: `{"scenario": name}` (what `set_index` selects),
+`{"yaml": path}` (a scenario file of your own), or the generated shape above.
 
 ## Determinism
 

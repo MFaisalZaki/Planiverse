@@ -18,18 +18,6 @@ def puzznic():
     return env
 
 
-def puzznic_gb():
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from fake_puzznic_rom import synthetic_rom
-    from planiverse.environments.gameboy.puzznic_gb import PuzznicGBEnv
-
-    # Puzznic is copyrighted, so the contract is checked against the synthetic cartridge
-    # in `fake_puzznic_rom.py` rather than the real one.
-    env = PuzznicGBEnv(synthetic_rom(), verify_rom=False)
-    env.set_index(0)
-    return env
-
-
 def flipull():
     from planiverse.environments.gameboy_py.flipull import FlipullGame
 
@@ -38,17 +26,20 @@ def flipull():
     return env
 
 
-def flipull_gb():
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from fake_flipull_rom import synthetic_rom
-    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
+def lolo():
+    from planiverse.environments.gameboy_py.lolo import LoloGame
 
-    # Flipull is copyrighted too, so the contract is checked against the synthetic
-    # cartridge in `fake_flipull_rom.py`.
-    env = FlipullGBEnv(synthetic_rom(), verify_rom=False)
+    env = LoloGame()
     env.set_index(0)
     return env
 
+
+def amazing_tater():
+    from planiverse.environments.gameboy_py.amazing_tater import AmazingTaterGame
+
+    env = AmazingTaterGame()
+    env.set_index(0)
+    return env
 
 
 def super_mario_land():
@@ -98,9 +89,9 @@ def network_attack():
 
 ENVIRONMENTS = {
     "puzznic": puzznic,
-    "puzznic_gb": puzznic_gb,
     "flipull": flipull,
-    "flipull_gb": flipull_gb,
+    "lolo": lolo,
+    "amazing_tater": amazing_tater,
     "super_mario_land": super_mario_land,
     "water_network": water_network,
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
@@ -158,19 +149,18 @@ def test_an_outside_environment_needs_no_subclassing():
 def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
-    assert {"puzznic", "puzznic_gb", "flipull", "flipull_gb",
-            "lolo", "lolo_gb", "amazing_tater", "amazing_tater_gb", "super_mario_land",
-            "super_mario_land_gb", "network_attack",
-            "water_network", "power_grid", "crop_management"} == registered
+    assert {"puzznic", "flipull", "lolo", "amazing_tater", "super_mario_land",
+            "network_attack", "water_network", "power_grid", "crop_management"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():
-    """Listing the catalogue must not import pyboy, grid2op, numba and the rest; half of
-    them would not be installed."""
+    """Listing the catalogue must not import grid2op, WNTR, PCSE and the rest; some of them
+    would not be installed."""
     for spec in list_environments():
         assert ":" in spec.factory
         assert spec.deterministic, "every environment here is deterministic"
-        assert spec.state_identity in ("value", "path", "snapshot")
+        assert spec.state_identity in ("value", "path")
+        assert spec.generates, "every bundled environment says what its generator draws"
         if spec.available():
             assert issubclass(spec.load(), Environment)
 
@@ -282,9 +272,9 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
     hand-maintained. These are the rows that claim the full set."""
     from planiverse.environments import get_spec
 
-    full = {"step", "validate", "get_actions", "render", "close"}
-    for name in ("puzznic_gb", "flipull_gb", "super_mario_land_gb",
-                 "water_network", "power_grid", "crop_management"):
+    full = {"step", "validate", "get_actions", "render", "close",
+            "generate_instance", "set_instance"}
+    for name in ("water_network", "power_grid", "crop_management"):
         spec = get_spec(name)
         if not spec.available():
             continue
@@ -304,12 +294,12 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     assert "validate" in Environment.capabilities(), "the default works"
     assert "step" not in Environment.capabilities(), "this default only raises"
     assert "get_actions" not in Environment.capabilities()
+    assert "generate_instance" not in Environment.capabilities()
 
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from planiverse.environments.gameboy.flipull_gb import FlipullGBEnv
+    from planiverse.environments.gameboy_py.flipull import FlipullGame
 
-    assert FlipullGBEnv.validate is Environment.validate, "inherited, not rewritten"
-    assert "validate" in FlipullGBEnv.capabilities(), "and still offered"
+    assert FlipullGame.validate is Environment.validate, "inherited, not rewritten"
+    assert "validate" in FlipullGame.capabilities(), "and still offered"
 
 
 def test_specs_agree_with_the_environments_they_name():

@@ -13,6 +13,7 @@ the problem: every closed pipe contains a little more and costs a little more se
 - **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
 - **Instances:** 9 scenarios, indices `0`–`8`
+- **Generator:** `generate_instance(seed, network=None, min_baseline=0.1)`; see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** `wntr`. The benchmark networks ship inside it, so there is nothing to supply.
 
 This is not a PDDL domain, and not merely because PDDL would be verbose here. Two properties, both
@@ -212,6 +213,33 @@ See [docs/rendering.md](../rendering.md) for the other output formats.
 `EpanetSimulator.run_sim()` writes `temp.inp`, `temp.bin` and `temp.rpt` into the current working
 directory unless told otherwise, and expansion runs it hundreds of times. This environment routes
 all of it into a temp directory, and `close()` removes it.
+
+## Generating scenarios
+
+`generate_instance` draws a scenario the way the bundled ones were chosen, selects it, and
+returns it as a dict that `set_instance` accepts back:
+
+```python
+env = WaterNetworkEnv()
+scenario = env.generate_instance(seed=7)     # or make("water_network", seed=7)
+# {'network': 'Net3.inp', 'source': '61', 'baseline': 0.488}
+state, info = env.reset()
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `network` | `None` | the network to draw on: `Net1.inp` or `Net3.inp` at random, or a name from WNTR's library, or a path to an EPANET `.inp` file of your own |
+| `min_baseline` | 0.1 | the share of delivered water the source must contaminate with nothing closed |
+| `attempts` | 40 | junctions tried before giving up with `GenerationError` |
+
+The source is a junction drawn at random and kept only if, with nothing closed, at least
+`min_baseline` of the delivered water comes from it, the same test `rank_sources` applies:
+a source that poisons a few percent of the network is not a containment problem. Each
+candidate costs one hydraulic solve. `Net2` is not drawn on by default because no source on
+it has been solved (see [Scenarios](#scenarios)); `set_instance({"network": "Net2.inp",
+"source": ...})` still loads one. Nothing checks that a generated scenario is solvable: on
+these networks every bundled source was, but a generated one is a measurement of the
+baseline only.
 
 ## Attribution
 

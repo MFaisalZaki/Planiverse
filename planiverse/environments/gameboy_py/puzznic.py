@@ -1,13 +1,12 @@
 """Puzznic in pure Python: no ROM, no emulator, no dependencies.
 
-The sibling [`puzznic_gb`](../gameboy/puzznic_gb.py) drives the real cartridge; this one
-implements the rules directly, so it is the dependency-free way to plan in this game.
+The rules are implemented directly, so this is the dependency-free way to plan in this game.
 
 ## Where the levels came from
 
-All 128 of them are the cartridge's 128 rounds, at matching indices: `set_index(7)` here
-and on `puzznic_gb` are the same board. The first 50 were transcribed by hand; the rest
-were read out of Puzznic at `$DF00` by booting each round through `PuzznicGBEnv`.
+All 128 of them are the original game's 128 rounds, at matching indices. The first 50 were
+transcribed by hand; the rest were read out of the running game's grid memory, one round at
+a time.
 
 Hand transcription is why the first 50 are the ones that had errors: level 23 was missing
 two walls and level 34 had two pairs of block types transposed, both found by reading the
@@ -28,6 +27,14 @@ Two known gaps, neither yet resolved:
    cartridge will leave such a pair sitting untouched. Replaying cartridge-validated plans
    here clears 30 of 39; the 9 failures are all this, and always in the same direction:
    this version clearing blocks the cartridge keeps.
+
+## Generating levels
+
+`generate_instance(seed, ...)` draws a fresh level: a walled board of the requested size,
+some interior walls, and a few colours of blocks dropped in at rest, with no two of a colour
+touching and no colour left with a single block. Each draw is searched before it is handed
+out, so a generated level always has a plan within the stated search budget; see
+`generate_level` and `planiverse.environments.generation`.
 """
 from itertools import chain
 from copy import deepcopy
@@ -35,6 +42,55 @@ from collections import defaultdict
 from typing import Tuple, List
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng, solvable_draw
+
+
+def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per_colour=(2, 3)):
+    """One random level in the alphabet `Level` reads, or None if the draw did not fit.
+
+    `width` by `height` interior cells inside a ring of walls. A fraction `walls` of the
+    interior is filled with wall cells first, then each of `colours` colours gets a number of
+    blocks drawn from `blocks_per_colour`, each dropped down a random column to rest on
+    whatever is below it, so the board starts settled and gravity has nothing to do until a
+    block is moved. A block is refused a resting place next to one of its own colour, since
+    a level that clears itself on the first move is not a puzzle. The cursor goes on a random
+    empty cell. None means some block found no room, and the caller should draw again.
+    """
+    grid = [["#"] * (width + 2)]
+    grid += [["#"] + [" "] * width + ["#"] for _ in range(height)]
+    grid.append(["#"] * (width + 2))
+    interior = [(r, c) for r in range(1, height + 1) for c in range(1, width + 1)]
+    for r, c in random_.sample(interior, int(round(walls * len(interior)))):
+        grid[r][c] = "#"
+
+    def neighbours(r, c):
+        return [grid[r + dr][c + dc] for dr, dc in ((0, 1), (0, -1), (1, 0), (-1, 0))]
+
+    letters = [str(colour + 1) for colour in range(colours)]
+    for letter in letters:
+        for _ in range(random_.choice(blocks_per_colour)):
+            columns = list(range(1, width + 1))
+            random_.shuffle(columns)
+            for col in columns:
+                # Drop to the first empty cell whose support is wall or block, scanning up.
+                landing = None
+                for r in range(height, 0, -1):
+                    if grid[r][col] == " " and grid[r + 1][col] != " ":
+                        landing = r
+                        break
+                if landing is None or letter in neighbours(landing, col):
+                    continue
+                grid[landing][col] = letter
+                break
+            else:
+                return None
+    empty = [(r, c) for r, c in interior if grid[r][c] == " "]
+    if not empty:
+        return None
+    r, c = random_.choice(empty)
+    grid[r][c] = "c"
+    return "\n".join("".join(row) for row in grid)
+
 
 class Element:
     def __init__(self, letter:str, pos:Tuple):
@@ -228,6 +284,8 @@ class PuzznicGame(Environment):
         self.state     = None
         self.level     = None
         self.index     = 0
+        #: The plan `generate_instance` accepted the current instance on, when it was checked.
+        self.witness   = None
         self.levelsstr = [
             """######\n#12c #\n###  #\n#    #\n#2  1#\n##21##\n######""",
             """#######\n#  c ##\n#  1  #\n#  2  #\n# 13  #\n# 24  #\n#243 3#\n#######""",
@@ -358,6 +416,9 @@ class PuzznicGame(Environment):
             """##########\n#45 c3   #\n#56  7   #\n#64  #   #\n###     8#\n###     1#\n###     8#\n###     1#\n#6#  3 12#\n#5#  # 27#\n#43 ##171#\n##########""",
             """#######\n###c2##\n#1# #3#\n#8#  4#\n#4  13#\n####31#\n### 2##\n### 8##\n#######"""
         ]
+        #: The level `reset` builds: a bundled one after `set_index`, or whatever
+        #: `set_instance` was given.
+        self.instance  = self.levelsstr[0]
     
     def __str__(self):
         return str(self.state)
@@ -472,11 +533,46 @@ class PuzznicGame(Environment):
                 f"Invalid index: {index}. There are {len(self.levelsstr)} levels, so the "
                 f"index must be 0-{len(self.levelsstr) - 1}.")
         self.index = index
+        self.instance = self.levelsstr[index]
+        self.witness = None
+
+    def set_instance(self, instance):
+        """Select a level string, in the alphabet the bundled levels are written in."""
+        Level(instance)                      # refuses a level with no cursor
+        self.instance = instance
+        self.index = None
+        self.witness = None
+
+    def generate_instance(self, seed=None, width=5, height=6, colours=3, walls=0.15,
+                          blocks_per_colour=(2, 3), solvable=True, min_plan_length=4,
+                          search_limit=20_000, attempts=200):
+        """Draw a fresh level, select it, and return it as a level string.
+
+        `width`, `height`, `colours`, `walls` and `blocks_per_colour` are `generate_level`'s.
+        With `solvable` each draw is searched breadth-first for up to `search_limit`
+        expansions and kept only if a plan of at least `min_plan_length` moves was found,
+        which is then left in `self.witness`.
+        """
+        random_, _ = rng(seed)
+        draw = lambda attempt: generate_level(random_, width, height, colours, walls,  # noqa: E731
+                                              blocks_per_colour)
+        if not solvable:
+            instance = next(filter(None, (draw(k) for k in range(attempts))), None)
+            if instance is None:
+                raise ValueError("no level of that shape fits; loosen the options")
+            self.set_instance(instance)
+            return instance
+        # Searched on the position (`str` prints the board and the cursor, which is what
+        # `__eq__` compares) rather than on the literals, which carry the clearing history
+        # and would make every route to the same board a different state.
+        return solvable_draw(self, draw, attempts, search_limit, min_plan_length, key=str,
+                             what="Puzznic level")
 
     def reset(self):
-        self.level = Level(self._levels_str_(self.index))
+        self.level = Level(self.instance)
         self.state, info = self.level.reset()
         self.state_history = [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
+        info.update(level=self.index, generated=self.index is None)
         return self.state, info
     
     def step(self, action:str):

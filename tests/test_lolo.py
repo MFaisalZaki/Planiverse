@@ -1,22 +1,9 @@
-"""Tests for the pure-Python Adventures of Lolo twin.
+"""Tests for the pure-Python Adventures of Lolo environment.
 
-Three tiers, in order of what they need.
-
-The first needs nothing: the rules are pure functions of a room and a position, so pushing,
-one-way passes, magic shots and Medusa's line of sight are all tested directly.
-
-The second needs a ROM, and is the one that keeps the 163 rooms honest. They were decoded
-out of the cartridge rather than transcribed, and this re-decodes and compares, so a room
-cannot drift away from the cartridge unnoticed. It also pins the two modules' shared
-alphabet against each other: `lolo.py` declares its own copy so that it needs no PyBoy, and
-a silent divergence between the copies would make the two environments describe different
-games in the same letters.
-
-The third needs a ROM *and* PyBoy, and is the strongest evidence there is that the stated
-rules are the cartridge's rules: it replays the twin's own plans on the real hardware.
-
-    PLANIVERSE_LOLO_ROM="/path/to/Adventures of Lolo (U) [S][!].gb" \\
-        poetry run pytest tests/test_lolo.py
+The rules are pure functions of a room and a position, so pushing, one-way passes, magic
+shots and Medusa's line of sight are all tested directly on hand-written rooms; the 163
+shipped rooms are checked for shape and labelling; and the environment contract is checked
+on top.
 """
 import pytest
 
@@ -26,12 +13,7 @@ from planiverse.environments.gameboy_py.lolo import (
     move, one_way_allows, parse_room, render, room_label, shoot,
 )
 
-from conftest import assert_string_literals, assert_successors_contract, lolo_rom_path
-
-needs_rom = pytest.mark.skipif(
-    lolo_rom_path() is None,
-    reason='set PLANIVERSE_LOLO_ROM to an "Adventures of Lolo (U) [S][!].gb" ROM',
-)
+from conftest import assert_string_literals, assert_successors_contract
 
 
 def game(index, magic_shots=0, rafts=False):
@@ -45,12 +27,10 @@ def board(rows, magic_shots=0, rafts=False):
     """A LoloGame on a hand-written room, for testing one rule at a time.
 
     Goes through `reset` so that the initial state gets the same treatment a real room's does,
-    including the Medusa check, which can kill Lolo before he has pressed anything. The cache
-    is keyed by `(index, rafts)`, so the injected room has to be too.
+    including the Medusa check, which can kill Lolo before he has pressed anything.
     """
     instance = LoloGame(magic_shots=magic_shots, rafts=rafts)
-    instance._rooms[(0, rafts)] = Room(0, "|".join(rows), rafts)
-    instance.set_index(0)
+    instance.set_instance("|".join(rows))
     state, _ = instance.reset()
     return instance, state
 
@@ -83,7 +63,7 @@ def test_the_cartridges_163_rooms_are_all_here():
 
 
 def test_every_room_has_exactly_one_lolo_and_one_door():
-    """The invariant that told us where the room table ends (see the memory map §2)."""
+    """The invariant that told us where the cartridge's room table ends."""
     for index, text in enumerate(ROOMS):
         assert text.count("@") == 1, f"room {index} has {text.count('@')} Lolos"
         assert text.count("D") == 1, f"room {index} has {text.count('D')} doors"
@@ -334,12 +314,13 @@ def test_rafts_are_off_unless_asked_for():
 
 
 def test_the_raft_clears_int_1_3_with_the_cartridges_own_plan():
-    """`lolo_gb` solved `int 1-3` in twelve actions. With rafts on, this finds the same twelve.
+    """BFWS cleared `int 1-3` on the cartridge in twelve actions. With rafts on, this finds the
+    same twelve.
 
-    The plan is the cartridge's, transcribed from `sandbox/results/bfws/lolo_gb__40.json` with
-    each `<button>_for_20` read as the move it is and `a_for_6` as the shot. That it clears the
-    room here as well is the whole evidence that the raft is modelled the way the cartridge
-    plays it, so it is pinned rather than described.
+    The plan is the cartridge's, transcribed from that run with each twenty-frame press read as
+    the move it is and the six-frame A press as the shot. That it clears the room here as well
+    is the whole evidence that the raft is modelled the way the cartridge plays it, so it is
+    pinned rather than described.
     """
     cartridge = ["right", "right", "up", "shoot", "up", "up", "up",
                  "left", "left", "up", "up", "up"]
@@ -437,9 +418,9 @@ def test_a_medusa_shot_into_an_egg_stops_firing():
 def test_reset_reports_what_the_room_is():
     instance = game(38)
     state, info = instance.reset()
-    assert info == {"room_index": 38, "room": "int 1-1", "hearts": 6, "shots": 0,
-                    "door": (1, 1), "start": (6, 1), "exact": True, "unmodelled_enemies": (),
-                    "rafts": False}
+    assert info == {"room_index": 38, "room": "int 1-1", "generated": False, "hearts": 6,
+                    "shots": 0, "door": (1, 1), "start": (6, 1), "exact": True,
+                    "unmodelled_enemies": (), "rafts": False}
     assert_string_literals(state)
 
 
@@ -510,70 +491,3 @@ def test_render_draws_lolo_the_objects_and_the_enemies():
     instance = game(0)
     drawn = render(instance.state)
     assert drawn.split("\n") == list(ROOMS[0].split("|"))
-
-
-# ------------------------------------------------------------- against the cartridge
-
-@needs_rom
-def test_the_rooms_still_match_the_cartridge():
-    """The 163 rooms were decoded, not transcribed. This is what keeps them that way."""
-    from planiverse.environments.gameboy.lolo_gb import read_rooms
-
-    decoded = read_rooms(lolo_rom_path())
-    assert len(decoded) == len(ROOMS)
-    for index, rows in enumerate(decoded):
-        assert "|".join(rows) == ROOMS[index], f"room {index} no longer matches the cartridge"
-
-
-@needs_rom
-def test_drifting_rivers_still_match_the_cartridge():
-    """`DRIFTING_RIVERS` was read out of the ROM, not typed. This keeps it that way.
-
-    The cartridge spells six river codes and `decode_room` maps all six onto `~`, so this is
-    the only place the distinction survives on the Python side. Get it wrong and an egg floats
-    where the cartridge would carry it away, which is the one thing the raft rule must not do.
-    """
-    from planiverse.environments.gameboy.lolo_gb import read_room
-
-    with open(lolo_rom_path(), "rb") as handle:
-        rom = handle.read()
-    drifting = {0x83, 0x85}
-    for index in range(len(ROOMS)):
-        cells = read_room(rom, index)
-        expected = tuple(divmod(offset, 8)
-                         for offset, code in enumerate(cells) if code in drifting)
-        assert tuple(DRIFTING_RIVERS.get(index, ())) == expected, \
-            f"room {index} no longer matches the cartridge's river codes"
-        # Every cell named here has to be a river in the room text, or it names nothing.
-        rows = ROOMS[index].split("|")
-        for row, col in DRIFTING_RIVERS.get(index, ()):
-            assert rows[row][col] == RIVER, f"room {index} cell ({row}, {col}) is not a river"
-
-
-@needs_rom
-def test_no_room_uses_the_river_code_that_refuses_a_push():
-    """`$82` refuses an egg outright. Nothing models it, because no room contains one."""
-    from planiverse.environments.gameboy.lolo_gb import read_room
-
-    with open(lolo_rom_path(), "rb") as handle:
-        rom = handle.read()
-    for index in range(len(ROOMS)):
-        assert 0x82 not in read_room(rom, index), f"room {index} uses $82 after all"
-
-
-@needs_rom
-def test_the_two_modules_spell_the_game_the_same_way():
-    """`lolo.py` keeps its own copy of the alphabet so that it needs no PyBoy.
-
-    Two copies can drift, and a drift here would be silent and total: the same eight rows of
-    eight letters would describe two different games.
-    """
-    from planiverse.environments.gameboy import lolo_gb
-    from planiverse.environments.gameboy_py import lolo as twin
-
-    for name in ("ROCK", "TREE", "RIVER", "FLOOR", "BRIDGE", "FRAMER", "HEART", "MAGIC_HEART",
-                 "DOOR", "DESERT", "BREAK_TILE", "FLOWER_BED", "MARKER", "LOLO", "ONE_WAY",
-                 "ENEMY_GLYPHS", "HEART_GLYPHS", "SNAKEY", "MEDUSA"):
-        assert getattr(twin, name) == getattr(lolo_gb, name), f"{name} differs between the two"
-    for index in (0, 37, 38, 107, 108, 157, 158, 162):
-        assert twin.room_label(index) == lolo_gb.room_label(index)

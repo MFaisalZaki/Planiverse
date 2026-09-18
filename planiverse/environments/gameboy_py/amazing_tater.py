@@ -1,9 +1,7 @@
 """Amazing Tater in pure Python: no ROM, no emulator, no dependencies.
 
-The sibling [`amazing_tater_gb`](../gameboy/amazing_tater_gb.py) drives the real cartridge.
-This one implements the rules directly, the way [`puzznic`](puzznic.py) stands beside
-`puzznic_gb`. Use this one for a dependency-free benchmark; use that one when you want the
-cartridge's own transition function.
+The rules are implemented directly, the way [`puzznic`](puzznic.py)'s are, so this is a
+dependency-free benchmark.
 
 ## The rules, stated
 
@@ -44,8 +42,8 @@ board, and the controls pass to whoever is left.
 Nowhere that has been found, and the search was not casual: the rules above were established
 by walking this module and the cartridge forward in lockstep (the same random press, then a
 cell-by-cell comparison of the board) across every one of the 105 rooms below.
-`tests/test_amazing_tater.py` replays the stored solutions here and, when a ROM is available,
-on the cartridge too.
+`tests/test_amazing_tater.py` replays the stored solutions here; every one of them was also
+replayed on the cartridge when it was found.
 
 Four of the eight rules are worded the way they are *because* that comparison rejected a
 simpler guess: rule 3's "still be two blocks", rule 4, rule 6's swept diagonal, and rule 7's
@@ -58,10 +56,8 @@ over the top of a cleared one. Here a solved room is simply terminal.
 
 ## Where the levels came from
 
-All 105 were read out of `amazing_tater.gb` by booting it and dumping the board the
-cartridge itself composes in work RAM (`amazing_tater_gb.AmazingTaterGBEnv.levels`) at
-matching indices, so `set_index(7)` here and there are the same room. Nothing was transcribed
-by hand.
+All 105 were read out of the running game by dumping the board the cartridge itself composes
+in work RAM, at matching indices. Nothing was transcribed by hand.
 
 They are the cartridge's two puzzle sets: 41 rooms behind PUZZLE MODE (`A-01` to `A-41`) and
 64 behind BEGINNER and ACTION MODE (`C-01` to `C-64`). The third set on the cartridge, the 96
@@ -89,10 +85,19 @@ half of these rooms, and a `$` for all of them would quietly weld them together.
 `str(state)` prints a friendlier version of the same board (`$` for every block square, `+`
 for every arm, `o` for every pivot), which is what the docs show. `board(level, state)` is
 the exact one, and it is what the tests compare.
+
+## Generating rooms
+
+`generate_instance(seed, ...)` draws a fresh room in the same alphabet: a walled rectangle
+with some interior walls, an exit, the taters, and a mix of blocks (single squares, dominoes
+and 2x2s), pits and turnstiles dropped onto free floor. Each draw is searched before it is
+handed out, so a generated room always has a plan within the stated budget; see
+`generate_room` and `planiverse.environments.generation`.
 """
 from collections import deque
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng, solvable_draw
 
 # ------------------------------------------------------------------------- the alphabet
 
@@ -1462,13 +1467,79 @@ LEVEL_SETS = (("A", "PUZZLE MODE", 41), ("C", "BEGINNER / ACTION MODE", 64))
 
 
 def label_for(index):
-    """How the cartridge's own menus number a room, as `"set-number"` counting from one."""
+    """How the cartridge's own menus number a room, as `"set-number"` counting from one.
+
+    A generated room has no index and is labelled as such.
+    """
+    if index is None:
+        return "generated"
     start = 0
     for letter, _mode, size in LEVEL_SETS:
         if index < start + size:
             return f"{letter}-{index - start + 1:02d}"
         start += size
     raise IndexError(f"Invalid index: {index}. There are {LEVEL_COUNT} rooms.")
+
+
+# -------------------------------------------------------------------------- drawing a room
+
+#: The block shapes a generated room may hold, as `(row, column, glyph)` squares, with how
+#: often each is drawn: mostly single squares, some dominoes, the odd 2x2.
+BLOCK_SHAPES = (
+    (((0, 0, "a"),), 4),
+    (((0, 0, "b"), (0, 1, "e")), 2),
+    (((0, 0, "c"), (1, 0, "i")), 2),
+    (((0, 0, "d"), (0, 1, "g"), (1, 0, "j"), (1, 1, "m")), 1),
+)
+
+#: A turnstile's four possible arms, as `(row, column, glyph)` relative to the pivot.
+ARM_SHAPES = ((-1, 0, "^"), (0, 1, ">"), (1, 0, "v"), (0, -1, "<"))
+
+
+def generate_room(random_, width=8, height=6, blocks=2, pits=2, turnstiles=1, taters=1,
+                  walls=0.08):
+    """One random room in the alphabet `parse_level` reads, or None if something found no room.
+
+    `width` by `height` floor cells inside a ring of walls, a fraction `walls` of them turned
+    to wall. Then, each on free floor: the exit, `taters` taters, `turnstiles` turnstiles with
+    two to four arms each, `blocks` blocks of the shapes in `BLOCK_SHAPES`, and `pits` open
+    pits. Nothing is placed against anything else on purpose, and nothing here decides
+    whether the room can be finished: that is the search's job.
+    """
+    if not 1 <= taters <= len(TATER_GLYPHS):
+        raise ValueError(f"a room holds between 1 and {len(TATER_GLYPHS)} taters")
+    grid = [[WALL] * (width + 2)]
+    grid += [[WALL] + [FLOOR] * width + [WALL] for _ in range(height)]
+    grid.append([WALL] * (width + 2))
+    interior = [(r, c) for r in range(1, height + 1) for c in range(1, width + 1)]
+    for r, c in random_.sample(interior, int(round(walls * len(interior)))):
+        grid[r][c] = WALL
+
+    def fit(shape):
+        """Put `shape` down somewhere every one of its squares is free floor."""
+        cells = interior[:]
+        random_.shuffle(cells)
+        for r, c in cells:
+            squares = [(r + dr, c + dc, glyph) for dr, dc, glyph in shape]
+            if all(1 <= sr <= height and 1 <= sc <= width and grid[sr][sc] == FLOOR
+                   for sr, sc, _ in squares):
+                for sr, sc, glyph in squares:
+                    grid[sr][sc] = glyph
+                return True
+        return False
+
+    shapes = [((0, 0, EXIT),)]
+    shapes += [((0, 0, TATER_GLYPHS[who]),) for who in range(taters)]
+    for _ in range(turnstiles):
+        arms = random_.sample(ARM_SHAPES, random_.randint(2, 4))
+        shapes.append(((0, 0, PIVOT), *arms))
+    kinds, weights = zip(*BLOCK_SHAPES)
+    shapes += random_.choices(kinds, weights=weights, k=blocks)
+    shapes += [((0, 0, PIT),)] * pits
+    for shape in shapes:
+        if not fit(shape):
+            return None
+    return tuple("".join(row) for row in grid)
 
 
 # --------------------------------------------------------------------------- reading a room
@@ -1722,7 +1793,7 @@ class AmazingTaterState:
 
     The level carries the walls, the exit and the set of squares that were ever pits, so none
     of that is repeated here. What is here is everything a move can change, which is more
-    than in most of the twins in this package, because a turnstile's arms and a dissolved
+    than in most of the games in this package, because a turnstile's arms and a dissolved
     block's pits both belong to the position rather than to the board.
     """
 
@@ -1834,9 +1905,8 @@ def advance(level, state, action):
 def board(level, state):
     """The position in the alphabet the levels are written in: the exact one.
 
-    A board printed by this and a board dumped out of the emulator by
-    `amazing_tater_gb.read_board` are the same tuple of strings, which is what lets the two
-    be compared cell by cell rather than eyeballed.
+    A board printed by this and a board dumped out of the running cartridge are the same tuple
+    of strings, which is what let the two be compared cell by cell rather than eyeballed.
     """
     height, width = level.shape
     lines = []
@@ -1919,6 +1989,11 @@ class AmazingTaterGame(Environment):
     def __init__(self):
         super().__init__("amazing_tater")
         self.index = 0
+        #: The room `reset` builds: a bundled one after `set_index`, or whatever
+        #: `set_instance` was given, as a tuple of row strings.
+        self.instance = LEVELS[0]
+        #: The plan `generate_instance` accepted the current room on, when it was checked.
+        self.witness = None
         self.level = None
         self.state = None
         self.state_history = []
@@ -1929,17 +2004,50 @@ class AmazingTaterGame(Environment):
                 f"Invalid index: {index}. There are {LEVEL_COUNT} rooms, so the index must "
                 f"be 0-{LEVEL_COUNT - 1}.")
         self.index = index
+        self.instance = LEVELS[index]
+        self.witness = None
+
+    def set_instance(self, instance):
+        """Select a room: a tuple or list of row strings in the level alphabet, or the same
+        rows joined by newlines."""
+        rows = tuple(instance.split("\n")) if isinstance(instance, str) else tuple(instance)
+        Level(None, rows)                    # refuses a room with no exit, no tater, or a
+        self.instance = rows                 # glyph it cannot read
+        self.index = None
+        self.witness = None
+
+    def generate_instance(self, seed=None, width=8, height=6, blocks=2, pits=2, turnstiles=1,
+                          taters=1, walls=0.08, solvable=True, min_plan_length=6,
+                          search_limit=50_000, attempts=200):
+        """Draw a fresh room, select it, and return it as a tuple of row strings.
+
+        The layout options are `generate_room`'s. With `solvable` each draw is searched
+        breadth-first for up to `search_limit` expansions and kept only if a plan of at least
+        `min_plan_length` presses was found, which is then left in `self.witness`.
+        """
+        random_, _ = rng(seed)
+        draw = lambda attempt: generate_room(random_, width, height, blocks, pits,  # noqa: E731
+                                             turnstiles, taters, walls)
+        if not solvable:
+            instance = next(filter(None, (draw(k) for k in range(attempts))), None)
+            if instance is None:
+                raise ValueError("no room of that shape fits; loosen the options")
+            self.set_instance(instance)
+            return instance
+        return solvable_draw(self, draw, attempts, search_limit, min_plan_length,
+                             what="Amazing Tater room")
 
     def label_for(self, index=None):
         return label_for(self.index if index is None else index)
 
     def reset(self):
-        self.level = Level(self.index, LEVELS[self.index])
+        self.level = Level(self.index, self.instance)
         self.state = initial_state(self.level)
         self.state_history = [self.state]
         height, width = self.level.shape
         return self.state, {"level_index": self.index,
                             "level": self.level.label,
+                            "generated": self.index is None,
                             "size": (width - 2, height - 2),
                             "taters": len(self.state.taters),
                             "blocks": len(self.state.blocks),

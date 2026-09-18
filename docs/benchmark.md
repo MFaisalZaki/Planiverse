@@ -40,24 +40,16 @@ many instances it has. Then it writes:
   every array one instance set long, under a site's `MaxArraySize`, and finishes seed 0 first.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
-The suite's 938 instances make 23 arrays: three for the deterministic width planners and five
-each for MCTS, FSX, Rollout IW and π-IW, 21,574 runs. The commands call the interpreter that ran `generate` by absolute path, so
-the jobs need no activation and cannot pick up a different install. An environment that cannot be
-built here (a missing dependency, or a Game Boy environment with no cartridge) is skipped, and
+The suite's 498 instances make 23 arrays: three for the deterministic width planners and five
+each for MCTS, FSX, Rollout IW and π-IW, 11,454 runs. The commands call the interpreter that ran
+`generate` by absolute path, so the jobs need no activation and cannot pick up a different
+install. An environment that cannot be built here (a missing dependency) is skipped, and
 `generate` says so.
 
-### Cartridges
-
-The Game Boy environments run the original games, which are copyrighted and cannot ship. Export
-the path to each before `generate`, and the jobs carry it:
-
-```bash
-export PLANIVERSE_PUZZNIC_ROM=...
-export PLANIVERSE_FLIPULL_ROM=...
-export PLANIVERSE_LOLO_ROM=...
-export PLANIVERSE_AMAZING_TATER_ROM=...
-export PLANIVERSE_SUPER_MARIO_LAND_ROM=...
-```
+The benchmark runs the bundled instances. Each environment can also generate its own (see
+[Generating instances](../README.md#generating-instances)); a generated benchmark is a matter of
+writing the instances to a file and looping `set_instance` over them, which `generate` does not
+do for you.
 
 ### `solve`
 
@@ -149,13 +141,16 @@ another planner did not use the union over seeds, which is the strongest form of
   solved over environments and the IPC quality score), each planner's plan lengths against
   BFWS's, what the rollout planners reached by the width IW needed, π-IW against Rollout IW on
   the runs both solved and its episodes per solved run, every planner's statuses per
-  environment, the cost of an expansion on the twins, the cartridges and the rest, and the
+  environment, the cost of an expansion per environment, and the
   difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
   largest width) that the paper's open-challenges section tabulates.
 
 The sandbox behind the paper is `sandbox.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
-repository and `report` regenerates every number in the paper from it.
+repository and `report` regenerates every number in the paper from it. That sandbox also holds
+results for the five emulator-backed environments the paper compared, which have since been
+withdrawn from this repository; `report` still tabulates whatever `tasks.json` lists, but those
+runs can no longer be repeated from here.
 
 ## Bringing the paper up to date
 
@@ -164,9 +159,10 @@ results in the released sandbox, so the report shows them as `MISSING` until the
 What has to happen, in order:
 
 1. **Run the ten new arrays.** `generate` writes `riw-s0` to `riw-s4` and `piiw-s0` to `piiw-s4`
-   beside the existing thirteen; with every cartridge present that is 9,380 runs on top of the
-   paper's 12,194. Nothing already run needs repeating: the protocol, the limits and the other
-   planners' parameters are unchanged. Re-release `sandbox.zip` afterwards.
+   beside the existing thirteen: 4,980 runs over the 498 instances still in the tree. Nothing
+   already run needs repeating: the protocol, the limits and the other planners' parameters are
+   unchanged. The paper's cartridge rows cannot be extended, since those environments are no
+   longer here; the tables have to say so. Re-release `sandbox.zip` afterwards.
 2. **The planner section.** Two new paragraphs, with the adaptations stated the way the paper
    states SIW's and BFWS's:
    - Rollout IW (Bandres, Bonet and Geffner, AAAI 2018): novelty measured against the depth an

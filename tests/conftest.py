@@ -1,82 +1,16 @@
 """Shared fixtures and helpers for the Planiverse test suite.
 
 Environments differ in what they need to run: Puzznic needs nothing, NASim needs the
-NetworkAttackSimulator fork, and the Game Boy environments need a ROM the user supplies.
-Tests for an environment whose requirements
-are missing skip rather than fail, so the suite is runnable from a partial install.
+NetworkAttackSimulator fork, and the three simulator-backed environments need WNTR, grid2op
+and PCSE. Tests for an environment whose requirements are missing skip rather than fail, so
+the suite is runnable from a partial install.
 """
-import os
-
 import pytest
 
 
 def requires(module_name):
     """Skip the test module unless `module_name` imports."""
     return pytest.importorskip(module_name, reason=f"{module_name} is not installed")
-
-
-def sml_rom_path():
-    """Path to a Super Mario Land ROM, or None.
-
-    The ROM is copyrighted and cannot ship with the repo, so it is opt-in via the
-    PLANIVERSE_SUPER_MARIO_LAND_ROM environment variable.
-    """
-    rom = os.environ.get("PLANIVERSE_SUPER_MARIO_LAND_ROM")
-    if rom and os.path.isfile(rom):
-        return rom
-    return None
-
-
-def puzznic_rom_path():
-    """Path to a Puzznic (J) Game Boy ROM, or None.
-
-    Same deal as the Super Mario Land ROM: copyrighted, so it is opt-in via the
-    PLANIVERSE_PUZZNIC_ROM environment variable. The tests that do not need it run
-    against a synthetic cartridge built by `fake_puzznic_rom.py`.
-    """
-    rom = os.environ.get("PLANIVERSE_PUZZNIC_ROM")
-    if rom and os.path.isfile(rom):
-        return rom
-    return None
-
-
-def flipull_rom_path():
-    """Path to a Flipull (USA) Game Boy ROM, or None.
-
-    Copyrighted like the others, so it is opt-in via PLANIVERSE_FLIPULL_ROM. The tests that
-    do not need it run against a synthetic cartridge built by `fake_flipull_rom.py`.
-    """
-    rom = os.environ.get("PLANIVERSE_FLIPULL_ROM")
-    if rom and os.path.isfile(rom):
-        return rom
-    return None
-
-
-
-def amazing_tater_rom_path():
-    """Path to an `Amazing Tater (U).gb` ROM, or None.
-
-    Copyrighted like the others, so it is opt-in via PLANIVERSE_AMAZING_TATER_ROM. The
-    pure-Python twin needs no ROM at all; the tests that compare the two against each other,
-    and the ones that replay a plan on the cartridge, skip without it.
-    """
-    rom = os.environ.get("PLANIVERSE_AMAZING_TATER_ROM")
-    if rom and os.path.isfile(rom):
-        return rom
-    return None
-
-
-def lolo_rom_path():
-    """Path to an `Adventures of Lolo (U) [S][!].gb` ROM, or None.
-
-    Copyrighted like the others, so it is opt-in via PLANIVERSE_LOLO_ROM. The pure-Python
-    twin needs no ROM at all; the tests that compare the two against each other, and the ones
-    that replay a plan on the cartridge, skip without it.
-    """
-    rom = os.environ.get("PLANIVERSE_LOLO_ROM")
-    if rom and os.path.isfile(rom):
-        return rom
-    return None
 
 
 def assert_state_contract(state):
@@ -116,4 +50,3 @@ def puzznic_env():
     env = PuzznicGame()
     env.set_index(0)
     return env
-

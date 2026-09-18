@@ -7,6 +7,8 @@ from nasim.envs.utils  import AccessLevel
 from nasim.envs.network import Network
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng
+
 
 def perform_action(self, state, action):
     """Perform the given Action against the network.
@@ -123,55 +125,100 @@ class NASimState(State):
             if self.host_has_access(addr,AccessLevel.ROOT):
                 self.literals |= frozenset([f'compromised_host_{self.host_num_map[addr]}'])
 
+#: NASim's benchmark scenarios, in the order `set_index` offers them.
+BENCHMARKS = ("tiny", "tiny-hard", "tiny-small", "small", "small-honeypot", "small-linear",
+              "medium", "medium-single-site", "medium-multi-site", "tiny-gen", "tiny-gen-rgoal",
+              "small-gen", "small-gen-rgoal", "medium-gen", "large-gen", "huge-gen",
+              "pocp-1-gen", "pocp-2-gen")
+
+
 class EnvNASim(Environment):
+    """Penetration testing against a NASim network.
+
+    An instance is one of three things, all spelled as a dict: a benchmark scenario
+    (`{"scenario": "tiny"}`, what `set_index` selects), a scenario file of your own
+    (`{"yaml": path}`), or a network NASim generates from a seed and some sizes
+    (`{"hosts": 5, "services": 3, "seed": 7, ...}`, what `generate_instance` draws).
+    """
+
     def __init__(self, scenario_name=None, scenario_yaml=None):
         super().__init__("nasim")
         self.env           = None
         self.actionslist   = None
-        self.scenario_name = scenario_name
-        self.scenario_yaml = scenario_yaml
-        
+        self.scenario_index = None
+        #: The instance `reset` builds; see the class docstring for the three shapes.
+        self.instance = None
+        if scenario_yaml is not None:
+            self.set_instance({"yaml": scenario_yaml})
+        elif scenario_name is not None:
+            self.set_instance({"scenario": scenario_name})
+
+    @property
+    def scenario_name(self):
+        """The benchmark scenario selected, or None for a file or a generated network."""
+        return self.instance.get("scenario") if self.instance else None
+
+    @property
+    def scenario_yaml(self):
+        return self.instance.get("yaml") if self.instance else None
+
     def set_index(self, index):
-        # based on the value pick from the scenario.
-        index_scenario_map = {
-            0:"tiny",
-            1:"tiny-hard",
-            2:"tiny-small",
-            3:"small",
-            4:"small-honeypot",
-            5:"small-linear",
-            6:"medium",
-            7:"medium-single-site",
-            8:"medium-multi-site",
-            9:"tiny-gen",
-            10:"tiny-gen-rgoal",
-            11:"small-gen",
-            12:"small-gen-rgoal",
-            13:"medium-gen",
-            14:"large-gen",
-            15:"huge-gen",
-            16:"pocp-1-gen",
-            17:"pocp-2-gen"
-        }
-        assert index in index_scenario_map, f"Index {index} not found in the index_scenario_map"
-        self.scenario_name = index_scenario_map[index]
+        if not 0 <= index < len(BENCHMARKS):
+            raise IndexError(
+                f"Invalid index: {index}. There are {len(BENCHMARKS)} scenarios, so the "
+                f"index must be 0-{len(BENCHMARKS) - 1}.")
+        self.set_instance({"scenario": BENCHMARKS[index]})
+        self.scenario_index = index
+
+    def set_instance(self, instance):
+        """Select an instance: `{"scenario": name}`, `{"yaml": path}` or
+        `{"hosts": n, "services": m, "seed": s, ...}` with any of NASim's generator options."""
+        if not any(key in instance for key in ("scenario", "yaml", "hosts")):
+            raise ValueError("an instance names a benchmark scenario, a yaml file, or the "
+                             "hosts and services of a network to generate")
+        if "hosts" in instance and "services" not in instance:
+            raise ValueError("a generated network needs `services` as well as `hosts`")
+        self.instance = dict(instance)
+        self.scenario_index = None
+
+    def generate_instance(self, seed=None, hosts=5, services=3, **options):
+        """Draw a fresh network, select it, and return it as a dict.
+
+        NASim builds the network: `hosts` and `services` fix its size, and `options` are
+        passed straight to its scenario generator (`num_os`, `num_processes`,
+        `num_exploits`, `num_privescs`, `r_sensitive`, `r_user`, `uniform`, `alpha_H`,
+        `alpha_V`, `lambda_V`, and the rest; see `nasim.scenarios.generator`). The seed goes
+        with it, so the same dict always builds the same network, and NASim's generated
+        networks always have their sensitive hosts reachable, so there is nothing to check.
+        """
+        _, seed = rng(seed)
+        instance = {"hosts": int(hosts), "services": int(services), "seed": seed, **options}
+        self.set_instance(instance)
+        return instance
 
     def reset(self):
-        assert self.scenario_name is not None or self.scenario_yaml is not None, "Scenario name or yaml is not set."
-        # Check if we want to load the scenario from the yaml or from a name.
-        if self.scenario_yaml is not None:
-            self.env = nasim.load(self.scenario_yaml)
+        if self.instance is None:
+            raise ValueError("Call set_index(), set_instance() or generate_instance() first.")
+        # The seed is what makes a `*-gen` scenario a *problem* rather than a draw: NASim
+        # generates those networks on demand, so an unseeded `make_benchmark` hands out a
+        # different topology, service layout and OS layout on every call. Search would then
+        # run on one network and `simulate` replay the plan against another, which is
+        # exactly how a correct plan comes back INVALID. The fixed scenarios load from file
+        # and ignore this, and a generated instance carries its own seed.
+        if "yaml" in self.instance:
+            self.env = nasim.load(self.instance["yaml"])
+        elif "scenario" in self.instance:
+            self.env = nasim.make_benchmark(self.instance["scenario"], seed=SCENARIO_SEED)
         else:
-            # The seed is what makes a `*-gen` scenario a *problem* rather than a draw:
-            # NASim generates those networks on demand, so an unseeded `make_benchmark`
-            # hands out a different topology, service layout and OS layout on every call.
-            # Search would then run on one network and `simulate` replay the plan against
-            # another, which is exactly how a correct plan comes back INVALID. The fixed
-            # scenarios load from file and ignore this.
-            self.env = nasim.make_benchmark(self.scenario_name, seed=SCENARIO_SEED)
+            options = {key: value for key, value in self.instance.items()
+                       if key not in ("hosts", "services")}
+            self.env = nasim.generate(self.instance["hosts"], self.instance["services"],
+                                      **options)
         _, _ = self.env.reset(seed=SCENARIO_SEED)
         self.actionslist = self.env.action_space.actions
-        return NASimState(self.env.current_state, self.env.network), {}
+        return NASimState(self.env.current_state, self.env.network), {
+            "instance": dict(self.instance), "scenario": self.scenario_index,
+            "generated": "hosts" in self.instance}
     
     def is_goal(self, state):
         return self.env.network.all_sensitive_hosts_compromised(state)

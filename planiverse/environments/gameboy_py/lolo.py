@@ -1,14 +1,12 @@
 """Adventures of Lolo in pure Python: no ROM, no emulator, no dependencies.
 
-The sibling [`lolo_gb`](../gameboy/lolo_gb.py) drives the real cartridge. This one implements
-the rules directly, the way [`puzznic`](puzznic.py) stands beside `puzznic_gb`. Use this one
-for a dependency-free benchmark; use that one for the cartridge's actual behaviour.
+The rules are implemented directly, the way [`puzznic`](puzznic.py)'s are, so this is a
+dependency-free benchmark.
 
 ## The rules, stated
 
 Lolo walks the four directions, one cell at a time, on an 8x8 board. Every rule below was
-measured on the cartridge (the probes are listed in
-`docs/environments/lolo-gb-memory-map.md` §9) rather than taken from a manual.
+measured on the cartridge rather than taken from a manual.
 
 1. A step into a **rock**, a **tree**, a **river** or the edge is refused.
 2. A step into a **one-way pass** is refused if it goes against the arrow, and allowed from
@@ -48,15 +46,14 @@ stands in the only approach to the room's magic heart framer, which is one of th
 the door waits for and the room's only source of magic shots, so BFWS proves the room
 unsolvable here while it clears the same room on the cartridge in 56 moves. Either direction
 is the wrong one for an approximation to err in, so it is flagged rather than smoothed over:
-`Room.exact` says which rooms the model is faithful for, and `lolo_gb` is the authority for
-the rest.
+`Room.exact` says which rooms the model is faithful for.
 
 **Rafts float on the rivers that hold still.** On the cartridge an egg shoved into a river
 floats, and Lolo can step onto it and ride across; that is how int 1-3 is cleared. The
 cartridge has six river codes and they do not agree with each other: `$82` refuses the push
 outright, `$84`, `$86` and `$87` float a raft that stays where it was put, `$83` floats one
-that drifts up and `$85` one that drifts down. `lolo_gb.decode_room` spells all six `~`, so
-this module used to be unable to tell them apart and refused every push, which lost int 1-3.
+that drifts up and `$85` one that drifts down. The room texts spell all six `~`, so this
+module used to be unable to tell them apart and refused every push, which lost int 1-3.
 
 `DRIFTING_RIVERS` closes that: it carries the `$83` and `$85` cells, read back out of the
 cartridge and pinned against it by `tests/test_lolo.py`. An egg pushed at a still river floats
@@ -64,12 +61,12 @@ into a raft Lolo may stand on and which drifts away the moment he steps off, and
 at a drifting one is refused. That is exact rather than a guess, because a current is measured
 in frames and not in moves: board the raft on tutorial 14a's channel and Lolo slides one cell
 every 160 frames with no button held at all. This module has no notion of time and would have
-to invent one, so it declines the push and leaves those rooms to `lolo_gb`.
+to invent one, so it declines the push and leaves those rooms alone.
 
 `$82` never appears in any of the 163 rooms, and 71 of the 111 river rooms have no current at
 all, so the rule this module keeps is the cartridge's own for all but the 40 rooms that drift.
 Rafts are on by default for that reason. int 1-3 is solved here in the cartridge's own twelve
-actions, and replaying that plan on `lolo_gb` clears the room.
+actions, and replaying that plan on the cartridge clears the room.
 
 Two smaller divergences, both in the safe direction. Medusa's shot is modelled as instant,
 where the cartridge gives one move of grace, but that move cannot be used to escape, so no
@@ -81,21 +78,26 @@ here, which was never tested on the cartridge and is refused rather than guessed
 
 ## Where the rooms came from
 
-All 163 of them were decoded out of `adventures_of_lolo.gb` by
-`lolo_gb.read_rooms`, at matching indices: `set_index(38)` here and on `lolo_gb` are the
-same room. Nothing was transcribed by hand. `tests/test_lolo.py` re-decodes the ROM and
-compares, when a ROM is available, so a room cannot drift away from the cartridge unnoticed.
+All 163 of them were decoded out of the cartridge's room table, at matching indices. Nothing
+was transcribed by hand.
 
 The 163 slots hold 144 distinct puzzles: the tutorial's 19 are each stored twice, once as the
 demonstration the game plays for you and once as the room to try, and the two halves of a
 pair are near-identical but not equal.
+
+## Generating rooms
+
+`generate_instance(seed, ...)` draws a fresh 8x8 room in the same alphabet: rocks and trees
+scattered over the floor, the door, Lolo, the heart framers, some Emerald Framers, and only
+the two enemies this module models exactly, Snakey and Medusa, so a generated room is never
+an approximation. Each draw is searched before it is handed out, so a generated room always
+has a plan within the stated budget; see `generate_room` and
+`planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng, solvable_draw
 
 # ------------------------------------------------------------------------- the alphabet
-# Declared here rather than imported from `lolo_gb`, which needs PyBoy: this module promises
-# to need nothing, and a twin that drags in an emulator to spell "#" would not be one. The two
-# copies are pinned against each other by `tests/test_lolo.py`, which fails if they drift.
 # The names are the cartridge's own: the object list at `$2CA9` is plain ASCII and reads
 # "EMERALD FRAMERS / TREES / ROCKS / DESERTS / ENEMY HOLES / RIVERS / BREAK TILE /
 # FLOWER BEDS / AND JEWEL BOXES", then "BRIDGE / ONE-WAY PASS / HAMMER".
@@ -124,7 +126,10 @@ def room_label(index):
 
     The tutorial stores each of its 19 puzzles twice (the demonstration the game plays for
     you, then the same room to try), so its labels carry which half of the pair a slot is.
+    A generated room has no index and is labelled as such.
     """
+    if index is None:
+        return "generated"
     if index < TUTORIAL_END:
         pair, half = divmod(index, 2)
         return f"tutorial {pair + 1}{'a' if half == 0 else 'b'}"
@@ -161,7 +166,7 @@ MEDUSA_SHIELDS = frozenset({TREE, FRAMER, EGG}) | HEART_GLYPHS | ENEMY_GLYPHS
 #: does nothing at all.
 SHOTS_PER_MAGIC_HEART = 2
 
-#: Row and column deltas, in the order `lolo_gb` names its buttons.
+#: Row and column deltas, in the order the cartridge's buttons are named.
 DIRECTIONS = {"left": (0, -1), "up": (-1, 0), "down": (1, 0), "right": (0, 1)}
 SHOOT = "shoot"
 
@@ -498,15 +503,13 @@ ROOMS = (
     "DH.NN.H.|.O....O.|.OLAALO.|..HHHH..|..HHHH..|.OLAALO.|.O....O.|@H.NN.H.",
 )
 
-#: River cells whose current carries a raft, keyed by room. `lolo_gb.decode_room` spells all
-#: six of the cartridge's river codes `~`, so this module could not tell one river from
-#: another and refused to float an egg into any of them. The codes are still in the ROM,
-#: and the memory map's raft probe ([§6](../../../docs/environments/lolo-gb-memory-map.md#6-rafts))
-#: says what each one does: `$82` refuses the push outright and appears in none of the 163
-#: rooms, `$84`, `$86` and `$87` float a raft that holds still, `$83` floats one that drifts
-#: **up** and `$85` one that drifts **down**. The cells below are the `$83` and `$85` ones,
-#: read back out of the cartridge by `tools/river_currents.py` and pinned against it by
-#: `tests/test_lolo.py`.
+#: River cells whose current carries a raft, keyed by room. The room texts spell all six of
+#: the cartridge's river codes `~`, so this module could not tell one river from another and
+#: refused to float an egg into any of them. The codes were measured one by one on the
+#: cartridge: `$82` refuses the push outright and appears in none of the 163 rooms, `$84`,
+#: `$86` and `$87` float a raft that holds still, `$83` floats one that drifts **up** and
+#: `$85` one that drifts **down**. The cells below are the `$83` and `$85` ones, read back
+#: out of the cartridge.
 #:
 #: A drift is measured in frames rather than moves: board a raft on `tutorial 14a`'s channel
 #: and Lolo slides a cell every 160 frames with no button held at all. This module has no
@@ -554,6 +557,36 @@ DRIFTING_RIVERS = {
     154: ((0, 3), (1, 3), (2, 3), (3, 3), (4, 0), (5, 0), (5, 2), (5, 4), (6, 4)),              # adv 10-2
     161: ((0, 2), (1, 2)),                                                                      # pro 4
 }
+
+
+def generate_room(random_, hearts=3, magic_hearts=0, framers=2, snakeys=1, medusas=0,
+                  rocks=0.12, trees=0.05):
+    """One random room in the alphabet `parse_room` reads.
+
+    An 8x8 floor with a fraction `rocks` of it rock and `trees` of it tree, then, each on its
+    own free cell: the door, Lolo, `hearts` heart framers of which `magic_hearts` are magic,
+    `framers` Emerald Framers, and `snakeys` Snakeys and `medusas` Medusas, the two enemies
+    this module models exactly. Nothing here decides whether the room can be finished: that is
+    the search's job, and a Medusa in line with Lolo's start is one of the things it refuses.
+    """
+    if magic_hearts > hearts:
+        raise ValueError("magic_hearts is a share of hearts, so it cannot exceed them")
+    cells = [(row, col) for row in range(SIZE) for col in range(SIZE)]
+    grid = [[FLOOR] * SIZE for _ in range(SIZE)]
+    random_.shuffle(cells)
+    scenery = int(round(rocks * len(cells))), int(round(trees * len(cells)))
+    for row, col in cells[:scenery[0]]:
+        grid[row][col] = ROCK
+    for row, col in cells[scenery[0]:sum(scenery)]:
+        grid[row][col] = TREE
+    free = cells[sum(scenery):]
+    glyphs = [DOOR, LOLO] + [MAGIC_HEART] * magic_hearts + [HEART] * (hearts - magic_hearts)
+    glyphs += [FRAMER] * framers + [SNAKEY] * snakeys + [MEDUSA] * medusas
+    if len(glyphs) > len(free):
+        raise ValueError("more objects than free cells; ask for fewer, or less scenery")
+    for (row, col), glyph in zip(free, glyphs):
+        grid[row][col] = glyph
+    return "|".join("".join(row) for row in grid)
 
 
 def parse_room(text):
@@ -776,7 +809,7 @@ class LoloState:
 
 
 def render(state):
-    """A position as ASCII, in the same alphabet `lolo_gb` prints with."""
+    """A position as ASCII, in the alphabet the rooms are written in."""
     rows = [list(row) for row in state.room.terrain]
     for row, col in state.alive:
         rows[row][col] = state.room.enemies[(row, col)]
@@ -900,7 +933,6 @@ class LoloGame(Environment):
         #: meter belongs to the player, not to the room, and on a real playthrough whatever
         #: was left over from the room before comes with you. A few rooms (int 1-5 is one)
         #: need a shot they cannot earn in-room and can only be cleared with this set.
-        #: `lolo_gb.LoloGBEnv` takes the same argument and means the same thing by it.
         self.magic_shots = magic_shots
         #: Whether an egg shoved at a river floats into a raft Lolo can stand on.
         #:
@@ -911,304 +943,12 @@ class LoloGame(Environment):
         #: the raft would hold still. Turn this off to get the older, stricter rule that
         #: refuses every river; nothing needs it, and `int 1-3` is unsolvable without it.
         self.rafts = rafts
-        terrain, hearts, framers, enemies, lolo, door = parse_room(text)
-        self.terrain, self.door, self.start = terrain, door, lolo
-        self.start_hearts, self.start_framers, self.enemies = hearts, framers, enemies
-        self.medusas = frozenset(cell for cell, glyph in enemies.items() if glyph == MEDUSA)
-        self.enemy_cells = frozenset(enemies)
-        #: River cells this room spells `~` that carry a current. An egg is not floated into
-        #: one, because the current moves the raft on frames rather than on moves; see
-        #: `DRIFTING_RIVERS`.
-        self.drifting = frozenset(DRIFTING_RIVERS.get(index, ()))
-        #: Enemy kinds this room holds that this module does not move. Empty means the model
-        #: is faithful; see the module docstring.
-        self.unmodelled = frozenset(set(enemies.values()) - {SNAKEY, MEDUSA})
-
-    @property
-    def exact(self):
-        """Does this module model this room the way the cartridge plays it?"""
-        return not self.unmodelled
-
-    @property
-    def label(self):
-        """How the game itself numbers this room."""
-        return room_label(self.index)
-
-
-#: The rooms whose only enemies are the two that never move on the cartridge either, so the
-#: model here is faithful rather than an approximation. Computed rather than typed, so it
-#: cannot fall out of step with `ROOMS`.
-EXACT_ROOMS = tuple(index for index, text in enumerate(ROOMS) if Room(index, text).exact)
-
-
-def blocked_by_medusa(room, framers, eggs, hearts, alive, cell):
-    """Is `cell` in a Medusa's clear line?
-
-    A Medusa sees along its own row and column, for the whole width of the board, and is
-    stopped only by a tree, an Emerald Framer, a heart framer, another enemy or an egg. Rocks
-    and rivers do not stop it, which is the single most surprising thing measured on this
-    cartridge and the one most likely to be read as a bug here.
-
-    A Medusa that has been shot into an egg is not in `alive` and does not fire.
-    """
-    for medusa in room.medusas & alive:
-        if medusa[0] == cell[0]:
-            fixed, axis, low, high = medusa[0], 1, *sorted((medusa[1], cell[1]))
-        elif medusa[1] == cell[1]:
-            fixed, axis, low, high = medusa[1], 0, *sorted((medusa[0], cell[0]))
-        else:
-            continue
-        between = [(fixed, step) if axis else (step, fixed) for step in range(low + 1, high)]
-        if any(room.terrain[row][col] in MEDUSA_SHIELDS or (row, col) in framers
-               or (row, col) in eggs or (row, col) in hearts or (row, col) in alive
-               for row, col in between):
-            continue
-        return True
-    return False
-
-
-class LoloAction:
-    """`left`, `up`, `down`, `right` or `shoot`."""
-
-    def __init__(self, name):
-        if name not in DIRECTIONS and name != SHOOT:
-            raise ValueError(f"unknown action: {name!r}")
-        self.name = name
-
-    def cost(self):
-        return 1
-
-    def __eq__(self, other):
-        return isinstance(other, LoloAction) and self.name == other.name
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __lt__(self, other):
-        return self.name < other.name
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
-
-class LoloState:
-    """Where Lolo is, what he is carrying, and where everything movable stands."""
-
-    def __init__(self, room, lolo, hearts, framers, eggs, alive, sunk, shots, facing, depth=0,
-                 dead=False):
-        self.room = room
-        self.lolo = lolo
-        self.hearts = dict(hearts)
-        self.framers = frozenset(framers)
-        self.eggs = frozenset(eggs)
-        #: Enemy cells still holding an enemy. Shooting one moves it into `eggs`; shooting the
-        #: egg drops it from both, and the cell is walkable from then on.
-        self.alive = frozenset(alive)
-        #: River cells holding an egg that has been pushed in and sunk. Lolo may walk on one;
-        #: it floats away the moment he steps off, so it is a bridge that works once.
-        self.sunk = frozenset(sunk)
-        self.shots = shots
-        self.facing = facing
-        self.depth = depth
-        self.dead = dead
-        self.hearts_left = len(self.hearts)
-        self.door_open = self.hearts_left == 0
-        self.solved = self.door_open and lolo == room.door and not dead
-
-        literals = [f"at(lolo, {lolo[0]}, {lolo[1]})",
-                    f"hearts-left({self.hearts_left})",
-                    f"shots({self.shots})"]
-        literals += [f"at(heart, {row}, {col})" for row, col in sorted(self.hearts)]
-        literals += [f"at(framer, {row}, {col})" for row, col in sorted(self.framers)]
-        literals += [f"at(egg, {row}, {col})" for row, col in sorted(self.eggs)]
-        literals += [f"at(sunken-egg, {row}, {col})" for row, col in sorted(self.sunk)]
-        literals += [f"at(enemy, {row}, {col})" for row, col in sorted(self.alive)]
-        # `facing` is part of `__eq__` for the reason given there -- it decides where the next
-        # shot goes -- so it has to be here too. A planner reasons over these predicates and
-        # nothing else: leave a field out of them and two positions that really are different
-        # become one, and a search can run out of frontier and call that a proof.
-        if self.facing is not None:
-            literals.append(f"facing({self.facing})")
-        if self.door_open:
-            literals.append("door-open")
-        if self.solved:
-            literals.append("goal-reached")
-        if self.dead:
-            literals.append("terminal-state")
-        self.literals = frozenset(literals)
-
-    # Enemies never move here, but they can stop being enemies, so `alive` and `eggs` are both
-    # part of the identity. Depth is not. `facing` is, and earns its place: it decides where
-    # the next shot goes, so two positions that differ only in it really are different.
-    def __eq__(self, other):
-        return (isinstance(other, LoloState) and self.room is other.room
-                and self.lolo == other.lolo and self.hearts.keys() == other.hearts.keys()
-                and self.framers == other.framers and self.eggs == other.eggs
-                and self.alive == other.alive and self.sunk == other.sunk
-                and self.shots == other.shots and self.facing == other.facing
-                and self.dead == other.dead)
-
-    def __hash__(self):
-        return hash((self.lolo, frozenset(self.hearts), self.framers, self.eggs, self.alive,
-                     self.sunk, self.shots, self.facing, self.dead))
-
-    def __lt__(self, other):
-        return self.depth < other.depth
-
-    def __str__(self):
-        return render(self)
-
-    def __repr__(self):
-        return (f"<LoloState(depth={self.depth}, hearts_left={self.hearts_left}, "
-                f"shots={self.shots}, lolo={self.lolo}, dead={self.dead})>")
-
-
-def render(state):
-    """A position as ASCII, in the same alphabet `lolo_gb` prints with."""
-    rows = [list(row) for row in state.room.terrain]
-    for row, col in state.alive:
-        rows[row][col] = state.room.enemies[(row, col)]
-    for row, col in state.eggs | state.sunk:
-        rows[row][col] = EGG
-    for row, col in state.framers:
-        rows[row][col] = FRAMER
-    for (row, col), magic in state.hearts.items():
-        rows[row][col] = MAGIC_HEART if magic else HEART
-    rows[state.lolo[0]][state.lolo[1]] = LOLO
-    return "\n".join("".join(row) for row in rows)
-
-
-def move(state, direction):
-    """One step. Returns the successor, or None when the step changes nothing.
-
-    None rather than an unchanged position, so a caller can tell "Lolo walked somewhere" from
-    "Lolo walked into a rock" without comparing states, which is what `successors` needs to
-    drop the actions that do nothing. A bump does turn him, though, and that is a real change
-    when the next action is a shot, so a refused *move* is still a successor when the facing
-    it leaves behind is new.
-    """
-    room, step = state.room, DIRECTIONS[direction]
-    target = (state.lolo[0] + step[0], state.lolo[1] + step[1])
-    facing = direction
-
-    def turned():
-        """The step was refused; the only thing that happened is that Lolo turned."""
-        if state.facing == direction:
-            return None
-        return _settle(state, state.lolo, state.hearts, state.framers, state.eggs,
-                       state.alive, state.sunk, state.shots, facing)
-
-    if not inside(target):
-        return turned()
-    ground = room.terrain[target[0]][target[1]]
-    on_sunken_egg = target in state.sunk
-    if not on_sunken_egg and ground in (ROCK, TREE, RIVER):
-        return turned()
-    if not one_way_allows(ground, step):
-        return turned()
-    if target in state.alive:
-        return turned()
-
-    framers, eggs, sunk = state.framers, state.eggs, state.sunk
-    if target in framers or target in eggs:
-        behind = (target[0] + step[0], target[1] + step[1])
-        if not inside(behind):
-            return turned()
-        beyond = room.terrain[behind[0]][behind[1]]
-        # An egg shoved into a river floats rather than being refused, and Lolo can then
-        # stand on it. A Framer pushed at a river is refused; the push table in the memory
-        # map (§5) separates the two, and §6 is the raft itself.
-        afloat = (room.rafts and beyond == RIVER and target in eggs
-                  and behind not in room.drifting)
-        if beyond not in PUSHABLE_ONTO and not afloat:
-            return turned()
-        if occupied(state, behind) or behind in state.sunk:
-            return turned()
-        if target in framers:
-            framers = frozenset(framers - {target} | {behind})
-        elif afloat:
-            eggs = frozenset(eggs - {target})
-            sunk = frozenset(sunk | {behind})
-        else:
-            eggs = frozenset(eggs - {target} | {behind})
-
-    hearts, shots = dict(state.hearts), state.shots
-    if target in hearts:
-        if hearts.pop(target):
-            shots += SHOTS_PER_MAGIC_HEART
-    return _settle(state, target, hearts, framers, eggs, state.alive, sunk, shots, facing)
-
-
-def shoot(state):
-    """Fire the magic shot one cell ahead. Returns the successor, or None if nothing happens.
-
-    Nothing happens when Lolo has no shot left, or when the cell he faces holds neither an
-    enemy nor an egg. A shot at an enemy turns it into an egg; a shot at an egg blasts it out
-    of the room, which is how a room with a Snakey in a corridor is opened up.
-    """
-    if state.shots <= 0 or state.facing is None:
-        return None
-    step = DIRECTIONS[state.facing]
-    target = (state.lolo[0] + step[0], state.lolo[1] + step[1])
-    if not inside(target):
-        return None
-    alive = state.alive
-    if target in state.eggs:
-        eggs = frozenset(state.eggs - {target})
-    elif target in alive:
-        eggs, alive = frozenset(state.eggs | {target}), frozenset(alive - {target})
-    else:
-        return None
-    return _settle(state, state.lolo, state.hearts, state.framers, eggs, alive, state.sunk,
-                   state.shots - 1, state.facing)
-
-
-def _settle(state, lolo, hearts, framers, eggs, alive, sunk, shots, facing):
-    """Build the successor, and decide whether Lolo survived arriving in it.
-
-    A Medusa's line is checked here rather than inside `move`, because a push can open one:
-    shoving the Emerald Framer that was shielding him out of the way kills Lolo just as surely
-    as walking into the line himself.
-    """
-    # A sunken egg is a bridge that works once: it stays until Lolo has crossed it, and floats
-    # away the moment he steps off.
-    if lolo != state.lolo and state.lolo in sunk:
-        sunk = frozenset(sunk - {state.lolo})
-    dead = blocked_by_medusa(state.room, framers, eggs, hearts, alive, lolo)
-    return LoloState(state.room, lolo, hearts, framers, eggs, alive, sunk, shots, facing,
-                     state.depth + 1, dead)
-
-
-class LoloGame(Environment):
-    """Adventures of Lolo, implemented rather than emulated. Needs nothing installed."""
-
-    def __init__(self, magic_shots=0, rafts=True):
-        super().__init__("lolo")
-        #: Magic shots Lolo starts a room with. Zero, like the cartridge on a cold boot: the
-        #: meter belongs to the player, not to the room, and on a real playthrough whatever
-        #: was left over from the room before comes with you. A few rooms (int 1-5 is one)
-        #: need a shot they cannot earn in-room and can only be cleared with this set.
-        #: `lolo_gb.LoloGBEnv` takes the same argument and means the same thing by it.
-        self.magic_shots = magic_shots
-        #: Whether an egg shoved at a river floats into a raft Lolo can stand on.
-        #:
-        #: Off by default, and the reason is a room this would get wrong. The cartridge
-        #: floats an egg on five of its six river codes and refuses it on `$82`, and two of
-        #: the five then carry the raft away on a current. The rooms here spell all six `~`,
-        #: because `lolo_gb.decode_room` maps `$82`-`$87` onto one glyph, so this module
-        #: cannot tell which river it is looking at and floats an egg on all of them and
-        #: holds every raft still. On `int 1-3` that is exactly right: turn this on and BFWS
-        #: finds the cartridge's own twelve-action plan, action for action. On `tutorial
-        #: 14a` it is exactly wrong: that river is `$83`, it drifts, and the memory map (§6)
-        #: records that it cannot be crossed by stepping straight on -- which is what this
-        #: would have Lolo do. One right and one wrong is not a rule, so the default stays
-        #: with the rule this module can actually keep, and the raft is here to be switched
-        #: on deliberately for a room known to need one.
-        self.rafts = rafts
         self.index = 0
+        #: The room text `reset` builds: a bundled one after `set_index`, or whatever
+        #: `set_instance` was given.
+        self.instance = ROOMS[0]
+        #: The plan `generate_instance` accepted the current room on, when it was checked.
+        self.witness = None
         self.room = None
         self.state = None
         self.state_history = []
@@ -1223,13 +963,46 @@ class LoloGame(Environment):
                 f"Invalid index: {index}. There are {len(ROOMS)} rooms, so the index must be "
                 f"0-{len(ROOMS) - 1}.")
         self.index = index
+        self.instance = ROOMS[index]
+        self.witness = None
+
+    def set_instance(self, instance):
+        """Select a room text: eight rows of eight glyphs joined by `|`, as in `ROOMS`."""
+        rows = instance.split("|")
+        if len(rows) != SIZE or any(len(row) != SIZE for row in rows):
+            raise ValueError(f"a room is {SIZE} rows of {SIZE} glyphs joined by '|'")
+        parse_room(instance)                 # refuses a room with no Lolo or no door
+        self.instance = instance
+        self.index = None
+        self.witness = None
+
+    def generate_instance(self, seed=None, hearts=3, magic_hearts=0, framers=2, snakeys=1,
+                          medusas=0, rocks=0.12, trees=0.05, solvable=True, min_plan_length=8,
+                          search_limit=50_000, attempts=200):
+        """Draw a fresh room, select it, and return it as a room text.
+
+        The layout options are `generate_room`'s. With `solvable` each draw is searched
+        breadth-first for up to `search_limit` expansions and kept only if a plan of at least
+        `min_plan_length` actions was found, which is then left in `self.witness`.
+        """
+        random_, _ = rng(seed)
+        draw = lambda attempt: generate_room(random_, hearts, magic_hearts, framers,  # noqa: E731
+                                             snakeys, medusas, rocks, trees)
+        if not solvable:
+            instance = draw(0)
+            self.set_instance(instance)
+            return instance
+        return solvable_draw(self, draw, attempts, search_limit, min_plan_length,
+                             what="Lolo room")
 
     def reset(self):
-        # Keyed by the raft flag as well as the index: two rooms that disagree about whether
+        # Keyed by the raft flag as well as the room: two rooms that disagree about whether
         # a river floats an egg are two different puzzles, and states compare their room by
         # identity, so they must not share one.
-        self.room = self._rooms.setdefault(
-            (self.index, self.rafts), Room(self.index, ROOMS[self.index], self.rafts))
+        key = (self.instance, self.rafts)
+        if key not in self._rooms:
+            self._rooms[key] = Room(self.index, self.instance, self.rafts)
+        self.room = self._rooms[key]
         # Lolo starts facing nowhere: the cartridge will not fire a shot before the first
         # move, and neither will this. He can, however, start dead: a room that puts him in a
         # Medusa's line kills him before he has pressed anything, which the cartridge does too.
@@ -1242,6 +1015,7 @@ class LoloGame(Environment):
         self.state_history = [self.state]
         return self.state, {"room_index": self.index,
                             "room": self.room.label,
+                            "generated": self.index is None,
                             "hearts": self.state.hearts_left,
                             "shots": self.state.shots,
                             "door": self.room.door,

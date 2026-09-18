@@ -25,6 +25,10 @@ Two things make the decision genuinely hard, both measured on the shipped weathe
     for action, successor in env.successors(state):
         print(action, successor.water_used)
 
+`generate_instance(seed)` draws a season of its own: one of the bundled years' weather under
+a sowing date shifted by up to two weeks, with the rainfed and reference yields measured the
+way the bundled seasons' were.
+
 Built on PCSE, Wageningen University's Python implementation of the WOFOST crop model:
 https://github.com/ajwdewit/pcse
 """
@@ -33,6 +37,7 @@ import os
 from collections import namedtuple
 
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng
 
 #: A potato crop on a Dutch field, which is what the bundled weather describes.
 CROP, VARIETY = "potato", "Potato_701"
@@ -66,6 +71,9 @@ REFERENCE_SCHEDULE = ((20, 2.0), (40, 2.0), (60, 2.0), (80, 2.0))
 TARGET_FRACTION = 0.98
 
 Scenario = namedtuple("Scenario", ["year", "rainfed", "reference"])
+
+#: How far, in days either way, a generated season may move the sowing date.
+SOW_SHIFT_DAYS = 14
 
 #: One growing season per scenario: the same field, a different year's weather. Measured by
 #: running each year rainfed and then under the reference schedule. 1990 and 1991 are absent
@@ -222,6 +230,10 @@ class CropEnv(Environment):
         self.target_fraction = target_fraction
 
         self.scenario_index = None
+        #: The season `reset` builds, as `{"year": ..., "sow": [month, day], "rainfed": ...,
+        #: "reference": ...}`: a bundled one after `set_index`, or whatever `set_instance`
+        #: was given.
+        self.instance = None
         self.state = None
         self.state_history = []
         self._cache = {}
@@ -235,15 +247,63 @@ class CropEnv(Environment):
             raise IndexError(
                 f"Invalid index: {index}. There are {len(SCENARIOS)} seasons, so the index "
                 f"must be 0-{len(SCENARIOS) - 1}.")
+        scenario = SCENARIOS[index]
+        self.set_instance({"year": scenario.year, "sow": list(SOW_MONTH_DAY),
+                           "rainfed": scenario.rainfed, "reference": scenario.reference})
         self.scenario_index = index
+
+    def set_instance(self, instance):
+        """Select a season: `{"year": y, "sow": [month, day], "reference": kg_per_ha}`.
+
+        `reference` is what the reference schedule yields in that season, which the target
+        is measured off; `generate_instance` measures it, and a caller writing an instance
+        by hand can leave it out to have it measured on the first `reset`.
+        """
+        year, sow = int(instance["year"]), tuple(instance.get("sow", SOW_MONTH_DAY))
+        datetime.date(year, *sow)            # refuses a date that does not exist
+        self.instance = {**instance, "year": year, "sow": list(sow)}
+        self.scenario_index = None
+        self._cache = {}
+
+    def generate_instance(self, seed=None, year=None, sow_shift=SOW_SHIFT_DAYS):
+        """Draw a fresh season, select it, and return it as a dict.
+
+        `year` is one of the bundled seasons' years (default: one at random; the weather
+        PCSE ships has no others without gaps), and the sowing date is the usual one moved by
+        up to `sow_shift` days either way, which changes which weather the crop meets at each
+        growth stage. The rainfed and reference yields are then measured, two seasons' worth
+        of simulation, so the instance records what its target is measured off.
+        """
+        random_, _ = rng(seed)
+        years = [scenario.year for scenario in SCENARIOS]
+        if year is not None and year not in years:
+            raise ValueError(f"no gap-free weather for {year}; choose from {years}")
+        year = year if year is not None else random_.choice(years)
+        sowing = (datetime.date(year, *SOW_MONTH_DAY)
+                  + datetime.timedelta(days=random_.randint(-sow_shift, sow_shift)))
+        self.set_instance({"year": year, "sow": [sowing.month, sowing.day]})
+        self.__measure__()
+        return dict(self.instance)
+
+    def __measure__(self):
+        """Fill in the season's rainfed and reference yields by running it both ways."""
+        rainfed, _, _ = self.__run__((), True)
+        reference, _, _ = self.__run__(
+            tuple(action.amount for action in self.reference_plan()), True)
+        self.instance.update(rainfed=round(rainfed, 1), reference=round(reference, 1))
         self._cache = {}
 
     def scenario(self):
-        return SCENARIOS[self.scenario_index]
+        """The selected season as a `Scenario`, measured or not yet."""
+        return Scenario(self.instance["year"], self.instance.get("rainfed"),
+                        self.instance.get("reference"))
+
+    def sowing_date(self):
+        return datetime.date(self.instance["year"], *self.instance["sow"])
 
     def target_yield(self):
         """What this season's plan has to reach, measured off the reference schedule."""
-        return self.scenario().reference * self.target_fraction
+        return self.instance["reference"] * self.target_fraction
 
     # ------------------------------------------------------------------ the crop model
 
@@ -269,9 +329,10 @@ class CropEnv(Environment):
         from pcse.models import Wofost72_WLP_FD
 
         weather, parameters = self.__providers__()
+        sowing = self.sowing_date()
         agro = yaml.safe_load(AGROMANAGEMENT.format(
             start=f"{year}-01-01", crop=CROP, variety=VARIETY,
-            sow=f"{year}-{SOW_MONTH_DAY[0]:02d}-{SOW_MONTH_DAY[1]:02d}",
+            sow=sowing.isoformat(),
             harvest=f"{year}-{HARVEST_MONTH_DAY[0]:02d}-{HARVEST_MONTH_DAY[1]:02d}"))
         return Wofost72_WLP_FD(parameters, weather, agro)
 
@@ -283,9 +344,9 @@ class CropEnv(Environment):
         """
         from pcse import signals
 
-        year = self.scenario().year
+        year = self.instance["year"]
         model = self.__model__(year)
-        sowing = datetime.date(year, *SOW_MONTH_DAY)
+        sowing = self.sowing_date()
         days = decision_days()
 
         for index, amount in enumerate(schedule):
@@ -328,14 +389,18 @@ class CropEnv(Environment):
     # ------------------------------------------------------------------ interface
 
     def reset(self):
-        if self.scenario_index is None:
+        if self.instance is None:
             self.set_index(0)
+        if "reference" not in self.instance:
+            self.__measure__()
         self.state = self.__state__(())
         self.state_history = [self.state]
-        scenario = self.scenario()
-        return self.state, {"year": scenario.year,
-                            "rainfed": scenario.rainfed,
-                            "reference": scenario.reference,
+        return self.state, {"year": self.instance["year"],
+                            "sow": tuple(self.instance["sow"]),
+                            "scenario": self.scenario_index,
+                            "generated": self.scenario_index is None,
+                            "rainfed": self.instance["rainfed"],
+                            "reference": self.instance["reference"],
                             "target": self.target_yield(),
                             "budget_cm": self.budget_cm,
                             "decisions": DECISION_COUNT,

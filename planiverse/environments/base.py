@@ -15,8 +15,11 @@ on, including the tags that used to be package directories.
 #: Methods a planner may always call.
 REQUIRED_METHODS = ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate")
 
-#: Methods a planner should check for. `capabilities()` reports which are present.
-OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close")
+#: Methods a planner should check for. `capabilities()` reports which are present. The last
+#: two are the instance generator: every bundled environment offers them, but an environment
+#: brought from outside still counts without them.
+OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close",
+                    "generate_instance", "set_instance")
 
 
 def _stub(method):
@@ -63,7 +66,7 @@ class Environment:
 
     @_stub
     def set_index(self, index):
-        """Select which instance (level, scenario, stage) `reset` will build."""
+        """Select which bundled instance (level, scenario, stage) `reset` will build."""
         raise NotImplementedError(f"{type(self).__name__} must implement set_index()")
 
     @_stub
@@ -119,18 +122,38 @@ class Environment:
             f"{type(self).__name__} has no static action list; its actions are built per "
             "state by successors()")
 
+    # ------------------------------------------------------------------- the generator
+    # `set_index` picks one of the instances an environment ships with. These two make new
+    # ones: `generate_instance` draws a fresh instance from a seed and selects it, the way
+    # `set_index` selects a bundled one, and returns it as plain data (strings, tuples,
+    # dicts) so it can be written down; `set_instance` selects an instance written down
+    # earlier, so a generated benchmark replays exactly.
+
+    @_stub
+    def generate_instance(self, seed=None, **options):
+        """Draw a fresh instance from `seed`, select it for `reset`, and return it.
+
+        The same seed and options always give the same instance. `options` are the
+        environment's own knobs (a board size, a number of hosts, a water budget); each
+        environment documents its own. The return value is plain data that `set_instance`
+        accepts back.
+        """
+        raise NotImplementedError(f"{type(self).__name__} has no instance generator")
+
+    @_stub
+    def set_instance(self, instance):
+        """Select an instance `generate_instance` returned earlier, so `reset` builds it."""
+        raise NotImplementedError(f"{type(self).__name__} has no instance generator")
+
     def render_trace(self, trace, target, **kwargs):
         """Write a trace to `target`: an animated GIF (`plan.gif`) or a directory of
         one PNG per state.
 
-        A convenience over `planiverse.rendering.render_trace` that supplies this
-        environment's cartridge when it has one, so a Game Boy trace comes out as real
-        console screenshots with no extra arguments. Not a capability: it works for every
-        environment, because every state can at least be rendered as its own text.
+        A convenience over `planiverse.rendering.render_trace`. Not a capability: it works
+        for every environment, because every state can at least be rendered as its own text.
         """
         from planiverse.rendering import render_trace
 
-        kwargs.setdefault("gamerom", getattr(self, "romfile", None))
         return render_trace(trace, target, **kwargs)
 
     @classmethod

@@ -13,8 +13,7 @@ requires-python = ">=3.11,<3.14"
 # One install gets you every environment. `tests/test_packaging.py` checks that this list
 # still covers everything the library imports.
 dependencies = [
-    "pyboy (>=2.5.1,<3.0.0)",
-    "pillow (>=9.1)",               # trace rendering, and the Game Boy screenshots
+    "pillow (>=9.1)",               # trace rendering
     "numpy (>=1.26)",
     "pandas (>=2.0,<3)",            # pandapower writes through .values views, which pandas 3's copy-on-write makes read-only
     "networkx (>=3.0)",
@@ -23,6 +22,7 @@ dependencies = [
     "pymetasploit3 (>=1.0.6)",
     "python-nmap (>=0.7.1)",
     "matplotlib (>=3.5)",           # benchmark plots, and the font the trace renderer borrows
+    "scipy (>=1.10)",               # the benchmark report's sign tests
     # The three simulator-backed environments. Each ships its own benchmark data, so none
     # of them downloads anything at run time.
     "wntr (>=1.2)",                 # EPANET, for the water distribution network

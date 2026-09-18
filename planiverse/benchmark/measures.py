@@ -69,15 +69,6 @@ def amazing_tater(state):
     return 2 * len(state.taters) + abs(where[0] - flag[0]) + abs(where[1] - flag[1])
 
 
-def amazing_tater_gb(state):
-    """The same measure, off the board the cartridge composed."""
-    if not state.taters or state.exit is None:
-        return 0
-    where = state.taters.get(state.active) or next(iter(state.taters.values()))
-    return (2 * len(state.taters)
-            + abs(where.row - state.exit.row) + abs(where.col - state.exit.col))
-
-
 def network_attack(state):
     """Sensitive hosts not yet rooted."""
     return -_count(state, "compromised_host")
@@ -86,15 +77,10 @@ def network_attack(state):
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
-    "puzznic_gb": lambda state: state.blocks_remaining,
     "flipull": flipull,
-    "flipull_gb": lambda state: state.blocks_remaining,
     "lolo": lolo,
-    "lolo_gb": lolo,
     "amazing_tater": amazing_tater,
-    "amazing_tater_gb": amazing_tater_gb,
     "super_mario_land": super_mario_land,
-    "super_mario_land_gb": lambda state: -state.level_progress,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,

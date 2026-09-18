@@ -173,7 +173,7 @@ def test_the_stages_match_the_cartridge_contract():
     """Stage for stage, the board size and CLEAR target of `Flipull (USA)`'s own table.
 
     The cartridge stores no arrangements (it draws them from an RNG seeded by boot
-    timing), so the contract, not the layout, is what a twin can replicate. The ramp is
+    timing), so the contract, not the layout, is what a reimplementation can replicate. The ramp is
     the cartridge's: the targets tighten from 9 to 6 while the boards cycle through the
     three sizes.
     """

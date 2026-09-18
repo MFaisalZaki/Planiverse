@@ -11,6 +11,7 @@ the tuber weight at harvest.
 - **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
 - **Instances:** 22 seasons, indices `0`–`21`
+- **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
   by PCSE itself, so a season runs offline.
 
@@ -145,6 +146,30 @@ must be planned before the outcome is visible.
 when an environment has no screen to photograph.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
+
+## Generating seasons
+
+`generate_instance` draws a season, measures it the way the bundled ones were measured,
+selects it, and returns it as a dict that `set_instance` accepts back:
+
+```python
+env = CropEnv()
+season = env.generate_instance(seed=7)     # or make("crop_management", seed=7)
+# {'year': 1988, 'sow': [4, 25], 'rainfed': 13616.5, 'reference': 14101.4}
+state, info = env.reset()
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `year` | `None` | one of the twenty-two bundled years, or one at random; the weather PCSE ships has no others without gaps |
+| `sow_shift` | 14 | the sowing date is the usual 15 April moved by up to this many days either way |
+
+Moving the sowing date changes which weather the crop meets at each growth stage, which is
+what decides whether and when irrigation pays. The rainfed and reference yields are then
+measured by running the season both ways, two simulations, so the target is defined the same
+way as for a bundled season: 98% of what the reference schedule achieves. That schedule is a
+solution by construction, so every generated season is solvable. An instance written by hand
+may leave `rainfed` and `reference` out; `reset` measures them.
 
 ## Attribution
 

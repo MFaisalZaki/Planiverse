@@ -1,16 +1,14 @@
 """A side-scrolling platformer in pure Python: no ROM, no emulator, no dependencies.
 
-This is the dependency-free counterpart to [`super_mario_land_gb`](../gameboy/super_mario_land_gb.py),
-and it makes a weaker claim than the other cartridge pairs in this library. `puzznic` and
-`flipull` are twins: their rules were derived from the real hardware and reproduce it, exactly
-in one case and partly in the other. **This is not a twin of Super Mario Land**: the levels
-are original, the enemies are simplified, and there is no timer, score, power-up, run button
-or press-length jump control.
+This makes a weaker claim than the other game environments in this library. `puzznic` and
+`flipull` reproduce their originals' rules, exactly in one case and partly in the other.
+**This is not a reproduction of Super Mario Land**: the levels are original, the enemies are
+simplified, and there is no timer, score, power-up, run button or press-length jump control.
 
 What it does share with the cartridge is the movement. The constants below were fitted to
-frame-by-frame measurements of Super Mario Land, revision 1 (the same dump the
-emulator environment's memory map was derived from), recording Mario's screen position
-($C201/$C202) and the on-ground flag ($C20A) once per frame while driving scripted input.
+frame-by-frame measurements of Super Mario Land, revision 1, recording Mario's screen
+position ($C201/$C202) and the on-ground flag ($C20A) once per frame while driving scripted
+input.
 Two of the cartridge's mechanics are deliberately left out, and the arc is fitted around
 their absence: press-length jump control (on the hardware, how long `a` is held shapes the
 climb) and the `b` dash. Here a jump is one fixed arc (the cartridge's full moving jump)
@@ -35,13 +33,11 @@ is four Game Boy frames. Mario is one tile square. Each tick, in this order:
 Falling below the level kills. So does touching a hazard, and so does touching an enemy from
 the side. Landing on an enemy from above kills the *enemy* and bounces you.
 
-## What this has that the emulator environment does not
+## What a stated rule set buys
 
-`is_terminal` is **exact about death**. `SuperMarioLandGBEnv` cannot tell you whether Mario died on
-contact: it has a proximity test over the object array, and whether contact is fatal depends on
-a power-up byte the memory map never confirmed, so it deliberately reports only the music track
-changing. Here death is defined, so a planner prunes the moment it happens rather than playing
-on into a position that no longer exists.
+`is_terminal` is **exact about death**. An emulator cannot tell you whether Mario died on
+contact without reading it off the cartridge's own state; here death is defined, so a planner
+prunes the moment it happens rather than playing on into a position that no longer exists.
 
 It is *not* a test for whether the level is still winnable, and nothing here claims to be.
 Mario can be alive in a pit he cannot jump out of, and no environment in this library detects
@@ -49,8 +45,17 @@ that; deciding it in general means solving the level. Dead states are pruned; st
 the planner its budget, the same as they would on the cartridge.
 
 There is no timer, and no score. The cartridge has both; this does not model them.
+
+## Generating levels
+
+`generate_instance(seed, ...)` draws a fresh level: a floor with gaps cut into it, hazards
+set into it, platforms floating above it and enemies walking on it, Mario at the left and the
+flag at the right. The gaps and the platforms are kept within the measured jump, and each
+draw is searched before it is handed out, so a generated level always has a route within the
+stated budget; see `generate_level` and `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import rng, solvable_draw
 
 #: Units to a tile: the Game Boy's own granularity. One unit is one pixel; one tick is
 #: four Game Boy frames, which is what lets the measured values below stay integral.
@@ -76,8 +81,8 @@ GRAVITY, MAX_FALL, JUMP_SPEED, BOUNCE = 2, 12, -12, -8
 #: `#` solid, ` ` air, `^` hazard, `E` an enemy's starting tile, `M` Mario's, `G` the flag.
 SOLID, AIR, HAZARD, ENEMY, START, GOAL = "#", " ", "^", "E", "M", "G"
 
-#: Buttons and how long to hold them. The vocabulary mirrors `super_mario_land_gb`'s
-#: `button,ticks` actions, minus `down` (there is no ducking in this model) and minus `b`
+#: Buttons and how long to hold them. The vocabulary is `button,ticks`, the way a Game Boy
+#: press is spelled, minus `down` (there is no ducking in this model) and minus `b`
 #: (there is no dash: the model has the cartridge's walk and nothing above it). The jump
 #: is one fixed arc, so a hold length decides how long a *direction* is held: the short one
 #: is for fine positioning, the long one for covering ground.
@@ -97,6 +102,86 @@ def _actions():
 
 #: The full action vocabulary: 13 held-button combinations.
 ACTION_NAMES = _actions()
+
+
+def generate_level(random_, width=40, height=8, gaps=2, platforms=2, enemies=2, hazards=1):
+    """One random level in the alphabet `parse_level` reads, or None if something found no room.
+
+    Two rows of ground along the bottom, `gaps` gaps of two or three tiles cut into it (the
+    measured jump clears about five at full speed), `hazards` single deadly tiles set into its
+    top row, `platforms` runs of three to six solid tiles floating two or three tiles above it
+    (three is the most the jump reaches), and `enemies` enemies walking on the ground. Mario
+    starts at the far left and the flag stands at the far right, both on a stretch of ground
+    kept clear of everything else.
+    """
+    if width < 16 or height < 6:
+        raise ValueError("a level needs at least 16 columns and 6 rows")
+    tiles = [[AIR] * width for _ in range(height)]
+    ground = height - 2                     # the top of the floor; Mario stands one above
+    for y in (ground, ground + 1):
+        tiles[y] = [SOLID] * width
+    tiles[ground - 1][0] = START
+    tiles[ground - 1][width - 2] = GOAL
+
+    # Features are laid along the floor with clearance between them, so a gap never runs into
+    # a hazard and an enemy never starts over a hole. Columns 0-3 and the last four are Mario's
+    # and the flag's.
+    taken = set(range(0, 4)) | set(range(width - 4, width))
+
+    def claim(length, margin, low=4, high=None):
+        """A run of `length` free columns with `margin` clear either side, or None."""
+        high = width - 4 - length if high is None else high
+        starts = list(range(low, high + 1))
+        random_.shuffle(starts)
+        for start in starts:
+            span = range(start - margin, start + length + margin)
+            if not taken.intersection(span):
+                taken.update(range(start, start + length))
+                return start
+        return None
+
+    for _ in range(gaps):
+        length = random_.randint(2, 3)
+        start = claim(length, 2)
+        if start is None:
+            return None
+        for y in (ground, ground + 1):
+            for x in range(start, start + length):
+                tiles[y][x] = AIR
+    for _ in range(hazards):
+        start = claim(1, 2)
+        if start is None:
+            return None
+        tiles[ground][start] = HAZARD
+    for _ in range(enemies):
+        start = claim(1, 1)
+        if start is None:
+            return None
+        tiles[ground - 1][start] = ENEMY
+
+    # Platforms float above whatever is below them and may overlap each other's columns,
+    # so they are not claimed against the floor features, only against each other.
+    above = set()
+    for _ in range(platforms):
+        length, lift = random_.randint(3, 6), random_.randint(2, 3)
+        starts = list(range(4, width - 4 - length))
+        random_.shuffle(starts)
+        for start in starts:
+            if not above.intersection(range(start - 1, start + length + 1)):
+                above.update(range(start, start + length))
+                for x in range(start, start + length):
+                    tiles[ground - 1 - lift][x] = SOLID
+                break
+        else:
+            return None
+    return "\n".join("".join(row).rstrip() for row in tiles)
+
+
+def _progress(state):
+    """Columns still to cross, with death pinned worst: the guide the generator's check uses."""
+    if state.dead:
+        return len(state.tiles[0]) + 1
+    return max(0, state.goal[0] - state.tile_x)
 
 
 def parse_level(text):
@@ -287,6 +372,11 @@ class SuperMarioLandGame(Environment):
         super().__init__("super_mario_land")
         self.levels = tuple(levels) if levels is not None else LEVELS
         self.index = 0
+        #: The level `reset` builds: a bundled one after `set_index`, or whatever
+        #: `set_instance` was given.
+        self.instance = self.levels[0]
+        #: The route `generate_instance` accepted the current level on, when it was checked.
+        self.witness = None
         self.state = None
         self.state_history = []
 
@@ -298,14 +388,45 @@ class SuperMarioLandGame(Environment):
                 f"Invalid index: {index}. There are {len(self.levels)} levels, so the index "
                 f"must be 0-{len(self.levels) - 1}.")
         self.index = index
+        self.instance = self.levels[index]
+        self.witness = None
+
+    def set_instance(self, instance):
+        """Select a level string, in the alphabet the bundled levels are written in."""
+        parse_level(instance)                # refuses a level with no Mario or no flag
+        self.instance = instance
+        self.index = None
+        self.witness = None
+
+    def generate_instance(self, seed=None, width=40, height=8, gaps=2, platforms=2, enemies=2,
+                          hazards=1, solvable=True, search_limit=20_000, attempts=50):
+        """Draw a fresh level, select it, and return it as a level string.
+
+        The layout options are `generate_level`'s. With `solvable` each draw is searched for
+        up to `search_limit` expansions, guided by the distance to the flag, and kept only if
+        a route was found, which is then left in `self.witness`. The route is a witness that
+        the level can be finished, not a shortest one.
+        """
+        random_, _ = rng(seed)
+        draw = lambda attempt: generate_level(random_, width, height, gaps, platforms,  # noqa: E731
+                                              enemies, hazards)
+        if not solvable:
+            instance = next(filter(None, (draw(k) for k in range(attempts))), None)
+            if instance is None:
+                raise ValueError("no level of that shape fits; loosen the options")
+            self.set_instance(instance)
+            return instance
+        return solvable_draw(self, draw, attempts, search_limit, progress=_progress,
+                             what="Super Mario Land level")
 
     def reset(self):
-        tiles, start, enemies, goal = parse_level(self.levels[self.index])
+        tiles, start, enemies, goal = parse_level(self.instance)
         placed = tuple((x, y, 1) for x, y in enemies)
         x, y = _settle(tiles, *start)
         self.state = SuperMarioLandState(tiles, x, y, 0, 0, True, placed, goal)
         self.state_history = [self.state]
         return self.state, {"level": self.index,
+                            "generated": self.index is None,
                             "width": len(tiles[0]),
                             "enemies": len(placed),
                             "goal": goal}
@@ -324,8 +445,8 @@ class SuperMarioLandGame(Environment):
     def is_terminal(self, state):
         """Mario died: fell out of the level, touched a hazard, or was hit by an enemy.
 
-        Exact about death, unlike `SuperMarioLandGBEnv.is_terminal`, which cannot tell a fatal touch
-        from a survivable one and so reports only the death music. It is not a test for
+        Exact about death, which an emulator-backed environment could not be without reading
+        the cartridge's own state. It is not a test for
         whether the level is still winnable: Mario can be alive in a pit he cannot leave, and
         deciding that in general means solving the level.
         """
@@ -476,8 +597,8 @@ class SuperMarioLandGame(Environment):
 
 #: Levels, in rising order of difficulty. Each was checked by search before being shipped:
 #: see `tests/test_super_mario_land.py`, which re-derives a route through every one of them.
-#: There are twelve of them, which is what the cartridge offers through
-#: `SuperMarioLandGBEnv` (four worlds of three levels). The count is all that matches: these
+#: There are twelve of them, which is what the cartridge offers (four worlds of three
+#: levels). The count is all that matches: these
 #: levels are original, and index `i` is the `i`th step of a difficulty ramp rather than the
 #: cartridge's world `i // 3 + 1`, level `i % 3 + 1`.
 LEVELS = (

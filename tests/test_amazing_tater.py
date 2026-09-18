@@ -4,8 +4,7 @@ Four parts. The first pins the *rules* down on hand-made rooms, because a rule s
 exercised through the shipped levels is a rule set nobody can argue with, and four of these
 rules exist in the form they do only because the cartridge disagreed with a simpler guess.
 The second checks the 105 rooms themselves. The third checks the environment contract. The
-fourth replays stored solutions, and, when a ROM is around, re-dumps the cartridge to check
-the rooms have not drifted and replays a solution on the cartridge itself.
+fourth replays stored solutions.
 """
 import pytest
 
@@ -15,14 +14,7 @@ from planiverse.environments.gameboy_py.amazing_tater import (
     friendly, group_blocks, initial_state, label_for, parse_level, solve,
 )
 
-from conftest import (
-    amazing_tater_rom_path, assert_string_literals, assert_successors_contract,
-)
-
-needs_rom = pytest.mark.skipif(
-    amazing_tater_rom_path() is None,
-    reason='set PLANIVERSE_AMAZING_TATER_ROM to an "Amazing Tater (U).gb" ROM',
-)
+from conftest import assert_string_literals, assert_successors_contract
 
 
 def play(rows, *actions):
@@ -455,9 +447,9 @@ def test_step_reports_how_many_taters_got_home():
 
 
 # --------------------------------------------------------------------------- solutions
-# Shortest plans, found by `solve` and replayed here. They are also replayed on the
-# cartridge below, when a ROM is available, which is what makes them evidence about the game
-# rather than about this module.
+# Shortest plans, found by `solve` and replayed here. Every one of them was also replayed on
+# the original game, which is what makes them evidence about the game rather than about this
+# module.
 
 SOLUTIONS = {
     0: 38, 1: 22, 2: 31, 3: 30, 4: 47, 5: 41, 6: 54, 7: 47, 8: 46, 9: 64,
@@ -491,36 +483,3 @@ def test_simulate_returns_one_state_more_than_the_plan():
     trace = game.simulate(plan)
     assert len(trace) == len(plan) + 1
     assert game.is_goal(trace[-1])
-
-
-# ------------------------------------------------------------------------ against the ROM
-# The rooms were dumped off a cartridge, so re-dumping it is the one thing that can catch
-# them drifting. Skipped without a ROM.
-
-@needs_rom
-def test_the_rooms_still_match_the_cartridge():
-    from planiverse.environments.gameboy.amazing_tater_gb import AmazingTaterGBEnv
-
-    env = AmazingTaterGBEnv(amazing_tater_rom_path())
-    try:
-        for index in (0, 3, 13, 40, 41, 104):
-            assert env.__dump__(index) == tuple(row.rstrip() for row in LEVELS[index]), \
-                label_for(index)
-    finally:
-        env.close()
-
-
-@needs_rom
-def test_a_solution_found_here_also_solves_the_cartridge():
-    from planiverse.environments.gameboy.amazing_tater_gb import AmazingTaterGBEnv
-
-    plan = solve(1)
-    env = AmazingTaterGBEnv(amazing_tater_rom_path(), calibrate=False)
-    try:
-        env.set_index(1)
-        state, _ = env.reset()
-        for name in plan:
-            state = env.__advance__(state, f"{name},5")
-        assert env.is_goal(state)
-    finally:
-        env.close()

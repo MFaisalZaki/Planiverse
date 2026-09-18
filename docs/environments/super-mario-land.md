@@ -4,9 +4,9 @@ This environment implements a side-scrolling platformer in Python whose movement
 fitted to frame-by-frame measurements of the real cartridge. It needs no emulator, no ROM, and no
 dependencies beyond the standard library.
 
-It makes a weaker claim than the other cartridge pairs in this library. [`puzznic`](puzznic.md)
-and [`flipull`](flipull.md) are twins of their cartridges, with rules derived from the hardware;
-this is not a twin of Super Mario Land. The levels are original, the enemies are simplified, and
+It makes a weaker claim than the other game environments in this library. [`puzznic`](puzznic.md)
+and [`flipull`](flipull.md) reproduce their cartridges' rules, derived from the hardware; this is
+not a reproduction of Super Mario Land. The levels are original, the enemies are simplified, and
 there is no timer, score, power-up, dash button or press-length jump control.
 
 What it does share with the cartridge is the movement. We fitted the constants to recordings of
@@ -15,15 +15,14 @@ on-ground flag (`$C20A`) once per frame while driving scripted input. Two of the
 mechanics are deliberately left out, and the arc is fitted around their absence: press-length jump
 control, where on the hardware how long `a` is held shapes the climb, and the `b` dash. Here a
 jump is one fixed arc, the cartridge's full moving jump, and there is one horizontal speed, the
-cartridge's walk. Use [`SuperMarioLandGBEnv`](super-mario-land-gb.md) when you need the
-cartridge's own behaviour.
+cartridge's walk.
 
 - **Class:** `SuperMarioLandGame`
 - **Import:** `from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame`
 - **Source:** [`planiverse/environments/gameboy_py/super_mario_land.py`](../../planiverse/environments/gameboy_py/super_mario_land.py)
 - **Instances:** 12 levels, indices `0`–`11`, plus any you supply yourself
+- **Generator:** `generate_instance(seed, width=40, gaps=2, platforms=2, enemies=2, hazards=1)`; see [Generating levels](#generating-levels)
 - **Dependencies:** none
-- **Counterpart:** [`SuperMarioLandGBEnv`](super-mario-land-gb.md) plays the real Game Boy cartridge
 
 ## A solved instance
 
@@ -126,9 +125,8 @@ each level cost BFWS(w=2) when it was accepted:
 Note that those numbers are data rather than a promise: changing a physics constant moves them,
 which is what happened when we refitted the physics to the cartridge and re-measured the set.
 
-There are twelve levels because that is how many instances the cartridge offers through
-[`SuperMarioLandGBEnv`](super-mario-land-gb.md), four worlds of three levels. The count is all
-that the two sets share. These levels are original, and index `i` is the `i`th step of a
+There are twelve levels because that is how many the cartridge has, four worlds of three. The
+count is all that the two sets share. These levels are original, and index `i` is the `i`th step of a
 difficulty ramp, not the cartridge's world `i // 3 + 1`, level `i % 3 + 1`; reproducing the
 cartridge's own twelve would mean reading its level data out of the ROM, which we have not done.
 
@@ -158,6 +156,35 @@ env = SuperMarioLandGame(levels=["""
 env.set_index(0)
 ```
 
+## Generating levels
+
+`generate_instance` draws a fresh level in the same alphabet, selects it, and returns it as a
+level string that `set_instance` accepts back:
+
+```python
+env = SuperMarioLandGame()
+level = env.generate_instance(seed=7)     # or make("super_mario_land", seed=7)
+state, info = env.reset()
+env.witness                               # a route through it
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `width`, `height` | 40, 8 | the level, in tiles |
+| `gaps` | 2 | gaps of two or three tiles cut into the floor |
+| `platforms` | 2 | runs of three to six solid tiles, two or three tiles above the floor |
+| `enemies` | 2 | enemies walking on the floor |
+| `hazards` | 1 | single deadly tiles set into the floor |
+| `solvable` | `True` | search each draw and keep only one with a route |
+| `search_limit` | 20000 | expansions the check may spend per draw |
+| `attempts` | 50 | draws before giving up with `GenerationError` |
+
+Gaps and platforms are kept within the measured jump, and Mario's start and the flag each get
+a clear stretch of floor. The check is a best-first search guided by the distance to the flag
+rather than breadth-first, since breadth-first drowns in this state space; the route it leaves
+in `witness` is evidence that the level can be finished, not a shortest plan, which is why
+there is no `min_plan_length` here.
+
 ## State
 
 `SuperMarioLandState` holds the terrain, Mario's position and velocity, whether he is on the
@@ -183,9 +210,8 @@ dead()                 only in a dead state
 ## Actions
 
 The action set holds 13 actions: four button combinations held for 2, 6 or 12 ticks, plus `nop`
-for 4. The vocabulary mirrors [`super_mario_land_gb`](super-mario-land-gb.md)'s `button,ticks`
-actions, minus `down`, since there is no ducking in this model, and minus `b`, since there is no
-dash.
+for 4. The vocabulary is `button,ticks`, the way a Game Boy press is spelled, minus `down`, since
+there is no ducking in this model, and minus `b`, since there is no dash.
 
 ```
 a+right,2   a+left,2   right,2   left,2

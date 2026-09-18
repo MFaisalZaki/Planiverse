@@ -1,8 +1,7 @@
 """Flipull in pure Python: no ROM, no emulator, no dependencies.
 
-The sibling [`flipull_gb`](../gameboy/flipull_gb.py) drives the real cartridge. This one implements the
-rules directly, the way [`puzznic`](puzznic.py) stands beside `puzznic_gb`. Use this one for a
-dependency-free benchmark; use that one for the cartridge's actual behaviour.
+The rules are implemented directly, the way [`puzznic`](puzznic.py) is, so this is a
+dependency-free benchmark rather than a prediction of the original game.
 
 ## The rules, stated
 
@@ -31,17 +30,16 @@ checked. Over a longer automated comparison they agreed on about half of the lev
 four in five of the throws from above the wall, so something more is going on that has not
 been pinned down: the staircase, or a bounce, or a fall the model does not have.
 
-So this is a Flipull-*like* environment with a stated rule set, not a clone: the same
-posture as the synthetic test cartridge in `tests/fake_flipull_rom.py`. What it is good for is
-a well-defined, dependency-free planning problem; what it is not good for is predicting the
-cartridge, which is what `flipull_gb` is there to do.
+So this is a Flipull-*like* environment with a stated rule set, not a clone. What it is good
+for is a well-defined, dependency-free planning problem; what it is not good for is
+predicting the original game.
 
-## What the Python twin can do that the cartridge cannot
+## What a stated rule set buys
 
 Because the rules are known here, `is_terminal` is **exact**: a position is a dead end when no
-throw from any row would connect. The Game Boy environment cannot compute that (it does not
-know what a throw hits) and can only tell you the clock ran out. Dead-end detection is most
-of what makes a puzzle searchable, so this is not a small difference.
+throw from any row would connect. An emulator cannot compute that (it does not know what a
+throw hits) and can only tell you the clock ran out. Dead-end detection is most of what makes
+a puzzle searchable, so this is not a small difference.
 
 ## Where the stages came from
 
@@ -50,34 +48,42 @@ size and the same CLEAR target as Flipull. The arrangements are generated rather
 than copied, for two reasons. First, the cartridge has no canonical arrangements to copy:
 it draws each stage's block layout from an RNG seeded by boot timing, and its ROM stores
 only the block total and the CLEAR target per stage. Second, arrangements the cartridge
-happens to draw are mostly unreachable to their targets under this twin's stated rules
+happens to draw are mostly unreachable to their targets under this module's stated rules
 (26 of 32 in one deterministic draw, proved by exhausting their state spaces), which is a
 measure of how much the unpinned throw mechanics matter. So each board here was produced
 randomly, explored exhaustively, and kept only when the fewest blocks it can be reduced
 to is exactly the cartridge's target. `tests/test_flipull.py` re-derives a solution for
 every one of them, so a stage whose goal drifts out of reach fails the suite rather than
 quietly wasting a planner's budget.
+
+## Generating stages
+
+`generate_instance(seed, ...)` draws stages the same way the bundled ones were made: a
+random wall of blocks of the requested size, explored exhaustively, and kept only when the
+fewest blocks it can be reduced to is low enough to be worth playing for. That count becomes
+the stage's CLEAR target unless the caller names one, so a generated stage is always
+clearable and never clearable by accident.
 """
 from planiverse.environments.base import Environment
+from planiverse.environments.generation import draw_until, rng
 
 #: `1`-`4` are block types, `#` is wall, and a space is empty. There is no staircase: the
 #: cartridge has a fixed diagonal one at the left of some stages, and since it is not clear
-#: what a thrown block does when it meets it, this twin leaves it out rather than guess.
+#: what a thrown block does when it meets it, this module leaves it out rather than guess.
 WALL, EMPTY = "#", " "
 BLOCK_TYPES = ("1", "2", "3", "4")
 
 #: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
-#: of Flipull. The arrangements are this twin's own, because the cartridge has
+#: of Flipull. The arrangements are this module's own, because the cartridge has
 #: none to copy: it draws each stage's arrangement from an RNG seeded by boot timing, so
 #: there is no canonical layout per stage, only a contract. Each board here was generated
 #: randomly and explored exhaustively, and kept only when the fewest blocks it can be
-#: reduced to under this twin's rules is *exactly* the cartridge's target, so a stage is
+#: reduced to under this module's rules is *exactly* the cartridge's target, so a stage is
 #: only cleared by playing it out rather than by chipping away at it.
 #:
 #: The player starts on the bottom row of the wall, as on the cartridge: the position where
-#: `down` does nothing, and the reason the Game Boy environment's sprite probe had to stop
-#: demanding movement in both directions.
+#: `down` does nothing.
 STAGES = (
     ("#######\n#     #\n#42442#\n#44311#\n#34431#\n#24133#\n#31211#\n#######", 9),
     ("#######\n#     #\n#24111#\n#34422#\n#21334#\n#11141#\n#23421#\n#######", 9),
@@ -119,6 +125,58 @@ def parse_stage(text):
     rows = text.split("\n")
     width = max(len(row) for row in rows)
     return [list(row.ljust(width)) for row in rows]
+
+
+def generate_stage(random_, width=5, height=5, types=4):
+    """A random wall of `height` rows of `width` blocks, in the stage alphabet.
+
+    The same shape as the bundled stages: a ring of walls, one empty row above the wall for
+    the player to stand on, and every cell of the wall itself a block of one of `types`
+    types. Whether it is worth playing is a separate question, answered by exploring it; see
+    `fewest_blocks_reachable`.
+    """
+    kinds = BLOCK_TYPES[:types]
+    rows = [WALL * (width + 2), WALL + EMPTY * width + WALL]
+    rows += [WALL + "".join(random_.choice(kinds) for _ in range(width)) + WALL
+             for _ in range(height)]
+    rows.append(WALL * (width + 2))
+    return "\n".join(rows)
+
+
+def fewest_blocks_reachable(text, limit=200_000):
+    """Explore every position reachable from a stage's opening, and report the fewest blocks
+    any of them has left. Returns `(fewest, exhausted, plan)`, where `plan` reaches a position
+    with that many.
+
+    Exhaustive rather than goal-directed, because the question is not "can the target be
+    reached" but "what is the lowest target this board could honestly be given". `exhausted`
+    is False when `limit` positions were seen first, in which case `fewest` is only a bound.
+    """
+    game = FlipullGame()
+    game.set_instance((text, 0))          # a target of 0 means no position counts as cleared
+    start, _ = game.reset()
+    parents, frontier, best = {start: None}, [start], start
+    while frontier:
+        if len(parents) >= limit:
+            return best.blocks_remaining, False, _plan_to(parents, best)
+        state = frontier.pop()
+        for action, successor in game.successors(state):
+            if successor in parents:
+                continue
+            parents[successor] = (state, action)
+            if successor.blocks_remaining < best.blocks_remaining:
+                best = successor
+            frontier.append(successor)
+    return best.blocks_remaining, True, _plan_to(parents, best)
+
+
+def _plan_to(parents, state):
+    """Walk the parent links back from `state` to the opening position."""
+    plan = []
+    while parents[state] is not None:
+        state, action = parents[state]
+        plan.append(action)
+    return plan[::-1]
 
 
 def block_rows(grid):
@@ -273,6 +331,12 @@ class FlipullGame(Environment):
     def __init__(self):
         super().__init__("flipull")
         self.index = 0
+        #: The `(stage, clear_target)` pair `reset` builds: a bundled one after `set_index`,
+        #: or whatever `set_instance` was given.
+        self.instance = STAGES[0]
+        #: The plan that reached the fewest blocks when `generate_instance` explored the
+        #: current stage; None for a bundled or hand-made one.
+        self.witness = None
         self.state = None
         self.state_history = []
 
@@ -282,9 +346,57 @@ class FlipullGame(Environment):
                 f"Invalid index: {index}. There are {len(STAGES)} stages, so the index must "
                 f"be 0-{len(STAGES) - 1}.")
         self.index = index
+        self.instance = STAGES[index]
+        self.witness = None
+
+    def set_instance(self, instance):
+        """Select a `(stage_text, clear_target)` pair, in the shape of the entries of `STAGES`."""
+        text, target = instance
+        if not block_rows(parse_stage(text)):
+            raise ValueError("a stage needs at least one block")
+        self.instance = (str(text), int(target))
+        self.index = None
+        self.witness = None
+
+    def generate_instance(self, seed=None, width=5, height=5, types=4, clear_target=None,
+                          max_target_fraction=0.4, search_limit=200_000, attempts=100):
+        """Draw a fresh stage, select it, and return it as a `[stage_text, clear_target]` pair.
+
+        Each draw is a random `width` by `height` wall of `types` block types, explored
+        exhaustively (up to `search_limit` positions). With `clear_target` unset, the fewest
+        blocks the wall can be reduced to becomes its target, provided that is no more than
+        `max_target_fraction` of the wall; a draw that cannot be worn down that far is
+        rejected as not worth playing. With a target given, a draw is kept exactly when it can
+        be reduced to it.
+        """
+        random_, _ = rng(seed)
+        blocks = width * height
+        found = {}
+
+        def accept(text):
+            fewest, exhausted, plan = fewest_blocks_reachable(text, search_limit)
+            if not exhausted:
+                return False              # undecided within the budget: not this one
+            if clear_target is None:
+                if fewest > max_target_fraction * blocks:
+                    return False
+                found["target"] = fewest
+            elif fewest > clear_target:
+                return False
+            else:
+                found["target"] = int(clear_target)
+            found["plan"] = plan
+            return True
+
+        text = draw_until(lambda attempt: generate_stage(random_, width, height, types),
+                          accept, attempts, "Flipull stage")
+        instance = [text, found["target"]]
+        self.set_instance(instance)
+        self.witness = found["plan"]
+        return instance
 
     def reset(self):
-        text, target = STAGES[self.index]
+        text, target = self.instance
         grid = parse_stage(text)
         rows = block_rows(grid)
         row = rows[-1] if rows else len(grid) - 2
@@ -295,6 +407,7 @@ class FlipullGame(Environment):
         self.state = FlipullState(grid, row, held, target)
         self.state_history = [self.state]
         return self.state, {"stage": self.index,
+                            "generated": self.index is None,
                             "blocks": self.state.blocks_remaining,
                             "clear_target": target,
                             "rows": len(playable_rows(grid))}

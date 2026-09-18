@@ -13,8 +13,8 @@ reversible: a block shoved into the wrong pit is gone, and so is the room.
 - **Import:** `from planiverse.environments.gameboy_py.amazing_tater import AmazingTaterGame`
 - **Source:** [`planiverse/environments/gameboy_py/amazing_tater.py`](../../planiverse/environments/gameboy_py/amazing_tater.py)
 - **Instances:** 105 rooms, indices `0`–`104`
+- **Generator:** `generate_instance(seed, width=8, height=6, blocks=2, pits=2, turnstiles=1, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
-- **Sibling:** [`AmazingTaterGBEnv`](amazing-tater-gb.md) plays the real Game Boy cartridge in an emulator, about four orders of magnitude slower per expansion
 
 ## A solved instance
 
@@ -114,8 +114,7 @@ Its default budget is four hundred thousand states, which most of the later room
 ## Rooms
 
 The environment ships 105 rooms: 41 behind the cartridge's PUZZLE MODE (`A-01` to `A-41`) and 64
-behind BEGINNER and ACTION MODE (`C-01` to `C-64`). `set_index(n)` here and on
-[`amazing_tater_gb`](amazing-tater-gb.md) select the same room. We left out the 96 rooms behind
+behind BEGINNER and ACTION MODE (`C-01` to `C-64`). We left out the 96 rooms behind
 PRACTICE MODE. That mode is a timed climb through ten floors, its board buffer holds the corridors
 of the neighbouring floors as well as the room, and the tater starts outside the room, which makes
 it a different game rather than a different level.
@@ -123,14 +122,13 @@ it a different game rather than a different level.
 The rooms range from a 15×5 with three turnstiles and nothing else to an 18×16 with four taters, a
 dozen blocks and forty pits. Note that difficulty is not uniform in index order.
 
-We dumped all 105 off `amazing_tater.gb` with `AmazingTaterGBEnv.levels`, which boots the
-cartridge to each room and reads the board the game composes in work RAM, so nothing was
-transcribed by hand.
+We dumped all 105 off the running cartridge, reading the board the game composes in work RAM
+for each room, so nothing was transcribed by hand.
 
 ### The alphabet
 
 The alphabet uses one character per cell, and one character per cell code the cartridge uses, so a
-stored room and a board dumped out of the emulator are the same string:
+stored room and a board dumped out of the cartridge are the same string:
 
 | Glyph | Meaning |
 |---|---|
@@ -152,6 +150,35 @@ against each other in half of these rooms. A single glyph for all of them would 
 into one piece the cartridge would never move as one. Arms carry a direction so that an arm names
 its own pivot, which is needed because thirty-six arms across these rooms are orthogonally
 adjacent to two pivots, and adjacency alone cannot say which one they belong to.
+
+## Generating rooms
+
+`generate_instance` draws a fresh room in the same alphabet, selects it, and returns it as a
+tuple of row strings that `set_instance` accepts back (a newline-joined string works too):
+
+```python
+game = AmazingTaterGame()
+rows = game.generate_instance(seed=7)     # or make("amazing_tater", seed=7)
+state, info = game.reset()                # info["level"] is "generated"
+game.witness                              # the plan the draw was accepted on
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `width`, `height` | 8, 6 | floor cells inside the ring of walls |
+| `blocks` | 2 | blocks, drawn from single squares, dominoes and 2×2s |
+| `pits` | 2 | open pits |
+| `turnstiles` | 1 | turnstiles, each with two to four arms |
+| `taters` | 1 | taters, up to four |
+| `walls` | 0.08 | share of the floor turned to wall |
+| `solvable` | `True` | search each draw and keep only one with a plan |
+| `min_plan_length` | 6 | reject a draw whose shortest plan is shorter |
+| `search_limit` | 50000 | expansions the check may spend per draw |
+| `attempts` | 200 | draws before giving up with `GenerationError` |
+
+Everything is dropped onto free floor and nothing decides in advance whether the room can be
+finished; the breadth-first check does, and it rejects a draw whose pits cannot be filled or
+whose turnstile has no room to turn along with any other draw that has no plan.
 
 ## State
 

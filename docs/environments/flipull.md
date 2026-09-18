@@ -12,8 +12,8 @@ cleared once few enough blocks are left, which the cartridge calls the CLEAR tar
 - **Import:** `from planiverse.environments.gameboy_py.flipull import FlipullGame`
 - **Source:** [`planiverse/environments/gameboy_py/flipull.py`](../../planiverse/environments/gameboy_py/flipull.py)
 - **Instances:** 32 stages, indices `0`–`31`
+- **Generator:** `generate_instance(seed, width=5, height=5, types=4, ...)`; see [Generating stages](#generating-stages)
 - **Dependencies:** none
-- **Sibling:** [`FlipullGBEnv`](flipull-gb.md) plays the real Game Boy cartridge in an emulator
 
 ## A solved instance
 
@@ -71,7 +71,7 @@ would do next. They reproduce field and hand exactly for throws taken level with
 positions we checked. Over a longer automated comparison they agreed on about half of the level
 throws and four in five of the throws from above the wall, so something more is going on that we
 have not pinned down. What this environment is good for is a well-defined, dependency-free
-planning problem; for predicting the cartridge, use [`FlipullGBEnv`](flipull-gb.md).
+planning problem, not predicting the cartridge.
 
 ## Quickstart
 
@@ -115,7 +115,32 @@ Stage strings use this alphabet:
 | (space) | Empty cell |
 | `1`–`4` | A block; the digit is its type |
 
-## State
+## Generating stages
+
+`generate_instance` draws a stage the way the bundled ones were made, selects it, and returns
+it as a `[stage_text, clear_target]` pair that `set_instance` accepts back:
+
+```python
+env = FlipullGame()
+text, target = env.generate_instance(seed=7)     # or make("flipull", seed=7)
+state, info = env.reset()
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `width`, `height` | 5, 5 | the wall of blocks, in blocks |
+| `types` | 4 | block types, `1` upward |
+| `clear_target` | `None` | a CLEAR target to demand; unset, the draw's own is used |
+| `max_target_fraction` | 0.4 | with no target given, reject a draw whose fewest reachable blocks exceed this share of the wall |
+| `search_limit` | 200000 | positions the exhaustive exploration may visit per draw |
+| `attempts` | 100 | draws before giving up with `GenerationError` |
+
+Each draw is explored exhaustively (`fewest_blocks_reachable`), and the fewest blocks it can
+be worn down to becomes its target, so a generated stage is always clearable and, because
+the target is the minimum, never clearable by accident. With `clear_target` given, a draw is
+kept exactly when it can be reduced that far. A draw whose state space outgrows
+`search_limit` is rejected as undecided. The plan that reached the fewest blocks is left in
+`env.witness`.
 
 `FlipullState` holds the grid (a tuple of tuples of single characters), the row the player is on,
 the block in hand, the clear target and a depth counter. Equality and hashing are over `(grid,
@@ -151,8 +176,8 @@ does not appear at all and the branching factor is between 1 and 3. A planner is
   decides it outright, so dead-end detection here is exact.
 
 Because we state the rules, a position is a dead end exactly when no throw from any row would
-connect. [`FlipullGBEnv`](flipull-gb.md) cannot compute that, since it does not know what a throw
-hits, and reports only that the clock ran out. A planner on this environment prunes a doomed
+connect. An emulator-backed environment could not compute that, since it does not know what a
+throw hits. A planner on this environment prunes a doomed
 branch the moment it enters one, which is most of what makes a puzzle searchable.
 
 ## Rendering

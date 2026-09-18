@@ -16,6 +16,7 @@ solve.
 - **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/power_grid/environment.py)
 - **Instances:** 9 scenarios, indices `0`–`8`
+- **Generator:** `generate_instance(seed, chronic=None, line=None, max_offset=200, ...)`; see [Generating contingencies](#generating-contingencies)
 - **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is nothing to
   download.
 
@@ -173,6 +174,36 @@ cannot wander past the end.
 and which lines are overloaded.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
+
+## Generating contingencies
+
+`generate_instance` draws a contingency by the same N-1 test the bundled ones passed, selects
+it, and returns it as a dict that `set_instance` accepts back:
+
+```python
+env = PowerGridEnv()
+contingency = env.generate_instance(seed=7)     # or make("power_grid", seed=7)
+# {'chronic': 1, 'line': 9, 'offset': 122, 'rho_after_trip': 1.64, 'blackout_in': 2}
+state, info = env.reset()
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `chronic` | `None` | the time series, or one of the case's three at random |
+| `line` | `None` | the line to trip, or one of the case's twenty at random |
+| `max_offset` | 200 | how far into the series the trip may happen; the offset is drawn from `0` to this |
+| `min_rho` | 1.0 | some line must be loaded above this after the trip |
+| `blackout_within` | 6 | with the operator doing nothing, the grid must black out within this many steps |
+| `attempts` | 30 | draws before giving up with `GenerationError` |
+
+The offset is what makes this more than a reshuffle of the bundled nine: the same line
+tripped at a different point of the same series meets different demand, and the case's
+three series are long. A draw is kept only if the trip leaves the grid standing but doomed,
+overloaded now and blacked out within `blackout_within` steps of doing nothing, since a grid
+that heals itself is not an instance and one that blacks out on the trip is not a planning
+problem. `step` in the state counts from the trip, so the horizon is the same wherever in
+the series it starts. Each candidate costs a fresh simulation of a few steps. Nothing checks
+that a generated contingency is solvable.
 
 ## Attribution
 

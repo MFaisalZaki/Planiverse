@@ -6,15 +6,14 @@ cartridge, over the cartridge's own 163 rooms. It needs no ROM, no emulator, and
 Lolo walks the four directions, one cell at a time, on an 8 × 8 board. He has to collect every
 heart framer (i.e., the collectible hearts that open the door), and then stand on the open door.
 
-We measured every rule below on the cartridge rather than taking it from a manual; the probes are
-in the [memory map](lolo-gb-memory-map.md) §5.
+We measured every rule below on the cartridge rather than taking it from a manual.
 
 - **Class:** `LoloGame`
 - **Import:** `from planiverse.environments.gameboy_py.lolo import LoloGame, LoloAction`
 - **Source:** [`planiverse/environments/gameboy_py/lolo.py`](../../planiverse/environments/gameboy_py/lolo.py)
 - **Instances:** 163 rooms, indices `0`–`162`
+- **Generator:** `generate_instance(seed, hearts=3, framers=2, snakeys=1, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
-- **Sibling:** [`LoloGBEnv`](lolo-gb.md) drives the real Game Boy cartridge
 
 ## A solved instance
 
@@ -90,8 +89,7 @@ info["unmodelled_enemies"]     # ('K', 'R'), the kinds that would have moved
 
 **Rafts float on the rivers that hold still.** On the cartridge an egg shoved into a river
 floats, and Lolo can step onto it and ride across, which is how `int 1-3` is cleared. The
-cartridge has six river codes and they do not behave alike; the memory map's raft probe
-([§6](lolo-gb-memory-map.md#6-rafts)) measured each one:
+cartridge has six river codes and they do not behave alike; we measured each one:
 
 | Code | Push an egg into it | Lolo steps on |
 |---|---|---|
@@ -100,21 +98,20 @@ cartridge has six river codes and they do not behave alike; the memory map's raf
 | `$83` | accepted | rides, and the raft drifts **up** |
 | `$85` | accepted | rides, and the raft drifts **down** |
 
-`lolo_gb.decode_room` spells all six `~`, so this module could not tell one river from another
-and used to refuse every push, which lost `int 1-3`. `DRIFTING_RIVERS` closes that: it carries
-the `$83` and `$85` cells, read back out of the cartridge and pinned against it by
-[`tests/test_lolo.py`](../../tests/test_lolo.py). An egg pushed at a still river floats; an egg
-pushed at a drifting one is refused.
+The room texts spell all six `~`, so this module could not tell one river from another and
+used to refuse every push, which lost `int 1-3`. `DRIFTING_RIVERS` closes that: it carries the
+`$83` and `$85` cells, read back out of the cartridge. An egg pushed at a still river floats; an
+egg pushed at a drifting one is refused.
 
 That split is exact rather than a guess, because a current runs on frames and not on moves.
 Board the raft on `tutorial 14a`'s `$83` channel and Lolo slides one cell every 160 frames with
 no button held at all, so a module with no notion of time cannot carry him. It declines the push
-there and leaves the room to [`lolo_gb`](lolo-gb.md).
+there.
 
 Of the 111 rooms with a river, 71 have no current anywhere, and the rule this module keeps is
 the cartridge's own for every one of them. Rafts are on by default for that reason. BFWS finds
 the cartridge's own twelve-action plan for `int 1-3`, action for action, and replaying it on
-`lolo_gb` clears the room:
+the cartridge clears the room:
 
 ```python
 game = LoloGame()
@@ -136,7 +133,7 @@ Emerald Framer is not pushed onto a heart framer, a door or a marker, which we n
 refuse rather than guess.
 
 **A marker may block a Medusa, and here it does not.** The probe that established what stops a
-Medusa's line (memory map §5) tried a tree, a Framer, a heart framer, an enemy, a rock, a river, a
+Medusa's line tried a tree, a Framer, a heart framer, an enemy, a rock, a river, a
 bridge, a desert, a flower bed, a one-way pass and a break tile. It never tried a **marker**, the
 `$97`-`$9C` codes whose meaning is unresolved, and this module treats one as transparent. That is
 the only assumption that separates this module's verdict on `tutorial 13a` from the cartridge's:
@@ -156,7 +153,7 @@ We measured what these approximations cost. Breadth-first search over this modul
 Where the model is faithful it is faithful. The twenty-two failures are all Lolo walking into an
 enemy that was not standing still, so on the rooms it does find a plan for, the approximation errs
 in the easy direction. It errs the other way as well, on rooms where it finds no plan at all.
-Pairing the twins under BFWS turns that up. `tutorial 4a` is the case: the cartridge clears it in
+Comparing against the cartridge under BFWS turns that up. `tutorial 4a` is the case: the cartridge clears it in
 56 moves, and this module proves it unsolvable. Its Rocky stands in the only approach to the room's
 magic heart framer, which is one of the nine hearts the door waits for and the room's only source
 of magic shots, so freezing it walls the room off rather than making it easier. Deleting that one
@@ -206,9 +203,8 @@ game = make("lolo", index=38)
 
 ## Rooms
 
-The environment ships 163 rooms at indices `0` to `162`, at the same indices
-[`lolo_gb`](lolo-gb.md) uses, so `set_index(38)` selects the same room in both. They are decoded
-out of the ROM by `lolo_gb.read_rooms` rather than transcribed by hand.
+The environment ships 163 rooms at indices `0` to `162`, the cartridge's own order. They are
+decoded out of the cartridge's room table rather than transcribed by hand.
 
 | Indices | `label` | What |
 |---|---|---|
@@ -232,6 +228,34 @@ $ python -m planiverse.environments.gameboy_py.lolo --room 0
   |########|
 ```
 
+## Generating rooms
+
+`generate_instance` draws a fresh room, selects it, and returns it as a room text (eight rows
+of eight glyphs joined by `|`, as in `ROOMS`) that `set_instance` accepts back:
+
+```python
+game = LoloGame()
+room = game.generate_instance(seed=7)     # or make("lolo", seed=7)
+state, info = game.reset()                # info["generated"] is True, info["exact"] too
+game.witness                              # the plan the draw was accepted on
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `hearts` | 3 | heart framers, of which `magic_hearts` (default 0) are magic |
+| `framers` | 2 | Emerald Framers to push |
+| `snakeys`, `medusas` | 1, 0 | the two enemies this module models exactly |
+| `rocks`, `trees` | 0.12, 0.05 | share of the board turned to rock and to tree |
+| `solvable` | `True` | search each draw and keep only one with a plan |
+| `min_plan_length` | 8 | reject a draw whose shortest plan is shorter |
+| `search_limit` | 50000 | expansions the check may spend per draw |
+| `attempts` | 200 | draws before giving up with `GenerationError` |
+
+Only Snakey and Medusa are ever placed, so a generated room is one the module is faithful
+for: `info["exact"]` is always true. A Medusa in line with Lolo's start kills him before he
+moves, and that draw is rejected like any other with no plan. The check is breadth-first, so
+`min_plan_length` bounds the shortest plan from below.
+
 ## Magic shots
 
 The meter starts empty, as the cartridge does on a cold boot, because the meter belongs to the
@@ -241,8 +265,6 @@ cleared from a cold boot for that reason:
 ```python
 game = LoloGame(magic_shots=2)
 ```
-
-`LoloGBEnv` takes the same argument and means the same thing by it.
 
 ## State
 

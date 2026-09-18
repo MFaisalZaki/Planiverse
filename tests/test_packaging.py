@@ -26,18 +26,17 @@ pytestmark = pytest.mark.skipif(
 # an install has to provide.
 ENTRY_POINTS = [
     "planiverse.environments.gameboy_py.puzznic",
-    "planiverse.environments.gameboy.puzznic_gb",
     "planiverse.environments.gameboy_py.flipull",
-    "planiverse.environments.gameboy.flipull_gb",
+    "planiverse.environments.gameboy_py.lolo",
+    "planiverse.environments.gameboy_py.amazing_tater",
+    "planiverse.environments.gameboy_py.super_mario_land",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
-    "planiverse.environments.gameboy_py.super_mario_land",
-    "planiverse.environments.gameboy.super_mario_land_gb",
     "planiverse.environments.network_attack.network_attack",
     "planiverse.benchmark",
     "planiverse.rendering.trace",
-    "planiverse.planners.super_mario_planner_gb",
+    "planiverse.planners.tree_search",
 ]
 
 
@@ -135,7 +134,7 @@ def test_the_import_closure_is_fully_declared(declared):
 
 def test_an_install_covers_every_environment(declared):
     """A single `pip install .` is meant to give you all of them, not a subset."""
-    for requirement in ("pyboy", "nasim", "pandas", "networkx"):
+    for requirement in ("nasim", "wntr", "grid2op", "pcse", "pandas", "networkx"):
         assert requirement in declared
 
 
