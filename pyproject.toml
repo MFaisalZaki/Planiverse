@@ -5,7 +5,7 @@ description = "A Python library for planning with simulators."
 authors = [
     {name = "Mustafa Faisal",email = "mustafa.faisal.eng@gmail.com"}
 ]
-license = {text = "GPL-3.0 license"}
+license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
 # Not every dependency publishes wheels for 3.14 yet, so cap the range rather than fail
 # deep inside the install.
@@ -42,6 +42,10 @@ planiverse-bench = "planiverse.benchmark:main"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+# The notices file is part of the licensing story, so it travels with the sdist and wheel.
+include = ["THIRD-PARTY-NOTICES.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

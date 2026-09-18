@@ -25,7 +25,7 @@ refused most of the time and choosing which row to stand on is the whole game.
 ## How faithful is this to the cartridge?
 
 Partly, and the honest answer is worth more than a claim. The rules above were derived by
-driving `Flipull (USA)` and predicting what it would do, and they reproduce it **exactly**
+driving Flipull and predicting what it would do, and they reproduce it **exactly**
 (field and hand, cell for cell) for throws taken level with the wall in the positions
 checked. Over a longer automated comparison they agreed on about half of the level throws and
 four in five of the throws from above the wall, so something more is going on that has not
@@ -46,7 +46,7 @@ of what makes a puzzle searchable, so this is not a small difference.
 ## Where the stages came from
 
 The 32 stages replicate the cartridge's own stage table: stage for stage, the same board
-size and the same CLEAR target as `Flipull (USA)`. The arrangements are generated rather
+size and the same CLEAR target as Flipull. The arrangements are generated rather
 than copied, for two reasons. First, the cartridge has no canonical arrangements to copy:
 it draws each stage's block layout from an RNG seeded by boot timing, and its ROM stores
 only the block total and the CLEAR target per stage. Second, arrangements the cartridge
@@ -68,7 +68,7 @@ BLOCK_TYPES = ("1", "2", "3", "4")
 
 #: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
-#: of `Flipull (USA)`. The arrangements are this twin's own, because the cartridge has
+#: of Flipull. The arrangements are this twin's own, because the cartridge has
 #: none to copy: it draws each stage's arrangement from an RNG seeded by boot timing, so
 #: there is no canonical layout per stage, only a contract. Each board here was generated
 #: randomly and explored exhaustively, and kept only when the fewest blocks it can be

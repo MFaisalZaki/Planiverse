@@ -81,10 +81,9 @@ Only the Game Boy environments need anything extra. The water, power grid and cr
 environments ship their benchmark data inside their dependencies, so they run offline with
 nothing to supply.
 
-The five Game Boy environments need a ROM each on top of that: `SuperMarioLand.gb`,
-`Puzznic (J).gb`, `Flipull (USA).gb`,
-`Adventures of Lolo (U) [S][!].gb` and `Amazing Tater (U).gb`. These are **not** and cannot
-be distributed with this repo. See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
+The five Game Boy environments need a ROM each on top of that: `super_mario_land.gb`,
+`puzznic.gb`, `flipull.gb`, `adventures_of_lolo.gb` and `amazing_tater.gb`. These are
+**not** and cannot be distributed with this repo. See their docs: [Super Mario Land](docs/environments/super-mario-land.md),
 [Puzznic (Game Boy)](docs/environments/puzznic-gb.md), [Flipull (Game Boy)](docs/environments/flipull-gb.md),
 [Adventures of Lolo (Game Boy)](docs/environments/lolo-gb.md),
 [Amazing Tater (Game Boy)](docs/environments/amazing-tater-gb.md).
@@ -101,11 +100,11 @@ runnable from a partial install. The tests that need a copyrighted ROM are opt-i
 matching environment variable at one to run them:
 
 ```bash
-PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/SuperMarioLand.gb pytest tests/test_super_mario_land_gb.py
-PLANIVERSE_PUZZNIC_ROM="/path/to/Puzznic (J).gb" pytest tests/test_puzznic_gb.py
-PLANIVERSE_FLIPULL_ROM="/path/to/Flipull (USA).gb" pytest tests/test_flipull_gb.py
-PLANIVERSE_LOLO_ROM="/path/to/Adventures of Lolo (U) [S][!].gb" pytest tests/test_lolo_gb.py
-PLANIVERSE_AMAZING_TATER_ROM="/path/to/Amazing Tater (U).gb" pytest tests/test_amazing_tater_gb.py
+PLANIVERSE_SUPER_MARIO_LAND_ROM=/path/to/super_mario_land.gb pytest tests/test_super_mario_land_gb.py
+PLANIVERSE_PUZZNIC_ROM="/path/to/puzznic.gb" pytest tests/test_puzznic_gb.py
+PLANIVERSE_FLIPULL_ROM="/path/to/flipull.gb" pytest tests/test_flipull_gb.py
+PLANIVERSE_LOLO_ROM="/path/to/adventures_of_lolo.gb" pytest tests/test_lolo_gb.py
+PLANIVERSE_AMAZING_TATER_ROM="/path/to/amazing_tater.gb" pytest tests/test_amazing_tater_gb.py
 ```
 
 The two Taito environments are still covered without one:
@@ -507,6 +506,17 @@ city datasets of [a consensus-MARL paper's repository](https://github.com/mao120
 Neither upstream publishes a licence, so neither the simulator nor the data can be
 redistributed here. Both remain in git history should their upstreams ever license them.
 
+### Studied titles
+
+The Game Boy environments study commercially published titles. This repository
+ships no ROM image; you supply your own legally obtained cartridge image, which
+each environment verifies by MD5 before use.
+
+*Adventures of Lolo* (HAL Laboratory / Nintendo), *Puzznic* and *Flipull* (Taito),
+*Amazing Tater* (Atlus) and *Super Mario Land* (Nintendo) are the copyright works
+and trade marks of their respective owners, used here descriptively. This project
+is unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## Status
 
 What is in the tree:
@@ -554,4 +564,10 @@ code is in the history.
 
 ## Licence
 
-GPL-3.0. See [LICENSE](LICENSE).
+GPL-3.0 for this repository's own code, documentation, memory maps and benchmark
+definitions. See [LICENSE](LICENSE).
+
+Some files are excluded from that licence because they are third-party material
+that this project has no right to sublicense — principally the `_gb` screen
+captures in `docs/renders/`. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+for the full list, the copyright holders, and the basis on which they are included.

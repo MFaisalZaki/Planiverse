@@ -8,7 +8,7 @@ are original, the enemies are simplified, and there is no timer, score, power-up
 or press-length jump control.
 
 What it does share with the cartridge is the movement. The constants below were fitted to
-frame-by-frame measurements of `Super Mario Land (World) (Rev 1).gb` (the same dump the
+frame-by-frame measurements of Super Mario Land, revision 1 (the same dump the
 emulator environment's memory map was derived from), recording Mario's screen position
 ($C201/$C202) and the on-ground flag ($C20A) once per frame while driving scripted input.
 Two of the cartridge's mechanics are deliberately left out, and the arc is fitted around

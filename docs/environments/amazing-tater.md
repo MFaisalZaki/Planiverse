@@ -123,7 +123,7 @@ it a different game rather than a different level.
 The rooms range from a 15×5 with three turnstiles and nothing else to an 18×16 with four taters, a
 dozen blocks and forty pits. Note that difficulty is not uniform in index order.
 
-We dumped all 105 off `Amazing Tater (U).gb` with `AmazingTaterGBEnv.levels`, which boots the
+We dumped all 105 off `amazing_tater.gb` with `AmazingTaterGBEnv.levels`, which boots the
 cartridge to each room and reads the board the game composes in work RAM, so nothing was
 transcribed by hand.
 

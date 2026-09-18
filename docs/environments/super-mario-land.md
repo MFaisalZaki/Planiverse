@@ -10,7 +10,7 @@ this is not a twin of Super Mario Land. The levels are original, the enemies are
 there is no timer, score, power-up, dash button or press-length jump control.
 
 What it does share with the cartridge is the movement. We fitted the constants to recordings of
-`Super Mario Land (World) (Rev 1).gb`, taking Mario's screen position (`$C201`/`$C202`) and the
+Super Mario Land, revision 1, taking Mario's screen position (`$C201`/`$C202`) and the
 on-ground flag (`$C20A`) once per frame while driving scripted input. Two of the cartridge's
 mechanics are deliberately left out, and the arc is fitted around their absence: press-length jump
 control, where on the hardware how long `a` is held shapes the climb, and the `b` dash. Here a

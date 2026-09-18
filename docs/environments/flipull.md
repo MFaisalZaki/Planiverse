@@ -66,7 +66,7 @@ diagonal structure some cartridge stages carry at the left), because what a thro
 it meets one is not established. Second, there is no clock, so the only failure is a genuine dead
 end and a plan's length is bounded by the search budget rather than by a timer.
 
-We derived the rules above by driving a real `Flipull (USA)` cartridge and predicting what it
+We derived the rules above by driving a real Flipull cartridge and predicting what it
 would do next. They reproduce field and hand exactly for throws taken level with the wall in the
 positions we checked. Over a longer automated comparison they agreed on about half of the level
 throws and four in five of the throws from above the wall, so something more is going on that we

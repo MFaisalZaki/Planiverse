@@ -81,7 +81,7 @@ here, which was never tested on the cartridge and is refused rather than guessed
 
 ## Where the rooms came from
 
-All 163 of them were decoded out of `Adventures of Lolo (U) [S][!].gb` by
+All 163 of them were decoded out of `adventures_of_lolo.gb` by
 `lolo_gb.read_rooms`, at matching indices: `set_index(38)` here and on `lolo_gb` are the
 same room. Nothing was transcribed by hand. `tests/test_lolo.py` re-decodes the ROM and
 compares, when a ROM is available, so a room cannot drift away from the cartridge unnoticed.

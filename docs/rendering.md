@@ -39,7 +39,7 @@ path)`, which boots a throwaway emulator to the save-state and grabs the screen.
 ```python
 from planiverse.rendering import render_trace
 
-render_trace(trace, "flipull.gif", gamerom="Flipull (USA).gb")
+render_trace(trace, "flipull.gif", gamerom="flipull.gb")
 ```
 
 Frames are magnified by nearest neighbour rather than by Pillow's default bicubic resample. A Game

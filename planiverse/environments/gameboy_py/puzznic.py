@@ -7,7 +7,7 @@ implements the rules directly, so it is the dependency-free way to plan in this 
 
 All 128 of them are the cartridge's 128 rounds, at matching indices: `set_index(7)` here
 and on `puzznic_gb` are the same board. The first 50 were transcribed by hand; the rest
-were read out of `Puzznic (J)` at `$DF00` by booting each round through `PuzznicGBEnv`.
+were read out of Puzznic at `$DF00` by booting each round through `PuzznicGBEnv`.
 
 Hand transcription is why the first 50 are the ones that had errors: level 23 was missing
 two walls and level 34 had two pairs of block types transposed, both found by reading the

@@ -58,7 +58,7 @@ over the top of a cleared one. Here a solved room is simply terminal.
 
 ## Where the levels came from
 
-All 105 were read out of `Amazing Tater (U).gb` by booting it and dumping the board the
+All 105 were read out of `amazing_tater.gb` by booting it and dumping the board the
 cartridge itself composes in work RAM (`amazing_tater_gb.AmazingTaterGBEnv.levels`) at
 matching indices, so `set_index(7)` here and there are the same room. Nothing was transcribed
 by hand.
