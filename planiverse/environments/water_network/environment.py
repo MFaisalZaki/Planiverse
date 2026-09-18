@@ -30,7 +30,8 @@ contamination and two do nothing at all.
 
 `generate_instance(seed)` draws a scenario of its own: one of the shipped networks and a
 junction of it that, left alone, contaminates at least a stated share of what the network
-delivers, which is the same test the bundled scenarios were chosen by.
+delivers, which is the same test the bundled scenarios were chosen by, and then searched, so
+that like every bundled scenario it carries the depth it was actually solved at.
 
 Built on WNTR, the US EPA's Python interface to EPANET:
 https://github.com/USEPA/WNTR
@@ -42,7 +43,7 @@ from collections import namedtuple
 from copy import deepcopy
 
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import draw_until, rng
+from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: Hydraulics are run pressure-driven rather than demand-driven. It matters here: under the
 #: demand-driven model a node takes its full demand no matter how little pressure is left,
@@ -96,6 +97,11 @@ GENERATOR_NETWORKS = ("Net1.inp", "Net3.inp")
 #: How much of the delivered water a generated scenario's source must contaminate when
 #: nothing is closed. Below this there is not enough to contain.
 MIN_BASELINE = 0.1
+
+#: Expansions the generator's search may spend proving a drawn scenario solvable. Every
+#: expansion is one hydraulic solve per candidate pipe, so this is small: it covers every
+#: two-closure plan on the shipped networks and the shallower three-closure ones.
+SEARCH_LIMIT = 150
 
 SCENARIOS = (
     Scenario("Net1.inp", "23", 0.136, 2),
@@ -229,6 +235,10 @@ class WaterNetworkEnv(Environment):
         self.source = None
         self.candidates = ()
         self.baseline = None
+        #: The plan `generate_instance` accepted the current scenario on, when it checked
+        #: one, and what the search spent finding it.
+        self.witness = None
+        self.witness_expansions = None
         self.state = None
         self.state_history = []
 
@@ -266,10 +276,12 @@ class WaterNetworkEnv(Environment):
         self.scenario_index = None
         self.network_file = path
         self.source = source
+        self.witness = self.witness_expansions = None
         self._wn = None
         self._cache = {}
 
     def generate_instance(self, seed=None, network=None, min_baseline=MIN_BASELINE,
+                          solvable=True, search_limit=SEARCH_LIMIT, min_plan_length=1,
                           attempts=40):
         """Draw a fresh scenario, select it, and return it as a dict.
 
@@ -277,8 +289,13 @@ class WaterNetworkEnv(Environment):
         random; a path to your own `.inp` works too). The source is a junction of it drawn at
         random and kept only if, with nothing closed, at least `min_baseline` of the delivered
         water comes from it: the test the bundled scenarios were chosen by, which is what
-        makes a draw a containment problem rather than a non-event. Each candidate costs one
-        hydraulic solve, so `attempts` bounds the junctions tried.
+        makes a draw a containment problem rather than a non-event. With `solvable` the draw
+        is then searched breadth-first for up to `search_limit` expansions and kept only if a
+        plan of at least `min_plan_length` closures was found, which is left in `witness`
+        and recorded in the instance as `solved_at`, the way every bundled scenario carries
+        the depth it was solved at. Each candidate costs one hydraulic solve to measure and
+        one per candidate pipe per expansion to check, so `attempts` bounds the junctions
+        tried.
         """
         import wntr
 
@@ -298,13 +315,26 @@ class WaterNetworkEnv(Environment):
                 _, contaminated, _ = self.__simulate__(frozenset())
             except Exception:
                 return False              # a junction the solver cannot trace from
-            measured[junction] = contaminated
-            return contaminated >= min_baseline
+            if contaminated < min_baseline:
+                return False
+            found = {"baseline": contaminated}
+            if solvable:
+                outcome = bounded_search(self, search_limit)
+                if outcome.plan is None or len(outcome.plan) < min_plan_length:
+                    return False
+                found.update(solved_at=len(outcome.plan), plan=outcome.plan,
+                             expansions=outcome.expansions)
+            measured.update(found)
+            return True
 
         source = draw_until(draw, accept, min(attempts, len(junctions)),
                             f"contamination source on {os.path.basename(network)}")
-        instance = {"network": network, "source": source, "baseline": measured[source]}
+        instance = {"network": network, "source": source, "baseline": measured["baseline"]}
+        if solvable:
+            instance["solved_at"] = measured["solved_at"]
         self.set_instance(instance)
+        if solvable:
+            self.witness, self.witness_expansions = measured["plan"], measured["expansions"]
         return instance
 
     # ------------------------------------------------------------------ the network

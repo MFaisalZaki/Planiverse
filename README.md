@@ -150,21 +150,27 @@ Three things hold everywhere:
 - **The instance is plain data**, the same shape as the bundled ones: a level string, a
   `[stage, target]` pair, a tuple of rows, a dict of scenario fields. `json.dumps` it, and
   `set_instance` takes it back later, so a generated benchmark replays exactly.
-- **A puzzle is checked before it is handed out.** A random board is usually unsolvable, and an
-  unsolvable instance is not an instance: a planner cannot tell "no plan" from "not yet". So the
-  five game generators search each draw (breadth-first, or best-first where breadth-first would
-  drown) and keep only the ones a plan was found for, within `search_limit` expansions; that plan
-  is left in `env.witness`, and `min_plan_length` turns it into a difficulty knob. The check is a
-  bias, since it favours instances a small search can solve, and it is a knob too:
-  `solvable=False` hands out the raw draw. The four simulator environments draw by the same
-  tests their bundled instances were chosen by (a source that contaminates enough, a trip that
-  leaves the grid doomed) and check nothing further, except the crop season, whose reference
-  schedule is a solution by construction.
+- **A draw is checked before it is handed out, the way the bundled instances were.** A random
+  board is usually unsolvable, and an unsolvable instance is not an instance: a planner cannot
+  tell "no plan" from "not yet". The generators reuse the checks the shipped instances passed.
+  Flipull's stages were drawn at random and explored exhaustively, with the fewest blocks
+  reachable as the target; the generator does the same. Super Mario Land's levels were each
+  searched with BFWS(w=2) and ranked by what that cost (`MEASURED_EXPANSIONS`); the generator
+  runs the same search and records the same number. Amazing Tater's stored solutions came from
+  its `solve`, and the generator checks a drawn room with that search. The simulator
+  environments draw by the tests their bundled scenarios were chosen by (a source that
+  contaminates enough, a trip that leaves the grid doomed) and then search the draw, so a
+  generated scenario carries `solved_at` like a bundled one; the crop season's reference
+  schedule is a solution by construction. Everywhere, the plan is left in `env.witness` and
+  what the search spent in `env.witness_expansions`; `min_plan_length` and `min_expansions`
+  turn those into difficulty knobs. The check is a bias, since it favours instances a small
+  search can solve, and it is a knob too: `solvable=False` hands out the raw draw.
 
 What each generator varies is in the catalogue above; the options are in each environment's
-doc. The shared machinery is [`planiverse/environments/generation.py`](planiverse/environments/generation.py).
-The benchmark runs the bundled instances; a generated benchmark is a file of instances and a
-loop over `set_instance`.
+doc. The shared machinery is [`planiverse/environments/generation.py`](planiverse/environments/generation.py):
+the seeded draw, the bounded breadth-first and BFWS searches, the retry loop, and the board
+helpers the four grid games draw with. The benchmark runs the bundled instances; a generated
+benchmark is a file of instances and a loop over `set_instance`.
 
 ## Core concepts
 
@@ -537,8 +543,6 @@ Open:
       in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
       with a stated rule set rather than a clone of the original.
 - [ ] A generated benchmark: `planiverse-bench` runs the bundled instances only.
-- [ ] A solvability check for the generated water and power grid instances. Their draws pass the
-      tests the bundled ones were chosen by, but nobody has searched them.
 
 Withdrawn: the five emulator-backed environments that drove the original cartridges through
 PyBoy alongside their Python counterparts, with their memory maps, screen captures and

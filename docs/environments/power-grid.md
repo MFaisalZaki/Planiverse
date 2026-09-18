@@ -194,16 +194,21 @@ state, info = env.reset()
 | `max_offset` | 200 | how far into the series the trip may happen; the offset is drawn from `0` to this |
 | `min_rho` | 1.0 | some line must be loaded above this after the trip |
 | `blackout_within` | 6 | with the operator doing nothing, the grid must black out within this many steps |
-| `attempts` | 30 | draws before giving up with `GenerationError` |
+| `solvable` | `True` | search each draw and keep only one with a plan |
+| `search_limit` | 1 | expansions the check may spend per draw |
+| `attempts` | 80 | draws before giving up with `GenerationError`; about one draw in eleven passes both tests |
 
 The offset is what makes this more than a reshuffle of the bundled nine: the same line
 tripped at a different point of the same series meets different demand, and the case's
 three series are long. A draw is kept only if the trip leaves the grid standing but doomed,
 overloaded now and blacked out within `blackout_within` steps of doing nothing, since a grid
 that heals itself is not an instance and one that blacks out on the trip is not a planning
-problem. `step` in the state counts from the trip, so the horizon is the same wherever in
-the series it starts. Each candidate costs a fresh simulation of a few steps. Nothing checks
-that a generated contingency is solvable.
+problem. It is then searched, and kept only if a plan was found: `witness` holds it and the
+instance records `solved_at`, like the bundled scenarios. The default budget is one
+expansion, which tries every relevant reconfiguration from the tripped grid: every bundled
+scenario is solved by a single one, and each further expansion is another power-flow solve
+per reconfiguration. `step` in the state counts from the trip, so the horizon is the same
+wherever in the series it starts.
 
 ## Attribution
 

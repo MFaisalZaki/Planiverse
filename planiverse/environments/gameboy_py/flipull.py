@@ -145,8 +145,8 @@ def generate_stage(random_, width=5, height=5, types=4):
 
 def fewest_blocks_reachable(text, limit=200_000):
     """Explore every position reachable from a stage's opening, and report the fewest blocks
-    any of them has left. Returns `(fewest, exhausted, plan)`, where `plan` reaches a position
-    with that many.
+    any of them has left. Returns `(fewest, exhausted, plan, explored)`: `plan` reaches a
+    position with that many, and `explored` is how many positions were seen doing it.
 
     Exhaustive rather than goal-directed, because the question is not "can the target be
     reached" but "what is the lowest target this board could honestly be given". `exhausted`
@@ -158,7 +158,7 @@ def fewest_blocks_reachable(text, limit=200_000):
     parents, frontier, best = {start: None}, [start], start
     while frontier:
         if len(parents) >= limit:
-            return best.blocks_remaining, False, _plan_to(parents, best)
+            return best.blocks_remaining, False, _plan_to(parents, best), len(parents)
         state = frontier.pop()
         for action, successor in game.successors(state):
             if successor in parents:
@@ -167,7 +167,7 @@ def fewest_blocks_reachable(text, limit=200_000):
             if successor.blocks_remaining < best.blocks_remaining:
                 best = successor
             frontier.append(successor)
-    return best.blocks_remaining, True, _plan_to(parents, best)
+    return best.blocks_remaining, True, _plan_to(parents, best), len(parents)
 
 
 def _plan_to(parents, state):
@@ -335,8 +335,10 @@ class FlipullGame(Environment):
         #: or whatever `set_instance` was given.
         self.instance = STAGES[0]
         #: The plan that reached the fewest blocks when `generate_instance` explored the
-        #: current stage; None for a bundled or hand-made one.
+        #: current stage, and how many positions that exploration saw; None for a bundled or
+        #: hand-made one.
         self.witness = None
+        self.witness_expansions = None
         self.state = None
         self.state_history = []
 
@@ -347,7 +349,7 @@ class FlipullGame(Environment):
                 f"be 0-{len(STAGES) - 1}.")
         self.index = index
         self.instance = STAGES[index]
-        self.witness = None
+        self.witness = self.witness_expansions = None
 
     def set_instance(self, instance):
         """Select a `(stage_text, clear_target)` pair, in the shape of the entries of `STAGES`."""
@@ -356,7 +358,7 @@ class FlipullGame(Environment):
             raise ValueError("a stage needs at least one block")
         self.instance = (str(text), int(target))
         self.index = None
-        self.witness = None
+        self.witness = self.witness_expansions = None
 
     def generate_instance(self, seed=None, width=5, height=5, types=4, clear_target=None,
                           max_target_fraction=0.4, search_limit=200_000, attempts=100):
@@ -374,7 +376,7 @@ class FlipullGame(Environment):
         found = {}
 
         def accept(text):
-            fewest, exhausted, plan = fewest_blocks_reachable(text, search_limit)
+            fewest, exhausted, plan, explored = fewest_blocks_reachable(text, search_limit)
             if not exhausted:
                 return False              # undecided within the budget: not this one
             if clear_target is None:
@@ -385,14 +387,14 @@ class FlipullGame(Environment):
                 return False
             else:
                 found["target"] = int(clear_target)
-            found["plan"] = plan
+            found["plan"], found["explored"] = plan, explored
             return True
 
         text = draw_until(lambda attempt: generate_stage(random_, width, height, types),
                           accept, attempts, "Flipull stage")
         instance = [text, found["target"]]
         self.set_instance(instance)
-        self.witness = found["plan"]
+        self.witness, self.witness_expansions = found["plan"], found["explored"]
         return instance
 
     def reset(self):

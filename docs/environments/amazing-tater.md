@@ -109,7 +109,9 @@ print(len(plan), plan[:6])
 # 38 ['left', 'left', 'left', 'left', 'up', 'up']
 ```
 
-Its default budget is four hundred thousand states, which most of the later rooms exhaust.
+Its default budget is two million expansions, which most of the later rooms exhaust. It is the
+shared breadth-first search in `planiverse.environments.generation`, the one the generator
+checks a drawn room with.
 
 ## Rooms
 
@@ -178,7 +180,9 @@ game.witness                              # the plan the draw was accepted on
 
 Everything is dropped onto free floor and nothing decides in advance whether the room can be
 finished; the breadth-first check does, and it rejects a draw whose pits cannot be filled or
-whose turnstile has no room to turn along with any other draw that has no plan.
+whose turnstile has no room to turn along with any other draw that has no plan. It is the same
+search `solve` runs, so a generated room is accepted by exactly the test the bundled rooms'
+stored solutions were found by, and `witness_expansions` says what it cost.
 
 ## State
 

@@ -8,15 +8,23 @@ season) but agree on three things, which live here so they are written once:
 1. **The draw is a function of the seed.** `generate_instance(seed=7)` on two machines gives
    the same instance, because everything random comes from one `random.Random(seed)` and the
    checks below are deterministic.
-2. **A puzzle is checked before it is handed out.** A random board is usually unsolvable, and
+2. **A draw is checked before it is handed out.** A random board is usually unsolvable, and
    an unsolvable instance is not an instance: a planner cannot tell "no plan" from "not yet".
-   So the puzzle generators search each draw with `bounded_search` and keep only the ones a
-   plan was found for, within a stated budget. The budget is a knob (`search_limit`) and so
-   is the check itself (`solvable=False` hands out the raw draw), because the check biases
-   the generator towards instances a small search can solve, and a caller who wants harder
-   ones than that has to say so.
+   This is how the bundled instances were made in the first place: Flipull's stages were
+   drawn at random and explored exhaustively, Super Mario Land's levels were each searched
+   with BFWS before shipping and ranked by what that cost, and every simulator scenario
+   carries the depth it was actually solved at. So the generators search each draw and keep
+   only the ones a plan was found for, within a stated budget, leaving that plan on the
+   environment as `witness` and what the search spent as `witness_expansions`. The budget is
+   a knob (`search_limit`) and so is the check itself (`solvable=False` hands out the raw
+   draw), because the check biases the generator towards instances a small search can
+   solve, and a caller who wants harder ones than that has to say so.
 3. **The instance is plain data.** Strings, tuples, lists and dicts, the same shape as the
    bundled instances, so it can be written to a file and given back to `set_instance` later.
+
+The grid helpers at the end are the drawing half of the same story: the four board games
+each put a ring of walls round a rectangle, scatter some scenery over it and drop objects
+onto whatever floor is left, and that is written once here too.
 """
 import random
 from collections import deque, namedtuple
@@ -96,6 +104,23 @@ def bounded_search(env, limit, progress=None, key=None):
     return SearchOutcome(None, True, expansions)
 
 
+def width_search(env, limit, progress, width=2, seconds=None):
+    """Search `env` with BFWS, the planner the bundled game levels were accepted with.
+
+    The same shape as `bounded_search`, so a generator can use either: `SearchOutcome`, with
+    `expansions` what BFWS spent, which is the number Super Mario Land's shipped levels are
+    ranked by. Breadth-first drowns in a platformer's state space and a greedy search says
+    nothing comparable about difficulty; BFWS is what the levels were checked with, so it is
+    what generated ones are checked with.
+    """
+    from planiverse.planners.width import BFWSSearch, Budget
+
+    result = BFWSSearch(width=width, progress=progress).solve(
+        env, Budget(max_expansions=limit, max_seconds=seconds))
+    return SearchOutcome(result.plan if result.solved else None,
+                         result.status == "exhausted", result.statistics.expansions)
+
+
 def draw_until(draw, accept, attempts, what="an instance"):
     """Call `draw(attempt)` up to `attempts` times and return the first result `accept` likes.
 
@@ -113,25 +138,76 @@ def draw_until(draw, accept, attempts, what="an instance"):
 
 
 def solvable_draw(env, draw, attempts, search_limit, min_plan_length=1, progress=None,
-                  key=None, what="an instance"):
+                  key=None, search=None, min_expansions=0, what="an instance"):
     """Draw instances into `env` until one has a plan of at least `min_plan_length` actions.
 
     `draw(attempt)` returns an instance or `None`; each is loaded with `env.set_instance`
-    and searched with `bounded_search`. The winning instance is left selected. The plan
-    found is kept on the environment as `env.witness`, so a caller can see the depth an
-    instance was accepted at.
+    and searched, with `bounded_search` unless `search` (a callable of the same shape, such
+    as `width_search`) says otherwise. The winning instance is left selected, the plan found
+    is kept on the environment as `env.witness`, and what the search spent as
+    `env.witness_expansions`, so a caller can see the depth an instance was accepted at and
+    what it cost; `min_expansions` rejects draws that were cheaper than that, which is a
+    difficulty floor in the currency the search reports.
     """
     found = {}
 
     def accept(instance):
         env.set_instance(instance)
-        outcome = bounded_search(env, search_limit, progress, key)
+        if search is not None:
+            outcome = search(env, search_limit)
+        else:
+            outcome = bounded_search(env, search_limit, progress, key)
         if outcome.plan is None or len(outcome.plan) < min_plan_length:
             return False
-        found["plan"] = outcome.plan
+        if outcome.expansions < min_expansions:
+            return False
+        found["plan"], found["expansions"] = outcome.plan, outcome.expansions
         return True
 
     instance = draw_until(draw, accept, attempts, what)
     env.set_instance(instance)          # selecting clears any witness, so it goes on after
-    env.witness = found["plan"]
+    env.witness, env.witness_expansions = found["plan"], found["expansions"]
     return instance
+
+
+# ------------------------------------------------------------------------ drawing boards
+
+def walled_grid(width, height, wall, floor):
+    """A `height` by `width` rectangle of `floor` inside a ring of `wall`, as lists."""
+    grid = [[wall] * (width + 2)]
+    grid += [[wall] + [floor] * width + [wall] for _ in range(height)]
+    grid.append([wall] * (width + 2))
+    return grid
+
+
+def interior(width, height):
+    """The cells inside the ring `walled_grid` draws, row-major."""
+    return [(row, col) for row in range(1, height + 1) for col in range(1, width + 1)]
+
+
+def scatter(grid, random_, cells, glyph, fraction):
+    """Turn a `fraction` of `cells` into `glyph`, chosen at random, and return them."""
+    chosen = random_.sample(cells, int(round(fraction * len(cells))))
+    for row, col in chosen:
+        grid[row][col] = glyph
+    return chosen
+
+
+def place(grid, random_, cells, shape, free):
+    """Put `shape` down somewhere every one of its squares lands on a `free` cell.
+
+    `shape` is `(row, column, glyph)` squares relative to an anchor; the anchor is tried at
+    each of `cells` in random order, and a square may only land inside the grid on a cell
+    holding `free`. Returns whether it fitted; the caller draws again when it did not.
+    """
+    anchors = list(cells)
+    random_.shuffle(anchors)
+    height, width = len(grid), len(grid[0])
+    for row, col in anchors:
+        squares = [(row + dr, col + dc, glyph) for dr, dc, glyph in shape]
+        if all(0 <= r < height and 0 <= c < width and grid[r][c] == free
+               for r, c, _ in squares):
+            for r, c, glyph in squares:
+                grid[r][c] = glyph
+            return True
+    return False

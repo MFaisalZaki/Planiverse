@@ -3,8 +3,9 @@
 Every bundled environment can draw a fresh instance from a seed. What a planner is entitled
 to assume about that is the same everywhere: the draw is a function of the seed, the result
 is plain data that round-trips through a file, it loads through `set_instance` into the same
-initial state, a bundled instance is still there afterwards, and, for the puzzles, the
-instance handed out has a plan. Per-environment layout details live with the environment.
+initial state, a bundled instance is still there afterwards, and the instance handed out
+has a plan, kept as the witness it was accepted on. Per-environment layout details live
+with the environment.
 """
 import json
 
@@ -12,7 +13,8 @@ import pytest
 
 from planiverse.environments import Environment, get_spec, list_environments, make
 from planiverse.environments.generation import (
-    GenerationError, bounded_search, draw_until, rng,
+    GenerationError, bounded_search, draw_until, place, rng, scatter, walled_grid,
+    width_search,
 )
 
 from conftest import assert_string_literals, assert_successors_contract
@@ -31,8 +33,6 @@ FAST = {
     "crop_management": dict(),
 }
 
-#: The environments whose generator checks each draw by search and keeps the plan it found.
-PUZZLES = ("puzznic", "flipull", "lolo", "amazing_tater", "super_mario_land")
 
 
 def environments():
@@ -113,13 +113,20 @@ def test_a_bundled_instance_is_still_there_afterwards(name):
         getattr(candidate, "close", lambda: None)()
 
 
-@pytest.mark.parametrize("name", [n for n in PUZZLES])
-def test_a_checked_puzzle_comes_with_the_plan_that_checked_it(name):
-    env, _ = fresh(name, seed=4)
+@pytest.mark.parametrize("name", environments())
+def test_a_checked_draw_comes_with_the_plan_that_checked_it(name):
+    """Every generator hands out an instance with a plan: found by search, or, for the crop
+    season, the reference schedule the target is measured off."""
+    env, instance = fresh(name, seed=4)
     assert env.witness, "a checked draw keeps the plan it was accepted on"
     assert env.validate(env.witness)
+    assert env.witness_expansions >= 0
+    if "solved_at" in instance:
+        assert instance["solved_at"] == len(env.witness), \
+            "a simulator scenario records the depth it was solved at, like the bundled ones"
     env.set_index(0)
     assert env.witness is None, "selecting a bundled instance clears it"
+    getattr(env, "close", lambda: None)()
 
 
 @pytest.mark.parametrize("name", ("puzznic", "lolo", "amazing_tater"))
@@ -175,7 +182,7 @@ def test_flipull_targets_are_the_fewest_blocks_a_stage_reaches():
     from planiverse.environments.gameboy_py.flipull import STAGES, fewest_blocks_reachable
 
     for index in (0, 7, 31):
-        fewest, exhausted, plan = fewest_blocks_reachable(STAGES[index][0])
+        fewest, exhausted, plan, _ = fewest_blocks_reachable(STAGES[index][0])
         assert exhausted and fewest == STAGES[index][1]
         env = make("flipull", index=index)
         assert env.validate(plan), "and the plan that reaches the fewest clears the stage"
@@ -199,6 +206,44 @@ def test_an_unchecked_draw_is_allowed_but_is_asked_for():
     env = make("puzznic")
     level = env.generate_instance(seed=0, solvable=False, **FAST["puzznic"])
     assert env.witness is None and env.instance == level
+
+
+def test_mario_levels_are_checked_the_way_the_shipped_ones_were():
+    """BFWS(w=2) under the distance to the flag accepted the shipped levels and recorded what
+    it spent as `MEASURED_EXPANSIONS`; a generated level gets the same check and the same
+    number, so `min_expansions` is a floor on that ramp."""
+    from planiverse.environments.gameboy_py.super_mario_land import MEASURED_EXPANSIONS
+
+    env, _ = fresh("super_mario_land", seed=1)
+    assert env.witness_expansions >= 1
+    outcome = width_search(env, 20_000, lambda s: s.goal[0] - s.tile_x)
+    assert outcome.expansions == env.witness_expansions, "the check is BFWS, not a stand-in"
+    floor = MEASURED_EXPANSIONS[3]
+    env, _ = fresh("super_mario_land", seed=2, width=60, gaps=3, platforms=3, enemies=3,
+                   hazards=2, min_expansions=floor)
+    assert env.witness_expansions >= floor
+
+
+def test_amazing_tater_solve_and_the_generator_share_one_search():
+    """`solve` found the stored solutions; the generator checks a drawn room with the same
+    breadth-first search, so an accepted room passes exactly the test the bundled ones did."""
+    from planiverse.environments.gameboy_py.amazing_tater import solve
+
+    assert len(solve(0)) == 38 and solve(0, limit=3) is None
+    env, _ = fresh("amazing_tater", seed=4)
+    assert bounded_search(env, 5000).plan == env.witness
+
+
+def test_the_board_helpers_draw_what_the_games_share():
+    grid = walled_grid(3, 2, "#", ".")
+    assert ["".join(row) for row in grid] == ["#####", "#...#", "#...#", "#####"]
+    random_, _ = rng(0)
+    cells = [(r, c) for r in (1, 2) for c in (1, 2, 3)]
+    rocks = scatter(grid, random_, cells, "R", 0.5)
+    assert len(rocks) == 3 and all(grid[r][c] == "R" for r, c in rocks)
+    assert place(grid, random_, cells, ((0, 0, "a"), (0, 1, "b")), ".") in (True, False)
+    assert not place(grid, random_, cells, ((0, 0, "x"), (0, 1, "y"), (0, 2, "z"), (0, 3, "w")),
+                     "."), "a shape wider than the room never fits"
 
 
 def test_a_generated_lolo_room_is_always_modelled_exactly():

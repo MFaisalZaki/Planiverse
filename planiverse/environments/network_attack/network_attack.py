@@ -7,7 +7,7 @@ from nasim.envs.utils  import AccessLevel
 from nasim.envs.network import Network
 
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng
+from planiverse.environments.generation import bounded_search, rng, solvable_draw
 
 
 def perform_action(self, state, action):
@@ -125,6 +125,12 @@ class NASimState(State):
             if self.host_has_access(addr,AccessLevel.ROOT):
                 self.literals |= frozenset([f'compromised_host_{self.host_num_map[addr]}'])
 
+#: Expansions the generator's search may spend proving a drawn network solvable. NASim's
+#: generated networks keep their sensitive hosts reachable, so this is a check on the
+#: environment's own transition function rather than on the draw, and small networks
+#: solve in a handful of expansions.
+SEARCH_LIMIT = 2000
+
 #: NASim's benchmark scenarios, in the order `set_index` offers them.
 BENCHMARKS = ("tiny", "tiny-hard", "tiny-small", "small", "small-honeypot", "small-linear",
               "medium", "medium-single-site", "medium-multi-site", "tiny-gen", "tiny-gen-rgoal",
@@ -148,6 +154,10 @@ class EnvNASim(Environment):
         self.scenario_index = None
         #: The instance `reset` builds; see the class docstring for the three shapes.
         self.instance = None
+        #: The plan `generate_instance` accepted the current network on, when it checked
+        #: one, and what the search spent finding it.
+        self.witness = None
+        self.witness_expansions = None
         if scenario_yaml is not None:
             self.set_instance({"yaml": scenario_yaml})
         elif scenario_name is not None:
@@ -180,20 +190,36 @@ class EnvNASim(Environment):
             raise ValueError("a generated network needs `services` as well as `hosts`")
         self.instance = dict(instance)
         self.scenario_index = None
+        self.witness = self.witness_expansions = None
 
-    def generate_instance(self, seed=None, hosts=5, services=3, **options):
+    def generate_instance(self, seed=None, hosts=5, services=3, solvable=True,
+                          search_limit=SEARCH_LIMIT, attempts=20, **options):
         """Draw a fresh network, select it, and return it as a dict.
 
         NASim builds the network: `hosts` and `services` fix its size, and `options` are
         passed straight to its scenario generator (`num_os`, `num_processes`,
         `num_exploits`, `num_privescs`, `r_sensitive`, `r_user`, `uniform`, `alpha_H`,
         `alpha_V`, `lambda_V`, and the rest; see `nasim.scenarios.generator`). The seed goes
-        with it, so the same dict always builds the same network, and NASim's generated
-        networks always have their sensitive hosts reachable, so there is nothing to check.
+        with it, so the same dict always builds the same network. With `solvable` the draw
+        is searched breadth-first for up to `search_limit` expansions and kept only if a
+        plan was found, which is left in `witness` and recorded in the instance as
+        `solved_at`; a draw the search cannot decide is redrawn from the next seed, up to
+        `attempts` times.
         """
-        _, seed = rng(seed)
-        instance = {"hosts": int(hosts), "services": int(services), "seed": seed, **options}
-        self.set_instance(instance)
+        random_, seed = rng(seed)
+        seeds = [seed] + [random_.randrange(2 ** 32) for _ in range(attempts - 1)]
+
+        def draw(attempt):
+            return {"hosts": int(hosts), "services": int(services), "seed": seeds[attempt],
+                    **options}
+
+        if not solvable:
+            instance = draw(0)
+            self.set_instance(instance)
+            return instance
+        instance = solvable_draw(self, draw, attempts, search_limit, what="NASim network")
+        instance["solved_at"] = len(self.witness)
+        self.instance["solved_at"] = instance["solved_at"]
         return instance
 
     def reset(self):

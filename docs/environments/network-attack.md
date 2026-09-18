@@ -109,8 +109,12 @@ state, info = env.reset()
 `num_exploits`, `num_privescs`, `r_sensitive`, `r_user`, `uniform`, `alpha_H`, `alpha_V`,
 `lambda_V`, `base_host_value`, `host_discovery_value`, `step_limit`, and the rest). The
 seed goes into the dict with them, so the same dict builds the same network every time,
-including on replay through `simulate`. NASim's generated networks always place their
-sensitive hosts where they can be reached, so nothing here checks solvability.
+including on replay through `simulate`. With `solvable` (the default) the draw is searched
+breadth-first for up to `search_limit` (2000) expansions and kept only if a plan was found:
+`witness` holds it and the instance records `solved_at`. NASim's generated networks keep
+their sensitive hosts reachable, so the check is on this environment's own transition
+function rather than on the draw; a network too large to decide within the budget is redrawn
+from the next seed, up to `attempts` (20) times.
 
 An instance is one of three dicts: `{"scenario": name}` (what `set_index` selects),
 `{"yaml": path}` (a scenario file of your own), or the generated shape above.

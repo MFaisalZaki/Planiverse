@@ -42,7 +42,9 @@ from collections import defaultdict
 from typing import Tuple, List
 
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng, solvable_draw
+from planiverse.environments.generation import (
+    interior, rng, scatter, solvable_draw, walled_grid,
+)
 
 
 def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per_colour=(2, 3)):
@@ -56,12 +58,9 @@ def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per
     a level that clears itself on the first move is not a puzzle. The cursor goes on a random
     empty cell. None means some block found no room, and the caller should draw again.
     """
-    grid = [["#"] * (width + 2)]
-    grid += [["#"] + [" "] * width + ["#"] for _ in range(height)]
-    grid.append(["#"] * (width + 2))
-    interior = [(r, c) for r in range(1, height + 1) for c in range(1, width + 1)]
-    for r, c in random_.sample(interior, int(round(walls * len(interior)))):
-        grid[r][c] = "#"
+    grid = walled_grid(width, height, "#", " ")
+    cells = interior(width, height)
+    scatter(grid, random_, cells, "#", walls)
 
     def neighbours(r, c):
         return [grid[r + dr][c + dc] for dr, dc in ((0, 1), (0, -1), (1, 0), (-1, 0))]
@@ -84,7 +83,7 @@ def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per
                 break
             else:
                 return None
-    empty = [(r, c) for r, c in interior if grid[r][c] == " "]
+    empty = [(r, c) for r, c in cells if grid[r][c] == " "]
     if not empty:
         return None
     r, c = random_.choice(empty)

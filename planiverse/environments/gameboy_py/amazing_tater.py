@@ -94,10 +94,10 @@ and 2x2s), pits and turnstiles dropped onto free floor. Each draw is searched be
 handed out, so a generated room always has a plan within the stated budget; see
 `generate_room` and `planiverse.environments.generation`.
 """
-from collections import deque
-
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng, solvable_draw
+from planiverse.environments.generation import (
+    bounded_search, interior, place, rng, scatter, solvable_draw, walled_grid,
+)
 
 # ------------------------------------------------------------------------- the alphabet
 
@@ -1508,25 +1508,9 @@ def generate_room(random_, width=8, height=6, blocks=2, pits=2, turnstiles=1, ta
     """
     if not 1 <= taters <= len(TATER_GLYPHS):
         raise ValueError(f"a room holds between 1 and {len(TATER_GLYPHS)} taters")
-    grid = [[WALL] * (width + 2)]
-    grid += [[WALL] + [FLOOR] * width + [WALL] for _ in range(height)]
-    grid.append([WALL] * (width + 2))
-    interior = [(r, c) for r in range(1, height + 1) for c in range(1, width + 1)]
-    for r, c in random_.sample(interior, int(round(walls * len(interior)))):
-        grid[r][c] = WALL
-
-    def fit(shape):
-        """Put `shape` down somewhere every one of its squares is free floor."""
-        cells = interior[:]
-        random_.shuffle(cells)
-        for r, c in cells:
-            squares = [(r + dr, c + dc, glyph) for dr, dc, glyph in shape]
-            if all(1 <= sr <= height and 1 <= sc <= width and grid[sr][sc] == FLOOR
-                   for sr, sc, _ in squares):
-                for sr, sc, glyph in squares:
-                    grid[sr][sc] = glyph
-                return True
-        return False
+    grid = walled_grid(width, height, WALL, FLOOR)
+    cells = interior(width, height)
+    scatter(grid, random_, cells, WALL, walls)
 
     shapes = [((0, 0, EXIT),)]
     shapes += [((0, 0, TATER_GLYPHS[who]),) for who in range(taters)]
@@ -1537,7 +1521,7 @@ def generate_room(random_, width=8, height=6, blocks=2, pits=2, turnstiles=1, ta
     shapes += random_.choices(kinds, weights=weights, k=blocks)
     shapes += [((0, 0, PIT),)] * pits
     for shape in shapes:
-        if not fit(shape):
+        if not place(grid, random_, cells, shape, FLOOR):
             return None
     return tuple("".join(row) for row in grid)
 
@@ -2115,21 +2099,11 @@ def solve(index, limit=2_000_000):
     """Breadth-first search for a shortest plan, as a list of action names. None if none.
 
     Here rather than in the tests because it is how the stored solutions were found and how a
-    new one can be checked; `tests/test_amazing_tater.py` replays what it produced.
+    new one can be checked; `tests/test_amazing_tater.py` replays what it produced. The same
+    search is what `generate_instance` checks a drawn room with, so a generated room is
+    accepted by exactly the test the bundled ones' solutions were found by.
     """
     game = AmazingTaterGame()
     game.set_index(index)
-    state, _ = game.reset()
-    queue, seen = deque([(state, ())]), {state}
-    while queue:
-        state, plan = queue.popleft()
-        if game.is_goal(state):
-            return list(plan)
-        if len(seen) > limit:
-            return None
-        for action, following in game.successors(state):
-            if following in seen:
-                continue
-            seen.add(following)
-            queue.append((following, plan + (action.name,)))
-    return None
+    outcome = bounded_search(game, limit)
+    return None if outcome.plan is None else [action.name for action in outcome.plan]

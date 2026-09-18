@@ -51,11 +51,13 @@ There is no timer, and no score. The cartridge has both; this does not model the
 `generate_instance(seed, ...)` draws a fresh level: a floor with gaps cut into it, hazards
 set into it, platforms floating above it and enemies walking on it, Mario at the left and the
 flag at the right. The gaps and the platforms are kept within the measured jump, and each
-draw is searched before it is handed out, so a generated level always has a route within the
-stated budget; see `generate_level` and `planiverse.environments.generation`.
+draw is checked the way the shipped levels were: searched with BFWS(w=2) under the distance
+to the flag, kept only if a route was found, and what that cost in expansions recorded as
+`witness_expansions`, the same number `MEASURED_EXPANSIONS` ranks the shipped levels by. See
+`generate_level` and `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng, solvable_draw
+from planiverse.environments.generation import rng, solvable_draw, width_search
 
 #: Units to a tile: the Game Boy's own granularity. One unit is one pixel; one tick is
 #: four Game Boy frames, which is what lets the measured values below stay integral.
@@ -178,10 +180,14 @@ def generate_level(random_, width=40, height=8, gaps=2, platforms=2, enemies=2, 
 
 
 def _progress(state):
-    """Columns still to cross, with death pinned worst: the guide the generator's check uses."""
-    if state.dead:
-        return len(state.tiles[0]) + 1
+    """Columns still to cross: the guide the shipped levels were checked under, and the one
+    the generator's check uses. A dead state is pruned before it is ever measured."""
     return max(0, state.goal[0] - state.tile_x)
+
+
+def _check(env, limit):
+    """BFWS(w=2) under `_progress`, the check the shipped levels passed before shipping."""
+    return width_search(env, limit, _progress, width=2)
 
 
 def parse_level(text):
@@ -375,8 +381,10 @@ class SuperMarioLandGame(Environment):
         #: The level `reset` builds: a bundled one after `set_index`, or whatever
         #: `set_instance` was given.
         self.instance = self.levels[0]
-        #: The route `generate_instance` accepted the current level on, when it was checked.
+        #: The route `generate_instance` accepted the current level on, when it was checked,
+        #: and what BFWS spent finding it: comparable to `MEASURED_EXPANSIONS`.
         self.witness = None
+        self.witness_expansions = None
         self.state = None
         self.state_history = []
 
@@ -399,12 +407,16 @@ class SuperMarioLandGame(Environment):
         self.witness = None
 
     def generate_instance(self, seed=None, width=40, height=8, gaps=2, platforms=2, enemies=2,
-                          hazards=1, solvable=True, search_limit=20_000, attempts=50):
+                          hazards=1, solvable=True, min_expansions=0, search_limit=20_000,
+                          attempts=50):
         """Draw a fresh level, select it, and return it as a level string.
 
-        The layout options are `generate_level`'s. With `solvable` each draw is searched for
-        up to `search_limit` expansions, guided by the distance to the flag, and kept only if
-        a route was found, which is then left in `self.witness`. The route is a witness that
+        The layout options are `generate_level`'s. With `solvable` each draw is searched with
+        BFWS(w=2) under the distance to the flag, the check the shipped levels passed, for up
+        to `search_limit` expansions, and kept only if a route was found, which is then left
+        in `self.witness` with what it cost in `self.witness_expansions`. That cost is the
+        currency `MEASURED_EXPANSIONS` ranks the shipped levels in, so `min_expansions`
+        rejects draws easier than a stated point on that ramp. The route is a witness that
         the level can be finished, not a shortest one.
         """
         random_, _ = rng(seed)
@@ -416,8 +428,8 @@ class SuperMarioLandGame(Environment):
                 raise ValueError("no level of that shape fits; loosen the options")
             self.set_instance(instance)
             return instance
-        return solvable_draw(self, draw, attempts, search_limit, progress=_progress,
-                             what="Super Mario Land level")
+        return solvable_draw(self, draw, attempts, search_limit, search=_check,
+                             min_expansions=min_expansions, what="Super Mario Land level")
 
     def reset(self):
         tiles, start, enemies, goal = parse_level(self.instance)

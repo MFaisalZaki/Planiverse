@@ -176,14 +176,17 @@ env.witness                               # a route through it
 | `enemies` | 2 | enemies walking on the floor |
 | `hazards` | 1 | single deadly tiles set into the floor |
 | `solvable` | `True` | search each draw and keep only one with a route |
+| `min_expansions` | 0 | reject a draw BFWS solved in fewer expansions than this |
 | `search_limit` | 20000 | expansions the check may spend per draw |
 | `attempts` | 50 | draws before giving up with `GenerationError` |
 
 Gaps and platforms are kept within the measured jump, and Mario's start and the flag each get
-a clear stretch of floor. The check is a best-first search guided by the distance to the flag
-rather than breadth-first, since breadth-first drowns in this state space; the route it leaves
-in `witness` is evidence that the level can be finished, not a shortest plan, which is why
-there is no `min_plan_length` here.
+a clear stretch of floor. The check is the one the shipped levels passed: BFWS(w=2) under the
+distance to the flag, the search whose cost `MEASURED_EXPANSIONS` records for each of them.
+A generated level's cost is left in `witness_expansions`, in the same currency, so
+`min_expansions=MEASURED_EXPANSIONS[6]` asks for a level at least as hard as the seventh
+shipped one, by the same measure. The route left in `witness` is evidence that the level can be
+finished, not a shortest plan, which is why there is no `min_plan_length` here.
 
 ## State
 

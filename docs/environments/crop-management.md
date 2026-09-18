@@ -168,8 +168,9 @@ Moving the sowing date changes which weather the crop meets at each growth stage
 what decides whether and when irrigation pays. The rainfed and reference yields are then
 measured by running the season both ways, two simulations, so the target is defined the same
 way as for a bundled season: 98% of what the reference schedule achieves. That schedule is a
-solution by construction, so every generated season is solvable. An instance written by hand
-may leave `rainfed` and `reference` out; `reset` measures them.
+solution by construction, so every generated season is solvable, and it is what `witness`
+holds; nothing is searched for. An instance written by hand may leave `rainfed` and
+`reference` out; `reset` measures them.
 
 ## Attribution
 

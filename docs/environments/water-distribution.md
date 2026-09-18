@@ -230,16 +230,22 @@ state, info = env.reset()
 |---|---|---|
 | `network` | `None` | the network to draw on: `Net1.inp` or `Net3.inp` at random, or a name from WNTR's library, or a path to an EPANET `.inp` file of your own |
 | `min_baseline` | 0.1 | the share of delivered water the source must contaminate with nothing closed |
+| `solvable` | `True` | search each draw and keep only one with a plan |
+| `search_limit` | 150 | expansions the check may spend per draw |
+| `min_plan_length` | 1 | reject a draw whose shortest plan is shorter |
 | `attempts` | 40 | junctions tried before giving up with `GenerationError` |
 
 The source is a junction drawn at random and kept only if, with nothing closed, at least
 `min_baseline` of the delivered water comes from it, the same test `rank_sources` applies:
-a source that poisons a few percent of the network is not a containment problem. Each
-candidate costs one hydraulic solve. `Net2` is not drawn on by default because no source on
-it has been solved (see [Scenarios](#scenarios)); `set_instance({"network": "Net2.inp",
-"source": ...})` still loads one. Nothing checks that a generated scenario is solvable: on
-these networks every bundled source was, but a generated one is a measurement of the
-baseline only.
+a source that poisons a few percent of the network is not a containment problem. The draw is
+then searched breadth-first, and kept only if a plan was found: `witness` holds it and the
+instance records `solved_at`, the way every bundled scenario carries the depth it was solved
+at. Every expansion costs one hydraulic solve per candidate pipe, so the default budget
+covers every two-closure plan on the shipped networks and the shallower three-closure ones;
+a source that needs a deeper plan, like bundled scenario 8, is rejected unless the limit is
+raised. `Net2` is not drawn on by default because no source on it has been solved (see
+[Scenarios](#scenarios)); `set_instance({"network": "Net2.inp", "source": ...})` still
+loads one.
 
 ## Attribution
 

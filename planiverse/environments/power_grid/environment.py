@@ -31,7 +31,8 @@ Two properties make this hard for a declarative model, both measured on the ship
 `generate_instance(seed)` draws a contingency of its own: a time series, a step into it, and
 a line to trip there, kept only if the trip leaves the grid overloaded and, left alone,
 blacked out within a few steps, which is the same N-1 test the bundled scenarios were chosen
-by.
+by, and then only if a reconfiguration secures it, so that like every bundled scenario it
+carries the depth it was actually solved at.
 
 Built on Grid2Op, the framework RTE (the French transmission operator) uses for the L2RPN
 competitions: https://github.com/Grid2Op/grid2op
@@ -39,7 +40,7 @@ competitions: https://github.com/Grid2Op/grid2op
 from collections import namedtuple
 
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import draw_until, rng
+from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: The bundled case. `test=True` uses the time series shipped inside grid2op, so nothing is
 #: downloaded and every run sees the same data.
@@ -60,6 +61,16 @@ Scenario = namedtuple("Scenario", ["chronic", "line", "rho_after_trip",
 #: grid has to black out for the draw to count as doomed rather than self-healing.
 MAX_OFFSET = 200
 BLACKOUT_WITHIN = 6
+
+#: Expansions the generator's search may spend proving a drawn contingency solvable. One:
+#: every bundled scenario is solved by a single reconfiguration, and one expansion tries
+#: every relevant one, at a power-flow solve each.
+SEARCH_LIMIT = 1
+
+#: Draws the generator may make before giving up. About one random (series, step, line)
+#: draw in eleven survives both tests (measured over 120: 18 doomed, 11 of those secured
+#: by one reconfiguration), so eighty draws fail to find one about once in two thousand.
+ATTEMPTS = 80
 
 #: Which line to trip, on which time series.
 #:
@@ -200,6 +211,10 @@ class PowerGridEnv(Environment):
         #: The contingency `reset` builds, as `{"chronic": ..., "line": ..., "offset": ...}`:
         #: a bundled one after `set_index`, or whatever `set_instance` was given.
         self.instance = None
+        #: The plan `generate_instance` accepted the current contingency on, when it checked
+        #: one, and what the search spent finding it.
+        self.witness = None
+        self.witness_expansions = None
         self.state = None
         self.state_history = []
 
@@ -232,11 +247,13 @@ class PowerGridEnv(Environment):
         self.instance = {"chronic": int(instance["chronic"]), "line": int(instance["line"]),
                          "offset": int(instance.get("offset", 0)), **instance}
         self.scenario_index = None
+        self.witness = self.witness_expansions = None
         self._cache = {}
         self.__release_cursor__()
 
     def generate_instance(self, seed=None, chronic=None, line=None, max_offset=MAX_OFFSET,
-                          min_rho=SECURE_RHO, blackout_within=BLACKOUT_WITHIN, attempts=30):
+                          min_rho=SECURE_RHO, blackout_within=BLACKOUT_WITHIN, solvable=True,
+                          search_limit=SEARCH_LIMIT, attempts=ATTEMPTS):
         """Draw a fresh contingency, select it, and return it as a dict.
 
         A time series (`chronic`, or one of the case's at random), a step `offset` into it
@@ -244,8 +261,12 @@ class PowerGridEnv(Environment):
         A draw is kept only if the trip leaves some line above `min_rho` of its rating and,
         with the operator doing nothing, the grid blacks out within `blackout_within` steps:
         the "standing but doomed" test the bundled scenarios were chosen by, since a grid
-        that heals itself is not an instance. Each candidate costs a fresh simulation, so
-        `attempts` bounds the draws.
+        that heals itself is not an instance. With `solvable` it is then searched for up to
+        `search_limit` expansions (one, by default: every bundled scenario is solved by a
+        single reconfiguration, and one expansion tries every relevant one) and kept only
+        if a plan was found, which is left in `witness` and recorded in the instance as
+        `solved_at`. Each candidate costs a few simulated steps to measure and a power-flow
+        solve per relevant reconfiguration to check, so `attempts` bounds the draws.
         """
         random_, _ = rng(seed)
         # One probe environment for every draw: building one costs seconds, resetting it to
@@ -275,15 +296,28 @@ class PowerGridEnv(Environment):
             for step in range(1, blackout_within + 1):
                 probe.step(probe.action_space({}))
                 if probe.done:
-                    measured.update(rho_after_trip=round(tripped.max_rho, 3), blackout_in=step)
-                    return True
-            return False
+                    break
+            else:
+                return False
+            found = {"rho_after_trip": round(tripped.max_rho, 3), "blackout_in": step}
+            if solvable:
+                outcome = bounded_search(self, search_limit)
+                if outcome.plan is None:
+                    return False
+                found.update(solved_at=len(outcome.plan), plan=outcome.plan,
+                             expansions=outcome.expansions)
+            measured.update(found)
+            return True
 
         try:
-            instance = {**draw_until(draw, accept, attempts, "contingency"), **measured}
+            candidate = draw_until(draw, accept, attempts, "contingency")
         finally:
             probe.close()
+        instance = {**candidate, **{key: measured[key] for key in measured
+                                    if key not in ("plan", "expansions")}}
         self.set_instance(instance)
+        if solvable:
+            self.witness, self.witness_expansions = measured["plan"], measured["expansions"]
         return instance
 
     # ------------------------------------------------------------------ the grid

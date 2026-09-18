@@ -234,6 +234,11 @@ class CropEnv(Environment):
         #: "reference": ...}`: a bundled one after `set_index`, or whatever `set_instance`
         #: was given.
         self.instance = None
+        #: The plan `generate_instance` accepted the current season on: the reference
+        #: schedule, which is a solution by construction, since the target is measured off
+        #: it. Nothing is searched for, so `witness_expansions` is 0.
+        self.witness = None
+        self.witness_expansions = None
         self.state = None
         self.state_history = []
         self._cache = {}
@@ -263,6 +268,7 @@ class CropEnv(Environment):
         datetime.date(year, *sow)            # refuses a date that does not exist
         self.instance = {**instance, "year": year, "sow": list(sow)}
         self.scenario_index = None
+        self.witness = self.witness_expansions = None
         self._cache = {}
 
     def generate_instance(self, seed=None, year=None, sow_shift=SOW_SHIFT_DAYS):
@@ -283,6 +289,7 @@ class CropEnv(Environment):
                   + datetime.timedelta(days=random_.randint(-sow_shift, sow_shift)))
         self.set_instance({"year": year, "sow": [sowing.month, sowing.day]})
         self.__measure__()
+        self.witness, self.witness_expansions = self.reference_plan(), 0
         return dict(self.instance)
 
     def __measure__(self):

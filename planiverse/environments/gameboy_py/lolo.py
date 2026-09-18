@@ -95,7 +95,7 @@ has a plan within the stated budget; see `generate_room` and
 `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng, solvable_draw
+from planiverse.environments.generation import place, rng, scatter, solvable_draw
 
 # ------------------------------------------------------------------------- the alphabet
 # The names are the cartridge's own: the object list at `$2CA9` is plain ASCII and reads
@@ -573,19 +573,13 @@ def generate_room(random_, hearts=3, magic_hearts=0, framers=2, snakeys=1, medus
         raise ValueError("magic_hearts is a share of hearts, so it cannot exceed them")
     cells = [(row, col) for row in range(SIZE) for col in range(SIZE)]
     grid = [[FLOOR] * SIZE for _ in range(SIZE)]
-    random_.shuffle(cells)
-    scenery = int(round(rocks * len(cells))), int(round(trees * len(cells)))
-    for row, col in cells[:scenery[0]]:
-        grid[row][col] = ROCK
-    for row, col in cells[scenery[0]:sum(scenery)]:
-        grid[row][col] = TREE
-    free = cells[sum(scenery):]
+    rocky = scatter(grid, random_, cells, ROCK, rocks)
+    scatter(grid, random_, [cell for cell in cells if cell not in rocky], TREE, trees)
     glyphs = [DOOR, LOLO] + [MAGIC_HEART] * magic_hearts + [HEART] * (hearts - magic_hearts)
     glyphs += [FRAMER] * framers + [SNAKEY] * snakeys + [MEDUSA] * medusas
-    if len(glyphs) > len(free):
-        raise ValueError("more objects than free cells; ask for fewer, or less scenery")
-    for (row, col), glyph in zip(free, glyphs):
-        grid[row][col] = glyph
+    for glyph in glyphs:
+        if not place(grid, random_, cells, ((0, 0, glyph),), FLOOR):
+            raise ValueError("more objects than free cells; ask for fewer, or less scenery")
     return "|".join("".join(row) for row in grid)
 
 
