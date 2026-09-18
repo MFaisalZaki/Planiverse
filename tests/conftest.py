@@ -5,7 +5,33 @@ NetworkAttackSimulator fork, and the three simulator-backed environments need WN
 and PCSE. Tests for an environment whose requirements are missing skip rather than fail, so
 the suite is runnable from a partial install.
 """
+import os
+
 import pytest
+
+
+@pytest.fixture(autouse=True, scope="session")
+def a_cartridge_for_the_game_boy():
+    """Point the Game Boy environment at the synthetic cartridge, so `make("game_boy")` and
+    the uniform contract and generator tests can build it like any other environment.
+
+    No commercial ROM is involved: `counter_rom.py` assembles an original program. A
+    cartridge the user already named through the variable is left alone.
+    """
+    try:
+        import pyboy  # noqa: F401
+    except ImportError:
+        yield
+        return
+    from counter_rom import counter_rom
+    from planiverse.environments.emulated.game_boy import ROM_VARIABLE
+
+    already = os.environ.get(ROM_VARIABLE)
+    if not already:
+        os.environ[ROM_VARIABLE] = counter_rom()
+    yield
+    if not already:
+        os.environ.pop(ROM_VARIABLE, None)
 
 
 def requires(module_name):

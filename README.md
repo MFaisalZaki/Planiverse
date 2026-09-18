@@ -31,6 +31,8 @@ room, network, contingency or season, so a benchmark is not limited to what ship
 | Adventures of Lolo | `lolo` | 163 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
 | Amazing Tater | `amazing_tater` | 105 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
 | Super Mario Land | `super_mario_land` | 12 levels | level length, gaps, platforms, hazards and enemies | game, platformer | [docs](docs/environments/super-mario-land.md) |
+| Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
+| Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
 
 ```python
 from planiverse.environments import list_environments, make
@@ -55,6 +57,15 @@ The five games are commercially published Game Boy titles reimplemented in pure 
 rules established by observing the originals. Nothing here runs the original programs, and no
 ROM is needed or accepted; see [Studied titles](#studied-titles).
 
+The two emulator environments are generic. `game_boy` runs whatever cartridge you point it at
+under [PyBoy](https://github.com/Baekalfen/PyBoy) and reads the game through PyBoy's game
+wrappers, so the knowledge of where a game keeps its counters stays in PyBoy; `retro` runs any
+[Stable-Retro](https://github.com/Farama-Foundation/stable-retro) integration from its save
+states and the variables the integration names. Neither ships a ROM. Stable-Retro's own package
+includes one freely redistributable game, Airstriker, which is `retro`'s default; `game_boy`
+needs a cartridge from you (`PLANIVERSE_GB_ROM`), and its tests run on a cartridge they assemble
+themselves.
+
 ## Installation
 
 Requires Python **≥ 3.11, < 3.14**: numba and scipy have no 3.14 wheels yet, and building them from
@@ -74,8 +85,10 @@ poetry install --extras dev
 ```
 
 One install gets you every environment, on every supported Python, and nothing has to be
-supplied: the five games are self-contained, and the water, power grid and crop environments
-ship their benchmark data inside their dependencies, so they run offline.
+supplied: the five games are self-contained, the water, power grid and crop environments ship
+their benchmark data inside their dependencies, so they run offline, and Stable-Retro ships
+Airstriker. The one exception is a Game Boy cartridge for `game_boy`, which is copyrighted and
+comes from you.
 
 `tests/test_packaging.py` walks the import graph from each environment's entry point and fails if
 anything it reaches is undeclared; a dependency that only works because another package happens
@@ -93,7 +106,9 @@ runnable from a partial install.
 
 [`tests/test_interface.py`](tests/test_interface.py) checks the contract below uniformly across every
 environment, [`tests/test_generators.py`](tests/test_generators.py) checks the instance generators
-the same way, and the other modules cover per-environment behaviour.
+the same way, and the other modules cover per-environment behaviour. The Game Boy tests run on
+an original cartridge assembled by [`tests/counter_rom.py`](tests/counter_rom.py), so no
+commercial ROM is involved.
 
 ## Quickstart
 
@@ -177,8 +192,9 @@ benchmark is a file of instances and a loop over `set_instance`.
 ### The environment interface
 
 An environment is a plain Python class. It subclasses `Environment` (or just satisfies the
-contract, since dispatch is structural) and implements as much of this contract as it needs
-(registration is an explicit `EnvironmentSpec` entry, not a metaclass):
+contract, since dispatch is structural) and implements the eight contract methods, the first
+eight rows below, plus whichever of the optional ones it can (registration is an explicit
+`EnvironmentSpec` entry, not a metaclass):
 
 | Method | Returns | Notes |
 |---|---|---|
@@ -188,8 +204,8 @@ contract, since dispatch is structural) and implements as much of this contract 
 | `is_goal(state)` | `bool` | |
 | `is_terminal(state)` | `bool` | Dead end: no goal reachable from here. |
 | `simulate(plan)` | `[state, ...]` | Replays a plan from the initial state. |
-| `generate_instance(seed, **options)` | the instance | Optional; draws a fresh instance and selects it. |
-| `set_instance(instance)` | — | Optional; selects an instance drawn earlier. |
+| `generate_instance(seed, **options)` | the instance | Draws a fresh instance from a seed, selects it, and returns it as plain data. The same seed always gives the same instance. |
+| `set_instance(instance)` | — | Selects an instance drawn earlier. |
 | `step(action)` | `(state, reward)` | Optional; stateful stepping. |
 | `validate(plan)` | `bool` | Optional. |
 | `get_actions()` | `[action, ...]` | Optional. |
@@ -207,22 +223,27 @@ Not every environment implements every method. What is actually there today:
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | — | ✅ | — | — | — |
+| `GameBoyEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `RetroEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in this environment: it has no dead ends, or
 detecting them is left to the planner. Puzznic, `FlipullGame` and Super Mario Land are the ones
 that really compute a positional dead end; `FlipullGame`'s is *exact*, because the rules are
 known in Python and it can ask outright whether any throw would connect. The three
 simulator-backed environments compute real ones too: a water network whose service has
-collapsed, a blacked-out grid, and a growing season whose water budget is spent.
+collapsed, a blacked-out grid, and a growing season whose water budget is spent. The two
+emulator environments take theirs from the game: a wrapper's `game_over()`, a lost life, or
+an integration's done condition.
 
 `Environment.capabilities()` reports this per class, so the table above is checked against the code
 rather than trusted: `tests/test_interface.py` asserts the two agree.
 
 Note that `validate` is provided by the base class for everything, derived from `simulate` and
-`is_goal`, so no environment writes it out. `step`, `get_actions`, `generate_instance` and
-`set_instance` have base defaults too, but theirs only explain their own absence. That is why
-"does the class override it" is the wrong test, and `capabilities()` asks whether the method
-would actually do something.
+`is_goal`, so no environment writes it out. `step` and `get_actions` have base defaults too,
+but theirs only explain their own absence, and so do the eight contract methods, so a
+half-written environment fails where a method is called rather than when it is built. That is
+why "does the class override it" is the wrong test, and `capabilities()` asks whether the
+method would actually do something.
 
 ### States and `literals`
 
@@ -263,9 +284,9 @@ wants. The mapping from index to instance is listed in each environment's doc.
 ### Bringing your own environment
 
 Planners call environments directly; there is no wrapper to construct. An environment brought
-from outside the library counts as long as it answers the six contract methods:
-`implements_contract` checks structurally, so no subclassing is required, and a generator is
-not required either. There used to be a `Simulator` facade between planners and environments;
+from outside the library counts as long as it answers the eight contract methods, the
+generator's two included: `implements_contract` checks structurally, so no subclassing is
+required. There used to be a `Simulator` facade between planners and environments;
 once its PDDLGym dispatch was removed it delegated every call one-to-one, so it went the way of
 the two-base-class split.
 
@@ -388,10 +409,11 @@ One flat package, one base class, and a registry.
 
 ```
 planiverse/environments/
-├── base.py          # Environment — the six-method contract, the generator's two, and nothing else
+├── base.py          # Environment — the eight-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
 ├── gameboy_py/      # the five games, reimplemented in pure Python
+├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
 └── <one subpackage per simulator-backed environment>
 ```
 
@@ -407,34 +429,37 @@ So the taxonomy became data. `EnvironmentSpec` carries what you might select on:
 | Field | What it tells a planner |
 |---|---|
 | `deterministic` | whether expanding a state twice gives the same children |
-| `state_identity` | `value` or `path`: **how branching is possible at all** |
+| `state_identity` | `value`, `path` or `snapshot`: **how branching is possible at all** |
 | `requires` | third-party modules, so listing the catalogue imports none of them |
 | `generates` | what `generate_instance` draws at random, in words |
 | `tags` | the family (`game`, `operational`, `security`) plus finer ones like `continuous-dynamics` |
 
 `state_identity` is the one worth understanding. A `value` state carries its own contents and
 expanding is pure. A `path` state *is* the decision sequence, replayed on demand, which is
-sound only because the simulator is deterministic. Most simulators are step-only and cannot
-be rewound; that is the property that decides whether something can be a Planiverse
-environment at all, and it now has a name.
+sound only because the simulator is deterministic. A `snapshot` state carries a serialised
+emulator image (a save state) and is told apart from others by what the game wrapper or the
+integration reads off it. Most simulators are step-only and cannot be rewound; that is the
+property that decides whether something can be a Planiverse environment at all, and it now
+has a name.
 
 The contract check is structural (`implements_contract`), so an environment brought from
 outside works without inheriting from anything.
 
 ## Adding an environment
 
-1. Subclass `Environment` (`planiverse/environments/base.py`) and implement the six methods.
+1. Subclass `Environment` (`planiverse/environments/base.py`) and implement the eight methods.
 2. Define a state class exposing `literals`, `__eq__`, and, if search will hash it, `__hash__`.
    Decide deliberately how coarse `literals` should be; that decision is your state space.
 3. Implement `reset`, `set_index`, `successors`, `is_goal`, `is_terminal`, and `simulate`.
 4. Filter self-loops out of `successors` (`if successor_state == state: continue`); every bundled
    environment does this, and planners rely on it. Check that it can actually fire: if `literals`
    include a step counter, no successor ever equals its parent and the filter is dead code.
-5. Give it a generator: `set_instance` takes an instance as plain data and `generate_instance`
-   draws one from a seed and selects it. Keep the instance in one attribute that `reset` builds
-   from, so `set_index` and `set_instance` are two ways of filling the same slot. If a draw can
-   be unsolvable, check it with `planiverse.environments.generation.solvable_draw` before
-   handing it out.
+5. Give it a generator, which is part of the contract: `set_instance` takes an instance as
+   plain data and `generate_instance` draws one from a seed and selects it. Everything random
+   comes from `random.Random(seed)`, so the same seed gives the same instance anywhere. Keep
+   the instance in one attribute that `reset` builds from, so `set_index` and `set_instance`
+   are two ways of filling the same slot. If a draw can be unsolvable, check it with
+   `planiverse.environments.generation.solvable_draw` before handing it out.
 6. Add an `EnvironmentSpec` to `planiverse/environments/registry.py`; that is what puts it
    in the catalogue and in `make()`.
 7. Add a doc under `docs/environments/` and a row to the catalogue above.
@@ -453,6 +478,9 @@ planiverse/
 │   │   ├── lolo.py                     # LoloGame
 │   │   ├── amazing_tater.py            # AmazingTaterGame
 │   │   └── super_mario_land.py         # SuperMarioLandGame — measured physics, original levels
+│   ├── emulated/                       # any game, nothing shipped
+│   │   ├── game_boy.py                 # GameBoyEnv — a cartridge under PyBoy, read through its wrappers
+│   │   └── stable_retro.py             # RetroEnv — a Stable-Retro integration from its save states
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
@@ -473,6 +501,8 @@ tools/setup_benchmark.sh                # builds the venv, installs, runs genera
 tests/
 ├── test_interface.py                   # the contract, across every environment
 ├── test_generators.py                  # the instance generators, across every environment
+├── test_emulated.py                    # the two emulator environments
+├── counter_rom.py, sm83.py             # the test cartridge, and the assembler that builds it
 └── test_<environment>.py               # per-environment behaviour
 ```
 
@@ -496,6 +526,8 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
+| Game Boy | [PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), with the game wrappers of [MFaisalZaki/PyBoy](https://github.com/MFaisalZaki/PyBoy) |
+| Stable-Retro | [Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (Farama Foundation, MIT), which ships Airstriker |
 
 Two environments were removed over licensing: epidemic control vendored
 [EpiPolicy](https://github.com/huda-lab/RL-Epidemic-Benchmark), and urban planning shipped the
@@ -519,9 +551,11 @@ is unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES
 
 What is in the tree:
 
-- Nine environments: three simulator-backed operational ones (water distribution, power
-  grid, crop management), the NASim network attack, and five games reimplemented in pure
-  Python. Every one ships its bundled instances and generates more from a seed.
+- Eleven environments: three simulator-backed operational ones (water distribution, power
+  grid, crop management), the NASim network attack, five games reimplemented in pure
+  Python, and two generic emulator environments, one for any Game Boy cartridge under PyBoy
+  and one for any Stable-Retro integration. Every one ships its bundled instances and
+  generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
   latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
 - `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
@@ -546,7 +580,9 @@ Open:
 
 Withdrawn: the five emulator-backed environments that drove the original cartridges through
 PyBoy alongside their Python counterparts, with their memory maps, screen captures and
-synthetic test cartridges. They are kept outside the repository. Withdrawn earlier: Boxxle II,
+synthetic test cartridges. They are kept outside the repository, and what replaced them is
+generic: one environment per emulator, reading a game through PyBoy's wrappers or Stable-Retro's
+integration rather than through a memory map kept here. Withdrawn earlier: Boxxle II,
 which worked, because Boxxle II is Sokoban, whose transition is an add/delete list and whose
 PDDL encoding is one page long; an environment a declarative model handles well is not
 evidence for a library about planning with simulators.

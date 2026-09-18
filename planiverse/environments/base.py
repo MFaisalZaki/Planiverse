@@ -12,14 +12,14 @@ So there is one base class now, and the taxonomy moved into data. `Environment` 
 contract; `EnvironmentSpec` in `registry.py` carries everything a caller might want to select
 on, including the tags that used to be package directories.
 """
-#: Methods a planner may always call.
-REQUIRED_METHODS = ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate")
+#: Methods a planner may always call: the six that search needs, and the two that make new
+#: instances, because an environment a benchmark cannot draw fresh instances from is not
+#: one this library ships.
+REQUIRED_METHODS = ("reset", "set_index", "set_instance", "generate_instance", "successors",
+                    "is_goal", "is_terminal", "simulate")
 
-#: Methods a planner should check for. `capabilities()` reports which are present. The last
-#: two are the instance generator: every bundled environment offers them, but an environment
-#: brought from outside still counts without them.
-OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close",
-                    "generate_instance", "set_instance")
+#: Methods a planner should check for. `capabilities()` reports which are present.
+OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close")
 
 
 def _stub(method):
@@ -38,8 +38,9 @@ def _stub(method):
 class Environment:
     """A simulator a planner can search.
 
-    The contract is six methods. States must expose `literals` as a `frozenset`, and must be
-    hashable and comparable, because that is what a planner keys its visited set on.
+    The contract is eight methods: six for searching, and two for making instances. States
+    must expose `literals` as a `frozenset`, and must be hashable and comparable, because
+    that is what a planner keys its visited set on.
 
     Two properties every implementation owes the caller, neither of which the type system can
     enforce and both of which the registry records:
@@ -68,6 +69,28 @@ class Environment:
     def set_index(self, index):
         """Select which bundled instance (level, scenario, stage) `reset` will build."""
         raise NotImplementedError(f"{type(self).__name__} must implement set_index()")
+
+    # `set_index` picks one of the instances an environment ships with. These two make new
+    # ones: `generate_instance` draws a fresh instance from a seed and selects it, the way
+    # `set_index` selects a bundled one, and returns it as plain data (strings, tuples,
+    # dicts) so it can be written down; `set_instance` selects an instance written down
+    # earlier, so a generated benchmark replays exactly.
+
+    @_stub
+    def set_instance(self, instance):
+        """Select an instance `generate_instance` returned earlier, so `reset` builds it."""
+        raise NotImplementedError(f"{type(self).__name__} must implement set_instance()")
+
+    @_stub
+    def generate_instance(self, seed=None, **options):
+        """Draw a fresh instance from `seed`, select it for `reset`, and return it.
+
+        The same seed and options must always give the same instance: everything random
+        comes from `random.Random(seed)` and nothing else. `options` are the environment's
+        own knobs (a board size, a number of hosts, a water budget); each environment
+        documents its own. The return value is plain data that `set_instance` accepts back.
+        """
+        raise NotImplementedError(f"{type(self).__name__} must implement generate_instance()")
 
     @_stub
     def reset(self):
@@ -122,29 +145,6 @@ class Environment:
             f"{type(self).__name__} has no static action list; its actions are built per "
             "state by successors()")
 
-    # ------------------------------------------------------------------- the generator
-    # `set_index` picks one of the instances an environment ships with. These two make new
-    # ones: `generate_instance` draws a fresh instance from a seed and selects it, the way
-    # `set_index` selects a bundled one, and returns it as plain data (strings, tuples,
-    # dicts) so it can be written down; `set_instance` selects an instance written down
-    # earlier, so a generated benchmark replays exactly.
-
-    @_stub
-    def generate_instance(self, seed=None, **options):
-        """Draw a fresh instance from `seed`, select it for `reset`, and return it.
-
-        The same seed and options always give the same instance. `options` are the
-        environment's own knobs (a board size, a number of hosts, a water budget); each
-        environment documents its own. The return value is plain data that `set_instance`
-        accepts back.
-        """
-        raise NotImplementedError(f"{type(self).__name__} has no instance generator")
-
-    @_stub
-    def set_instance(self, instance):
-        """Select an instance `generate_instance` returned earlier, so `reset` builds it."""
-        raise NotImplementedError(f"{type(self).__name__} has no instance generator")
-
     def render_trace(self, trace, target, **kwargs):
         """Write a trace to `target`: an animated GIF (`plan.gif`) or a directory of
         one PNG per state.
@@ -182,7 +182,7 @@ def implements_contract(candidate):
     being a subclass. Structural, not nominal, which is the point of dropping the
     two-base-class taxonomy in the first place.
 
-    A base-class default that only raises does not count: a bare `Environment()` has all six
+    A base-class default that only raises does not count: a bare `Environment()` has all eight
     attributes and implements none of them.
     """
     for name in REQUIRED_METHODS:

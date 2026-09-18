@@ -24,7 +24,9 @@ from dataclasses import dataclass, field
 #: - `value`:    the state carries its own contents; expanding is pure.
 #: - `path`:     the state is the decision sequence, replayed on demand. Sound only because
 #:               the simulator is deterministic.
-STATE_IDENTITIES = ("value", "path")
+#: - `snapshot`: the state carries a serialised emulator image (a save state), and is told
+#:               apart from others by what the emulator's game wrapper reads off it.
+STATE_IDENTITIES = ("value", "path", "snapshot")
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,30 @@ REGISTRY = (
         state_identity="value",
         docs="docs/environments/super-mario-land.md",
         tags=frozenset({"game", "platformer", "dependency-free"}),
+    ),
+    EnvironmentSpec(
+        name="game_boy",
+        factory="planiverse.environments.emulated.game_boy:GameBoyEnv",
+        summary="Any Game Boy cartridge, through PyBoy and its game wrappers",
+        instances="one per stage, level or room the cartridge's wrapper reaches",
+        generates="the stage, the timer seed, and an opening played from its first frame",
+        deterministic=True,
+        state_identity="snapshot",
+        requires=("pyboy",),
+        docs="docs/environments/game-boy.md",
+        tags=frozenset({"game", "emulator"}),
+    ),
+    EnvironmentSpec(
+        name="retro",
+        factory="planiverse.environments.emulated.stable_retro:RetroEnv",
+        summary="Any Stable-Retro integration, from a save state to a goal on its variables",
+        instances="one per save state the integration ships (Airstriker: 1)",
+        generates="the save state, an opening played from it, and the goal",
+        deterministic=True,
+        state_identity="snapshot",
+        requires=("stable_retro",),
+        docs="docs/environments/stable-retro.md",
+        tags=frozenset({"game", "emulator"}),
     ),
     EnvironmentSpec(
         name="network_attack",

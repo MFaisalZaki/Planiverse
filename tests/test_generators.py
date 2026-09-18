@@ -11,7 +11,9 @@ import json
 
 import pytest
 
-from planiverse.environments import Environment, get_spec, list_environments, make
+from planiverse.environments import (
+    Environment, get_spec, implements_contract, list_environments, make,
+)
 from planiverse.environments.generation import (
     GenerationError, bounded_search, draw_until, place, rng, scatter, walled_grid,
     width_search,
@@ -31,6 +33,10 @@ FAST = {
     "water_network": dict(network="Net1.inp"),
     "power_grid": dict(),
     "crop_management": dict(),
+    # The emulators check a draw only when asked (`solvable`), since one expansion is a
+    # frame's worth of emulation per action; a near survival goal keeps the check short.
+    "game_boy": dict(solvable=True, warmup=(0, 4), goal={"survive": 5}, search_limit=100),
+    "retro": dict(solvable=True, warmup=(0, 5), goal={"survive": 5}, search_limit=100),
 }
 
 
@@ -54,11 +60,16 @@ def fresh(name, seed, **options):
 # ------------------------------------------------------------------------- the contract
 
 def test_every_bundled_environment_offers_the_generator():
+    """The generator is contract, not capability: `implements_contract` refuses an
+    environment without one, and every bundled environment passes it."""
     for spec in list_environments():
         if spec.available():
-            assert {"generate_instance", "set_instance"} <= spec.load().capabilities(), \
+            cls = spec.load()
+            assert cls.provides("generate_instance") and cls.provides("set_instance"), \
                 f"{spec.name} has no instance generator"
-    assert "generate_instance" not in Environment.capabilities(), "the base only explains"
+            assert implements_contract(cls)
+    assert not implements_contract(Environment), "the base only explains"
+    assert not Environment.provides("generate_instance")
 
 
 @pytest.mark.parametrize("name", environments())

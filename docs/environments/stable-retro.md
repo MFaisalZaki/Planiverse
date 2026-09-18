@@ -1,0 +1,137 @@
+# Stable-Retro
+
+One environment for any game [Stable-Retro](https://github.com/Farama-Foundation/stable-retro)
+integrates: the Genesis, NES, SNES, Game Boy, Atari 2600 and the rest of its shelf of
+consoles, each game with a save state to start from and a list of RAM variables its
+integration names. The environment adds what a planner needs and the Gym interface lacks: a
+way back to a state (the emulator's save states) and a goal (a threshold on a variable, or a
+number of actions survived).
+
+- **Class:** `RetroEnv`
+- **Import:** `from planiverse.environments.emulated.stable_retro import RetroEnv`
+- **Source:** [`planiverse/environments/emulated/stable_retro.py`](../../planiverse/environments/emulated/stable_retro.py)
+- **Instances:** one per save state the integration ships; Airstriker ships one, `Level1`
+- **Generator:** `generate_instance(seed, warmup=(0, 40), goal=None, solvable=False, search_limit=2000, attempts=20)`;
+  see [Generating instances](#generating-instances)
+- **Dependencies:** `stable-retro`, which includes the default game
+
+## Which game
+
+Stable-Retro ships one game with its package, *Airstriker* for the Genesis, which is freely
+redistributable and is the default here. Every other integration needs a ROM you own,
+imported into Stable-Retro with its own tool (`python -m stable_retro.import /path/to/roms`);
+nothing is downloaded and nothing ships with this repository.
+
+```python
+from planiverse.environments import make
+
+env = make("retro")                                  # Airstriker, from Level1
+env = make("retro", game="SonicTheHedgehog-Genesis-v0", index=2)   # once its ROM is imported
+state, info = env.reset()
+```
+
+`inttype=` passes a custom integration directory through (`stable_retro.data.Integrations`),
+for a game you have written variables for yourself.
+
+## State representation
+
+A `RetroState` carries a save state (the emulator's, zlib-compressed; a megabyte for the
+Genesis), the integration's variables as integers, and a hash of the console's RAM. Its
+literals are `var(name, value)` for every variable, `ram(hash)`, `steps(n)` under a survival
+goal, and `goal-reached` and `terminal-state`.
+
+Two states are the same when their RAM is. That is the honest identity, and the default
+(`identity="ram"`), because an integration's variables are usually a few counters that say
+nothing about where things are: Airstriker names `score`, `lives` and `gameover`, and on
+those alone every move from the start would fold into one state. `identity="variables"` does
+exactly that fold, for a game whose variables do capture the position, and gives a much
+smaller, coarser search space. The environment is deterministic given the save state and
+the inputs either way, so a plan found under either identity replays.
+
+`state_identity` is `snapshot` in the registry: the state is an emulator image.
+
+## Goals and dead ends
+
+| Spec | Holds when |
+|---|---|
+| `{"variable": "score", "delta": 100}` | the variable has risen by `delta` since the instance's initial state |
+| `{"variable": "score", "at_least": 500}` | `at_least`, `at_most` or `equals` on the variable |
+| `{"variable": "lives", "drop": true}` | (dead end) the variable has fallen below its value at the initial state |
+| `{"done": true}` | (dead end) the integration's own done condition (`scenario.json`) |
+| `{"survive": 100}` | `survive` actions have been taken without a dead end |
+
+The defaults: the goal is `DEFAULT_GOALS[game]` if the module has one (Airstriker: survive
+100 actions, since it scores nothing for long stretches), else one point of `score` if the
+integration has one, else survival; the dead end is the integration's done condition plus a
+lost life wherever the integration counts lives. Relative specs are measured from the
+instance's own initial state, after any opening the generator played. The progress measure
+for the width planners is what is left: the distance to the target value, or the actions
+still to survive.
+
+## Actions
+
+An action is a button combination as Stable-Retro spells it (`LEFT+B`), or `nop`; a
+combination is a set, so `B+LEFT` is `LEFT+B`. The vocabulary is `DEFAULT_ACTIONS[game]`
+(Airstriker: nop, left, right, fire, and fire with either) or, for a game the module has no
+entry for, every combination the integration's discrete action space allows, which is 126
+on a Genesis pad; `actions=` on the constructor narrows it. Pressing holds the combination
+for `hold` frames (four, the frame skip Stable-Retro's own baselines use).
+
+`successors` tries every action from the state's save state and drops the ones that change
+nothing. One expansion is one save-state load and `hold` frames of emulation per action; the
+Genesis core runs about a thousand steps a second, so an expansion costs a few milliseconds.
+
+## One emulator per process
+
+Stable-Retro allows one live emulator per process. Environments share it: constructing a
+second `RetroEnv` is fine, whichever one is used next takes the emulator over, and the other
+reopens it on its next call. Save states survive the handover, so a state expanded under one
+environment still expands under the other. `close()` releases it.
+
+## Instances and generating instances
+
+An instance is plain data:
+
+```python
+{"state": "Level1", "warmup": ["LEFT+B", "", "RIGHT"], "goal": {"survive": 100}, "terminal": {"done": true, "variable": "lives", "drop": true}}
+```
+
+`set_index(i)` selects the integration's save states in sorted order, from their first
+frame; `set_instance` takes a dict of this shape; `generate_instance` draws one:
+
+```python
+instance = env.generate_instance(seed=3)                          # a save state and an opening
+instance = env.generate_instance(seed=3, warmup=(20, 60))         # a longer opening
+instance = env.generate_instance(seed=3, goal={"variable": "score", "delta": 500})
+instance = env.generate_instance(seed=3, solvable=True, search_limit=500)
+```
+
+- **What varies.** The save state, when the integration ships several, and an *opening*: a
+  run of `warmup` (a range) actions from the vocabulary played from the save state, so the
+  problem starts somewhere in the level rather than at its first frame. A draw that is
+  already won or lost after its opening is redrawn.
+- **Determinism.** The emulator is deterministic given the save state and the inputs, and
+  everything random in the draw comes from `random.Random(seed)`, so the same seed gives the
+  same instance and the same initial state, in one process or another.
+- **Checking.** With `solvable=True` the draw is searched, best-first under the goal's own
+  measure, for up to `search_limit` expansions, and only a solved draw is handed out, with
+  the plan in `env.witness`. Off by default: a survival goal is deep, and an emulator
+  expansion is not free.
+
+The instance records its `seed` too.
+
+## Rendering
+
+`render()` returns the console's frames for the positions `step` played through, as
+`(height, width, 3)` arrays; `render(target)` and `render_trace` write a trace as a GIF or
+PNG frames captioned from the states' variables.
+
+## Caveats
+
+- Airstriker never scores under random play and loses a life every three hundred frames or
+  so, which is why its default goal is survival rather than score. A score goal on it is a
+  long search.
+- A save state is a megabyte. A visited set of ten thousand states is a few hundred
+  megabytes after compression; the width planners' budgets are the way to bound that.
+- Stable-Retro's `retro` import name is deprecated in favour of `stable_retro`; the module
+  takes either.

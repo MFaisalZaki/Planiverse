@@ -17,7 +17,8 @@ PYPROJECT = REPO / "pyproject.toml"
 
 # Import roots whose distribution goes by another name.
 DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
-                   "sklearn": "scikit-learn", "cv2": "opencv-python"}
+                   "sklearn": "scikit-learn", "cv2": "opencv-python",
+                   "retro": "stable-retro"}    # its import name before 1.0, kept as a fallback
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -34,6 +35,8 @@ ENTRY_POINTS = [
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
     "planiverse.environments.network_attack.network_attack",
+    "planiverse.environments.emulated.game_boy",
+    "planiverse.environments.emulated.stable_retro",
     "planiverse.benchmark",
     "planiverse.rendering.trace",
     "planiverse.planners.tree_search",
@@ -134,7 +137,8 @@ def test_the_import_closure_is_fully_declared(declared):
 
 def test_an_install_covers_every_environment(declared):
     """A single `pip install .` is meant to give you all of them, not a subset."""
-    for requirement in ("nasim", "wntr", "grid2op", "pcse", "pandas", "networkx"):
+    for requirement in ("nasim", "wntr", "grid2op", "pcse", "pandas", "networkx", "pyboy",
+                        "stable-retro"):
         assert requirement in declared
 
 

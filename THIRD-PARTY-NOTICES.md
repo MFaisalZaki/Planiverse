@@ -5,8 +5,30 @@ benchmark definitions authored for this repository. It does not cover, and canno
 any rights in, the third-party material described below.
 
 This repository ships no ROM image, no fragment of one, no disassembled or decompiled
-original code, no original graphics and no audio. The game environments are
-reimplementations in Python; nothing in this repository runs the original programs.
+original code, no original graphics and no audio. The five game environments are
+reimplementations in Python; nothing in this repository runs the original programs. The two
+emulator environments run whatever cartridge the user supplies, and supply none.
+
+## Emulators
+
+Two environments drive an emulator rather than a Python reimplementation:
+`planiverse/environments/emulated/game_boy.py` runs a cartridge under
+[PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), and
+`planiverse/environments/emulated/stable_retro.py` runs a console under
+[Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (MIT, a fork of OpenAI's
+Gym Retro). Both are dependencies, installed from PyPI, and neither is included here.
+
+The Game Boy environment takes the cartridge from the user (`PLANIVERSE_GB_ROM`, or the
+`rom=` argument) and ships none. The cartridge its tests run on, `tests/counter_rom.py`, is
+an original program written for this repository and assembled by `tests/sm83.py`; it
+contains no code, data or graphics from any published title. PyBoy's game wrappers, which
+read a game's memory on the environment's behalf, are PyBoy's work; this repository holds no
+memory map of any commercial title.
+
+Stable-Retro ships one game with its own package, *Airstriker* (© Electrokinesis, distributed
+by Stable-Retro on its author's terms), which is the Stable-Retro environment's default and
+the only game its tests run. Every other Stable-Retro integration needs a ROM the user imports
+into Stable-Retro; none is here.
 
 ## Copyright and trade marks
 

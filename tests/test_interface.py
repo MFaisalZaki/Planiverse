@@ -6,6 +6,8 @@ things a planner is entitled to assume no matter which environment it is handed.
 import pytest
 
 from planiverse.environments import Environment, implements_contract, list_environments
+from planiverse.environments.base import REQUIRED_METHODS
+from planiverse.environments.registry import STATE_IDENTITIES
 
 from conftest import assert_string_literals, assert_successors_contract
 
@@ -87,6 +89,27 @@ def network_attack():
     return env
 
 
+def game_boy():
+    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    from counter_rom import COUNTER, counter_rom
+    from planiverse.environments.emulated.game_boy import GameBoyEnv
+
+    env = GameBoyEnv(counter_rom(), watch={"counter": COUNTER},
+                     goal={"memory": COUNTER, "at_least": 3}, actions=("right", "left", "a"),
+                     hold=4, settle=2)
+    env.set_index(0)
+    return env
+
+
+def retro():
+    pytest.importorskip("stable_retro", reason="stable-retro is not installed")
+    from planiverse.environments.emulated.stable_retro import RetroEnv
+
+    env = RetroEnv(goal={"survive": 5})
+    env.set_index(0)
+    return env
+
+
 ENVIRONMENTS = {
     "puzznic": puzznic,
     "flipull": flipull,
@@ -97,6 +120,8 @@ ENVIRONMENTS = {
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
     "network_attack": network_attack,
+    "game_boy": game_boy,
+    "retro": retro,
 }
 
 
@@ -111,9 +136,11 @@ def environment_params():
 @pytest.mark.parametrize("factory", environment_params())
 def test_implements_the_core_interface(factory):
     env = factory()
-    for method in ("reset", "set_index", "successors", "is_goal", "is_terminal", "simulate"):
+    for method in REQUIRED_METHODS:
         assert callable(getattr(env, method, None)), \
             f"{type(env).__name__} does not implement {method}()"
+        assert type(env).provides(method), \
+            f"{type(env).__name__} inherits the base's {method}(), which only raises"
 
 
 @pytest.mark.parametrize("factory", environment_params())
@@ -133,15 +160,21 @@ def test_is_a_recognised_environment_type(factory):
 
 def test_an_outside_environment_needs_no_subclassing():
     """`implements_contract` is duck typing: an environment brought from outside the
-    library counts as long as it answers the six methods, which is the point of checking
-    structurally instead of by base class. A bare `Environment()` has all six attributes
+    library counts as long as it answers the eight methods, which is the point of checking
+    structurally instead of by base class. A bare `Environment()` has all eight attributes
     and implements none of them, so it must not count."""
 
     class Outsider:
         reset = set_index = successors = is_goal = is_terminal = simulate = lambda *a: None
+        set_instance = generate_instance = lambda *a, **k: None
+
+    class Searchable:
+        """The six search methods without the two that make instances."""
+        reset = set_index = successors = is_goal = is_terminal = simulate = lambda *a: None
 
     assert not isinstance(Outsider(), Environment)
     assert implements_contract(Outsider())
+    assert not implements_contract(Searchable()), "a generator is part of the contract"
     assert not implements_contract(Environment()), "stubs do not satisfy the contract"
     assert not implements_contract(object())
 
@@ -150,7 +183,8 @@ def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "flipull", "lolo", "amazing_tater", "super_mario_land",
-            "network_attack", "water_network", "power_grid", "crop_management"} == registered
+            "network_attack", "water_network", "power_grid", "crop_management",
+            "game_boy", "retro"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():
@@ -159,7 +193,7 @@ def test_a_spec_can_be_loaded_without_importing_the_rest():
     for spec in list_environments():
         assert ":" in spec.factory
         assert spec.deterministic, "every environment here is deterministic"
-        assert spec.state_identity in ("value", "path")
+        assert spec.state_identity in STATE_IDENTITIES
         assert spec.generates, "every bundled environment says what its generator draws"
         if spec.available():
             assert issubclass(spec.load(), Environment)
@@ -272,9 +306,8 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
     hand-maintained. These are the rows that claim the full set."""
     from planiverse.environments import get_spec
 
-    full = {"step", "validate", "get_actions", "render", "close",
-            "generate_instance", "set_instance"}
-    for name in ("water_network", "power_grid", "crop_management"):
+    full = {"step", "validate", "get_actions", "render", "close"}
+    for name in ("water_network", "power_grid", "crop_management", "game_boy", "retro"):
         spec = get_spec(name)
         if not spec.available():
             continue
@@ -294,7 +327,8 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     assert "validate" in Environment.capabilities(), "the default works"
     assert "step" not in Environment.capabilities(), "this default only raises"
     assert "get_actions" not in Environment.capabilities()
-    assert "generate_instance" not in Environment.capabilities()
+    assert not Environment.provides("generate_instance"), "required, and only explained here"
+    assert not Environment.provides("set_instance")
 
     from planiverse.environments.gameboy_py.flipull import FlipullGame
 

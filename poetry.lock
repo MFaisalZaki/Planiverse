@@ -1557,6 +1557,55 @@ files = [
 ]
 
 [[package]]
+name = "pyboy"
+version = "2.7.0"
+description = "Game Boy emulator written in Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pyboy-2.7.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:6451e7ad2d1d3d9f8316f939b6b9963ede5d6a80fcd00ee5b9aef1497fe5ece6"},
+    {file = "pyboy-2.7.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:40e263743b78451f1baebb3a798a5d549c41f7fd1c9b0be1b04c4bcbedf53f98"},
+    {file = "pyboy-2.7.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:90bedf580f00e9def3484739ec32167d35184cdf09e9fe7f079564fd8dc0c657"},
+    {file = "pyboy-2.7.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:ab713e4643c3bc7fa86767a8e775119bdfa251eef815b2480a481bfb58449863"},
+    {file = "pyboy-2.7.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:0374fb0d767a8cc7f8f6468a230095dbc23ed12576cfad3e13f73e8df9c60227"},
+    {file = "pyboy-2.7.0-cp310-cp310-win_amd64.whl", hash = "sha256:a56d1950009eeb21bab7e13f64d5c2985fa302b2ada8c6d42db3dec8dceaf1b3"},
+    {file = "pyboy-2.7.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:20b1ab830cf355a635355556e8924273146e7f939e146c0394373d0625fd0686"},
+    {file = "pyboy-2.7.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:57c69e7532957ac5d266a0fd5df467f6c293e85ea9fd89b5c14e2b80f8e011a1"},
+    {file = "pyboy-2.7.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:82a097fc3bc5e9a0c95b73b3dc675c1d781a163068bbc83f03f823251a855cad"},
+    {file = "pyboy-2.7.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:cf68cd3d41b2cb4939e2a68196f352fb7b4023c4c211d036a559128cf71d2316"},
+    {file = "pyboy-2.7.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:0cf68c993eb64eb5a16015812da518022d2e037bcdee48c9b00a766a50b8bc2a"},
+    {file = "pyboy-2.7.0-cp311-cp311-win_amd64.whl", hash = "sha256:d8d0740923461858ca2f48f69923c41cd068e42fc95be60f1760ac62013b70f2"},
+    {file = "pyboy-2.7.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:11be1062563c565d53c63485bf9c37080a809cea9faf78330e73dbd452b72d63"},
+    {file = "pyboy-2.7.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8eb63ee10e4c2028b1ca54aa893c6020a0f09282cb34bf8dae90be23693da2e4"},
+    {file = "pyboy-2.7.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b5858a6bbcec32bb47a3e673a5cfefc1b0839cf9e27bbaed7c996656ff73c40f"},
+    {file = "pyboy-2.7.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:1ec35bbe7516b388427b27d47daae4476357b41016292c58506523c43ce8f92f"},
+    {file = "pyboy-2.7.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:3193781f0d2fcb2237171c5f90ee22a3dd9a19926626edb8b7f78509b2634357"},
+    {file = "pyboy-2.7.0-cp312-cp312-win_amd64.whl", hash = "sha256:dfdc0c07a60abe42728f14cf7b0ce3274397fd360568fb9ece01cb7e605b8660"},
+    {file = "pyboy-2.7.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:3007adead654bd4b5624d7f324d0ae88d83b782bee149af71c92e94bda3bd9c0"},
+    {file = "pyboy-2.7.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6a32facb77ca734328d08c00a13da2117084f76d28b077af5979ddb944104322"},
+    {file = "pyboy-2.7.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:fcf29ae998c27d63f3d6598bccfbab389ef41c4fa535b4ac15711ba9096cf239"},
+    {file = "pyboy-2.7.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:b117068aeb2641ca12025e6b16e6c22f8cda064d1641a12eee6851df053e8502"},
+    {file = "pyboy-2.7.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:b8da22db6094055f200955dd66c87541ddf94997fcea9af14464abef800d88d3"},
+    {file = "pyboy-2.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:2417a6bee88b05f970131986a3199f912f9dee1b37aa1dd82ca9d0fdeae149d3"},
+    {file = "pyboy-2.7.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:2001957ff1aee57ea5e9f5996d04fcb4dd1057f61359806a169bfeb2eca69c12"},
+    {file = "pyboy-2.7.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4fdf189e40750ea7326d5194c0ec46baf3665207ed2fc9f158ee3ef05800d07a"},
+    {file = "pyboy-2.7.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8af4b55ad8270b36b00e8d1f9d386eece7f723511872e37ef2dc1d4756d09df7"},
+    {file = "pyboy-2.7.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:b0bb6bba5cb0433eaef5ff484ee162847489fa1f0f1c28351a93177be2e5769f"},
+    {file = "pyboy-2.7.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:f1611f7e0c73b2a2972d1c83b718725ad595589853971df25e35ecfcefff9898"},
+    {file = "pyboy-2.7.0-cp314-cp314-win_amd64.whl", hash = "sha256:a3817d048407b4a12d596ba967ab1d971a14a51627c97da832ed4c6960a217bb"},
+    {file = "pyboy-2.7.0.tar.gz", hash = "sha256:b97db94c366f5e54af04f94641c6107454821543015716b7182df29684ad9180"},
+]
+
+[package.dependencies]
+numpy = "*"
+pysdl2 = "*"
+pysdl2-dll = "*"
+
+[package.extras]
+all = ["PyOpenAL", "glfw", "gym", "markdown", "pdoc3", "pyopengl"]
+
+[[package]]
 name = "pydispatcher"
 version = "2.0.7"
 description = "Multi-producer multi-consumer in-memory signal dispatch system"
@@ -1570,6 +1619,18 @@ files = [
 
 [package.extras]
 dev = ["tox"]
+
+[[package]]
+name = "pyglet"
+version = "1.5.31"
+description = "Cross-platform windowing and multimedia library"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pyglet-1.5.31-py3-none-any.whl", hash = "sha256:f68413564bbec380e4815898fef0fb7a4a494dc3f8718bfbf28ce2a802634c88"},
+    {file = "pyglet-1.5.31.zip", hash = "sha256:a5e422b4c27b0fc99e92103bf493109cca5c18143583b868b3b4631a98ae9417"},
+]
 
 [[package]]
 name = "pygments"
@@ -1617,6 +1678,37 @@ files = [
 
 [package.extras]
 diagrams = ["jinja2", "railroad-diagrams"]
+
+[[package]]
+name = "pysdl2"
+version = "0.9.17"
+description = "Python SDL2 bindings"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "PySDL2-0.9.17-py3-none-any.whl", hash = "sha256:fe923dbf5c7b27bbc1eb2bf58abfa793f8f13fd7ae8b27b1bc2de49920bcbd41"},
+    {file = "pysdl2-0.9.17.tar.gz", hash = "sha256:48c6ef01a4eb123db5f7e46e1a1b565675755b07e615f3fe20a623c94735b52b"},
+]
+
+[[package]]
+name = "pysdl2-dll"
+version = "2.32.10"
+description = "Pre-built SDL2 binaries for PySDL2"
+optional = false
+python-versions = ">=2.7"
+groups = ["main"]
+files = [
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-macosx_10_11_x86_64.whl", hash = "sha256:cab126a82c2bd2cd79b6cb8da906916884789c9f4f1ae4cf861f26438ce651a4"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-macosx_11_0_universal2.whl", hash = "sha256:5ccbd89cd2a032f4ac890606dfe5c33874c0e5e909b2e667438ad7d7fc7fcc5d"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-manylinux2014_i686.whl", hash = "sha256:4fad629105d0f138d084a37dcaf33aa47343ba771d1971c27f5cf68ef5428798"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-manylinux2014_x86_64.whl", hash = "sha256:12b136c38114ae0f8a85453a879795ba5d61663d98673ba19c36c3008ff00353"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:248b1c6c6ba1f43e964f2f9bc723ee4ce39892aca840aee6de25da90c46f685d"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:1e6139e3ce832d95d8376b77f4c9288bef34d6b131f844f2a5fcc8873ce8e6da"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-win32.whl", hash = "sha256:881e2362fbe5c8d7129fa66f690380bbd0240d9d2cb1bc5612856be1e58e9261"},
+    {file = "pysdl2_dll-2.32.10-py2.py3-none-win_amd64.whl", hash = "sha256:65eba83d68c33b22aa5eca6c9a8521cff5044435ecd5b49521068df82674de6a"},
+    {file = "pysdl2_dll-2.32.10.tar.gz", hash = "sha256:ad83e0e1a0227633495d6b3ec6701ac5a2beac44e6692f52278033bda1313717"},
+]
 
 [[package]]
 name = "pytest"
@@ -1877,6 +1969,32 @@ files = [
 ]
 
 [[package]]
+name = "stable-retro"
+version = "1.0.1"
+description = "A maintained fork of OpenAI's gym-retro for Gymnasium."
+optional = false
+python-versions = "<3.15,>=3.10.0"
+groups = ["main"]
+files = [
+    {file = "stable_retro-1.0.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2f717550e97c6d7aa06ff14883734337f6da4daeb9cebfd643f898e7c0e006ce"},
+    {file = "stable_retro-1.0.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0c4fd6ae72a6c5304f770582b4a12e2192f983ad618948a03c17195fa931942c"},
+    {file = "stable_retro-1.0.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:bb562472bd44a61465676137b45f2e435d2e13593ed88c8b38e1e973bea809cc"},
+    {file = "stable_retro-1.0.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4ddabe781fb9bc2d1011ccd04f2684a59d69ce270da82bb5ae6e9a17e9ef4518"},
+    {file = "stable_retro-1.0.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:07e62a3a1a6733bbf39540fb7ffbcf3c5bcf488f59d588a39d3febc9fb4d19dc"},
+    {file = "stable_retro-1.0.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:53c180f930b7bafed248064b8467773b980a37bb5b6555f0717c8555143c9d6f"},
+    {file = "stable_retro-1.0.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:8a06e8158a82dd4df35b1a5bdcbb6164bad645572b1a10a701a76e6e9700e0fa"},
+    {file = "stable_retro-1.0.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e3c21bc31c5ad623d9700d56b9dd688f39592bc21c66f24cf59dfdf07b03b466"},
+    {file = "stable_retro-1.0.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:8e6dabfff055a29a3d92142f8d417cc18811c6aa03de5af3fdbe743c30f94e0e"},
+    {file = "stable_retro-1.0.1-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4451c5f8209dbdbf343d29ab028ec7d40d28b9c7459ac4e632be990bc2f1eac3"},
+    {file = "stable_retro-1.0.1.tar.gz", hash = "sha256:68c43f2211f6314dc0727c2ad6cdefcc1c8621b7a38516c5afe15b523f3efcac"},
+]
+
+[package.dependencies]
+farama-notifications = ">=0.0.1"
+gymnasium = ">=1.0.0"
+pyglet = ">=1.5.27,<2"
+
+[[package]]
 name = "tqdm"
 version = "4.70.0"
 description = "Fast, Extensible Progress Meter"
@@ -2011,4 +2129,4 @@ dev = ["pytest"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "f6eefac34e49cf39f377b5184ce99fb325262588b8c04bbd9cb293a46f1479fb"
+content-hash = "ff07710f6f565f08290d096756fff21a8e48f6dde0a0de6c46b931443f18fb2a"

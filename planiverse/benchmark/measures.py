@@ -74,6 +74,11 @@ def network_attack(state):
     return -_count(state, "compromised_host")
 
 
+def emulated(state):
+    """What the wrapper or the goal says is left: the state carries its own measure."""
+    return state.progress
+
+
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
@@ -85,4 +90,6 @@ MEASURES = {
     "power_grid": power_grid,
     "crop_management": crop_management,
     "network_attack": network_attack,
+    "game_boy": emulated,
+    "retro": emulated,
 }

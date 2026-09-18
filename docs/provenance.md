@@ -67,7 +67,12 @@ Designs and Patents Act 1988 — non-commercial research — with the sources ac
 This repository ships **no ROM image, no fragment of one from which a ROM could be
 reconstructed, no disassembled or decompiled original code, no original graphics and no
 audio**. The renders under [`docs/renders/`](renders/) are drawn from this repository's own
-reimplementations.
+reimplementations. The two emulator environments
+([`emulated/`](../planiverse/environments/emulated/)) run a cartridge the user supplies and
+supply none; the cartridge their tests run on is an original program written for this
+repository ([`tests/counter_rom.py`](../tests/counter_rom.py)), and the knowledge of any
+commercial game's memory they rely on lives in PyBoy's wrappers and Stable-Retro's
+integrations, not here.
 
 ## 5. Open question
 

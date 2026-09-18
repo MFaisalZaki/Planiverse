@@ -29,6 +29,10 @@ dependencies = [
     "grid2op (>=1.10)",             # RTE's power system framework, for the grid
     "pcse (>=6.0)",                 # Wageningen's WOFOST crop model
     "pyyaml (>=6.0)",               # PCSE agromanagement is written as YAML
+    # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
+    # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.
+    "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers
+    "stable-retro (>=0.9)",         # Farama's fork of Gym Retro: Genesis, NES, SNES and more
 ]
 
 [project.optional-dependencies]
