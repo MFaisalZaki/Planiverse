@@ -82,8 +82,9 @@ def epidemic(state):
 
 
 def traffic(state):
-    """Vehicles still to get through the grid, and the share of the travel target spent."""
-    return state.left + state.travel / max(1, state.target)
+    """Vehicles still to get through the grid, and those halted in a queue right now, since a
+    signal that leaves a queue standing is the thing to change."""
+    return state.left + state.halted
 
 
 def airspace(state):

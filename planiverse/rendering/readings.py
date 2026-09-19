@@ -70,8 +70,8 @@ def epidemic(state):
 
 
 def traffic(state):
-    return {"on the road": state.running, "arrived": state.arrived, "to come": state.pending,
-            "vehicle-seconds": state.travel, "target": state.target}
+    return {"on the road": state.running, "halted": state.halted, "arrived": state.arrived,
+            "to come": state.pending, "vehicle-seconds": state.travel, "target": state.target}
 
 
 def airspace(state):
@@ -93,7 +93,7 @@ READINGS = {
                    Panel("deaths", ("deaths",), "allowed"),
                    Panel("disruption points", ("points spent",), "budget"))),
     ("planiverse.environments.traffic.environment", "TrafficState"): Readings(
-        traffic, (Panel("vehicles", ("on the road", "arrived", "to come"), None),
+        traffic, (Panel("vehicles", ("on the road", "halted", "arrived", "to come"), None),
                   Panel("travel, vehicle-seconds", ("vehicle-seconds",), "target"))),
     ("planiverse.environments.airspace.environment", "AirspaceState"): Readings(
         airspace, (Panel("aircraft in the sector", ("in the sector",), None),

@@ -162,18 +162,18 @@ ACTIONS = tuple([TrafficAction(j) for j in JUNCTIONS] + [TrafficAction(f"row{k}"
 
 class TrafficState:
     """The decisions so far and what the grid reads after them: the time, the vehicles arrived,
-    on the road and still to depart, the vehicle-seconds spent, and which green each junction
-    shows. Identity is the path, since SUMO replays exactly."""
+    on the road, halted in a queue and still to depart, the vehicle-seconds spent, and which
+    green each junction shows. Identity is the path, since SUMO replays exactly."""
 
     def __init__(self, decisions, time, arrived, running, pending, travel, greens, target=0,
-                 horizon=0, total=0, depth=0):
+                 horizon=0, total=0, halted=0, depth=0):
         self.decisions = tuple(decisions)
         self.time, self.arrived, self.running, self.pending = time, arrived, running, pending
-        self.travel, self.greens = travel, tuple(greens)
+        self.travel, self.greens, self.halted = travel, tuple(greens), halted
         self.target, self.horizon, self.total, self.depth = target, horizon, total, depth
         literals = [f"green({j}, {g})" for j, g in zip(JUNCTIONS, self.greens)]
         literals += [f"decision({len(self.decisions)})", f"arrived({arrived})", f"running({running})",
-                     f"pending({pending})", f"travel({travel // 500 * 500})"]
+                     f"pending({pending})", f"halted({halted // 5 * 5})", f"travel({travel // 500 * 500})"]
         self.literals = frozenset(literals)
 
     @property
@@ -191,8 +191,9 @@ class TrafficState:
 
     def __str__(self):
         greens = "".join(self.greens)
-        return (f"t={self.time:.0f}s: {self.arrived} of {self.total} arrived, {self.running} on the road, "
-                f"{self.pending} to come; {self.travel:.0f} vehicle-seconds of {self.target}; greens {greens}")
+        return (f"t={self.time:.0f}s: {self.arrived} of {self.total} arrived, {self.running} on the road "
+                f"({self.halted} halted), {self.pending} to come; {self.travel:.0f} vehicle-seconds of "
+                f"{self.target}; greens {greens}")
 
     def __repr__(self):
         return f"<TrafficState(t={self.time:.0f}, arrived={self.arrived}, travel={self.travel:.0f})>"
@@ -329,10 +330,11 @@ class TrafficEnv(Environment):
         ls = _libsumo()
         running = ls.vehicle.getIDCount()
         pending = max(0, self.instance["vehicles"] - self.__reading__["arrived"] - running)
+        halted = sum(1 for v in ls.vehicle.getIDList() if ls.vehicle.getSpeed(v) < 0.1)
         return TrafficState(decisions, ls.simulation.getTime(), self.__reading__["arrived"], running,
                             pending, self.__reading__["travel"], [("A", "B")[self.__greens__[j]] for j in JUNCTIONS],
                             target=self.instance["target"], horizon=self.instance["horizon"],
-                            total=self.instance["vehicles"], depth=depth)
+                            total=self.instance["vehicles"], halted=halted, depth=depth)
 
     def close(self):
         if self.__loaded__ is not None:

@@ -65,8 +65,8 @@ env.close()
 ## State
 
 `TrafficState` holds the decisions so far and the grid after them: the time, the vehicles
-arrived, on the road and still to depart, the vehicle-seconds spent, and the green each
-junction shows. Identity is the path: SUMO replays exactly from its seed and the same commands,
+arrived, on the road, halted in a queue and still to depart, the vehicle-seconds spent, and the
+green each junction shows. Identity is the path: SUMO replays exactly from its seed and the same commands,
 and every expansion replays the morning from the first vehicle, which takes a tenth of a second
 for two hundred vehicles.
 
@@ -76,6 +76,7 @@ decision(4)
 arrived(31)
 running(24)
 pending(65)
+halted(10)
 travel(2500)
 ```
 
