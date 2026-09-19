@@ -110,7 +110,7 @@ def test_every_table_is_cleared_by_its_plan():
     for index in range(0, 100, 5):
         game = BilliardsEnv()
         game.set_index(index)
-        assert len(solutions[index]) >= 2 and game.validate(solutions[index]), f"table {index}"
+        assert len(solutions[index]) >= 3 and game.validate(solutions[index]), f"table {index}"
 
 
 def test_set_index_refuses_a_table_that_is_not_there():

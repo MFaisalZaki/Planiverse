@@ -150,7 +150,7 @@ progress measures, a width bound of 1000, 200,000 expansions):
 | Environment | Solved | Expansions, median (max) | Seconds, median (max) | Plan lengths |
 |---|---|---|---|---|
 | slingshot | 100 of 100 | 3 (39) | 0.9 (8.6) | 3 shots for 85, 4 for 15 |
-| billiards | BILLIARDS_ROW |
+| billiards | 100 of 100 | 4 (17) | 0.5 (2.3) | 3 shots for 69, 4 for 31 |
 
 Both are still easy for BFWS, which is what a physics puzzle with a handful of shots is; the
 difference from before is that a plan now has to be found rather than stumbled on, since the
