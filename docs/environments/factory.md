@@ -30,12 +30,12 @@ endorsed by Wube. Nothing of the simulator is included here: it has to be built 
 
 ## A solved instance
 
-![BFWS solving factory instance 0](../renders/factory.gif)
+![BFWS solving factory instance 0](../renders/factory_chart.gif)
 
 BFWS's plan for instance `0`: 36 moves, drawn as the readings of each state over the plan: the
 plates brought back, made and waiting in furnaces against the target, the coal and ore in hand,
 the machines working, and the game's clock. A frame is the chart up to its state, so the GIF grows
-a step at a time. The same plan is also a [sheet](../renders/factory.png), the whole plan on one
+a step at a time. The same plan is also a [sheet](../renders/factory_chart.png), the whole plan on one
 figure, with the action that produced each state along the bottom, the target as a dashed line,
 and the goal marked where the plan ends.
 
@@ -53,8 +53,8 @@ env.reset()
 result = IteratedBFWS(max_width=1000, progress=measures.factory).solve(env)
 trace = env.simulate(result.plan)
 
-env.render_trace(trace, "factory.gif")                                   # animated
-env.render_trace(trace, "factory.png", actions=result.plan, env=env)     # contact sheet
+env.render_trace(trace, "factory_chart.gif")                                   # animated
+env.render_trace(trace, "factory_chart.png", actions=result.plan, env=env)     # contact sheet
 ```
 
 The readings each environment charts, and the panels they go on, are in

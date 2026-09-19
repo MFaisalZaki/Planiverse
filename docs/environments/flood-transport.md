@@ -35,12 +35,12 @@ was worth taking; only the total at the end of the horizon does.
 
 ## A solved instance
 
-![BFWS solving flood_transport instance 0](../renders/flood_transport.gif)
+![BFWS solving flood_transport instance 0](../renders/flood_transport_chart.gif)
 
 BFWS's plan for instance `0`, drawn as the readings of each state over the plan: the cost and its
 parts (damage, delays and measures) against the target, the worst storm so far, and the measures
 in place. A frame is the chart up to its state, so the GIF grows a step at a time. The same plan
-is also a [sheet](../renders/flood_transport.png), the whole plan on one figure, with the action
+is also a [sheet](../renders/flood_transport_chart.png), the whole plan on one figure, with the action
 that produced each state along the bottom, the target as a dashed line, and the goal marked where
 the plan ends. Both were produced by solving the instance and handing the trace to `render_trace`:
 
@@ -56,8 +56,8 @@ env.reset()
 result = IteratedBFWS(max_width=1000, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)
 
-env.render_trace(trace, "flood_transport.gif")
-env.render_trace(trace, "flood_transport.png", actions=result.plan, env=env)
+env.render_trace(trace, "flood_transport_chart.gif")
+env.render_trace(trace, "flood_transport_chart.png", actions=result.plan, env=env)
 ```
 
 The readings each environment charts, and the panels they go on, are in

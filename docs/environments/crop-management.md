@@ -32,11 +32,11 @@ function of a growth stage which is itself the integral of every decision before
 
 ## A solved instance
 
-![BFWS solving crop_management instance 0](../renders/crop_management.gif)
+![BFWS solving crop_management instance 0](../renders/crop_management_chart.gif)
 
 BFWS's plan for instance `0`: 10 moves, drawn as the readings of each state over the plan: the
 biomass and the yield, and the water used. A frame is the chart up to its state, so the GIF grows
-a step at a time. The same plan is also a [sheet](../renders/crop_management.png), the whole plan
+a step at a time. The same plan is also a [sheet](../renders/crop_management_chart.png), the whole plan
 on one figure, with the action that produced each state along the bottom, the target as a dashed
 line, and the goal marked where the plan ends.
 
@@ -54,8 +54,8 @@ env.reset()
 result = IteratedBFWS(max_width=1000, progress=measures.crop_management).solve(env)
 trace = env.simulate(result.plan)
 
-env.render_trace(trace, "crop_management.gif")                                   # animated
-env.render_trace(trace, "crop_management.png", actions=result.plan, env=env)     # contact sheet
+env.render_trace(trace, "crop_management_chart.gif")                                   # animated
+env.render_trace(trace, "crop_management_chart.png", actions=result.plan, env=env)     # contact sheet
 ```
 
 The readings each environment charts, and the panels they go on, are in
