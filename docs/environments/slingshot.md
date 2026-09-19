@@ -1,0 +1,138 @@
+# Slingshot
+
+A wall of blocks stands on the ground with a few targets set on top of it, under a roof or
+behind a stone slab, and the player has a handful of shots from a slingshot on the left. Each
+shot is an angle and a power from a small set; the goal is every target down before the shots
+run out. What a shot does is decided by a rigid-body simulation: the bird flies under gravity,
+strikes the wall, and blocks topple, slide and break according to the collision energies the
+engine reports. That is why the environment is here. A planner can see the whole world and
+choose among eighteen shots, but the effect of a shot is a physics step, and no add or delete
+list carries a toppling tower.
+
+The physics is [pymunk](https://www.pymunk.org/) (MIT), the Python binding of Chipmunk2D (MIT),
+and the game is the genre's own, after the open Science Birds clone the
+[AIBirds](https://aibirds.org/) competition is played on. Nothing here is taken from any
+published title: the structures, the materials and the rules of breaking are this environment's,
+and so are all the levels.
+
+- **Import:** `from planiverse.environments.slingshot.environment import SlingshotEnv`
+- **Source:** [`planiverse/environments/slingshot/environment.py`](../../planiverse/environments/slingshot/environment.py)
+- **Instances:** 100 levels, indices `0` to `99`, all drawn by the generator at recorded seeds
+- **Generator:** `generate_instance(seed, structures=None, targets=None, shots=None, ...)`; see [Generating levels](#generating-levels)
+- **Dependency:** `pymunk`
+
+## Quickstart
+
+```python
+from planiverse.environments.slingshot.environment import SlingshotEnv, SlingshotAction
+
+env = SlingshotEnv()
+env.set_index(0)
+state, info = env.reset()          # info: level, targets, shots, generated
+print(state)                       # what stands, where, and the shots left
+
+for action, child in env.successors(state):
+    print(action, child.targets_left, "targets left")
+
+state, knocked_down = env.step(SlingshotAction(20, 60))
+```
+
+## The rules
+
+1. A shot launches a bird from the slingshot at `power` units per second, `angle` degrees
+   above the horizontal, and the world is stepped at sixty steps a second until everything is at
+   rest again, or ten simulated seconds pass.
+2. A target breaks when a collision dissipates more than `TARGET_BREAKS_AT` of kinetic energy in
+   it. A wooden block breaks above `WOOD_BREAKS_AT`. Stone never breaks; it only topples and
+   slides.
+3. The bird is spent once the world is at rest, and a state is what still stands, where it lies,
+   and how many shots are left. A shot that changes nothing is not offered as a successor.
+4. The goal is every target down. A position with targets standing and no shots left is a dead
+   end.
+
+The energies are the ones Chipmunk reports for each contact (`total_ke`), which is the engine's
+own measure of how hard two bodies met; a resting contact dissipates none, so a tower does not
+crumble under its own weight. The thresholds are this environment's, chosen so that a bird at
+full stretch shatters wood and a target, a block falling from a tower's height breaks a target
+under it, and stone shrugs everything off.
+
+## State
+
+`SlingshotState` holds the bodies as a tuple of records, `("block", material, w, h, x, y,
+angle)` or `("target", x, y)`, with positions rounded to a hundredth of a unit and angles to a
+thousandth of a radian, plus the shots left. Equality and hashing are over the bodies and the
+shots left, so a position is the same position wherever it was reached from; `depth` is
+bookkeeping. Before each expansion the world is rebuilt from the record at rest, which is what
+makes expanding a state twice give the same children.
+
+`literals` names each body's cell on a two-unit grid, the shots left and the targets left:
+
+```
+at(block-3, 27, 1)      block 3 lies in the cell 27 along, 1 up
+at(target-7, 30, 0)
+shots_left(2)
+targets_left(1)
+```
+
+## Actions
+
+`shoot(angle, power)` for `angle` in 20, 30, 40, 50, 60 and 70 degrees and `power` in 45, 60
+and 75 units per second: eighteen shots, each costing 1. `get_actions()` lists them and
+`SlingshotAction.parse` reads one back from its name.
+
+## Levels
+
+The hundred levels are the generator's own draws, embedded in the module as the plain data
+`set_instance` takes with the seed each came from beside it, and the plan each was accepted on
+is in `tests/data/slingshot_solutions.json`. A level has two to four structures, each a tower
+of two to four blocks, a shelter (a wooden roof on two pillars) or a stone slab, and two or
+three targets seated on top of a tower, under a roof or behind a slab, so that some need a lob
+over, some a roof broken and some a tower toppled. The shots given are one more than the
+targets.
+
+## Generating levels
+
+`generate_instance` draws a level, selects it, and returns it as the dict `set_instance` takes
+back:
+
+```python
+env = SlingshotEnv()
+level = env.generate_instance(seed=7, structures=3, targets=2)
+print(env.witness, env.witness_expansions)     # the plan it was accepted on, and the search's cost
+state, info = env.reset()                       # info["generated"] is True
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `structures` | 2 to 4 at random | towers, shelters and slabs on the ground |
+| `targets` | 2 or 3 at random | targets seated on or among them |
+| `shots` | `targets + 1` | shots the player gets |
+| `min_plan_length` | 2 | the shortest plan must be at least this long, so a level one shot flattens is thrown back |
+| `search_limit` | 400 | expansions the acceptance search may spend per draw |
+| `attempts` | 60 | draws before giving up with `GenerationError` |
+
+The draw is settled under gravity before it is played, so its opening is a fixed point of the
+physics rather than a stack that shifts on the first step. Each draw is then searched
+breadth-first over shots and kept only when a plan is found within `search_limit` expansions
+and is at least `min_plan_length` shots long. The method is generate-and-test, which the
+procedural content generation literature calls search-based PCG (Togelius, Yannakakis, Stanley
+and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson,
+*Procedural Content Generation in Games*, 2016, https://pcgbook.com/), and structure generation
+for this genre is a track of the AIBirds competition (Stephenson and Renz, *Procedural
+Generation of Levels for Angry Birds Style Physics Games*, AIIDE 2016,
+https://ojs.aaai.org/index.php/AIIDE/article/view/12849).
+
+## Determinism
+
+pymunk is deterministic for the same sequence of operations on the same platform, and every
+expansion rebuilds the world from the state's record, so a search closes properly. Across
+platforms floating point can differ in the last places, and a level's stored plan is the test of
+whether it still holds; `tests/test_slingshot.py` replays one level in ten.
+
+## Files
+
+| File | Contents |
+|---|---|
+| [`environment.py`](../../planiverse/environments/slingshot/environment.py) | `SlingshotAction`, `SlingshotState`, the physics (`build_space`, `shoot`), `draw_level`, `SlingshotEnv`, `LEVELS` |
+| [`tests/test_slingshot.py`](../../tests/test_slingshot.py) | Tests |
+| [`tests/data/slingshot_solutions.json`](../../tests/data/slingshot_solutions.json) | The plan each level was accepted on |

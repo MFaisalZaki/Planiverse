@@ -22,11 +22,18 @@ season or city, so a benchmark is not limited to what ships.
 | Water distribution | `water_network` | 100 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
 | Power grid | `power_grid` | 100 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
 | Crop management | `crop_management` | 100 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
+| Micropolis city | `micropolis` | 100 cities | the map, the layout, the horizon and the population target | operational, city | [docs](docs/environments/micropolis.md) |
 | Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
 | Network attack | `network_attack` | 100 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
 | Puzznic | `puzznic` | 100 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
 | Flipull | `flipull` | 100 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
 | Adventures of Lolo | `lolo` | 100 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
+| Slingshot | `slingshot` | 100 levels | the structures, their materials, where the targets sit, and the shots | game, physics | [docs](docs/environments/slingshot.md) |
+| Artillery | `artillery` | 100 fields | the terrain, where the targets dig in, the wind, and the shells | game, physics | [docs](docs/environments/artillery.md) |
+| Tower defence | `tower_defence` | 100 maps | the path, the building slots, the waves, the gold and the lives | game | [docs](docs/environments/tower-defence.md) |
+| Fluid | `fluid` | 100 caves | the cave, the spring, the basin, the drain, the water needed and the digs allowed | game | [docs](docs/environments/fluid.md) |
+| Billiards | `billiards` | 100 tables | where the balls lie, how many there are, and the shots | game, physics | [docs](docs/environments/billiards.md) |
+| Lemmings | `lemmings` | 100 levels | the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills | game | [docs](docs/environments/lemmings.md) |
 | Amazing Tater | `amazing_tater` | 100 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
 | Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
@@ -388,6 +395,13 @@ planiverse/environments/
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
 ├── games/           # the four games, reimplemented in pure Python
+├── slingshot/       # a physics puzzle on pymunk
+├── artillery/       # ballistics over a destructible field, pure Python
+├── tower_defence/   # waves fought by simulation, pure Python
+├── fluid/           # a cellular automaton of water, pure Python
+├── billiards/       # pool on pooltool
+├── lemmings/        # a crowd of walkers, pure Python
+├── micropolis/      # a city on the Micropolis engine, built from source
 ├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
 └── <one subpackage per simulator-backed environment>
 ```
@@ -444,6 +458,13 @@ planiverse/
 │   ├── emulated/                       # any game, nothing shipped
 │   │   ├── game_boy.py                 # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
 │   │   └── stable_retro.py             # RetroEnv: a Stable-Retro integration from its save states
+│   ├── slingshot/                      # SlingshotEnv: a physics puzzle on pymunk
+│   ├── artillery/                      # ArtilleryEnv: ballistics over a destructible field
+│   ├── tower_defence/                  # TowerDefenceEnv: waves fought by simulation
+│   ├── fluid/                          # FluidEnv: a cellular automaton of water
+│   ├── billiards/                      # BilliardsEnv: pool on pooltool
+│   ├── lemmings/                       # LemmingsEnv: a crowd of walkers steered with skills
+│   ├── micropolis/                     # MicropolisEnv: a city on the Micropolis engine
 │   ├── flood_transport/                # FloodTransportEnv (after MAAT), a city drawn from a seed
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
@@ -481,6 +502,9 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Water distribution | [WNTR](https://github.com/USEPA/WNTR) (US EPA's EPANET wrapper) |
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
+| Slingshot | [pymunk](https://www.pymunk.org/) (MIT), the Python binding of Chipmunk2D (MIT) |
+| Billiards | [pooltool](https://github.com/ekiefl/pooltool) (Apache-2.0) |
+| Micropolis city | [MicropolisCore](https://github.com/SimHacker/micropolis) (GPL-3.0 with Electronic Arts' additional terms), built from source by `scripts/build_micropolis.sh` |
 | Flood adaptation | [floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl) (DTU, MIT), the MAAT model, with a city of its own |
 | Game Boy | [PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), with the game wrappers of [MFaisalZaki/PyBoy](https://github.com/MFaisalZaki/PyBoy) |
 | Stable-Retro | [Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (Farama Foundation, MIT), which ships Airstriker |
@@ -499,9 +523,11 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Eleven environments: four simulator-backed operational ones (water distribution, power
-  grid, crop management, flood adaptation), the NASim network attack, four games reimplemented
-  in pure Python, and two generic emulator environments, one for any Game Boy cartridge under
+- Eighteen environments: five simulator-backed operational ones (water distribution, power
+  grid, crop management, flood adaptation, a city on the Micropolis engine), the NASim network attack, four games reimplemented
+  in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, an artillery
+  game, a tower defence, a cellular fluid puzzle, a Lemmings-like, and two generic emulator
+  environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the

@@ -18,7 +18,12 @@ PYPROJECT = REPO / "pyproject.toml"
 # Import roots whose distribution goes by another name.
 DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "sklearn": "scikit-learn", "cv2": "opencv-python",
-                   "retro": "stable-retro"}    # its import name before 1.0, kept as a fallback
+                   "retro": "stable-retro",    # its import name before 1.0, kept as a fallback
+                   "pooltool": "pooltool-billiards"}
+
+#: Built from source rather than installed from PyPI, so not declarable: the Micropolis engine
+#: (see `scripts/build_micropolis.sh`).
+BUILT_FROM_SOURCE = {"micropolisengine"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -30,6 +35,13 @@ ENTRY_POINTS = [
     "planiverse.environments.games.flipull",
     "planiverse.environments.games.lolo",
     "planiverse.environments.games.amazing_tater",
+    "planiverse.environments.slingshot.environment",
+    "planiverse.environments.artillery.environment",
+    "planiverse.environments.tower_defence.environment",
+    "planiverse.environments.fluid.environment",
+    "planiverse.environments.billiards.environment",
+    "planiverse.environments.lemmings.environment",
+    "planiverse.environments.micropolis.environment",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
@@ -128,6 +140,8 @@ def test_the_import_closure_is_fully_declared(declared):
     """Everything the environments import has to be in `dependencies`."""
     undeclared = {}
     for root, importer in import_closure().items():
+        if root in BUILT_FROM_SOURCE:
+            continue
         name = root.lower().replace("_", "-")
         if DISTRIBUTION_OF.get(name, name) not in declared:
             undeclared[root] = importer

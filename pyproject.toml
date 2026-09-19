@@ -31,6 +31,8 @@ dependencies = [
     "pyyaml (>=6.0)",               # PCSE agromanagement is written as YAML
     # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
     # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.
+    "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
+    "pooltool-billiards (>=0.6)",   # event-based billiards physics, for the billiards table
     "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers
     "stable-retro (>=0.9)",         # Farama's fork of Gym Retro: Genesis, NES, SNES and more
 ]

@@ -32,6 +32,45 @@ def lolo(state):
     return state.hearts_left + (0 if getattr(state, "solved", False) else 1)
 
 
+def slingshot(state):
+    """Targets still standing."""
+    return state.targets_left
+
+
+def artillery(state):
+    """Targets still standing."""
+    return state.targets_left
+
+
+def tower_defence(state):
+    """Waves still to fight; a state with no lives is pinned above any live one."""
+    if state.lives <= 0:
+        return 99
+    return 20 - state.wave
+
+
+def fluid(state):
+    """Water the basin has still to take."""
+    return max(0, state.need - state.filled)
+
+
+def billiards(state):
+    """Object balls still on the table; a sunk cue ball is pinned above any live count."""
+    if state.scratched:
+        return 99
+    return len(state.object_balls)
+
+
+def lemmings(state):
+    """Lemmings still to save, counting from the level's quota carried on the state."""
+    return max(0, state.quota - state.saved)
+
+
+def micropolis(state):
+    """Population short of the target, carried on the state."""
+    return max(0, state.target - state.population)
+
+
 def water_network(state):
     """Junctions still contaminated."""
     return state.contaminated
@@ -85,6 +124,13 @@ MEASURES = {
     "flipull": flipull,
     "lolo": lolo,
     "amazing_tater": amazing_tater,
+    "slingshot": slingshot,
+    "artillery": artillery,
+    "tower_defence": tower_defence,
+    "fluid": fluid,
+    "billiards": billiards,
+    "lemmings": lemmings,
+    "micropolis": micropolis,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,

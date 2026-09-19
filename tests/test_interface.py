@@ -101,6 +101,65 @@ def game_boy():
     return env
 
 
+def artillery():
+    from planiverse.environments.artillery.environment import ArtilleryEnv
+
+    env = ArtilleryEnv()
+    env.set_index(0)
+    return env
+
+
+def tower_defence():
+    from planiverse.environments.tower_defence.environment import TowerDefenceEnv
+
+    env = TowerDefenceEnv()
+    env.set_index(0)
+    return env
+
+
+def fluid():
+    from planiverse.environments.fluid.environment import FluidEnv
+
+    env = FluidEnv()
+    env.set_index(0)
+    return env
+
+
+def billiards():
+    pytest.importorskip("pooltool", reason="pooltool is not installed")
+    from planiverse.environments.billiards.environment import BilliardsEnv
+
+    env = BilliardsEnv()
+    env.set_index(0)
+    return env
+
+
+def lemmings():
+    from planiverse.environments.lemmings.environment import LemmingsEnv
+
+    env = LemmingsEnv()
+    env.set_index(0)
+    return env
+
+
+def micropolis():
+    pytest.importorskip("micropolisengine", reason="the Micropolis engine is not built")
+    from planiverse.environments.micropolis.environment import MicropolisEnv
+
+    env = MicropolisEnv()
+    env.set_index(0)
+    return env
+
+
+def slingshot():
+    pytest.importorskip("pymunk", reason="pymunk is not installed")
+    from planiverse.environments.slingshot.environment import SlingshotEnv
+
+    env = SlingshotEnv()
+    env.set_index(0)
+    return env
+
+
 def retro():
     pytest.importorskip("stable_retro", reason="stable-retro is not installed")
     from planiverse.environments.emulated.stable_retro import RetroEnv
@@ -120,6 +179,13 @@ ENVIRONMENTS = {
     "crop_management": crop_management,
     "network_attack": network_attack,
     "flood_transport": flood_transport,
+    "slingshot": slingshot,
+    "artillery": artillery,
+    "tower_defence": tower_defence,
+    "fluid": fluid,
+    "billiards": billiards,
+    "lemmings": lemmings,
+    "micropolis": micropolis,
     "game_boy": game_boy,
     "retro": retro,
 }
@@ -184,7 +250,8 @@ def test_every_registered_environment_is_in_the_catalogue():
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
-            "flood_transport", "game_boy", "retro"} == registered
+            "flood_transport", "slingshot", "artillery", "tower_defence", "fluid", "billiards",
+            "lemmings", "micropolis", "game_boy", "retro"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():

@@ -30,6 +30,39 @@ by Stable-Retro on its author's terms), which is the Stable-Retro environment's 
 the only game its tests run. Every other Stable-Retro integration needs a ROM the user imports
 into Stable-Retro; none is here.
 
+## Physics engines
+
+`planiverse/environments/slingshot/` simulates its world with
+[pymunk](https://www.pymunk.org/) (MIT), the Python binding of
+[Chipmunk2D](https://chipmunk-physics.net/) (MIT). Both are dependencies installed from PyPI
+and neither is included here. The game the environment plays is the genre's own; its
+structures, materials, rules of breaking and levels are this repository's work.
+
+`planiverse/environments/billiards/` plays on [pooltool](https://github.com/ekiefl/pooltool)
+(Apache-2.0; Kiefl, JOSS 2024), an event-based billiards simulator, installed from PyPI as
+`pooltool-billiards` and not included here. The environment places the balls itself and
+keeps only the physics; its tables and rules are this repository's work.
+
+## The Micropolis engine
+
+`planiverse/environments/micropolis/` drives MicropolisCore, the C++ simulation engine of
+[Micropolis](https://github.com/SimHacker/micropolis), the GPL-3.0 release of the original
+SimCity's source by Electronic Arts (2008). It is not included here: `scripts/build_micropolis.sh`
+fetches it, builds its SWIG binding for Python 3 and installs it, and the environment imports it
+as `micropolisengine`. The engine's licence carries additional terms under GPL section 7 that
+any conveyance must reproduce: no trademark or publicity rights are granted, and in particular
+no right in the trademark SimCity or any other Electronic Arts trademark; a modification may
+not be distributed under the trademark SimCity or claim affiliation with Electronic Arts;
+modified versions must be marked as such; and the program is provided as is, with the
+disclaimer the source carries. This repository conveys no part of the program and no
+modification of it; the build script applies three one-line patches on the user's machine (two
+Python 2 names in the SWIG callback, and one access specifier so that the engine's random seed
+can be set from Python), and the environment's cities and rules are this repository's work.
+
+Micropolis is a registered trademark of Micropolis Corporation (Micropolis GmbH) and is licensed
+here as a courtesy of the owner (https://micropolis.com/), under the *"Micropolis" Public Name
+License* that accompanies the source, which asks for this attribution wherever the name is used.
+
 ## The flood adaptation model
 
 `planiverse/environments/flood_transport/` follows the MAAT environment of

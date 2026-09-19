@@ -1,0 +1,121 @@
+# Billiards
+
+A cue ball and a few object balls lie on a pool table, the player has a handful of shots, and
+every object ball is to be potted without sinking the cue ball. A shot is a choice of object ball
+to aim at, a cut angle either side of a full hit, and a speed; what it does is a cascade of
+collisions the physics engine resolves, with balls sliding, rolling, spinning, meeting cushions
+and dropping into pockets. No add or delete list carries a carom, which is why the environment
+is here.
+
+The physics is [pooltool](https://github.com/ekiefl/pooltool) (Apache-2.0), Kiefl's event-based
+billiards simulator (*Pooltool: A Python package for realistic billiards simulation*, JOSS 2024,
+https://doi.org/10.21105/joss.07301). The environment keeps only the physics: it places the
+balls itself from the seed, since pooltool's own rack placement is randomised, and its tables
+and rules are its own.
+
+- **Import:** `from planiverse.environments.billiards.environment import BilliardsEnv`
+- **Source:** [`planiverse/environments/billiards/environment.py`](../../planiverse/environments/billiards/environment.py)
+- **Instances:** 100 tables, indices `0` to `99`, all drawn by the generator at recorded seeds
+- **Generator:** `generate_instance(seed, balls=None, shots=None, ...)`; see [Generating tables](#generating-tables)
+- **Dependency:** `pooltool-billiards`, which pulls in panda3d and numba; the first shot in a
+  process compiles pooltool's numerics and takes a while, every shot after it a hundredth of a second
+
+## Quickstart
+
+```python
+from planiverse.environments.billiards.environment import BilliardsEnv, BilliardsAction
+
+env = BilliardsEnv()
+env.set_index(0)
+state, info = env.reset()          # info: table, balls, shots, generated
+print(state)                       # where every ball lies, and the shots left
+
+for action, child in env.successors(state):
+    print(action, len(child.object_balls), "balls left")
+
+state, potted = env.step(BilliardsAction("1", 0, 2.0))
+```
+
+## The rules
+
+1. A shot aims the cue ball at an object ball still on the table, `cut` degrees off a full hit
+   (`-30`, `0` or `30`), at `speed` metres per second (`2.0` or `3.5`), and the table is
+   simulated until every ball is at rest.
+2. A ball that drops into a pocket leaves the table. If the cue ball does, the game is lost.
+3. The goal is every object ball potted with the cue ball still up. A position with balls left
+   and no shots left, or with the cue ball sunk, is a dead end.
+
+The table is pooltool's default, a nine-foot table with six pockets, and the balls its default
+balls.
+
+## State
+
+`BilliardsState` holds where every ball still on the table lies, to the millimetre, and the
+shots left. Equality and hashing are over the two, so a position is the same position wherever
+it was reached from; `depth` is bookkeeping. Before each expansion the table is rebuilt from
+the record at rest, which is what makes expanding a state twice give the same children.
+
+`literals` names each ball's cell on a five-centimetre grid and the counts:
+
+```
+at(cue, 5, 12)
+at(1, 14, 30)
+shots_left(3)
+balls_left(2)
+scratched()             only once the cue ball is sunk
+```
+
+## Actions
+
+`shot(ball, cut, speed)` for each object ball still up, each cut and each speed: six shots per
+ball, each costing 1. `get_actions()` lists them for a state and `BilliardsAction.parse` reads
+one back from its name.
+
+## Tables
+
+The hundred tables are the generator's own draws, embedded in the module as the plain data
+`set_instance` takes with the seed each came from beside it, and the plan each was accepted on
+is in `tests/data/billiards_solutions.json`. A table has two or three object balls and the cue
+ball scattered over the cloth with no two touching, and one shot more than the balls.
+
+## Generating tables
+
+`generate_instance` draws a table, selects it, and returns it as the dict `set_instance` takes
+back:
+
+```python
+env = BilliardsEnv()
+table = env.generate_instance(seed=7, balls=3)
+print(env.witness, env.witness_expansions)     # the plan it was accepted on, and the search's cost
+state, info = env.reset()                       # info["generated"] is True
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `balls` | 2 or 3 at random | object balls on the table |
+| `shots` | `balls + 1` | shots the player gets |
+| `min_plan_length` | 2 | the plan found must be at least this long, so a table one shot clears is thrown back |
+| `search_limit` | 40 | expansions the acceptance search may spend per draw |
+| `attempts` | 30 | draws before giving up with `GenerationError` |
+
+Each draw is searched best-first over shots, fewest balls left first, and kept only when a plan
+of at least `min_plan_length` shots is found within `search_limit` expansions. The method is
+generate-and-test, which the procedural content generation literature calls search-based PCG
+(Togelius, Yannakakis, Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116;
+Shaker, Togelius and Nelson, *Procedural Content Generation in Games*, 2016,
+https://pcgbook.com/).
+
+## Determinism
+
+pooltool's simulation is deterministic for the same balls in the same places on the same
+platform, and every expansion rebuilds the table from the state's record. Across platforms
+floating point can differ in the last places, and a table's stored plan is the test of whether
+it still holds; `tests/test_billiards.py` replays one table in five.
+
+## Files
+
+| File | Contents |
+|---|---|
+| [`environment.py`](../../planiverse/environments/billiards/environment.py) | `BilliardsAction`, `BilliardsState`, the physics (`build_system`, `strike`), `draw_table`, `BilliardsEnv`, `TABLES` |
+| [`tests/test_billiards.py`](../../tests/test_billiards.py) | Tests |
+| [`tests/data/billiards_solutions.json`](../../tests/data/billiards_solutions.json) | The plan each table was accepted on |

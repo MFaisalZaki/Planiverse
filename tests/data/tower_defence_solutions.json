@@ -1,0 +1,909 @@
+{
+"0": [
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"1": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,2)",
+"start"
+],
+"2": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"3": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"4": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"build(cannon,5)",
+"start"
+],
+"5": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(cannon,3)",
+"start"
+],
+"6": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"build(arrow,3)",
+"start",
+"build(arrow,5)",
+"start"
+],
+"7": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"8": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"9": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"10": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"11": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,4)",
+"start",
+"build(arrow,5)",
+"start",
+"build(arrow,0)",
+"start"
+],
+"12": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"13": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"14": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"15": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"16": [
+"build(arrow,2)",
+"start",
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"17": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"start"
+],
+"18": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,2)",
+"start"
+],
+"19": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"build(arrow,3)",
+"start"
+],
+"20": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"21": [
+"build(cannon,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"22": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,4)",
+"start",
+"build(arrow,5)",
+"start"
+],
+"23": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"start"
+],
+"24": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"start"
+],
+"25": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"26": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,4)",
+"start",
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start"
+],
+"27": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"start"
+],
+"28": [
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,4)",
+"start",
+"start"
+],
+"29": [
+"build(arrow,2)",
+"start",
+"build(arrow,4)",
+"start",
+"start"
+],
+"30": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"31": [
+"build(arrow,0)",
+"start",
+"build(arrow,3)",
+"start",
+"start"
+],
+"32": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,2)",
+"start",
+"start"
+],
+"33": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"34": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"35": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"36": [
+"build(cannon,3)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"build(arrow,2)",
+"start"
+],
+"37": [
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,5)",
+"start",
+"build(arrow,6)",
+"start"
+],
+"38": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"build(arrow,2)",
+"start"
+],
+"39": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start"
+],
+"40": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"41": [
+"build(arrow,2)",
+"start",
+"build(arrow,4)",
+"start",
+"start"
+],
+"42": [
+"build(arrow,0)",
+"start",
+"build(arrow,4)",
+"start",
+"start",
+"build(arrow,6)",
+"start"
+],
+"43": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"build(arrow,4)",
+"start"
+],
+"44": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"45": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"46": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,6)",
+"start"
+],
+"47": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(cannon,1)",
+"start"
+],
+"48": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"49": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"50": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start"
+],
+"51": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"build(arrow,2)",
+"start"
+],
+"52": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,2)",
+"start"
+],
+"53": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"build(arrow,4)",
+"start",
+"start"
+],
+"54": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"55": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"56": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"57": [
+"build(cannon,1)",
+"start",
+"start",
+"start"
+],
+"58": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(cannon,3)",
+"start"
+],
+"59": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start"
+],
+"60": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"61": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"62": [
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,0)",
+"start",
+"start"
+],
+"63": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"64": [
+"build(arrow,0)",
+"start",
+"build(arrow,3)",
+"start",
+"start"
+],
+"65": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,0)",
+"start"
+],
+"66": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,1)",
+"build(arrow,4)",
+"start"
+],
+"67": [
+"build(cannon,3)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"68": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"69": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"70": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"start"
+],
+"71": [
+"build(cannon,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"72": [
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,1)",
+"start"
+],
+"73": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"74": [
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,6)",
+"start"
+],
+"75": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,2)",
+"start"
+],
+"76": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"start",
+"build(cannon,2)",
+"start"
+],
+"77": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(cannon,3)",
+"start"
+],
+"78": [
+"build(cannon,2)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,0)",
+"start"
+],
+"79": [
+"build(cannon,4)",
+"start",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"build(arrow,6)",
+"start"
+],
+"80": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"81": [
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"82": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"83": [
+"build(arrow,0)",
+"start",
+"build(arrow,5)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,2)",
+"start"
+],
+"84": [
+"build(arrow,0)",
+"start",
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,4)",
+"start"
+],
+"85": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,6)",
+"start"
+],
+"86": [
+"build(arrow,1)",
+"start",
+"start",
+"build(arrow,2)",
+"build(arrow,3)",
+"start",
+"start"
+],
+"87": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start"
+],
+"88": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,0)",
+"start"
+],
+"89": [
+"build(arrow,2)",
+"start",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,1)",
+"start"
+],
+"90": [
+"build(cannon,0)",
+"start",
+"start",
+"start",
+"start",
+"build(arrow,2)",
+"start"
+],
+"91": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,3)",
+"start"
+],
+"92": [
+"build(arrow,0)",
+"start",
+"build(arrow,2)",
+"start",
+"start"
+],
+"93": [
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"build(arrow,3)",
+"start",
+"build(arrow,4)",
+"start"
+],
+"94": [
+"build(arrow,0)",
+"start",
+"build(arrow,1)",
+"start",
+"start",
+"build(cannon,2)",
+"start",
+"start"
+],
+"95": [
+"build(arrow,3)",
+"start",
+"start",
+"build(arrow,1)",
+"start",
+"start"
+],
+"96": [
+"build(cannon,1)",
+"start",
+"start",
+"start",
+"build(arrow,2)",
+"start"
+],
+"97": [
+"build(arrow,2)",
+"start",
+"build(arrow,3)",
+"start",
+"start",
+"build(cannon,4)",
+"start",
+"build(arrow,5)",
+"start"
+],
+"98": [
+"build(arrow,1)",
+"start",
+"build(arrow,5)",
+"start",
+"build(arrow,6)",
+"start"
+],
+"99": [
+"build(arrow,1)",
+"start",
+"build(arrow,0)",
+"start",
+"start",
+"build(arrow,2)",
+"start",
+"build(arrow,3)",
+"build(arrow,5)",
+"start"
+]
+}

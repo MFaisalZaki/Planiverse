@@ -1,0 +1,136 @@
+# Micropolis city
+
+A city on the Micropolis engine. A map is generated from a seed; a power plant, a road and the
+wires are laid out on the first flat patch of it, with eight sites beside the road; and once a
+year the player zones one site residential, commercial or industrial, or waits. The engine then
+simulates the year: demand, traffic, power, land value, pollution, growth and decline, all of it
+coupled and none of it written down as an action model. The goal is a population when the
+horizon comes, and which mix of zones in which order gets there is only known by running the
+years. That is what keeps the environment out of PDDL, and it is the closest of the games to the
+operational environments: a decision a year against a simulated economy, as the crop
+environment decides a season against a simulated crop.
+
+Micropolis is the GPL-3.0 release of the original SimCity's simulation by Electronic Arts
+(2008); its C++ engine, [MicropolisCore](https://github.com/SimHacker/micropolis), comes with a
+SWIG binding that this environment drives headless. Nothing of it is included here: the binding
+has to be built from source (below), and the licence's additional terms and the trademark
+attribution are in [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md). Micropolis is a
+registered trademark of Micropolis Corporation (Micropolis GmbH) and is licensed here as a
+courtesy of the owner (https://micropolis.com/).
+
+- **Import:** `from planiverse.environments.micropolis.environment import MicropolisEnv`
+- **Source:** [`planiverse/environments/micropolis/environment.py`](../../planiverse/environments/micropolis/environment.py)
+- **Instances:** 100 cities, indices `0` to `99`, all drawn by the generator at recorded seeds
+- **Generator:** `generate_instance(seed, years=None, slack=0.15, ...)`; see [Generating cities](#generating-cities)
+- **Dependency:** `micropolisengine`, built by [`scripts/build_micropolis.sh`](../../scripts/build_micropolis.sh)
+
+## Building the engine
+
+```console
+$ pip install swig                       # a swig binary, if the system has none
+$ bash scripts/build_micropolis.sh       # git, a C++ compiler and the Python headers
+```
+
+The script fetches MicropolisCore, replaces two Python 2 names in its SWIG callback hook, makes
+the engine's `seedRandom` reachable from Python (the engine reseeds from the clock after
+generating a map, and the environment pins the seed instead), builds the extension and copies
+`micropolisengine` into the running Python's site-packages. A
+city year is eight hundred engine ticks and takes a few milliseconds.
+
+## Quickstart
+
+```python
+from planiverse.environments.micropolis.environment import MicropolisEnv, MicropolisAction, WAIT
+
+env = MicropolisEnv()
+env.set_index(0)
+state, info = env.reset()          # info: city, years, target, sites, generated
+print(state)                       # year 0: population 0 ..., nothing zoned
+
+state, growth = env.step(MicropolisAction("R", 0))
+for action, child in env.successors(state):
+    print(action, child.population)
+```
+
+## The rules
+
+1. The map is the engine's own for the instance's seed. The layout is a coal plant, a road
+   between two rows of four sites and wires round them, on the first flat patch the map has.
+2. A year is one decision: zone a free site residential, commercial or industrial, or wait, and
+   then eight hundred ticks of the engine.
+3. The goal is the instance's population target at the horizon. A city short of it when the
+   horizon comes is a dead end; nothing before the horizon is a goal, since the target is
+   measured at the end.
+
+Funds start at the engine's default and are not a constraint at this scale; the population is
+the engine's `totalPop`.
+
+## State
+
+`MicropolisState` holds the decisions taken so far, one a year, and the readings the engine
+gives after them: population, residents, commerce, industry, funds and score. Identity is the
+path: two states with the same decisions are the same city, since the engine replays
+deterministically from the seed, and every expansion replays the city from the start. `depth`
+is bookkeeping and `target` is carried for the benchmark's measure.
+
+`literals` names the zones placed, the year, and the population and funds in bands:
+
+```
+zoned(R, 0)
+zoned(I, 4)
+year(3)
+population(15)
+funds(16000)
+```
+
+## Actions
+
+`zone(kind, site)` for each kind `R`, `C` and `I` and each free site, and `wait`, each costing
+1. A zone on a taken site changes nothing and is not offered as a successor. `get_actions()`
+lists the decisions open in a state and `MicropolisAction.parse` reads one back from its name.
+
+## Cities
+
+The hundred cities are the generator's own draws, embedded in the module as the plain data
+`set_instance` takes (`seed`, `origin`, `years`, `target`) with the seed each came from beside
+it, and the plan each was accepted on is in `tests/data/micropolis_solutions.json`. A city's
+horizon is ten, fifteen or twenty years and its target sits fifteen per cent above the best
+population that three thoughtless zoning plans reach on it: all residential, residential and
+industrial by turns, and a fixed mix.
+
+## Generating cities
+
+`generate_instance` draws a city, selects it, and returns it as the dict `set_instance` takes
+back:
+
+```python
+env = MicropolisEnv()
+city = env.generate_instance(seed=7, years=10)
+print(env.witness, env.witness_expansions)     # the plan it was accepted on, and the search's cost
+state, info = env.reset()                       # info["generated"] is True
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `years` | 10, 15 or 20 at random | the horizon |
+| `slack` | 0.15 | the target's margin over the best baseline |
+| `search_limit` | 40 | expansions the acceptance search may spend per draw |
+| `attempts` | 80 | maps drawn before giving up with `GenerationError`; most maps have no flat patch and cost nothing |
+
+A draw is kept only if a best-first search over decisions, guided by the population the city
+would have at the horizon if nothing more were zoned (a rollout, since a year's readings say
+little about where the city is going), meets the target within `search_limit` expansions. The
+method is generate-and-test, which the procedural content generation literature calls
+search-based PCG (Togelius, Yannakakis, Stanley and Browne, 2011,
+https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content
+Generation in Games*, 2016, https://pcgbook.com/), with the target set the way the flood
+environment sets its own, off a reference policy.
+
+## Files
+
+| File | Contents |
+|---|---|
+| [`environment.py`](../../planiverse/environments/micropolis/environment.py) | `MicropolisAction`, `MicropolisState`, the engine (`find_patch`, `lay_out`, `replay`), `BASELINES`, `MicropolisEnv`, `CITIES` |
+| [`scripts/build_micropolis.sh`](../../scripts/build_micropolis.sh) | Builds and installs the engine's Python binding |
+| [`tests/test_micropolis.py`](../../tests/test_micropolis.py) | Tests |
+| [`tests/data/micropolis_solutions.json`](../../tests/data/micropolis_solutions.json) | The plan each city was accepted on |

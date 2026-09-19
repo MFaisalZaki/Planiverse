@@ -69,7 +69,10 @@ WIDTH = ("bfws", "iw", "siw")
 NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
          "crop_management": "Crop management", "network_attack": "Network attack",
          "puzznic": "Puzznic", "flipull": "Flipull", "lolo": "Adventures of Lolo",
-         "amazing_tater": "Amazing Tater"}
+         "amazing_tater": "Amazing Tater", "slingshot": "Slingshot",
+         "artillery": "Artillery", "tower_defence": "Tower defence",
+         "fluid": "Fluid", "billiards": "Billiards",
+         "lemmings": "Lemmings", "micropolis": "Micropolis"}
 
 #: How a run can end. Everything but MISSING is written by `solve`; MISSING is what `report`
 #: calls an expected run that left no file, so a job that never ran cannot pass for coverage.
