@@ -1,13 +1,12 @@
-"""Tests for the sampling-based planners: FSX and MCTS.
+"""Tests for Future State Maximization.
 
-Both are randomised, so every test seeds them. An unseeded run of either is not reproducible
-and should not be asserted on.
+It is randomised, so every test seeds it. An unseeded run is not reproducible and should not
+be asserted on.
 """
 import pytest
 
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.planners.fsx import FSXPlanner, option_count
-from planiverse.planners.mcts import MCTSPlanner
 from planiverse.planners.width.result import Budget
 
 
@@ -94,125 +93,3 @@ def test_a_temperature_makes_the_choice_stochastic(env):
     hot = FSXPlanner(horizon=2, walkers=2, seed=1, temperature=0.5)
     result = hot.solve(env, Budget(max_expansions=600, max_seconds=30))
     assert result.statistics.expansions > 0
-
-
-# ------------------------------------------------------------------------------- MCTS
-
-@pytest.mark.slow
-def test_mcts_solves_with_a_sparse_reward(env):
-    """Goal-or-nothing: it has to stumble into a goal during a rollout before it learns
-    anything at all."""
-    result = MCTSPlanner(iterations=3000, seed=0).solve(
-        env, Budget(max_expansions=60000, max_seconds=120))
-    assert result.solved, f"expected a plan, got {result.status}"
-    assert env.validate(result.plan)
-
-
-@pytest.mark.slow
-def test_a_denser_reward_buys_a_much_shorter_plan(env):
-    """The sparse signal finds *a* plan; a reward that says how many blocks are gone finds a
-    far better one from the same budget."""
-    sparse = MCTSPlanner(iterations=3000, seed=0).solve(
-        env, Budget(max_expansions=60000, max_seconds=120))
-    dense = MCTSPlanner(iterations=3000, seed=0,
-                        reward=lambda s: 1 - boxes(s) / 6).solve(
-        env, Budget(max_expansions=60000, max_seconds=120))
-    assert sparse.solved and dense.solved
-    assert env.validate(dense.plan)
-    assert len(dense.plan) < len(sparse.plan), "the gradient should pay for itself"
-
-
-def test_mcts_never_reselects_a_proven_dead_end(env):
-    """A branch that has been shown to be over is worth no further budget, however good its
-    averages once looked."""
-    from planiverse.planners.mcts import _Node
-
-    planner = MCTSPlanner(iterations=1, seed=0)
-    parent = _Node(state=None)
-    parent.visits = 10
-    dead = _Node(state=None, parent=parent)
-    dead.terminal = True
-    dead.visits, dead.best = 5, 1.0
-    assert planner.__ucb1__(parent, dead) == float("-inf")
-
-
-def test_mcts_prefers_the_shorter_of_two_solutions():
-    """The length penalty, which is the only thing distinguishing solutions under a
-    goal-or-nothing reward."""
-    planner = MCTSPlanner(length_penalty=0.01)
-    assert planner.length_penalty == 0.01
-
-
-def test_mcts_rejects_a_backup_rule_it_does_not_have():
-    with pytest.raises(ValueError, match="backup"):
-        MCTSPlanner(backup="median")
-    assert MCTSPlanner(backup="mean").backup == "mean"
-
-
-def test_mcts_is_reproducible_when_seeded(env):
-    first = MCTSPlanner(iterations=120, seed=3).solve(env, Budget(max_expansions=4000))
-    second = MCTSPlanner(iterations=120, seed=3).solve(env, Budget(max_expansions=4000))
-    assert first.status == second.status
-    assert (first.plan or []) == (second.plan or [])
-
-
-def test_mcts_returns_immediately_from_a_goal(env):
-    class Solved(PuzznicGame):
-        def is_goal(self, state):
-            return True
-
-    game = Solved()
-    game.set_index(0)
-    result = MCTSPlanner(iterations=10, seed=0).solve(game)
-    assert result.solved and result.plan == []
-
-
-def test_mcts_reports_running_out_rather_than_failing(env):
-    result = MCTSPlanner(iterations=100000, seed=0).solve(env, Budget(max_expansions=5))
-    assert result.status == "out_of_budget"
-    assert not result.solved
-
-
-def test_the_rollout_keeps_the_best_reward_it_saw():
-    """Random rollouts in a domain with dead ends nearly always end in one. Scoring only the
-    final state throws away everything the rollout learned on the way, the tree sees 0
-    everywhere, and UCT has no gradient to climb.
-
-    Tested on a hand-made three-state chain rather than on Puzznic, where whether a random
-    rollout happens to clear a block is luck and a test should not depend on it.
-    """
-    from planiverse.environments.base import Environment
-    from planiverse.planners.mcts import _Node
-    from planiverse.planners.width.result import SearchStatistics
-
-    class Step:
-        def __init__(self, name, value):
-            self.name, self.value = name, value
-            self.literals = frozenset({f"at({name})"})
-
-    start, middle, end = Step("start", 0.0), Step("middle", 0.5), Step("end", 0.0)
-
-    class Chain(Environment):
-        """start -> middle -> end, where end is a dead end. The best moment was the middle."""
-
-        def set_index(self, index): pass
-
-        def reset(self): return start, {}
-
-        def successors(self, state):
-            return {"start": [("go", middle)], "middle": [("go", end)],
-                    "end": []}[state.name]
-
-        def is_goal(self, state): return False
-
-        def is_terminal(self, state): return state.name == "end"
-
-        def simulate(self, plan): return [start, middle, end][:len(plan) + 1]
-
-    env = Chain()
-    planner = MCTSPlanner(iterations=1, seed=0, rollout_depth=10,
-                          reward=lambda s: s.value)
-    value, tail = planner.__simulate__(env, _Node(start), SearchStatistics(),
-                                       Budget().start())
-    assert tail is None, "the chain has no goal"
-    assert value == 0.5, "the rollout died at 0.0 but peaked at 0.5, and 0.5 is what counts"

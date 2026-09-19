@@ -21,8 +21,8 @@ class SearchStatistics:
     novelty_evaluations: int = 0
     tuples_enumerated: int = 0
     elapsed: float = 0.0
-    rollouts: int = 0               #: lookahead rollouts run (Rollout IW and π-IW)
-    episodes: int = 0               #: episodes played out (the online planners)
+    rollouts: int = 0               #: random walks, playouts or sequence evaluations run
+    episodes: int = 0               #: decisions committed, generations or restarts (the online planners)
     widths_tried: tuple = ()        #: for iterated searches
 
     def merge(self, other):

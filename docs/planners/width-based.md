@@ -1,8 +1,9 @@
 # Width-based planners
 
-This module implements seven searches built on novelty, against the `successors()` / `literals`
-contract and nothing else. Five are breadth-first or best-first and are described here; the two
-built from rollouts, Rollout IW and π-IW, have [their own page](rollout-width.md).
+This module implements the searches built on novelty, against the `successors()` / `literals`
+contract and nothing else. The five original ones are described here; the six added with the
+survey (BFWS(R), quantified, count-based and approximate novelty, boundary-extension features
+and hierarchical IW) are in [more-planners.md](more-planners.md).
 
 The *novelty* of a state (i.e., the size of the smallest tuple of its atoms that has not appeared
 in any state seen before) is what all five order or filter on. A state with a brand-new atom has
@@ -16,8 +17,6 @@ in a new way has novelty 2.
 | `SIWSearch` | the same, in short legs that each make progress | no |
 | `BFWSSearch` | a sort key: nothing is discarded | yes, unless `prune=True` |
 | `IteratedBFWS` | a filter in cheap early rounds, a sort key in the last | yes |
-| `RolloutIW` | a depth-aware filter on rollouts, reset at every committed action | no |
-| `PiIW` | the same, with rollouts steered by a policy it learns as it goes | no |
 
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
@@ -148,10 +147,8 @@ comparability.
 
 | Path | What |
 |---|---|
-| [`novelty.py`](../../planiverse/planners/width/novelty.py) | `NoveltyTable`, `PartitionedNovelty`, `DepthNoveltyTable`, `path_novelty` |
+| [`novelty.py`](../../planiverse/planners/width/novelty.py) | `NoveltyTable`, `PartitionedNovelty`, `path_novelty` |
 | [`iw.py`](../../planiverse/planners/width/iw.py) | `IWSearch`, `IteratedWidth`, `SIWSearch` |
 | [`bfws.py`](../../planiverse/planners/width/bfws.py) | `BFWSSearch`, `IteratedBFWS` |
-| [`rollout.py`](../../planiverse/planners/width/rollout.py) | `RolloutIW`, see [rollout-width.md](rollout-width.md) |
-| [`policy.py`](../../planiverse/planners/width/policy.py) | `PiIW`, `PolicyNetwork`, see [rollout-width.md](rollout-width.md) |
 | [`result.py`](../../planiverse/planners/width/result.py) | `SearchResult`, `SearchStatistics`, `Budget` |
 | [`tests/test_width_planners.py`](../../tests/test_width_planners.py) | Tests |

@@ -1,8 +1,8 @@
-"""The planners added after the tool paper, as benchmark configurations.
+"""The surveyed planners, as benchmark configurations.
 
-None of these is part of the paper's protocol, so none runs unless `generate` and `report`
+None of these is part of the reference protocol, so none runs unless `generate` and `report`
 are given `--candidates`. The tags are what `solve` takes and what the result directories
-are named. Every configuration takes `progress` from `measures.py` the way the paper's
+are named. Every configuration takes `progress` from `measures.py` the way the reference
 planners do; the planners that need a projection (`GoExplore`'s cell, `MAPElitesPlanner`'s
 descriptor, `KinodynamicTree`'s projection) run on their default, the exact state, and
 `FeatureSpaceSearch` gets the progress measure as its one feature through the adapter
@@ -14,9 +14,8 @@ No configuration takes a reward: every planner here is driven by `is_goal` and t
 progress heuristic, and the surveyed planners defined by an accumulated reward (2BFS,
 prioritised IW, Fractal Monte Carlo, the rollout algorithm) were left out of the library.
 
-Parameters are the classes' defaults except where the paper's planners fix the same
-thing: 500,000 expansions bound the approximate-novelty policy, and the per-decision
-budgets of the online planners match Rollout IW's 1,000 expansions.
+Parameters are the classes' defaults, except that the protocol's 500,000 expansions bound
+the approximate-novelty policy and the online planners get 1,000 expansions per decision.
 """
 from planiverse.planners.blind import BreadthFirstSearch, IterativeDeepening, UniformCostSearch
 from planiverse.planners.heuristic import (

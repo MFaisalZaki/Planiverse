@@ -5,7 +5,7 @@ planning, search, games and control literature, restricted to methods that **nee
 training phase**: nothing is fitted on one set of runs and assessed on another, and no
 learned model, policy, value function or feature extractor is required before the planner
 can be pointed at an instance. That rules out MCTS and its descendants (see
-[Excluded](#excluded-and-why)) as well as π-IW, which the library keeps for comparison.
+[Excluded](#excluded-and-why)) and anything reward-driven: this is a planning library.
 
 **Status.** The candidates below have since been implemented; see
 [more-planners.md](more-planners.md) for the classes, what each one needs, the choices made
@@ -26,9 +26,11 @@ methods below rely on, is free.
 | Family | Classes | Reference |
 |---|---|---|
 | Width-based, breadth/best-first | `IWSearch`, `IteratedWidth`, `SIWSearch`, `BFWSSearch`, `IteratedBFWS` (k-BFWS, Dual-BFWS shape) | Lipovetzky & Geffner 2012, 2017 |
-| Width-based, rollouts | `RolloutIW` | Bandres, Bonet & Geffner 2018 |
-| Width-based, learned policy | `PiIW` (**trains as it plans**) | Junyent, Jonsson & Gómez 2019 |
-| Sampling | `MCTSPlanner` (UCT), `FSXPlanner` | Kocsis & Szepesvári 2006; Wissner-Gross & Freer 2013 |
+| Sampling | `FSXPlanner` | Wissner-Gross & Freer 2013 |
+
+Rollout IW, π-IW and an MCTS planner were in the library when this survey was written and
+have since been removed: the first two choose actions by a discounted return and the second
+learns a policy as it plans, and MCTS wants a reward; none of that is planning.
 | Heuristic search | `TreeSearchPlanner` (best-first with a heuristic and a cost) | Baumgarten's A\* Mario agent |
 
 ## Candidates
@@ -167,8 +169,8 @@ needs nothing from the model.
     Koenig & Likhachev, AAMAS 2006; Time-Bounded A\*, Björnsson, Bulitko & Sturtevant, IJCAI
     2009. Bounded lookahead, commit one action, repeat, with a per-step compute bound; LRTA\* and
     RTAA\* also raise the stored heuristic of states they leave. The "learning" is an in-run
-    table update, the same kind Rollout IW does with its novelty table, and there is no phase
-    before planning. The natural agent-centred counterpart to Rollout IW.
+    table update, the same kind SIW does when it starts a fresh novelty table per leg, and
+    there is no phase before planning.
 
 19. **Feature Space Search (FESS)** — Shoham & Schaeffer, *The FESS Algorithm: A Feature Based
     Approach to Single-Agent Search*, IEEE CoG 2020. Search is organised in a small feature space
@@ -278,7 +280,7 @@ population of them against the simulator and commits.
 - **MCTS/UCT and descendants**: THTS (Keller & Helmert 2013), GreedyUCT-Normal (Wissow & Asai
   2023), Extreme-Value MCTS and Bilevel MCTS (Asai & Wissow 2024, 2025), open-loop tree search
   OLETS/OLMCTS (Perez et al. 2015), NRPA-as-MCTS hybrids, AlphaZero-style search. Excluded by
-  the brief; the library keeps `MCTSPlanner` as the comparison point.
+  the brief, and the library's own MCTS planner went with them.
 - **Width-based methods with a trained component**: π-IW and π-IW+ (Junyent et al. 2019),
   learned symbolic features for IW (Dittadi, Drachmann & Bolander, AAAI 2021), width-based
   lookaheads with learnt base policies and heuristics (O'Toole, Lipovetzky & Ramírez, 2021),

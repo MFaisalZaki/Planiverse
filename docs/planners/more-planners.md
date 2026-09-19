@@ -225,17 +225,16 @@ and a distance to it, and a planning suite has no reward to give them:
   iteration on a base policy's return.
 
 Each could be run with `progress(root) - progress(node)` standing in for the reward, and
-was, in an earlier revision of this branch; the mechanism is the reward's, so they went.
-Rollout IW and π-IW in the existing library take the same stand-in, and `MCTSPlanner` a
-`reward` callback; they predate this rule and are the paper's comparison points.
+was, in an earlier revision of this branch; the mechanism is the reward's, so they went. The
+library's Rollout IW, π-IW and MCTS planners went for the same reason: a discounted return
+chose their actions, π-IW learned a policy as it planned, and MCTS wanted a reward.
 
 ## Running them in the benchmark
 
 They are registered in [`planiverse/benchmark/candidates.py`](../../planiverse/benchmark/candidates.py)
 under short tags, and `planiverse-bench generate --candidates` and `report --candidates`
 include them; without the flag the benchmark is the paper's protocol and nothing else.
-`solve` accepts any tag either way. The seeded ones run under the same five seeds as MCTS and
-FSX. Boundary-extension features, multi-queue alternation and the two add-ons need
+`solve` accepts any tag either way. The seeded ones run under the same five seeds as FSX. Boundary-extension features, multi-queue alternation and the two add-ons need
 per-environment callbacks the benchmark does not carry and are not registered.
 
 ## Files

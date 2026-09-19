@@ -1,4 +1,4 @@
-"""`planiverse-bench`: the tool paper's evaluation protocol, as code.
+"""`planiverse-bench`: the library's evaluation protocol, as code.
 
     planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A]
     bash sandbox/submit.sh                       # or: bash sandbox/run_local.sh 8
@@ -8,10 +8,10 @@
 per (planner, instance, seed), plus a SLURM job array for each planner, or for each of a seeded
 planner's seeds, that runs them. `solve` is what one array element runs: one planner on one
 instance under the limits, written out as one JSON file whatever happens. `report` reads those
-files back and writes the paper's tables, its figures, and the numbers its prose quotes.
+files back and writes the tables, the figures, and the numbers a write-up would quote.
 
 The protocol is the constants below. There is no configuration file: a run that changed a limit
-would not be the paper's experiment, and one that did not has nothing to configure.
+would not be the same experiment, and one that did not has nothing to configure.
 """
 import argparse
 import inspect
@@ -31,46 +31,37 @@ from planiverse.benchmark.candidates import CANDIDATES
 from planiverse.benchmark.measures import MEASURES
 from planiverse.environments import REGISTRY, get_spec
 from planiverse.planners.fsx import FSXPlanner
-from planiverse.planners.mcts import MCTSPlanner
-from planiverse.planners.width import (
-    Budget, IteratedBFWS, IteratedWidth, PiIW, RolloutIW, SIWSearch,
-)
+from planiverse.planners.width import Budget, IteratedBFWS, IteratedWidth, SIWSearch
 
 #: Per run: 30 minutes of wall clock, 8 GB of address space, 500,000 expansions.
 LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
 
-#: The paper's five configurations in its order, then the two rollout planners. Anything not
-#: named is the class's own default, which is where MCTS's exploration constant, rollout
-#: depth, backup rule and length penalty come from, FSX's measure, temperature and step cap,
-#: and the rollout planners' discount, 200-step episodes and dead-end avoidance. Rollout IW
-#: gets the larger per-decision budget and π-IW the smaller, as in their papers: π-IW's
-#: point is that a learned policy makes a small lookahead go a long way, and its network
-#: (2048 hashed inputs, 64 hidden units, τ = 0.5) is the class default too.
+#: The reference configurations: the three width planners and FSX. Anything not named is
+#: the class's own default, which is where FSX's measure, temperature and step cap come from.
+#: This is a planning library: nothing here takes a reward, and nothing learns before it
+#: plans.
 PLANNERS = {
     "bfws": (IteratedBFWS, {"max_width": 1000}),
     "iw": (IteratedWidth, {"max_width": 1000, "strict": False}),
     "siw": (SIWSearch, {"width": 1, "max_width": 1000, "strict": False}),
-    "mcts": (MCTSPlanner, {"iterations": 2000}),
     "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
-    "riw": (RolloutIW, {"width": 1, "expansions_per_step": 1000}),
-    "piiw": (PiIW, {"width": 1, "expansions_per_step": 100}),
 }
 
-#: Every planner `solve` can run: the paper's, then the candidates surveyed after it, which
+#: Every planner `solve` can run: the reference ones, then the surveyed candidates, which
 #: `generate` and `report` include only with `--candidates`. A candidate's results sit in
-#: their own directory and never enter the paper's tables unless asked for.
+#: their own directory and never enter the reference tables unless asked for.
 ALL = {**PLANNERS, **CANDIDATES}
 
 #: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
 #: full run under the same limits, and the report averages over them; the environments are
-#: deterministic, so the seed is the only source of variance. The three breadth-first width
-#: planners have no seed and run once; the rollout planners draw their rollouts from one.
+#: deterministic, so the seed is the only source of variance. The three width planners have
+#: no seed and run once.
 SEEDS = range(5)
 
 #: The deterministic width family, and what the overlap and runtime figures compare.
 WIDTH = ("bfws", "iw", "siw")
 
-#: The paper's environment names, in its table order. A `_gb` twin takes the same name under
+#: The environment names, in table order. A `_gb` twin takes the same name under
 #: "Game (cartridge)"; the family itself comes from the registry's tags.
 NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
          "crop_management": "Crop management", "network_attack": "Network attack",
@@ -231,8 +222,8 @@ def solve(sandbox, tag, task, seed=None):
                         "generated": out.statistics.generated,
                         "search_seconds": out.statistics.elapsed,
                         "widths_tried": list(out.statistics.widths_tried),
-                        # Zero for every planner but Rollout IW and π-IW, whose episode count
-                        # is how much they relearned before they succeeded.
+                        # Zero for the width planners; the sampling planners count what
+                        # they ran before they succeeded.
                         "rollouts": out.statistics.rollouts,
                         "episodes": out.statistics.episodes})
         if out.solved:
@@ -286,10 +277,11 @@ def _write(sandbox, record, status, seconds=None, note=None):
 
 
 def report(sandbox, candidates=False):
-    """Read every expected result back and write the paper's tables, figures and numbers.
+    """Read every expected result back and write the tables, figures and numbers.
 
     With `candidates`, every candidate planner that left a results directory joins the
-    tables and the cactus plot; the paper's own figures stay over its three width planners.
+    tables and the cactus plot; the overlap and runtime figures stay over the three width
+    planners.
     """
     import matplotlib
     import pandas as pd
@@ -349,7 +341,7 @@ def report(sandbox, candidates=False):
 
 
 def _families(counts):
-    """The paper's table rows: (family, environments) in its order, cartridge twins last."""
+    """The coverage table's rows: (family, environments) in order, cartridge twins last."""
     groups = {}
     for name in NAMES:
         for env in (name, name + "_gb"):
@@ -375,7 +367,7 @@ def _solved_per_seed(df):
 
 
 def _coverage_tex(df, counts, planners=None):
-    """Table 2: instances solved per environment and planner, in the paper's families."""
+    """The coverage table: instances solved per environment and planner, by family."""
     planners = planners or planners
     solved = (df.assign(ok=df.status == "SOLVED")
               .groupby(["planner", "seed", "environment"]).ok.sum()
@@ -401,17 +393,17 @@ def _coverage_tex(df, counts, planners=None):
 
 def _statuses_tex(df, solved, planners=None):
     planners = planners or planners
-    """Table 3: how every run ended, one row per planner, every status that occurred.
+    """The status table: how every run ended, one row per planner, every status that occurred.
 
     The columns come from the data, so a status cannot be left out without the row totals
     showing it. A seeded planner's counts are means per seed, so its row still sums to the
     instance count, and its Solved cell carries the standard deviation. A run that never
-    happened is counted as unsolved, as the paper does; it never credits a planner, and
-    `facts.txt` still lists it.
+    happened is counted as unsolved; it never credits a planner, and `facts.txt` still lists
+    it.
     """
     import pandas as pd
     # Divided before reindexing: aligning against the seed counts sorts the planners, and the
-    # reindex is what puts them back in the paper's order.
+    # reindex is what puts them back in registry order.
     n = (df.groupby(["planner", "status"]).size().unstack(fill_value=0)
          .div(df.groupby("planner").seed.nunique(), axis=0)
          .reindex(index=list(planners), columns=STATUSES, fill_value=0))
@@ -444,7 +436,7 @@ def _statuses_tex(df, solved, planners=None):
 
 def _facts(df, counts, planners=None):
     planners = planners or planners
-    """The numbers the paper's prose quotes, read off here rather than worked out by hand."""
+    """The numbers a write-up would quote, read off here rather than worked out by hand."""
     import pandas as pd
     from scipy.stats import binomtest
     solved = df[df.status == "SOLVED"]
@@ -531,42 +523,13 @@ def _facts(df, counts, planners=None):
                      f"{(pair.plan_length > pair.b).sum()}, medians "
                      f"{pair.plan_length.median():g} and {pair.b.median():g}")
 
-    # What the rollout planners reached, against IW's width and against each other.
-    iw_width = iw.set_index("task").width
-    for p in (p for p in ("riw", "piiw") if p in seeds):
-        need = iw_width.reindex(sorted(union[p]))
-        lines.append(f"{p} solved in some seed, by the width iw needed: " + ", ".join(
-            f"w{w:.0f} {k}" for w, k in need.value_counts().sort_index().items())
-            + f", unsolved by iw {int(need.isna().sum())}")
-    if "riw" in seeds:
-        gave_up = df[(df.planner == "riw") & (df.status == "UNSOLVED")]
-        lines.append(f"riw unsolved runs: {len(gave_up)}, median {gave_up.seconds.median():.1f} s")
-    if "riw" in seeds and "piiw" in seeds:
-        a = solved[solved.planner == "riw"].set_index(["task", "seed"])
-        b = solved[solved.planner == "piiw"].set_index(["task", "seed"])
-        both = a.join(b, lsuffix="_riw", rsuffix="_piiw", how="inner")
-        lines.append(f"piiw against riw on the {len(both)} (instance, seed) pairs both solved: "
-                     f"plan length medians {both.plan_length_piiw.median():g} and "
-                     f"{both.plan_length_riw.median():g}, piiw shorter on "
-                     f"{(both.plan_length_piiw < both.plan_length_riw).sum()} and longer on "
-                     f"{(both.plan_length_piiw > both.plan_length_riw).sum()}; expansions "
-                     f"medians {both.expansions_piiw.median():g} and "
-                     f"{both.expansions_riw.median():g}, piiw fewer on "
-                     f"{(both.expansions_piiw < both.expansions_riw).sum()}")
-    if "piiw" in seeds:
-        pi = solved[solved.planner == "piiw"]
-        lines.append(f"piiw solved runs: {len(pi)}, needing more than one episode "
-                     f"{(pi.episodes > 1).sum()}")
-        lines += [f"piiw episodes on {e}: {len(r)} solved runs, more than one episode on "
-                  f"{(r.episodes > 1).sum()}, median {r.episodes.median():g}"
-                  for e, r in pi.groupby("environment") if (r.episodes > 1).any()]
-        for p in (p for p in planners if len(seeds[p]) > 1):
-            failed = df[(df.planner == p) & (df.status == "ERROR")].groupby("task").size()
-            if len(failed):
-                lines.append(f"{p} errors: {int(failed.sum())} runs, on {len(failed)} "
-                             f"instances in some seed and {int((failed == len(seeds[p])).sum())}"
-                             f" in every seed, of which bfws solved "
-                             f"{len(set(failed.index) & union['bfws'])}")
+    for p in (p for p in planners if len(seeds[p]) > 1):
+        failed = df[(df.planner == p) & (df.status == "ERROR")].groupby("task").size()
+        if len(failed):
+            lines.append(f"{p} errors: {int(failed.sum())} runs, on {len(failed)} "
+                         f"instances in some seed and {int((failed == len(seeds[p])).sum())}"
+                         f" in every seed, of which bfws solved "
+                         f"{len(set(failed.index) & union['bfws'])}")
 
     # Where each planner's runs ended, per environment, and what an expansion cost on each
     # side of a cartridge pair: the twins, the cartridges, and the rest of the suite.
@@ -719,7 +682,7 @@ def main(argv=None):
     for option in ("partition", "qos", "account"):
         generate_.add_argument(f"--{option}", help=f"SLURM {option}")
     generate_.add_argument("--candidates", action="store_true",
-                           help="also run the planners surveyed after the paper")
+                           help="also run the surveyed planners")
     generate_.add_argument("--parallel", type=int, default=50,
                            help="array elements running at once (default: 50)")
     solve_ = commands.add_parser("solve", parents=[common],
@@ -729,7 +692,7 @@ def main(argv=None):
     solve_.add_argument("--seed", type=int,
                         help="for the seeded planners; the generated commands set it")
     report_ = commands.add_parser("report", parents=[common],
-                                  help="the paper's tables, figures and numbers")
+                                  help="the tables, figures and numbers")
     report_.add_argument("--candidates", action="store_true",
                          help="include the surveyed planners that left results")
     args = parser.parse_args(argv)

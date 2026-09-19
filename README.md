@@ -278,8 +278,6 @@ See [docs/rendering.md](docs/rendering.md).
 | Family | Where | What it needs from an environment |
 |---|---|---|
 | Width-based: IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
-| Rollout IW, and π-IW with a policy it learns as it plans | [`planiverse/planners/width/rollout.py`](planiverse/planners/width/rollout.py), [`policy.py`](planiverse/planners/width/policy.py) | `successors` and `literals`; a `progress` callback stands in for the score |
-| MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
 | More width-based: BFWS(R), quantified, count-based and approximate novelty, boundary-extension features, hierarchical IW | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; `progress` for most |
@@ -302,13 +300,7 @@ to count, so SIW and BFWS take a `progress` callback instead; (2) expansions are
 every search takes a budget and reports what it spent; and (3) dead ends are real, and detecting
 them is most of what makes a simulator task searchable.
 
-Rollout IW (Bandres, Bonet and Geffner, 2018) and π-IW (Junyent, Jonsson and Gómez, 2019) are
-in [docs/planners/rollout-width.md](docs/planners/rollout-width.md): the novelty filter kept,
-the breadth-first order replaced by rollouts that commit to an action every few hundred
-expansions, and in π-IW a small policy network, trained on the planner's own lookaheads, that
-steers the rollouts and can supply the atoms novelty is measured over.
-
-MCTS and Future State Maximization are in
+Future State Maximization is in
 [docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
 given no goal and no heuristic at all and picks whichever action leaves the most futures
 open. That makes `option_count` a goal-free measure of how close a state is to being stuck,
@@ -318,22 +310,25 @@ write.
 The last four rows are the planners surveyed in
 [docs/planners/candidates.md](docs/planners/candidates.md), thirty training-free planners
 from the planning, search, games and control literature that need nothing beyond this
-contract, with MCTS and anything that learns before it plans left out. They are implemented
-and documented in [docs/planners/more-planners.md](docs/planners/more-planners.md), which
-also lists the choices made where a paper could not be read in full, and their smoke results
-on Puzznic level 1. None of them takes a reward: the four surveyed planners defined by an
-accumulated reward were left out, and the rest run on the goal test and the `progress`
-heuristic alone. They join the benchmark only with `planiverse-bench generate
---candidates`.
+contract. They are implemented and documented in
+[docs/planners/more-planners.md](docs/planners/more-planners.md), which also lists the choices
+made where a paper could not be read in full, and their smoke results on Puzznic level 1.
+
+This is a planning library, not a learning one, and that is a rule the tree follows: no
+planner takes a reward, none learns before or while it plans, and none is a Monte Carlo tree
+search. The four surveyed planners defined by an accumulated reward were left out, and the
+MCTS, Rollout IW and π-IW planners the library once had were removed for the same reason.
+Everything runs on the black-box goal test and, at most, a `progress` heuristic. The surveyed
+planners join the benchmark only with `planiverse-bench generate --candidates`.
 
 ## Benchmarking
 
-`planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
-configurations the paper compares plus Rollout IW and π-IW, on every instance of every
-environment, under a 30-minute wall-clock limit, an 8 GB address-space cap and a
-500,000-expansion bound, with five seeds for each of the four planners that take one, on a
-SLURM cluster or on one machine. There is no configuration
-file, because the protocol is the point.
+`planiverse-bench` is the library's evaluation protocol as code: the four reference planner
+configurations (BFWS, IW, SIW and FSX), and with `--candidates` the surveyed planners too, on
+every instance of every environment, under a 30-minute wall-clock limit, an 8 GB
+address-space cap and a 500,000-expansion bound, with five seeds for every planner that
+takes one, on a SLURM cluster or on one machine. There is no configuration file, because the
+protocol is the point.
 
 ```bash
 tools/setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
@@ -358,15 +353,13 @@ goal), `INVALID` (it does not), `UNSOLVED` (the search stopped on its own), `TIM
 `MISSING`, which `report` assigns to a run that left no file, so a job that never ran cannot
 pass for coverage.
 
-`report` writes the paper's two tables (`coverage.tex`, `statuses.tex`), its three figures
-(`cactus.pdf`, `overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the
-numbers its prose quotes, into `sandbox/report/`. A seeded planner is reported as its mean over
-seeds with the standard deviation, never its best seed. The sandbox behind the paper is attached
-to the [release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
-repository and `report` regenerates every number from it. [docs/benchmark.md](docs/benchmark.md)
-has the details, and its last section lists what the paper has to change to take in Rollout IW
-and π-IW: two coverage columns, two status rows, two cactus curves, the planner descriptions,
-and the numbers its prose quotes.
+`report` writes two tables (`coverage.tex`, `statuses.tex`), three figures (`cactus.pdf`,
+`overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the numbers a write-up
+would quote, into `sandbox/report/`. A seeded planner is reported as its mean over seeds with
+the standard deviation, never its best seed. An earlier run's sandbox is attached to the
+[release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
+repository and `report` reads whatever result directories match the registered planners.
+[docs/benchmark.md](docs/benchmark.md) has the details.
 
 ## Writing a planner
 
@@ -476,14 +469,19 @@ planiverse/
 │   ├── power_grid/                     # PowerGridEnv (Grid2Op)
 │   └── crop_management/                # CropEnv (PCSE/WOFOST)
 ├── planners/
-│   ├── width/                          # IW, Iterated Width, SIW, BFWS, Rollout IW, π-IW
+│   ├── width/                          # IW, Iterated Width, SIW, BFWS, and the surveyed novelty variants
+│   ├── heuristic/                      # best-first family, EHC, random walks, beam, real-time, FESS
+│   ├── sampling/                       # RHEA, CEM, NMCS, Go-Explore, MAP-Elites, kinodynamic trees
+│   ├── blind.py                        # breadth-first, uniform cost, iterative deepening
+│   ├── common.py                       # SuccessorCache and the helpers the planners share
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
-│   ├── mcts.py                         # MCTSPlanner (UCT)
+│   ├── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
 │   └── super_mario_planner_gb.py       # TreeSearchPlanner, SuperMarioPlanner
 ├── rendering/                          # traces to GIF or PNG frames (env.render_trace delegates here)
-└── benchmark/                          # planiverse-bench: the paper's evaluation protocol
+└── benchmark/                          # planiverse-bench: the evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
-    └── measures.py                     # per-environment progress measures for SIW and BFWS
+    ├── candidates.py                   # the surveyed planners, run with --candidates
+    └── measures.py                     # per-environment progress measures
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark: protocol, statuses, report
 tools/setup_benchmark.sh                # builds the venv, installs, runs generate
@@ -541,18 +539,18 @@ What is in the tree:
   environment and as a dependency-free Python counterpart. Four of the counterparts are twins of
   their cartridge; the Super Mario Land one shares the genre and the measured physics, not the
   levels.
-- Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
-  latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
-- `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
-  the four that take one, and a report that regenerates the paper's tables, figures and quoted
-  numbers from the results.
+- The planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Future State
+  Maximization; and the surveyed additions in [docs/planners/more-planners.md](docs/planners/more-planners.md).
+  No planner takes a reward or learns.
+- `planiverse-bench`, the evaluation protocol as code: four reference configurations, five
+  seeds for the one that takes them, the surveyed planners on request, and a report that
+  writes the tables, figures and quoted numbers from the results.
 - A test suite that skips what it cannot build, with synthetic cartridges for the two Taito
   games so their emulator code is tested without a ROM.
 
 Open:
 
-- [ ] Benchmark runs for Rollout IW and π-IW, and the paper edits that go with them; see
-      [Bringing the paper up to date](docs/benchmark.md#bringing-the-paper-up-to-date).
+- [ ] Benchmark runs for the surveyed planners (`planiverse-bench generate --candidates`).
 - [ ] The flood/transport environment
       ([floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl)), referenced as
       a planned addition and not yet in the tree.

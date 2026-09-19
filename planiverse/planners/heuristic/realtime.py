@@ -11,7 +11,7 @@
   moves along the path to the best open state.
 
 Both are online: the value updates happen in the run they serve, with no phase before it,
-and both plan the way Rollout IW does, committing to actions as they go. The plan returned
+and both commit to actions as they go rather than returning a plan at the end. The plan returned
 is the path actually walked, so it can revisit a state; a state restore here is free, and
 `max_steps` bounds the walk.
 

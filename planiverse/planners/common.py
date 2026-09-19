@@ -1,4 +1,4 @@
-"""What the planners added after the tool paper share.
+"""What the surveyed planners share.
 
 Every environment offers `successors(state)` and nothing cheaper, so a planner that wants to
 apply one action, or replay an action sequence, has to expand the whole state and pick the

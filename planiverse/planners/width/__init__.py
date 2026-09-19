@@ -1,6 +1,6 @@
 """Width-based planners for simulators.
 
-Seven searches, all against the `successors()` / `literals` contract and nothing else:
+Width-based searches, all against the `successors()` / `literals` contract and nothing else:
 
 | Planner | Novelty is used as | Complete? |
 |---|---|---|
@@ -9,8 +9,11 @@ Seven searches, all against the `successors()` / `literals` contract and nothing
 | `SIWSearch` | the same, in short legs that each make progress | no |
 | `BFWSSearch` | a sort key: nothing is discarded | yes (unless `prune`) |
 | `IteratedBFWS` | a filter in cheap rounds, then a sort key in the last | yes |
-| `RolloutIW` | a depth-aware filter on rollouts, reset at every committed action | no |
-| `PiIW` | the same, with rollouts steered by a policy it learns as it goes | no |
+| `BFWSR` | a sort key within `(progress, relevant atoms reached)` partitions | yes |
+| `QuantifiedNoveltySearch` | a heuristic: how many atoms are new at this heuristic value | yes |
+| `CountNoveltySearch` | a sort key on how often the rarest tuple was seen; open list trimmed | no |
+| `ApproximateNoveltySearch` | a sort key from Bloom filters over sampled tuples | no |
+| `HierarchicalIW` | a filter at two levels of abstraction | no |
 
 What changes when the task is a simulator rather than a PDDL model:
 
@@ -33,19 +36,16 @@ from planiverse.planners.width.count import CountNoveltySearch, CountNoveltyTabl
 from planiverse.planners.width.hierarchical import HierarchicalIW
 from planiverse.planners.width.iw import IteratedWidth, IWSearch, SIWSearch
 from planiverse.planners.width.novelty import (
-    MAX_PRACTICAL_WIDTH, DepthNoveltyTable, NoveltyTable, PartitionedNovelty, path_novelty,
+    MAX_PRACTICAL_WIDTH, NoveltyTable, PartitionedNovelty, path_novelty,
 )
-from planiverse.planners.width.policy import PiIW, PolicyNetwork
 from planiverse.planners.width.quantified import HeuristicNovelty, QuantifiedNoveltySearch
 from planiverse.planners.width.relevant import BFWSR
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
-from planiverse.planners.width.rollout import RolloutIW, RolloutNode
 
 __all__ = [
     "ApproximateNoveltySearch", "BFWSR", "BFWSSearch", "BloomFilter", "BloomNoveltyTable",
     "BoundaryExtensionFeatures", "Budget", "CountNoveltySearch", "CountNoveltyTable",
-    "DepthNoveltyTable", "HeuristicNovelty", "HierarchicalIW", "IWSearch", "IteratedBFWS",
-    "IteratedWidth", "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "PiIW",
-    "PolicyNetwork", "QuantifiedNoveltySearch", "RolloutIW", "RolloutNode", "SIWSearch",
-    "SearchResult", "SearchStatistics", "path_novelty",
+    "HeuristicNovelty", "HierarchicalIW", "IWSearch", "IteratedBFWS", "IteratedWidth",
+    "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "QuantifiedNoveltySearch",
+    "SIWSearch", "SearchResult", "SearchStatistics", "path_novelty",
 ]
