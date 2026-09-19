@@ -311,6 +311,12 @@ open. That makes `option_count` a goal-free measure of how close a state is to b
 useful as a heuristic for the other planners precisely when heuristics are hardest to
 write.
 
+What the library could add next is surveyed in
+[docs/planners/candidates.md](docs/planners/candidates.md): thirty training-free planners
+from the planning, search, games and control literature that need nothing beyond this
+contract, with MCTS and anything that learns before it plans left out, and a suggested order
+of implementation.
+
 ## Benchmarking
 
 `planiverse-bench` is the tool paper's evaluation protocol as code: the five planner
