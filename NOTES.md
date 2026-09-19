@@ -84,13 +84,13 @@ minutes.
 
 ## 3. Things to check
 
-- **The shot family.** Iterated BFWS over the bundled instances: artillery, all hundred solved
-  in 1.1 s, median six expansions, plans of two to five shots; slingshot (every fourth level),
-  all solved, median two expansions, nineteen of twenty-five in three or fewer; billiards
-  (every tenth table), all solved in at most four expansions. Artillery has too little
-  coupling to be worth keeping. Slingshot and billiards have coupling their instances do not
-  demand; a regeneration with longer minimum plans and a shot budget no larger than the
-  targets, then the same survey, would say whether they stay. Nothing has been removed.
+- **The shot family.** Iterated BFWS over the bundled instances as they first stood:
+  artillery, all hundred solved in 1.1 s, median six expansions, plans of two to five shots;
+  slingshot (every fourth level), all solved, median two expansions; billiards (every tenth
+  table), all solved in at most four expansions. Artillery had too little coupling to keep and
+  has been removed. Slingshot and billiards were regenerated with a shot budget equal to the
+  targets and a certified shortest plan of at least three shots (see their docs), and the
+  survey numbers after that are in section 5.
 - **Reservoir is the most PDDL-like of the four**: a mass balance with priorities is a small
   linear system, and a numeric planner could model it. It is here for what it is, a real
   water-industry simulator with a year's worth of coupled decisions; keep it or not on that.
@@ -126,3 +126,35 @@ minutes.
 | pywr | GPL-3.0-or-later | no; PyPI |
 
 All compatible with the repository's GPL-3.0-or-later, and none conveyed by it.
+
+## 5. The shot family after tightening
+
+Artillery is gone: its shells did not interact with each other or with the field, so the
+problem was never more than one aimed shot at a time. Slingshot and billiards were kept and
+regenerated, since both have the coupling artillery lacked (a toppled tower reaches the next
+target; a potted ball leaves the cue somewhere new). What changed in the generators:
+
+- **Three or four targets or balls**, where before it was two or three.
+- **As many shots as targets or balls**, where before there was one to spare. No shot may
+  now be wasted, and a shot that clears nothing is a dead end.
+- **A certified shortest plan of at least three shots.** Each draw is searched breadth-first
+  over shots; the plan found is a shortest one, so a draw is kept only when that plan is at
+  least three shots long, which proves no two shots clear it. Billiards used best-first
+  before, whose plans certified nothing.
+- **Billiards guards pooltool's cushion model**, which asserts on a ball resting against a
+  pocket jaw with no closing speed; a shot the physics cannot resolve is not offered.
+
+Iterated BFWS over the hundred instances of each, as the benchmark runs it (the unit
+progress measures, a width bound of 1000, 200,000 expansions):
+
+| Environment | Solved | Expansions, median (max) | Seconds, median (max) | Plan lengths |
+|---|---|---|---|---|
+| slingshot | 100 of 100 | 3 (39) | 0.9 (8.6) | 3 shots for 85, 4 for 15 |
+| billiards | BILLIARDS_ROW |
+
+Both are still easy for BFWS, which is what a physics puzzle with a handful of shots is; the
+difference from before is that a plan now has to be found rather than stumbled on, since the
+two-shot levels and the spare shot are gone. Making either hard means more targets or balls
+and a longer certified plan, and the generators take those as options (`targets=`, `balls=`,
+`min_plan_length=`); the cost is the acceptance search, which is breadth-first over a
+branching factor of the shots offered, and that grows quickly.

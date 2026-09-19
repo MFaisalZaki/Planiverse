@@ -64,7 +64,9 @@ Designs and Patents Act 1988 (non-commercial research), with the sources acknowl
 This repository ships **no ROM image, no fragment of one from which a ROM could be
 reconstructed, no disassembled or decompiled original code, no original graphics and no
 audio**. The renders under [`docs/renders/`](renders/) are drawn from this repository's own
-reimplementations. The two emulator environments
+reimplementations, with two exceptions the directory's README names: the Game Boy render
+shows the test suite's own cartridge, and the Stable-Retro render shows *Airstriker*, the game
+Stable-Retro ships and redistributes. The two emulator environments
 ([`emulated/`](../planiverse/environments/emulated/)) run a cartridge the user supplies and
 supply none; the cartridge their tests run on is an original program written for this
 repository ([`tests/counter_rom.py`](../tests/counter_rom.py)), and the knowledge of any

@@ -139,6 +139,21 @@ def test_step_plays_statefully_and_render_gives_the_console_frames(counter):
     assert len(frames) == 2 and frames[0].size == (160, 144)
 
 
+def test_a_written_render_is_the_console_frames_captioned(counter, tmp_path):
+    from PIL import Image
+
+    counter.set_index(0)
+    counter.reset()
+    counter.step("right")
+    path = counter.render(tmp_path / "play.png")
+    with Image.open(path) as sheet:
+        assert sheet.height < 300, "two captioned screens in a row, not the tile grid typeset"
+        assert sheet.width > 2 * 160
+    trace = counter.simulate(["right", "right"])
+    assert counter.render_trace(trace, tmp_path / "plan.gif", actions=["right", "right"]) \
+        == tmp_path / "plan.gif"
+
+
 def test_the_same_seed_gives_the_same_instance_down_to_the_bytes(counter):
     first = counter.generate_instance(seed=7)
     state = counter.reset()[0]
@@ -280,7 +295,8 @@ def test_losing_a_life_is_a_dead_end():
     while not env.is_terminal(state) and steps < 200:
         state = env.__advance__(state, "nop")
         steps += 1
-    assert env.is_terminal(state) and state.variables["lives"] == 2
+    assert env.is_terminal(state) and state.variables["gameover"] < 9, "hit"
+    assert state.variables["lives"] == 3, "before the lives counter has moved"
     assert env.successors(state) == []
     assert not env.is_goal(state)
     env.close()
@@ -358,6 +374,35 @@ def test_step_plays_statefully_and_render_gives_the_console_frames(airstriker):
     assert state.steps == 1 and reward == 1, "one step closer to surviving"
     frames = airstriker.render()
     assert len(frames) == 2 and frames[0].shape[2] == 3
+    assert frames[1].max() > 0, "the console's picture, not the blank buffer a load leaves"
+
+
+def test_the_dead_end_wins_when_it_and_the_goal_hold_on_the_same_step(airstriker, counter):
+    airstriker.set_instance({"state": "Level1", "warmup": [], "goal": {"survive": 0},
+                             "terminal": {"variable": "score", "at_most": 0}})
+    state, _ = airstriker.reset()
+    assert airstriker.is_terminal(state) and not airstriker.is_goal(state)
+    counter.set_index(0)
+    counter.set_instance(dict(counter.instance, goal={"survive": 0},
+                              terminal={"attribute": "counter", "at_most": 0}))
+    state, _ = counter.reset()
+    assert counter.is_terminal(state) and not counter.is_goal(state)
+
+
+def test_airstriker_registers_a_hit_the_frame_it_lands(airstriker):
+    """`gameover` falls from 9 when the ship is hit; `lives` counts it twenty actions later."""
+    airstriker.set_index(0)
+    assert airstriker.instance["terminal"] == {"done": True, "variable": "gameover",
+                                               "drop": True}
+    airstriker.set_instance(dict(airstriker.instance, goal={"survive": 100}))
+    state, _ = airstriker.reset()
+    assert state.variables["gameover"] == 9 and state.variables["lives"] == 3
+    trace = airstriker.simulate(["nop"] * 100)
+    hit = next(k for k, s in enumerate(trace) if s.variables["gameover"] < 9)
+    assert trace[hit].terminal and trace[hit].variables["lives"] == 3, \
+        "the dead end lands with the hit, before the lives counter has moved"
+    assert trace[hit + 1] == trace[hit], "and the trace stops there"
+    assert not any(airstriker.is_goal(s) for s in trace)
 
 
 def test_retro_goal_specs_read_the_variables():

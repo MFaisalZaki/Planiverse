@@ -66,6 +66,12 @@ DEFAULT_GOALS = {
     # to whatever it is not dodging, so the problem is staying alive.
     "Airstriker-Genesis-v0": {"survive": 100},
 }
+DEFAULT_TERMINALS = {
+    # Airstriker's `gameover` variable sits at 9 while the ship flies and falls the frame it
+    # is hit; `lives` only counts the loss eighty frames later, after the wreck has played
+    # out, and a survival goal must not be met inside that wait.
+    "Airstriker-Genesis-v0": {"done": True, "variable": "gameover", "drop": True},
+}
 
 
 def _retro():
@@ -282,6 +288,8 @@ class RetroEnv(Environment):
     def __default_terminal__(self):
         if self._terminal_override is not None:
             return self._terminal_override
+        if self.game in DEFAULT_TERMINALS:
+            return DEFAULT_TERMINALS[self.game]
         variables = self.__env__().data.lookup_all()
         return {"done": True, "variable": "lives", "drop": True} if "lives" in variables \
             else {"done": True}
@@ -384,10 +392,11 @@ class RetroEnv(Environment):
                             "variables": dict(self.state.variables)}
 
     def is_goal(self, state):
-        return state.goal
+        return state.goal and not state.terminal
 
     def is_terminal(self, state):
-        return state.terminal and not state.goal
+        # The dead end wins: a life lost on the hundredth action is not a hundred survived.
+        return state.terminal
 
     def successors(self, state):
         if state.goal or state.terminal:
@@ -428,18 +437,34 @@ class RetroEnv(Environment):
     def get_actions(self):
         return [self.__action__(name) for name in self.actions]
 
+    def frames(self, trace):
+        """The console's frame at every state of `trace`, as `(height, width, 3)` arrays."""
+        import numpy as np
+
+        env = self.__env__()
+        frames = []
+        for state in trace:
+            self.__load__(state.snapshot)
+            # A save state holds no picture: the console draws its screen on its next frame.
+            env.em.set_button_mask(np.zeros(len(env.buttons), dtype=np.uint8), 0)
+            env.em.step()
+            frames.append(env.em.get_screen())
+        return frames
+
     def render(self, target=None, **kwargs):
         """The console's own frames for the positions `step` played through, as arrays, or
         written to `target` through `render_trace` when one is given."""
-        frames = []
-        for state in self.state_history:
-            self.__load__(state.snapshot)
-            frames.append(self.__env__().get_screen())
         if target is None:
-            return frames
+            return self.frames(self.state_history)
+        return self.render_trace(self.state_history, target, **kwargs)
+
+    def render_trace(self, trace, target, **kwargs):
+        """Write a trace to `target` as the console's frames, captioned from the states."""
         from planiverse.rendering import render_trace
 
-        return render_trace(self.state_history, target, **kwargs)
+        trace = list(trace)
+        kwargs.setdefault("frames", self.frames(trace))
+        return render_trace(trace, target, **kwargs)
 
     # ------------------------------------------------------------------ emulation
 

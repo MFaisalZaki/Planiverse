@@ -98,14 +98,18 @@ scratched()             only once the cue ball is sunk
 
 `shot(ball, cut, speed)` for each object ball still up, each cut and each speed: six shots per
 ball, each costing 1. `get_actions()` lists them for a state and `BilliardsAction.parse` reads
-one back from its name.
+one back from its name. A shot pooltool's collision model cannot resolve (its cushion model
+asserts on a ball resting against a pocket jaw with no closing speed, which the odd table
+produces) is dropped from the successors rather than raised.
 
 ## Tables
 
 The hundred tables are the generator's own draws, embedded in the module as the plain data
 `set_instance` takes with the seed each came from beside it, and the plan each was accepted on
-is in `tests/data/billiards_solutions.json`. A table has two or three object balls and the cue
-ball scattered over the cloth with no two touching, and one shot more than the balls.
+is in `tests/data/billiards_solutions.json`. A table has three or four object balls and the cue
+ball scattered over the cloth with no two touching, and exactly as many shots as balls, so none
+may be wasted; every table's shortest plan is at least three shots, which the generator's
+breadth-first search has shown by finding no shorter one.
 
 ## Generating tables
 
@@ -121,14 +125,14 @@ state, info = env.reset()                       # info["generated"] is True
 
 | Option | Default | What it does |
 |---|---|---|
-| `balls` | 2 or 3 at random | object balls on the table |
-| `shots` | `balls + 1` | shots the player gets |
-| `min_plan_length` | 2 | the plan found must be at least this long, so a table one shot clears is thrown back |
-| `search_limit` | 40 | expansions the acceptance search may spend per draw |
+| `balls` | 3 or 4 at random | object balls on the table |
+| `shots` | as many as the balls | shots the player gets |
+| `min_plan_length` | 3 | the shortest plan must be at least this long, so a table two shots clear is thrown back |
+| `search_limit` | 80 | expansions the acceptance search may spend per draw |
 | `attempts` | 30 | draws before giving up with `GenerationError` |
 
-Each draw is searched best-first over shots, fewest balls left first, and kept only when a plan
-of at least `min_plan_length` shots is found within `search_limit` expansions. The method is
+Each draw is searched breadth-first over shots and kept only when the shortest plan found
+within `search_limit` expansions is at least `min_plan_length` shots. The method is
 generate-and-test, which the procedural content generation literature calls search-based PCG
 (Togelius, Yannakakis, Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116;
 Shaker, Togelius and Nelson, *Procedural Content Generation in Games*, 2016,

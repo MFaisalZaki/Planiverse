@@ -168,6 +168,22 @@ def test_the_text_can_still_be_asked_for(tmp_path):
         render_trace([object()], tmp_path / "none.png", charts=True)
 
 
+def test_supplied_frames_stand_in_for_the_typeset_text(tmp_path):
+    import numpy as np
+    from planiverse.rendering import trace_frames
+
+    trace = ["first", "second"]
+    screens = [np.full((40, 60, 3), 200, dtype=np.uint8), Image.new("RGB", (60, 40), (10, 10, 10))]
+    frames = trace_frames(trace, frames=screens, captions=False)
+    assert [frame.size for frame in frames] == [(60, 40), (60, 40)]
+    assert frames[0].getpixel((0, 0)) == (200, 200, 200)
+    path = render_trace(trace, tmp_path / "screens.gif", frames=screens)
+    with Image.open(path) as gif:
+        assert gif.n_frames == 2
+    with pytest.raises(ValueError, match="frames for"):
+        trace_frames(trace, frames=screens[:1])
+
+
 def test_kept_indices_thin_a_trace_but_keep_its_ends():
     from planiverse.rendering import kept_indices
 

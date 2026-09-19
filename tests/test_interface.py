@@ -101,13 +101,6 @@ def game_boy():
     return env
 
 
-def artillery():
-    from planiverse.environments.artillery.environment import ArtilleryEnv
-
-    env = ArtilleryEnv()
-    env.set_index(0)
-    return env
-
 
 def tower_defence():
     from planiverse.environments.tower_defence.environment import TowerDefenceEnv
@@ -225,7 +218,6 @@ ENVIRONMENTS = {
     "network_attack": network_attack,
     "flood_transport": flood_transport,
     "slingshot": slingshot,
-    "artillery": artillery,
     "tower_defence": tower_defence,
     "fluid": fluid,
     "billiards": billiards,
@@ -300,7 +292,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
-            "flood_transport", "slingshot", "artillery", "tower_defence", "fluid", "billiards",
+            "flood_transport", "slingshot", "tower_defence", "fluid", "billiards",
             "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir",
             "game_boy", "retro"} == registered
 

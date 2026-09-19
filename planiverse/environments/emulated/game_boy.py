@@ -472,10 +472,11 @@ class GameBoyEnv(Environment):
                             "fields": dict(self.state.fields)}
 
     def is_goal(self, state):
-        return state.goal
+        return state.goal and not state.terminal
 
     def is_terminal(self, state):
-        return state.terminal and not state.goal
+        # The dead end wins: a life lost on the hundredth action is not a hundred survived.
+        return state.terminal
 
     def successors(self, state):
         if state.goal or state.terminal:
@@ -516,19 +517,29 @@ class GameBoyEnv(Environment):
     def get_actions(self):
         return [GBAction(name) for name in self.actions]
 
-    def render(self, target=None, **kwargs):
-        """The console's own frames for the positions `step` played through, as PIL images,
-        or written to `target` through `render_trace` when one is given."""
+    def frames(self, trace):
+        """The console's screen at every state of `trace`, as PIL images."""
         frames = []
-        for state in self.state_history:
+        for state in trace:
             self.__load__(state.snapshot)
             self._pyboy.tick(1, True)
             frames.append(self._pyboy.screen.image.copy())
+        return frames
+
+    def render(self, target=None, **kwargs):
+        """The console's own frames for the positions `step` played through, as PIL images,
+        or written to `target` through `render_trace` when one is given."""
         if target is None:
-            return frames
+            return self.frames(self.state_history)
+        return self.render_trace(self.state_history, target, **kwargs)
+
+    def render_trace(self, trace, target, **kwargs):
+        """Write a trace to `target` as the console's frames, captioned from the states."""
         from planiverse.rendering import render_trace
 
-        return render_trace(self.state_history, target, **kwargs)
+        trace = list(trace)
+        kwargs.setdefault("frames", self.frames(trace))
+        return render_trace(trace, target, **kwargs)
 
     # ------------------------------------------------------------------ emulation
 

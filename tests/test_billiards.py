@@ -120,9 +120,29 @@ def test_set_index_refuses_a_table_that_is_not_there():
             game.set_index(index)
 
 
+@pytest.mark.slow
 def test_a_generated_table_reproduces_from_its_seed():
+    """Table 0 is seed 9000 drawn with three balls; the draw is a breadth-first search of
+    the table, so it is seconds rather than milliseconds."""
     game = BilliardsEnv()
-    instance = game.generate_instance(seed=5000)
-    assert instance["balls"] == TABLES[0]["balls"], "table 0 is seed 5000"
-    assert game.validate(game.witness)
-    assert BilliardsEnv().generate_instance(seed=5000) == instance
+    instance = game.generate_instance(seed=9000, balls=3)
+    assert instance["balls"] == TABLES[0]["balls"], "table 0 is seed 9000"
+    assert len(game.witness) >= 3 and game.validate(game.witness)
+    assert BilliardsEnv().generate_instance(seed=9000, balls=3) == instance
+
+
+def test_a_shot_the_physics_cannot_resolve_is_not_offered(monkeypatch):
+    """pooltool's cushion model asserts on the odd geometry; such a shot is no successor."""
+    import planiverse.environments.billiards.environment as module
+
+    pt = module._pooltool()
+
+    def refuse(system, inplace=True):
+        raise AssertionError("v_n_0 < 0")
+
+    monkeypatch.setattr(pt, "simulate", refuse)
+    game = BilliardsEnv()
+    state, _ = game.reset()
+    assert strike(dict(state.balls), BilliardsAction("1", CUTS[0], SPEEDS[0])) is None
+    assert game.successors(state) == []
+    assert game.step(BilliardsAction("1", CUTS[0], SPEEDS[0]))[0] == state

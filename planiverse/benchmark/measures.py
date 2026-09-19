@@ -37,10 +37,6 @@ def slingshot(state):
     return state.targets_left
 
 
-def artillery(state):
-    """Targets still standing."""
-    return state.targets_left
-
 
 def tower_defence(state):
     """Waves still to fight; a state with no lives is pinned above any live one."""
@@ -151,7 +147,6 @@ MEASURES = {
     "lolo": lolo,
     "amazing_tater": amazing_tater,
     "slingshot": slingshot,
-    "artillery": artillery,
     "tower_defence": tower_defence,
     "fluid": fluid,
     "billiards": billiards,

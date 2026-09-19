@@ -313,23 +313,24 @@ class SlingshotEnv(Environment):
         self.witness = self.witness_expansions = None
 
     def generate_instance(self, seed=None, structures=None, targets=None, shots=None,
-                          min_plan_length=2, search_limit=400, attempts=60):
+                          min_plan_length=3, search_limit=600, attempts=60):
         """Draw a level, select it, and return it as the dict `set_instance` takes.
 
         `structures`, `targets` and `shots` are `draw_level`'s; each left unset is drawn from
-        the bundled levels' range (two to four structures, two or three targets, one shot
-        more than targets). A draw is kept only if a breadth-first search over shots finds a
-        plan within `search_limit` expansions and that plan, a shortest one, has at least
-        `min_plan_length` shots, so a level that one shot flattens is thrown back. The plan
-        is left in `witness` and what the search spent in `witness_expansions`.
+        the bundled levels' range (two to four structures, three or four targets, and as many
+        shots as targets, so no shot may be wasted). A draw is kept only if a breadth-first
+        search over shots finds a plan within `search_limit` expansions and that plan, a
+        shortest one, has at least `min_plan_length` shots: the search has then shown that no
+        shorter plan exists, so a level two shots flatten is thrown back. The plan is left in
+        `witness` and what the search spent in `witness_expansions`.
         """
         random_, _ = rng(seed)
         found = {}
 
         def draw(attempt):
             options = dict(structures=structures or random_.randint(2, 4),
-                           targets=targets or random_.randint(2, 3))
-            options["shots"] = shots or options["targets"] + 1
+                           targets=targets or random_.randint(3, 4))
+            options["shots"] = shots or options["targets"]
             return settle(draw_level(random_, **options))
 
         def accept(instance):
@@ -403,308 +404,308 @@ class SlingshotEnv(Environment):
         return lines
 
 
-#: The bundled levels: `generate_instance(seed)` for the seed beside each, embedded as the
-#: plain data `set_instance` takes, with the plan each was accepted on in
-#: `tests/data/slingshot_solutions.json`.
+#: The bundled levels: `generate_instance(seed, targets=n)` for the seed and target count
+#: beside each, embedded as the plain data `set_instance` takes, with the plan each was
+#: accepted on in `tests/data/slingshot_solutions.json`.
 LEVELS = (
-    # seed 1000; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 41.91, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.91, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 66.47, 4.48, -0.004), ('block', 'wood', 2.0, 6.0, 84.45, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.45, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 66.47, 1.99, -0.001), ('block', 'wood', 8.0, 2.0, 44.91, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.45, 7.49, -0.002), ('target', 44.91, 1.38), ('target', 67.66, 6.35), ('target', 87.45, 1.38)],
-     "shots": 4},
-    # seed 1001; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.0, 14.46, 0.008), ('block', 'stone', 2.0, 6.0, 89.4, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 60.26, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 42.07, 5.47, 0.008), ('block', 'wood', 2.0, 6.0, 69.54, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 75.54, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 42.03, 9.96, 0.007), ('block', 'wood', 4.0, 3.0, 89.41, 7.99, -0.002), ('block', 'wood', 6.0, 2.0, 42.1, 1.47, 0.006), ('block', 'wood', 8.0, 2.0, 72.54, 7.49, -0.002), ('target', 64.26, 1.38), ('target', 90.03, 10.37)],
+    # seed 9000, targets=3; 24 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 61.74, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 77.72, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 40.58, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 46.58, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 77.64, 13.45, 0.008), ('block', 'wood', 2.0, 6.0, 77.68, 5.48, 0.008), ('block', 'wood', 2.0, 6.0, 88.82, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.82, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 77.66, 9.46, -0.001), ('block', 'wood', 8.0, 2.0, 43.58, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.82, 7.49, -0.002), ('target', 43.58, 1.38), ('target', 71.39, 2.33), ('target', 91.82, 1.38)],
      "shots": 3},
-    # seed 1002; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 92.63, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 75.38, 6.96, 0.001), ('block', 'wood', 2.0, 6.0, 60.34, 17.46, 0.009), ('block', 'wood', 2.0, 6.0, 60.4, 11.47, 0.01), ('block', 'wood', 2.0, 6.0, 60.46, 5.47, 0.009), ('block', 'wood', 4.0, 3.0, 47.4, 1.99, 0.001), ('block', 'wood', 4.0, 3.0, 75.39, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 47.39, 4.49, -0.0), ('block', 'wood', 6.0, 2.0, 60.49, 1.48, 0.006), ('block', 'wood', 6.0, 2.0, 75.37, 9.46, 0.001), ('block', 'wood', 6.0, 2.0, 75.38, 4.47, 0.0), ('target', 47.5, 6.37), ('target', 55.15, 1.4), ('target', 96.63, 1.38)],
+    # seed 9001, targets=4; 10 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 87.69, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 93.59, 3.49, -0.007), ('block', 'stone', 4.0, 3.0, 43.76, 7.94, 0.005), ('block', 'stone', 6.0, 2.0, 43.8, 3.46, 0.002), ('block', 'wood', 6.0, 2.0, 43.78, 5.45, 0.004), ('block', 'wood', 6.0, 2.0, 43.81, 1.49, 0.001), ('block', 'wood', 8.0, 2.0, 90.67, 7.5, -0.0), ('target', 39.81, 1.38), ('target', 42.14, 10.32), ('target', 90.69, 1.38), ('target', 95.44, 1.38)],
      "shots": 4},
-    # seed 1003; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 43.33, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 67.18, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 86.42, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.42, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 89.42, 7.49, -0.002), ('target', 47.33, 1.38), ('target', 71.18, 1.38), ('target', 89.42, 1.38)],
-     "shots": 4},
-    # seed 1004; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 4.0, 3.0, 43.03, 7.99, 0.007), ('block', 'wood', 2.0, 6.0, 43.04, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 87.33, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.33, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 90.33, 7.49, -0.002), ('target', 41.02, 10.36), ('target', 47.04, 1.38), ('target', 90.33, 1.38)],
-     "shots": 4},
-    # seed 1005; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.22, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.22, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 67.77, 8.46, 0.003), ('block', 'wood', 2.0, 6.0, 90.89, 12.48, 0.008), ('block', 'wood', 2.0, 6.0, 90.94, 6.49, 0.007), ('block', 'wood', 4.0, 3.0, 67.79, 3.96, 0.007), ('block', 'wood', 4.0, 3.0, 90.96, 1.99, 0.004), ('block', 'wood', 6.0, 2.0, 67.8, 1.49, 0.004), ('block', 'wood', 8.0, 2.0, 45.22, 7.49, -0.002), ('target', 45.22, 1.38), ('target', 59.49, 1.33), ('target', 87.13, 4.05)],
-     "shots": 4},
-    # seed 1006; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.36, 6.48, 0.003), ('block', 'stone', 2.0, 8.0, 90.52, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 43.37, 1.98, 0.0), ('block', 'wood', 2.0, 6.0, 66.1, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 72.1, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 69.1, 7.49, -0.002), ('target', 69.1, 1.38), ('target', 94.52, 1.38)],
+    # seed 9002, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 54.21, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.21, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 86.36, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.36, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 74.63, 4.97, -0.005), ('block', 'wood', 2.0, 6.0, 42.14, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 48.14, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 74.62, 1.99, 0.0), ('block', 'wood', 4.0, 3.0, 74.66, 7.95, -0.01), ('block', 'wood', 4.0, 3.0, 74.67, 10.94, -0.011), ('block', 'wood', 8.0, 2.0, 45.14, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 57.21, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 89.36, 7.49, -0.002), ('target', 45.14, 1.38), ('target', 57.21, 1.38), ('target', 78.14, 10.83)],
      "shots": 3},
-    # seed 1007; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.2, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 72.8, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 78.8, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 87.55, 1.99, 0.0), ('block', 'stone', 6.0, 2.0, 62.5, 1.49, 0.004), ('block', 'wood', 2.0, 6.0, 62.46, 8.47, 0.008), ('block', 'wood', 4.0, 3.0, 62.49, 3.97, 0.007), ('block', 'wood', 4.0, 3.0, 87.55, 4.98, 0.0), ('block', 'wood', 6.0, 2.0, 42.21, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.8, 7.49, -0.002), ('target', 42.74, 9.37), ('target', 75.8, 1.38)],
+    # seed 9003, targets=4; 33 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 43.11, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 49.11, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 69.5, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 75.5, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 87.59, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 59.86, 9.46, 0.011), ('block', 'wood', 2.0, 6.0, 59.9, 3.48, 0.002), ('block', 'wood', 6.0, 2.0, 59.89, 7.47, 0.01), ('block', 'wood', 8.0, 2.0, 46.11, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 72.5, 7.49, -0.002), ('target', 46.11, 1.38), ('target', 56.64, 11.3), ('target', 72.5, 1.38), ('target', 91.59, 1.38)],
+     "shots": 4},
+    # seed 9004, targets=3; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 70.57, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.57, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 45.49, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 60.64, 3.96, 0.008), ('block', 'wood', 2.0, 6.0, 89.88, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 95.88, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 60.59, 8.45, 0.011), ('block', 'wood', 6.0, 2.0, 60.62, 6.45, 0.011), ('block', 'wood', 6.0, 2.0, 60.65, 1.49, 0.003), ('block', 'wood', 8.0, 2.0, 73.57, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.88, 7.49, -0.002), ('target', 49.49, 1.38), ('target', 73.57, 1.38), ('target', 92.88, 1.38)],
      "shots": 3},
-    # seed 1008; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 57.96, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 63.96, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 43.79, 4.97, -0.001), ('block', 'stone', 4.0, 3.0, 43.79, 7.96, -0.0), ('block', 'wood', 2.0, 6.0, 71.49, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 77.49, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 90.25, 6.48, -0.0), ('block', 'wood', 4.0, 3.0, 43.8, 1.99, 0.002), ('block', 'wood', 4.0, 3.0, 90.25, 1.98, -0.0), ('block', 'wood', 4.0, 3.0, 90.25, 10.98, -0.0), ('block', 'wood', 8.0, 2.0, 60.96, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 74.49, 7.49, -0.002), ('target', 43.8, 10.35), ('target', 60.96, 1.38), ('target', 90.45, 13.36)],
+    # seed 9005, targets=4; 45 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 84.24, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 90.14, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.69, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 87.15, 7.49, 0.002), ('target', 47.69, 1.38), ('target', 51.69, 1.38), ('target', 82.37, 1.38), ('target', 87.14, 1.38)],
      "shots": 4},
-    # seed 1009; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 86.24, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.24, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 44.97, 9.46, 0.009), ('block', 'wood', 2.0, 6.0, 44.93, 13.46, 0.009), ('block', 'wood', 2.0, 6.0, 45.02, 5.47, 0.01), ('block', 'wood', 4.0, 3.0, 67.05, 7.98, 0.001), ('block', 'wood', 4.0, 3.0, 67.06, 4.99, 0.001), ('block', 'wood', 4.0, 3.0, 67.07, 1.99, 0.002), ('block', 'wood', 6.0, 2.0, 45.05, 1.47, 0.006), ('block', 'wood', 8.0, 2.0, 89.24, 7.49, -0.002), ('target', 66.61, 10.37), ('target', 89.24, 1.38)],
+    # seed 9006, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 46.09, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 65.14, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 71.14, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 87.66, 4.5, -0.0), ('block', 'wood', 4.0, 3.0, 46.09, 9.99, 0.004), ('block', 'wood', 6.0, 2.0, 46.09, 7.49, 0.0), ('block', 'wood', 8.0, 2.0, 68.14, 7.49, -0.002), ('target', 44.9, 12.36), ('target', 68.14, 1.38), ('target', 91.66, 1.38)],
      "shots": 3},
-    # seed 1010; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.76, 15.45, 0.013), ('block', 'stone', 2.0, 6.0, 91.94, 6.48, 0.008), ('block', 'stone', 4.0, 3.0, 91.91, 10.98, 0.008), ('block', 'stone', 6.0, 2.0, 42.71, 19.45, 0.013), ('block', 'stone', 6.0, 2.0, 57.17, 1.49, 0.003), ('block', 'wood', 2.0, 6.0, 42.82, 9.47, 0.007), ('block', 'wood', 2.0, 6.0, 42.86, 3.48, 0.003), ('block', 'wood', 2.0, 6.0, 57.08, 14.46, 0.007), ('block', 'wood', 2.0, 6.0, 57.12, 8.46, 0.006), ('block', 'wood', 2.0, 6.0, 73.08, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.08, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 57.16, 3.96, 0.006), ('block', 'wood', 4.0, 3.0, 91.97, 1.99, 0.005), ('block', 'wood', 8.0, 2.0, 76.08, 7.49, -0.002), ('target', 39.41, 21.25), ('target', 76.08, 1.38)],
+    # seed 9007, targets=4; 17 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 46.98, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 46.99, 7.99, -0.001), ('block', 'stone', 4.0, 3.0, 91.12, 1.99, 0.004), ('block', 'wood', 2.0, 6.0, 61.57, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 67.57, 3.48, 0.0), ('block', 'wood', 2.0, 6.0, 91.1, 6.49, 0.005), ('block', 'wood', 4.0, 3.0, 91.06, 12.98, 0.007), ('block', 'wood', 6.0, 2.0, 91.08, 10.48, 0.007), ('block', 'wood', 8.0, 2.0, 64.57, 7.49, -0.002), ('target', 47.29, 10.37), ('target', 64.57, 1.38), ('target', 88.69, 15.28), ('target', 95.13, 1.38)],
+     "shots": 4},
+    # seed 9008, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 85.74, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.74, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.39, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 88.74, 7.49, -0.002), ('target', 47.39, 1.38), ('target', 51.39, 1.38), ('target', 88.74, 1.38)],
      "shots": 3},
-    # seed 1011; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 86.05, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.05, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 58.07, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 76.5, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 43.54, 6.48, 0.003), ('block', 'wood', 4.0, 3.0, 43.55, 1.98, 0.0), ('block', 'wood', 8.0, 2.0, 89.05, 7.49, -0.002), ('target', 80.5, 1.38), ('target', 89.05, 1.38)],
+    # seed 9009, targets=4; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 4.0, 3.0, 42.2, 9.97, 0.002), ('block', 'stone', 4.0, 3.0, 42.21, 4.98, 0.002), ('block', 'stone', 4.0, 3.0, 42.22, 1.99, 0.002), ('block', 'stone', 6.0, 2.0, 42.21, 7.47, 0.002), ('block', 'stone', 6.0, 2.0, 89.67, 3.48, 0.004), ('block', 'wood', 6.0, 2.0, 89.68, 1.49, 0.003), ('target', 41.47, 12.36), ('target', 46.22, 1.38), ('target', 88.34, 5.36), ('target', 93.68, 1.38)],
+     "shots": 4},
+    # seed 9010, targets=3; 17 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 87.28, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 93.18, 3.49, -0.007), ('block', 'stone', 2.0, 8.0, 45.54, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 90.26, 7.5, -0.0), ('target', 49.54, 1.38), ('target', 90.28, 1.38), ('target', 95.03, 1.38)],
      "shots": 3},
-    # seed 1012; 6 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 89.11, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 95.11, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 46.3, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 67.87, 11.47, 0.009), ('block', 'wood', 2.0, 6.0, 67.92, 3.48, 0.003), ('block', 'wood', 6.0, 2.0, 67.83, 15.47, 0.008), ('block', 'wood', 6.0, 2.0, 67.9, 7.47, 0.01), ('block', 'wood', 8.0, 2.0, 92.11, 7.49, -0.002), ('target', 50.3, 1.38), ('target', 65.69, 17.35), ('target', 92.11, 1.38)],
+    # seed 9011, targets=4; 24 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.55, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.55, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 69.76, 15.47, 0.009), ('block', 'stone', 2.0, 6.0, 69.84, 3.48, 0.001), ('block', 'stone', 2.0, 6.0, 87.68, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.68, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 69.81, 9.47, 0.007), ('block', 'wood', 6.0, 2.0, 69.73, 19.47, 0.008), ('block', 'wood', 8.0, 2.0, 42.55, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.68, 7.49, -0.002), ('target', 42.55, 1.38), ('target', 65.84, 1.38), ('target', 67.49, 21.35), ('target', 90.68, 1.38)],
      "shots": 4},
-    # seed 1013; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 40.94, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.94, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 86.61, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.61, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 67.5, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 43.94, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.61, 7.49, -0.002), ('target', 71.5, 1.38), ('target', 89.61, 1.38)],
+    # seed 9012, targets=3; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'wood', 2.0, 6.0, 39.56, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.56, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 64.27, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 70.27, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 86.35, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.35, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 42.56, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 67.27, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.35, 7.49, -0.002), ('target', 42.56, 1.38), ('target', 67.27, 1.38), ('target', 89.35, 1.38)],
      "shots": 3},
-    # seed 1014; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 65.32, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 71.32, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 45.15, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 84.52, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.52, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 45.16, 7.99, -0.002), ('block', 'wood', 8.0, 2.0, 68.32, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.52, 7.49, -0.002), ('target', 45.7, 10.37), ('target', 68.32, 1.38), ('target', 87.52, 1.38)],
+    # seed 9013, targets=4; 13 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 59.12, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 44.27, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 50.27, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 85.51, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 91.51, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 77.29, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 77.28, 4.49, -0.0), ('block', 'wood', 8.0, 2.0, 47.27, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.51, 7.49, -0.002), ('target', 47.27, 1.38), ('target', 63.12, 1.38), ('target', 77.39, 6.37), ('target', 88.51, 1.38)],
      "shots": 4},
-    # seed 1015; 17 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 91.48, 17.45, 0.006), ('block', 'stone', 2.0, 6.0, 91.51, 11.45, 0.006), ('block', 'stone', 2.0, 8.0, 57.86, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 45.11, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 45.04, 11.48, 0.008), ('block', 'wood', 2.0, 6.0, 45.09, 5.48, 0.007), ('block', 'wood', 2.0, 6.0, 74.56, 3.5, 0.001), ('block', 'wood', 2.0, 6.0, 91.56, 5.46, 0.008), ('block', 'wood', 4.0, 3.0, 74.56, 7.99, 0.001), ('block', 'wood', 6.0, 2.0, 45.0, 15.47, 0.008), ('block', 'wood', 6.0, 2.0, 91.59, 1.47, 0.007), ('target', 42.89, 17.36), ('target', 61.86, 1.38), ('target', 86.71, 1.01)],
-     "shots": 4},
-    # seed 1016; 100 expansions, 4-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 40.08, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.08, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 56.03, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.03, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 74.05, 6.48, 0.009), ('block', 'stone', 2.0, 6.0, 85.41, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.41, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 74.01, 10.97, 0.009), ('block', 'wood', 2.0, 6.0, 73.96, 15.47, 0.01), ('block', 'wood', 4.0, 3.0, 74.09, 1.98, 0.005), ('block', 'wood', 8.0, 2.0, 43.08, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 59.03, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.41, 7.49, -0.002), ('target', 43.08, 1.38), ('target', 59.03, 1.38), ('target', 88.41, 1.38)],
-     "shots": 4},
-    # seed 1017; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 66.21, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 92.11, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 43.13, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 43.12, 7.97, 0.004), ('block', 'wood', 6.0, 2.0, 43.11, 10.46, 0.0), ('target', 43.0, 12.34), ('target', 70.21, 1.38), ('target', 96.11, 1.38)],
-     "shots": 4},
-    # seed 1018; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 40.21, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.21, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 64.41, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 70.41, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 92.45, 9.48, 0.002), ('block', 'wood', 2.0, 6.0, 92.46, 3.5, -0.0), ('block', 'wood', 8.0, 2.0, 43.21, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 67.41, 7.49, -0.002), ('target', 43.21, 1.38), ('target', 67.41, 1.38)],
+    # seed 9014, targets=3; 44 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 75.66, 11.48, 0.007), ('block', 'stone', 2.0, 8.0, 89.57, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 60.68, 1.48, -0.0), ('block', 'stone', 6.0, 2.0, 75.73, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 39.41, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.41, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 75.71, 5.48, 0.007), ('block', 'wood', 4.0, 3.0, 60.68, 3.96, 0.005), ('block', 'wood', 8.0, 2.0, 42.41, 7.49, -0.002), ('target', 42.41, 1.38), ('target', 71.07, 1.11), ('target', 93.57, 1.38)],
      "shots": 3},
-    # seed 1019; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 59.94, 12.47, 0.001), ('block', 'stone', 4.0, 3.0, 44.45, 4.97, -0.003), ('block', 'stone', 4.0, 3.0, 59.96, 1.99, 0.002), ('block', 'stone', 4.0, 3.0, 89.67, 10.96, 0.004), ('block', 'stone', 4.0, 3.0, 89.69, 1.99, 0.002), ('block', 'wood', 2.0, 6.0, 44.46, 9.47, -0.003), ('block', 'wood', 2.0, 6.0, 69.61, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 75.61, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 44.45, 1.99, 0.0), ('block', 'wood', 4.0, 3.0, 59.95, 4.98, 0.002), ('block', 'wood', 4.0, 3.0, 59.95, 7.97, 0.003), ('block', 'wood', 4.0, 3.0, 89.68, 4.99, 0.003), ('block', 'wood', 4.0, 3.0, 89.68, 7.97, 0.004), ('block', 'wood', 8.0, 2.0, 72.61, 7.49, -0.002), ('target', 45.11, 13.35), ('target', 72.61, 1.38), ('target', 88.52, 13.35)],
+    # seed 9015, targets=4; 20 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 58.68, 6.49, 0.004), ('block', 'stone', 2.0, 6.0, 75.72, 3.48, 0.001), ('block', 'stone', 4.0, 3.0, 58.7, 1.99, 0.004), ('block', 'stone', 6.0, 2.0, 75.68, 11.46, 0.008), ('block', 'stone', 6.0, 2.0, 75.7, 9.47, 0.007), ('block', 'stone', 6.0, 2.0, 75.71, 7.48, 0.005), ('block', 'wood', 2.0, 6.0, 43.85, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.85, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 58.66, 12.49, 0.005), ('block', 'wood', 2.0, 6.0, 88.4, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.4, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 58.63, 16.98, 0.005), ('block', 'wood', 8.0, 2.0, 46.85, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.4, 7.49, -0.002), ('target', 46.85, 1.38), ('target', 57.31, 19.38), ('target', 73.25, 13.33), ('target', 91.4, 1.38)],
      "shots": 4},
-    # seed 1020; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 44.77, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 87.49, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.49, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 90.49, 7.49, -0.002), ('target', 48.77, 1.38), ('target', 90.49, 1.38)],
+    # seed 9016, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 87.94, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.94, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 42.1, 9.46, 0.005), ('block', 'wood', 2.0, 6.0, 42.13, 3.48, 0.002), ('block', 'wood', 4.0, 3.0, 42.09, 11.96, 0.007), ('block', 'wood', 6.0, 2.0, 42.11, 7.47, 0.003), ('block', 'wood', 8.0, 2.0, 90.94, 7.49, -0.002), ('target', 38.14, 1.38), ('target', 40.27, 14.33), ('target', 90.94, 1.38)],
      "shots": 3},
-    # seed 1021; 19 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 66.84, 5.48, 0.005), ('block', 'stone', 2.0, 6.0, 84.29, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.29, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 44.73, 4.5, -0.0), ('block', 'wood', 6.0, 2.0, 66.86, 1.48, 0.006), ('block', 'wood', 8.0, 2.0, 87.29, 7.49, -0.002), ('target', 48.73, 1.38), ('target', 62.69, 2.03), ('target', 87.29, 1.38)],
+    # seed 9017, targets=4; 22 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 40.38, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.38, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 65.97, 11.47, 0.003), ('block', 'wood', 2.0, 6.0, 65.95, 17.47, 0.003), ('block', 'wood', 2.0, 6.0, 65.99, 3.48, 0.001), ('block', 'wood', 2.0, 6.0, 89.8, 17.46, 0.009), ('block', 'wood', 2.0, 6.0, 89.86, 11.47, 0.01), ('block', 'wood', 2.0, 6.0, 89.92, 5.47, 0.009), ('block', 'wood', 6.0, 2.0, 65.98, 7.47, 0.003), ('block', 'wood', 6.0, 2.0, 89.95, 1.48, 0.006), ('block', 'wood', 8.0, 2.0, 43.38, 7.49, -0.002), ('target', 43.38, 1.38), ('target', 62.0, 1.38), ('target', 63.88, 20.29), ('target', 84.61, 1.4)],
      "shots": 4},
-    # seed 1022; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 4.0, 3.0, 91.81, 16.96, 0.006), ('block', 'wood', 2.0, 6.0, 44.58, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 50.37, 3.49, -0.008), ('block', 'wood', 2.0, 6.0, 91.85, 9.47, 0.004), ('block', 'wood', 2.0, 6.0, 91.87, 3.48, 0.002), ('block', 'wood', 4.0, 3.0, 91.83, 13.96, 0.005), ('block', 'wood', 8.0, 2.0, 47.53, 7.5, -0.001), ('target', 47.58, 1.38), ('target', 52.16, 1.38), ('target', 90.45, 19.35)],
-     "shots": 4},
-    # seed 1023; 21 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 85.65, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.65, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 66.7, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 44.84, 7.97, 0.006), ('block', 'wood', 2.0, 6.0, 44.86, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 44.83, 10.96, 0.001), ('block', 'wood', 8.0, 2.0, 88.65, 7.49, -0.002), ('target', 44.31, 13.34), ('target', 70.7, 1.38), ('target', 88.65, 1.38)],
-     "shots": 4},
-    # seed 1024; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 86.67, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.67, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 44.29, 3.49, 0.009), ('block', 'wood', 2.0, 6.0, 50.1, 3.5, -0.0), ('block', 'wood', 8.0, 2.0, 47.14, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.67, 7.49, -0.002), ('target', 42.19, 1.38), ('target', 47.1, 1.38), ('target', 89.67, 1.38)],
-     "shots": 4},
-    # seed 1025; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 4.0, 3.0, 90.81, 2.0, 0.002), ('block', 'wood', 2.0, 6.0, 39.27, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.27, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 90.81, 4.99, 0.001), ('block', 'wood', 6.0, 2.0, 90.8, 7.49, 0.001), ('block', 'wood', 8.0, 2.0, 42.27, 7.49, -0.002), ('target', 42.27, 1.38), ('target', 90.49, 9.37)],
+    # seed 9018, targets=3; 12 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 88.58, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.58, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 47.12, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 68.94, 1.48, -0.0), ('block', 'wood', 4.0, 3.0, 68.94, 3.98, 0.0), ('block', 'wood', 8.0, 2.0, 91.58, 7.49, -0.002), ('target', 51.12, 1.38), ('target', 68.79, 6.36), ('target', 91.58, 1.38)],
      "shots": 3},
-    # seed 1026; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 90.46, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 40.6, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 46.39, 3.49, -0.008), ('block', 'wood', 8.0, 2.0, 43.56, 7.5, -0.001), ('target', 43.6, 1.38), ('target', 48.18, 1.38), ('target', 94.46, 1.38)],
+    # seed 9019, targets=4; 21 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 47.32, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 85.01, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 90.8, 3.49, -0.008), ('block', 'wood', 4.0, 3.0, 67.14, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 67.13, 4.49, -0.0), ('block', 'wood', 8.0, 2.0, 87.97, 7.5, -0.001), ('target', 51.32, 1.38), ('target', 67.24, 6.37), ('target', 88.01, 1.38), ('target', 92.59, 1.38)],
      "shots": 4},
-    # seed 1027; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.16, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 49.16, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 61.43, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 76.12, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 92.36, 7.94, 0.005), ('block', 'wood', 6.0, 2.0, 92.39, 5.45, 0.005), ('block', 'wood', 6.0, 2.0, 92.41, 3.46, 0.003), ('block', 'wood', 6.0, 2.0, 92.42, 1.49, 0.001), ('block', 'wood', 8.0, 2.0, 46.16, 7.49, -0.002), ('target', 80.12, 1.38), ('target', 90.75, 10.32)],
+    # seed 9020, targets=3; 21 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 84.27, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 90.17, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 42.65, 6.97, -0.0), ('block', 'wood', 4.0, 3.0, 42.66, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 42.65, 4.48, -0.001), ('block', 'wood', 8.0, 2.0, 87.18, 7.49, 0.002), ('target', 42.73, 9.36), ('target', 82.4, 1.38), ('target', 87.17, 1.38)],
      "shots": 3},
-    # seed 1028; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 67.3, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 92.09, 3.48, 0.004), ('block', 'wood', 2.0, 6.0, 44.2, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 50.2, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 92.1, 1.49, 0.003), ('block', 'wood', 8.0, 2.0, 47.2, 7.49, -0.002), ('target', 47.2, 1.38), ('target', 71.3, 1.38), ('target', 90.76, 5.36)],
+    # seed 9021, targets=4; 48 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 69.86, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 87.95, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.95, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 40.84, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 46.84, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 69.87, 7.99, -0.002), ('block', 'wood', 8.0, 2.0, 43.84, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.95, 7.49, -0.002), ('target', 43.84, 1.38), ('target', 70.49, 10.37), ('target', 73.86, 1.38), ('target', 90.95, 1.38)],
      "shots": 4},
-    # seed 1029; 16 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 55.64, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 61.64, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 76.0, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 88.95, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 46.2, 3.98, 0.007), ('block', 'stone', 6.0, 2.0, 46.21, 1.49, 0.003), ('block', 'wood', 2.0, 6.0, 46.14, 11.47, 0.009), ('block', 'wood', 4.0, 3.0, 46.18, 6.97, 0.008), ('block', 'wood', 8.0, 2.0, 58.64, 7.49, -0.002), ('target', 58.64, 1.38), ('target', 80.0, 1.38), ('target', 92.95, 1.38)],
-     "shots": 4},
-    # seed 1030; 23 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.85, 5.47, 0.007), ('block', 'stone', 2.0, 6.0, 74.73, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 80.73, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 86.08, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.08, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 61.73, 4.5, -0.0), ('block', 'wood', 4.0, 3.0, 42.82, 9.97, 0.007), ('block', 'wood', 6.0, 2.0, 42.88, 1.48, 0.006), ('block', 'wood', 8.0, 2.0, 77.73, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.08, 7.49, -0.002), ('target', 40.8, 12.34), ('target', 65.73, 1.38), ('target', 89.08, 1.38)],
-     "shots": 4},
-    # seed 1031; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 44.81, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.81, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 54.28, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.28, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 74.79, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 89.64, 13.47, 0.01), ('block', 'wood', 2.0, 6.0, 89.68, 9.47, 0.01), ('block', 'wood', 2.0, 6.0, 89.72, 3.48, 0.002), ('block', 'wood', 8.0, 2.0, 47.81, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 57.28, 7.49, -0.002), ('target', 57.28, 1.38), ('target', 86.95, 15.33)],
+    # seed 9022, targets=3; 20 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.49, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.49, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 88.05, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.05, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 74.05, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 61.08, 1.49, 0.004), ('block', 'wood', 6.0, 2.0, 61.08, 3.49, 0.004), ('block', 'wood', 8.0, 2.0, 44.49, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.05, 7.49, -0.002), ('target', 44.49, 1.38), ('target', 78.05, 1.38), ('target', 91.05, 1.38)],
      "shots": 3},
-    # seed 1032; 24 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 54.24, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.24, 3.5, -0.0), ('block', 'stone', 2.0, 8.0, 89.75, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 42.4, 11.49, 0.008), ('block', 'wood', 2.0, 6.0, 42.43, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 73.93, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.93, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 42.43, 7.49, 0.004), ('block', 'wood', 8.0, 2.0, 57.24, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 76.93, 7.49, -0.002), ('target', 57.24, 1.38), ('target', 76.93, 1.38), ('target', 93.75, 1.38)],
+    # seed 9023, targets=4; 23 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 85.86, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.86, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 42.47, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 61.32, 11.48, 0.01), ('block', 'wood', 2.0, 6.0, 61.35, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 74.14, 3.5, 0.0), ('block', 'wood', 6.0, 2.0, 61.35, 7.49, 0.005), ('block', 'wood', 6.0, 2.0, 74.14, 7.49, -0.0), ('block', 'wood', 8.0, 2.0, 88.86, 7.49, -0.002), ('target', 46.47, 1.38), ('target', 52.56, 1.36), ('target', 74.23, 9.37), ('target', 88.86, 1.38)],
      "shots": 4},
-    # seed 1033; 34 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 57.83, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 63.83, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 46.49, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 69.49, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 75.49, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 86.77, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.77, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 60.83, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 72.49, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.77, 7.49, -0.002), ('target', 60.83, 1.38), ('target', 72.49, 1.38), ('target', 89.77, 1.38)],
-     "shots": 4},
-    # seed 1034; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 45.9, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 86.76, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.76, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 89.76, 7.49, -0.002), ('target', 49.9, 1.38), ('target', 89.76, 1.38)],
+    # seed 9024, targets=3; 11 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 75.59, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 59.19, 4.98, -0.001), ('block', 'wood', 2.0, 6.0, 47.99, 6.48, -0.0), ('block', 'wood', 2.0, 6.0, 84.11, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.11, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 47.99, 1.98, -0.0), ('block', 'wood', 4.0, 3.0, 47.99, 10.98, -0.0), ('block', 'wood', 4.0, 3.0, 59.21, 1.99, 0.002), ('block', 'wood', 8.0, 2.0, 87.11, 7.49, -0.002), ('target', 48.19, 13.36), ('target', 59.46, 7.37), ('target', 87.11, 1.38)],
      "shots": 3},
-    # seed 1035; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 72.04, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 58.17, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 64.17, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 85.82, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 91.82, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 42.84, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 42.83, 4.49, -0.0), ('block', 'wood', 8.0, 2.0, 61.17, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.82, 7.49, -0.002), ('target', 42.94, 6.37), ('target', 76.04, 1.38), ('target', 88.82, 1.38)],
+    # seed 9025, targets=4; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 76.98, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 86.51, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.51, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 59.17, 1.98, -0.0), ('block', 'stone', 6.0, 2.0, 76.97, 7.48, 0.002), ('block', 'wood', 2.0, 6.0, 43.54, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.54, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 59.18, 6.48, -0.001), ('block', 'wood', 8.0, 2.0, 46.54, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.51, 7.49, -0.002), ('target', 46.54, 1.38), ('target', 59.47, 10.37), ('target', 76.48, 9.36), ('target', 89.51, 1.38)],
      "shots": 4},
-    # seed 1036; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 73.97, 9.45, -0.003), ('block', 'stone', 4.0, 3.0, 57.15, 2.0, 0.002), ('block', 'stone', 4.0, 3.0, 87.56, 1.99, 0.0), ('block', 'stone', 6.0, 2.0, 73.98, 13.44, -0.004), ('block', 'wood', 2.0, 6.0, 39.81, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.81, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 57.15, 4.99, 0.001), ('block', 'wood', 4.0, 3.0, 73.94, 1.99, 0.002), ('block', 'wood', 4.0, 3.0, 73.95, 4.95, -0.003), ('block', 'wood', 6.0, 2.0, 57.14, 7.49, 0.001), ('block', 'wood', 6.0, 2.0, 87.56, 4.48, 0.0), ('block', 'wood', 8.0, 2.0, 42.81, 7.49, -0.002), ('target', 42.81, 1.38), ('target', 56.83, 9.37), ('target', 74.35, 15.33)],
-     "shots": 4},
-    # seed 1037; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 46.68, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 86.02, 1.43, 1.578), ('target', 50.68, 1.38), ('target', 92.91, 1.3), ('target', 94.69, 1.38)],
-     "shots": 4},
-    # seed 1038; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 44.46, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 62.99, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 88.02, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 73.46, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.46, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 76.46, 7.49, -0.002), ('target', 76.46, 1.38), ('target', 92.02, 1.38)],
+    # seed 9026, targets=3; 21 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 64.14, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 70.14, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 87.77, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 42.48, 4.98, -0.001), ('block', 'stone', 4.0, 3.0, 42.49, 1.99, 0.003), ('block', 'wood', 2.0, 6.0, 42.49, 9.48, -0.002), ('block', 'wood', 4.0, 3.0, 42.5, 13.97, -0.003), ('block', 'wood', 8.0, 2.0, 67.14, 7.49, -0.002), ('target', 43.08, 16.37), ('target', 67.14, 1.38), ('target', 91.77, 1.38)],
      "shots": 3},
-    # seed 1039; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 45.17, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 67.28, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 89.36, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 89.36, 5.48, 0.001), ('target', 49.17, 1.38), ('target', 71.28, 1.38), ('target', 89.17, 9.36)],
+    # seed 9027, targets=4; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 73.82, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 79.82, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 86.84, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.84, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.09, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 57.14, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 76.82, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.84, 7.49, -0.002), ('target', 47.09, 1.38), ('target', 61.14, 1.38), ('target', 76.82, 1.38), ('target', 89.84, 1.38)],
      "shots": 4},
-    # seed 1040; 22 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 88.27, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.27, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 70.11, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 46.24, 4.98, -0.001), ('block', 'stone', 4.0, 3.0, 46.25, 1.99, 0.003), ('block', 'stone', 4.0, 3.0, 46.25, 13.97, -0.002), ('block', 'wood', 2.0, 6.0, 46.25, 9.47, -0.001), ('block', 'wood', 8.0, 2.0, 91.27, 7.49, -0.002), ('target', 46.62, 16.36), ('target', 74.11, 1.38), ('target', 91.27, 1.38)],
-     "shots": 4},
-    # seed 1041; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 43.66, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 58.3, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 72.13, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.13, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 89.39, 8.96, 0.002), ('block', 'wood', 4.0, 3.0, 89.41, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 89.4, 6.47, 0.001), ('block', 'wood', 6.0, 2.0, 89.41, 4.48, 0.0), ('block', 'wood', 8.0, 2.0, 75.13, 7.49, -0.002), ('target', 75.13, 1.38), ('target', 88.82, 11.35)],
+    # seed 9028, targets=3; 12 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 88.22, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 94.12, 3.49, -0.007), ('block', 'stone', 2.0, 8.0, 47.13, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 91.2, 7.5, -0.0), ('target', 51.13, 1.38), ('target', 91.22, 1.38), ('target', 95.97, 1.38)],
      "shots": 3},
-    # seed 1042; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 41.13, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.13, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 86.94, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.94, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.13, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.94, 7.49, -0.002), ('target', 44.13, 1.38), ('target', 89.94, 1.38)],
+    # seed 9029, targets=4; 13 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 92.96, 5.47, 0.008), ('block', 'stone', 6.0, 2.0, 47.79, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 47.79, 5.48, 0.001), ('block', 'wood', 2.0, 6.0, 92.91, 11.47, 0.009), ('block', 'wood', 6.0, 2.0, 93.0, 1.48, 0.006), ('target', 43.79, 1.38), ('target', 47.6, 9.36), ('target', 87.49, 1.27), ('target', 97.0, 1.38)],
+     "shots": 4},
+    # seed 9030, targets=3; 40 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.48, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.48, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 72.23, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 78.23, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 88.8, 4.48, -0.004), ('block', 'wood', 2.0, 6.0, 57.09, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 63.09, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 88.8, 1.99, -0.002), ('block', 'wood', 8.0, 2.0, 47.48, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 60.09, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.23, 7.49, -0.002), ('target', 47.48, 1.38), ('target', 60.09, 1.38), ('target', 75.23, 1.38)],
      "shots": 3},
-    # seed 1043; 67 expansions, 4-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 55.39, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 61.39, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 76.59, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 43.93, 3.48, 0.002), ('block', 'wood', 2.0, 6.0, 86.56, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.56, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 43.88, 11.46, 0.009), ('block', 'wood', 6.0, 2.0, 43.9, 9.47, 0.008), ('block', 'wood', 6.0, 2.0, 43.92, 7.47, 0.006), ('block', 'wood', 8.0, 2.0, 58.39, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.56, 7.49, -0.002), ('target', 41.25, 13.32), ('target', 58.39, 1.38), ('target', 89.56, 1.38)],
+    # seed 9031, targets=4; 27 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.64, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.64, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 58.34, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 72.42, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.42, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 87.07, 1.49, 0.004), ('block', 'wood', 6.0, 2.0, 87.07, 3.49, 0.004), ('block', 'wood', 8.0, 2.0, 47.64, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.42, 7.49, -0.002), ('target', 47.64, 1.38), ('target', 62.34, 1.38), ('target', 75.42, 1.38), ('target', 85.8, 5.37)],
      "shots": 4},
-    # seed 1044; 8 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.75, 11.47, 0.009), ('block', 'stone', 2.0, 6.0, 56.73, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.73, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 73.95, 9.46, -0.003), ('block', 'wood', 2.0, 6.0, 42.81, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 73.94, 1.99, 0.001), ('block', 'wood', 4.0, 3.0, 73.94, 4.97, -0.001), ('block', 'wood', 4.0, 3.0, 89.31, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 42.79, 7.47, 0.01), ('block', 'wood', 6.0, 2.0, 89.3, 4.49, -0.0), ('block', 'wood', 8.0, 2.0, 59.73, 7.5, -0.0), ('target', 59.73, 1.38), ('target', 89.41, 6.37)],
+    # seed 9032, targets=3; 11 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 86.56, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.56, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 44.67, 1.99, 0.0), ('block', 'wood', 4.0, 3.0, 44.67, 4.98, 0.001), ('block', 'wood', 8.0, 2.0, 89.56, 7.49, -0.002), ('target', 44.24, 7.36), ('target', 48.67, 1.38), ('target', 89.56, 1.38)],
      "shots": 3},
-    # seed 1045; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 56.31, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.31, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 75.83, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 87.0, 4.5, -0.0), ('block', 'wood', 4.0, 3.0, 45.58, 4.99, -0.001), ('block', 'wood', 4.0, 3.0, 45.59, 1.99, 0.001), ('block', 'wood', 8.0, 2.0, 59.31, 7.49, -0.002), ('target', 59.31, 1.38), ('target', 79.83, 1.38)],
+    # seed 9033, targets=4; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.27, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 48.17, 3.49, -0.007), ('block', 'stone', 2.0, 8.0, 88.76, 1.43, 1.578), ('block', 'wood', 8.0, 2.0, 45.25, 7.5, -0.0), ('target', 45.27, 1.38), ('target', 50.02, 1.38), ('target', 95.65, 1.3), ('target', 97.43, 1.38)],
+     "shots": 4},
+    # seed 9034, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 88.75, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.75, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 46.18, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 65.15, 3.48, 0.002), ('block', 'wood', 4.0, 3.0, 65.12, 9.97, 0.007), ('block', 'wood', 6.0, 2.0, 65.14, 7.47, 0.006), ('block', 'wood', 8.0, 2.0, 91.75, 7.49, -0.002), ('target', 50.18, 1.38), ('target', 63.18, 12.34), ('target', 91.75, 1.38)],
      "shots": 3},
-    # seed 1046; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 41.11, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.11, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 67.54, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 90.52, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 44.11, 7.49, -0.002), ('target', 44.11, 1.38), ('target', 71.54, 1.38)],
+    # seed 9035, targets=4; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 54.38, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.38, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 75.67, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 89.45, 11.46, 0.01), ('block', 'stone', 2.0, 6.0, 89.51, 5.47, 0.01), ('block', 'stone', 2.0, 8.0, 42.4, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 75.64, 12.47, 0.006), ('block', 'wood', 4.0, 3.0, 75.66, 7.98, 0.001), ('block', 'wood', 6.0, 2.0, 89.54, 1.47, 0.006), ('block', 'wood', 8.0, 2.0, 57.38, 7.49, -0.002), ('target', 46.4, 1.38), ('target', 57.38, 1.38), ('target', 71.98, 4.19), ('target', 83.29, 1.29)],
+     "shots": 4},
+    # seed 9036, targets=3; 29 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 59.37, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.37, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 45.34, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 76.01, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 87.1, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 62.37, 7.49, -0.002), ('target', 49.34, 1.38), ('target', 62.37, 1.38), ('target', 91.1, 1.38)],
      "shots": 3},
-    # seed 1047; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 89.42, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 44.25, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 89.4, 15.49, 0.005), ('block', 'wood', 2.0, 6.0, 89.42, 9.49, 0.002), ('target', 48.25, 1.38), ('target', 87.21, 17.88), ('target', 93.42, 1.38)],
+    # seed 9037, targets=4; 140 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.14, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 44.14, 9.49, 0.003), ('block', 'stone', 2.0, 6.0, 85.2, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.2, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 44.12, 15.49, 0.002), ('block', 'wood', 2.0, 6.0, 64.62, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 70.62, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 67.62, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.2, 7.49, -0.002), ('target', 40.14, 1.38), ('target', 43.36, 19.39), ('target', 67.62, 1.38), ('target', 88.2, 1.38)],
      "shots": 4},
-    # seed 1048; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.03, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 49.03, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 84.61, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 90.4, 3.49, -0.008), ('block', 'wood', 8.0, 2.0, 46.03, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.57, 7.5, -0.001), ('target', 46.03, 1.38), ('target', 87.61, 1.38), ('target', 92.19, 1.38)],
-     "shots": 4},
-    # seed 1049; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 69.2, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 92.71, 4.5, -0.0), ('block', 'wood', 4.0, 3.0, 44.98, 5.95, -0.006), ('block', 'wood', 6.0, 2.0, 44.98, 3.47, 0.001), ('block', 'wood', 6.0, 2.0, 44.99, 1.49, 0.003), ('target', 46.85, 8.33), ('target', 73.2, 1.38), ('target', 96.71, 1.38)],
-     "shots": 4},
-    # seed 1050; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 69.4, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 75.4, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 44.87, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 62.35, 7.97, 0.002), ('block', 'stone', 6.0, 2.0, 91.54, 3.48, 0.004), ('block', 'wood', 4.0, 3.0, 62.35, 4.98, 0.0), ('block', 'wood', 4.0, 3.0, 62.36, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 91.54, 5.48, 0.005), ('block', 'wood', 6.0, 2.0, 91.55, 1.49, 0.003), ('block', 'wood', 8.0, 2.0, 72.4, 7.49, -0.002), ('target', 48.87, 1.38), ('target', 61.74, 10.35), ('target', 72.4, 1.38)],
-     "shots": 4},
-    # seed 1051; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 91.12, 6.48, 0.002), ('block', 'wood', 2.0, 6.0, 43.56, 11.48, 0.01), ('block', 'wood', 2.0, 6.0, 43.59, 3.5, -0.0), ('block', 'wood', 4.0, 3.0, 91.12, 1.99, 0.0), ('block', 'wood', 6.0, 2.0, 43.59, 7.49, 0.005), ('block', 'wood', 6.0, 2.0, 91.11, 10.48, 0.004), ('target', 34.8, 1.36), ('target', 90.17, 12.36)],
+    # seed 9038, targets=3; 28 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 40.29, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.29, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 92.63, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 63.11, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 69.11, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 43.29, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 66.11, 7.49, -0.002), ('target', 43.29, 1.38), ('target', 66.11, 1.38), ('target', 96.63, 1.38)],
      "shots": 3},
-    # seed 1052; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 43.88, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 86.73, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.73, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 89.73, 7.49, -0.002), ('target', 47.88, 1.38), ('target', 89.73, 1.38)],
+    # seed 9039, targets=4; 103 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.1, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.1, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 54.96, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.96, 3.5, -0.0), ('block', 'stone', 2.0, 8.0, 90.91, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 73.82, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.82, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 45.1, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 57.96, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 76.82, 7.49, -0.002), ('target', 45.1, 1.38), ('target', 57.96, 1.38), ('target', 76.82, 1.38), ('target', 94.91, 1.38)],
+     "shots": 4},
+    # seed 9040, targets=3; 20 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 70.66, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.66, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 42.19, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 62.36, 3.96, 0.008), ('block', 'stone', 6.0, 2.0, 62.37, 1.49, 0.004), ('block', 'wood', 2.0, 6.0, 84.19, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.19, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 73.66, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.19, 7.49, -0.002), ('target', 46.19, 1.38), ('target', 73.66, 1.38), ('target', 87.19, 1.38)],
      "shots": 3},
-    # seed 1053; 11 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 88.61, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.61, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 47.09, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 91.61, 7.49, -0.002), ('target', 51.09, 1.38), ('target', 91.61, 1.38)],
+    # seed 9041, targets=4; 11 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 85.53, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 91.43, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 43.69, 9.49, 0.004), ('block', 'wood', 2.0, 6.0, 43.7, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 43.67, 13.48, 0.011), ('block', 'wood', 8.0, 2.0, 88.44, 7.49, 0.002), ('target', 39.65, 14.4), ('target', 39.7, 1.38), ('target', 83.66, 1.38), ('target', 88.43, 1.38)],
+     "shots": 4},
+    # seed 9042, targets=3; 13 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 85.37, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.37, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.75, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 64.61, 1.99, 0.004), ('block', 'wood', 2.0, 6.0, 64.56, 14.48, 0.004), ('block', 'wood', 2.0, 6.0, 64.59, 6.49, 0.004), ('block', 'wood', 6.0, 2.0, 64.57, 10.48, 0.004), ('block', 'wood', 8.0, 2.0, 88.37, 7.49, -0.002), ('target', 47.75, 1.38), ('target', 63.06, 18.22), ('target', 88.37, 1.38)],
      "shots": 3},
-    # seed 1054; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 44.41, 5.48, 0.005), ('block', 'stone', 2.0, 6.0, 87.6, 6.48, 0.002), ('block', 'wood', 2.0, 6.0, 62.15, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 68.15, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 87.6, 1.99, 0.0), ('block', 'wood', 6.0, 2.0, 44.43, 1.48, 0.006), ('block', 'wood', 6.0, 2.0, 87.59, 10.48, 0.004), ('block', 'wood', 8.0, 2.0, 65.15, 7.49, -0.002), ('target', 40.26, 2.03), ('target', 65.15, 1.38), ('target', 86.65, 12.36)],
+    # seed 9043, targets=4; 24 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.02, 15.47, 0.009), ('block', 'stone', 2.0, 6.0, 44.07, 9.48, 0.006), ('block', 'stone', 2.0, 6.0, 44.09, 3.48, 0.001), ('block', 'stone', 2.0, 6.0, 85.57, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 91.47, 3.49, -0.007), ('block', 'wood', 6.0, 2.0, 43.98, 19.47, 0.009), ('block', 'wood', 8.0, 2.0, 88.55, 7.5, -0.0), ('target', 41.62, 21.35), ('target', 48.09, 1.38), ('target', 88.57, 1.38), ('target', 93.32, 1.38)],
      "shots": 4},
-    # seed 1055; 6 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 44.59, 9.48, 0.001), ('block', 'stone', 2.0, 6.0, 59.93, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.93, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 86.19, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.19, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 44.6, 1.99, 0.002), ('block', 'stone', 6.0, 2.0, 76.66, 8.45, 0.003), ('block', 'stone', 6.0, 2.0, 76.67, 4.47, 0.0), ('block', 'wood', 4.0, 3.0, 44.59, 4.98, 0.0), ('block', 'wood', 4.0, 3.0, 76.68, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 76.67, 6.46, 0.002), ('block', 'wood', 8.0, 2.0, 62.93, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.19, 7.49, -0.002), ('target', 75.79, 10.34), ('target', 89.19, 1.38)],
+    # seed 9044, targets=3; 22 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 47.68, 11.47, 0.004), ('block', 'stone', 2.0, 6.0, 76.19, 6.48, -0.0), ('block', 'stone', 4.0, 3.0, 58.06, 12.96, -0.0), ('block', 'wood', 2.0, 6.0, 47.72, 3.49, 0.006), ('block', 'wood', 2.0, 6.0, 58.06, 3.48, 0.001), ('block', 'wood', 2.0, 6.0, 86.36, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.36, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 58.06, 7.98, -0.001), ('block', 'wood', 4.0, 3.0, 76.2, 1.98, -0.002), ('block', 'wood', 6.0, 2.0, 47.71, 7.47, 0.007), ('block', 'wood', 6.0, 2.0, 58.06, 10.47, -0.001), ('block', 'wood', 8.0, 2.0, 89.36, 7.49, -0.002), ('target', 37.68, 1.29), ('target', 58.21, 15.35), ('target', 89.36, 1.38)],
      "shots": 3},
-    # seed 1056; 6 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 42.4, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 89.59, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 61.55, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 67.55, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 64.55, 7.49, -0.002), ('target', 46.4, 1.38), ('target', 64.55, 1.38), ('target', 93.59, 1.38)],
+    # seed 9045, targets=4; 21 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 74.95, 3.48, 0.001), ('block', 'stone', 2.0, 8.0, 87.47, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 74.92, 19.97, 0.0), ('block', 'wood', 2.0, 6.0, 42.08, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 48.08, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 56.46, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 62.46, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 74.92, 15.47, 0.002), ('block', 'wood', 2.0, 6.0, 74.94, 9.48, 0.003), ('block', 'wood', 8.0, 2.0, 45.08, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 59.46, 7.49, -0.002), ('target', 45.08, 1.38), ('target', 59.46, 1.38), ('target', 75.08, 22.37), ('target', 91.47, 1.38)],
      "shots": 4},
-    # seed 1057; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 44.06, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 69.72, 1.99, 0.0), ('block', 'wood', 2.0, 6.0, 88.93, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.93, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 69.72, 4.48, 0.001), ('block', 'wood', 8.0, 2.0, 91.93, 7.49, -0.002), ('target', 48.06, 1.38), ('target', 69.32, 6.37), ('target', 91.93, 1.38)],
-     "shots": 4},
-    # seed 1058; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 87.35, 9.48, 0.006), ('block', 'stone', 2.0, 8.0, 69.78, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 43.2, 1.99, 0.004), ('block', 'wood', 2.0, 6.0, 43.07, 18.48, 0.009), ('block', 'wood', 2.0, 6.0, 43.13, 12.48, 0.009), ('block', 'wood', 2.0, 6.0, 43.18, 6.49, 0.006), ('block', 'wood', 2.0, 6.0, 87.38, 3.48, 0.003), ('block', 'wood', 6.0, 2.0, 87.33, 13.47, 0.007), ('target', 38.15, 1.38), ('target', 73.78, 1.38)],
+    # seed 9046, targets=3; 29 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 59.08, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.08, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 87.37, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.37, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 44.13, 4.98, -0.001), ('block', 'stone', 6.0, 2.0, 77.95, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 77.82, 17.47, 0.008), ('block', 'wood', 2.0, 6.0, 77.87, 11.47, 0.008), ('block', 'wood', 2.0, 6.0, 77.92, 5.48, 0.007), ('block', 'wood', 4.0, 3.0, 44.15, 1.99, 0.002), ('block', 'wood', 8.0, 2.0, 62.08, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.37, 7.49, -0.002), ('target', 44.4, 7.37), ('target', 73.32, 1.19), ('target', 90.37, 1.38)],
      "shots": 3},
-    # seed 1059; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 39.53, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.53, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 92.85, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 42.53, 7.49, -0.002), ('target', 42.53, 1.38), ('target', 96.85, 1.38)],
+    # seed 9047, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.68, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.68, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 62.29, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 87.18, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 72.96, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.96, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 42.68, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.96, 7.49, -0.002), ('target', 42.68, 1.38), ('target', 66.29, 1.38), ('target', 75.96, 1.38), ('target', 91.18, 1.38)],
+     "shots": 4},
+    # seed 9048, targets=3; 16 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 46.05, 9.47, 0.01), ('block', 'stone', 2.0, 6.0, 63.41, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 69.41, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 89.48, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 46.0, 13.97, 0.01), ('block', 'wood', 2.0, 6.0, 46.09, 3.48, 0.003), ('block', 'wood', 8.0, 2.0, 66.41, 7.49, -0.002), ('target', 41.8, 9.2), ('target', 66.41, 1.38), ('target', 93.48, 1.38)],
      "shots": 3},
-    # seed 1060; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 47.86, 5.47, 0.008), ('block', 'stone', 2.0, 6.0, 61.21, 9.47, 0.01), ('block', 'stone', 2.0, 6.0, 86.24, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.24, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 77.58, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 61.16, 13.97, 0.01), ('block', 'wood', 2.0, 6.0, 61.25, 3.48, 0.003), ('block', 'wood', 6.0, 2.0, 47.89, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 89.24, 7.49, -0.002), ('target', 56.96, 9.2), ('target', 81.58, 1.38), ('target', 89.24, 1.38)],
+    # seed 9049, targets=4; 14 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.01, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.01, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 74.21, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 60.76, 3.96, 0.007), ('block', 'stone', 4.0, 3.0, 92.83, 1.98, -0.002), ('block', 'wood', 2.0, 6.0, 92.81, 12.47, 0.007), ('block', 'wood', 2.0, 6.0, 92.83, 6.48, -0.0), ('block', 'wood', 4.0, 3.0, 60.71, 9.95, 0.005), ('block', 'wood', 4.0, 3.0, 60.74, 6.95, 0.004), ('block', 'wood', 6.0, 2.0, 60.78, 1.48, 0.003), ('block', 'wood', 8.0, 2.0, 45.01, 7.49, -0.002), ('target', 45.01, 1.38), ('target', 59.12, 12.33), ('target', 78.21, 1.38), ('target', 88.3, 1.16)],
      "shots": 4},
-    # seed 1061; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 47.8, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 60.94, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 92.64, 10.95, 0.004), ('block', 'wood', 2.0, 6.0, 73.64, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.64, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 92.65, 7.96, 0.003), ('block', 'wood', 4.0, 3.0, 92.66, 4.98, 0.002), ('block', 'wood', 4.0, 3.0, 92.67, 1.99, 0.003), ('block', 'wood', 8.0, 2.0, 76.64, 7.49, -0.002), ('target', 64.94, 1.38), ('target', 76.64, 1.38)],
+    # seed 9500, targets=4; 29 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 74.8, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 80.8, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 44.72, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 50.72, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 57.58, 9.46, -0.009), ('block', 'wood', 2.0, 6.0, 90.74, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 57.52, 1.99, -0.0), ('block', 'wood', 4.0, 3.0, 57.54, 4.96, -0.007), ('block', 'wood', 4.0, 3.0, 57.62, 13.95, -0.01), ('block', 'wood', 4.0, 3.0, 90.73, 7.97, 0.004), ('block', 'wood', 6.0, 2.0, 90.72, 10.46, 0.0), ('block', 'wood', 8.0, 2.0, 47.72, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 77.8, 7.49, -0.002), ('target', 47.72, 1.38), ('target', 59.58, 16.33), ('target', 77.8, 1.38), ('target', 90.61, 12.34)],
+     "shots": 4},
+    # seed 9501, targets=3; 20 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 45.33, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 85.44, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 91.44, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 68.6, 4.98, 0.002), ('block', 'wood', 4.0, 3.0, 68.61, 1.99, 0.002), ('block', 'wood', 6.0, 2.0, 68.59, 7.47, 0.002), ('block', 'wood', 6.0, 2.0, 68.59, 9.47, 0.003), ('block', 'wood', 8.0, 2.0, 88.44, 7.49, -0.002), ('target', 49.33, 1.38), ('target', 67.69, 11.35), ('target', 88.44, 1.38)],
      "shots": 3},
-    # seed 1062; 7 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 86.38, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.38, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 44.03, 13.45, 0.007), ('block', 'wood', 2.0, 6.0, 44.08, 5.47, 0.009), ('block', 'wood', 6.0, 2.0, 44.06, 9.46, 0.004), ('block', 'wood', 6.0, 2.0, 44.11, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 89.38, 7.49, -0.002), ('target', 37.3, 1.11), ('target', 89.38, 1.38)],
+    # seed 9502, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.95, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.95, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 70.69, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.69, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 60.97, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 60.97, 5.48, 0.001), ('block', 'wood', 2.0, 6.0, 89.68, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 95.68, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.95, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 73.69, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.68, 7.49, -0.002), ('target', 44.95, 1.38), ('target', 60.78, 9.36), ('target', 73.69, 1.38), ('target', 92.68, 1.38)],
+     "shots": 4},
+    # seed 9503, targets=3; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 88.0, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.0, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 58.04, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 72.7, 4.47, -0.005), ('block', 'wood', 2.0, 6.0, 41.91, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.91, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 72.72, 8.46, -0.006), ('block', 'wood', 4.0, 3.0, 72.7, 1.99, -0.001), ('block', 'wood', 6.0, 2.0, 72.75, 12.46, -0.007), ('block', 'wood', 8.0, 2.0, 44.91, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.0, 7.49, -0.002), ('target', 44.91, 1.38), ('target', 62.04, 1.38), ('target', 91.0, 1.38)],
      "shots": 3},
-    # seed 1063; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 55.52, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 61.52, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.32, 5.48, 0.004), ('block', 'stone', 4.0, 3.0, 46.64, 6.95, 0.003), ('block', 'stone', 6.0, 2.0, 77.4, 1.49, 0.003), ('block', 'stone', 6.0, 2.0, 90.34, 1.49, 0.004), ('block', 'wood', 2.0, 6.0, 77.29, 14.45, 0.01), ('block', 'wood', 2.0, 6.0, 77.35, 8.46, 0.009), ('block', 'wood', 4.0, 3.0, 46.67, 3.96, 0.006), ('block', 'wood', 4.0, 3.0, 77.38, 3.96, 0.008), ('block', 'wood', 6.0, 2.0, 46.68, 1.49, 0.003), ('block', 'wood', 8.0, 2.0, 58.52, 7.5, -0.0), ('target', 45.7, 9.33), ('target', 58.52, 1.38)],
+    # seed 9504, targets=4; 16 expansions, 3-shot plan
+    {"bodies": [('block', 'wood', 2.0, 6.0, 41.93, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 47.72, 3.49, -0.008), ('block', 'wood', 2.0, 6.0, 85.95, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 91.74, 3.49, -0.008), ('block', 'wood', 8.0, 2.0, 44.88, 7.5, -0.001), ('block', 'wood', 8.0, 2.0, 88.91, 7.5, -0.001), ('target', 44.93, 1.38), ('target', 49.51, 1.38), ('target', 88.95, 1.38), ('target', 93.53, 1.38)],
+     "shots": 4},
+    # seed 9505, targets=3; 6 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 4.0, 3.0, 45.45, 7.94, 0.005), ('block', 'stone', 6.0, 2.0, 45.49, 3.46, 0.002), ('block', 'stone', 6.0, 2.0, 91.33, 1.49, 0.004), ('block', 'wood', 6.0, 2.0, 45.47, 5.45, 0.004), ('block', 'wood', 6.0, 2.0, 45.5, 1.49, 0.001), ('block', 'wood', 6.0, 2.0, 91.33, 3.49, 0.004), ('target', 43.83, 10.32), ('target', 49.5, 1.38), ('target', 90.11, 5.37)],
      "shots": 3},
-    # seed 1064; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 88.8, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 94.7, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 47.6, 1.48, -0.0), ('block', 'wood', 4.0, 3.0, 47.6, 3.98, 0.0), ('block', 'wood', 8.0, 2.0, 91.71, 7.49, 0.002), ('target', 47.45, 6.36), ('target', 86.93, 1.38), ('target', 91.7, 1.38)],
+    # seed 9506, targets=4; 69 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 56.44, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.44, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 71.89, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 77.89, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 91.16, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 43.36, 2.0, 0.002), ('block', 'wood', 4.0, 3.0, 43.36, 4.99, 0.001), ('block', 'wood', 6.0, 2.0, 43.35, 7.49, 0.001), ('block', 'wood', 8.0, 2.0, 59.44, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 74.89, 7.49, -0.002), ('target', 43.04, 9.37), ('target', 59.44, 1.38), ('target', 74.89, 1.38), ('target', 95.16, 1.38)],
      "shots": 4},
-    # seed 1065; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 6.0, 2.0, 92.65, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 43.92, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.92, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 92.65, 3.98, 0.0), ('block', 'wood', 8.0, 2.0, 46.92, 7.49, -0.002), ('target', 46.92, 1.38), ('target', 92.5, 6.36)],
+    # seed 9507, targets=3; 13 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.64, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.64, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 58.96, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 72.67, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.67, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 88.02, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.02, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 47.64, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.67, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.02, 7.49, -0.002), ('target', 47.64, 1.38), ('target', 62.96, 1.38), ('target', 75.67, 1.38)],
      "shots": 3},
-    # seed 1066; 56 expansions, 4-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 85.73, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.73, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 64.81, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 42.41, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 48.41, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 45.41, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.73, 7.49, -0.002), ('target', 45.41, 1.38), ('target', 68.81, 1.38), ('target', 88.73, 1.38)],
+    # seed 9508, targets=4; 44 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.91, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 47.81, 3.49, -0.007), ('block', 'stone', 2.0, 6.0, 87.13, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 93.03, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.89, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 90.04, 7.49, 0.002), ('target', 44.91, 1.38), ('target', 49.64, 1.38), ('target', 85.26, 1.38), ('target', 90.03, 1.38)],
      "shots": 4},
-    # seed 1067; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 6.0, 2.0, 47.59, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 84.78, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.78, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 47.6, 3.96, 0.002), ('block', 'wood', 6.0, 2.0, 47.58, 6.45, 0.006), ('block', 'wood', 8.0, 2.0, 87.78, 7.49, -0.002), ('target', 45.74, 8.33), ('target', 51.59, 1.38), ('target', 87.78, 1.38)],
-     "shots": 4},
-    # seed 1068; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 40.24, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.24, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 84.46, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.46, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 68.86, 3.99, 0.004), ('block', 'wood', 6.0, 2.0, 68.86, 1.49, 0.004), ('block', 'wood', 8.0, 2.0, 43.24, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.46, 7.49, -0.002), ('target', 43.24, 1.38), ('target', 67.6, 6.37), ('target', 87.46, 1.38)],
-     "shots": 4},
-    # seed 1069; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 57.74, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 88.65, 1.99, 0.0), ('block', 'stone', 6.0, 2.0, 77.65, 7.49, 0.002), ('block', 'wood', 2.0, 6.0, 41.17, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.17, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 77.65, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 88.65, 4.48, 0.001), ('block', 'wood', 8.0, 2.0, 44.17, 7.49, -0.002), ('target', 44.17, 1.38), ('target', 88.25, 6.37)],
+    # seed 9509, targets=3; 36 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.31, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.31, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 69.24, 9.48, 0.01), ('block', 'stone', 2.0, 6.0, 87.74, 12.47, 0.009), ('block', 'wood', 2.0, 6.0, 69.16, 15.47, 0.015), ('block', 'wood', 2.0, 6.0, 69.27, 3.48, 0.003), ('block', 'wood', 2.0, 6.0, 87.8, 3.48, 0.002), ('block', 'wood', 4.0, 3.0, 87.78, 7.97, 0.01), ('block', 'wood', 8.0, 2.0, 44.31, 7.49, -0.002), ('target', 44.31, 1.38), ('target', 61.35, 1.3), ('target', 81.71, 1.39)],
      "shots": 3},
-    # seed 1070; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 89.43, 5.48, 0.007), ('block', 'stone', 4.0, 3.0, 65.69, 1.99, 0.0), ('block', 'stone', 6.0, 2.0, 89.46, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 41.88, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.88, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 89.39, 11.48, 0.008), ('block', 'wood', 6.0, 2.0, 65.69, 4.48, 0.001), ('block', 'wood', 8.0, 2.0, 44.88, 7.49, -0.002), ('target', 44.88, 1.38), ('target', 65.29, 6.37)],
+    # seed 9510, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 44.3, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 66.45, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 72.45, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 84.98, 3.49, 0.009), ('block', 'wood', 2.0, 6.0, 90.79, 3.5, -0.0), ('block', 'wood', 8.0, 2.0, 69.45, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.83, 7.49, -0.002), ('target', 48.3, 1.38), ('target', 69.45, 1.38), ('target', 82.88, 1.38), ('target', 87.79, 1.38)],
+     "shots": 4},
+    # seed 9511, targets=3; 23 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.1, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.1, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 64.51, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 70.51, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 86.24, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.24, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 45.1, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 67.51, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.24, 7.49, -0.002), ('target', 45.1, 1.38), ('target', 67.51, 1.38), ('target', 89.24, 1.38)],
      "shots": 3},
-    # seed 1071; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 46.83, 3.48, 0.001), ('block', 'stone', 2.0, 6.0, 87.68, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 93.58, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 46.73, 16.46, 0.01), ('block', 'wood', 2.0, 6.0, 46.8, 9.47, 0.008), ('block', 'wood', 4.0, 3.0, 46.76, 13.97, 0.008), ('block', 'wood', 8.0, 2.0, 90.59, 7.49, 0.002), ('target', 44.04, 18.33), ('target', 85.81, 1.38), ('target', 90.58, 1.38)],
+    # seed 9512, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 54.18, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.18, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 88.37, 18.48, 0.007), ('block', 'stone', 2.0, 6.0, 88.45, 6.49, 0.006), ('block', 'stone', 2.0, 8.0, 43.05, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 88.48, 1.99, 0.004), ('block', 'wood', 2.0, 6.0, 75.46, 5.48, 0.004), ('block', 'wood', 2.0, 6.0, 88.41, 12.48, 0.007), ('block', 'wood', 6.0, 2.0, 75.48, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 57.18, 7.5, -0.0), ('target', 47.05, 1.38), ('target', 57.18, 1.38), ('target', 69.86, 1.38), ('target', 84.71, 8.95)],
      "shots": 4},
-    # seed 1072; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 42.13, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 90.7, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 66.07, 9.46, 0.011), ('block', 'wood', 2.0, 6.0, 66.11, 3.48, 0.002), ('block', 'wood', 6.0, 2.0, 66.1, 7.47, 0.01), ('target', 46.13, 1.38), ('target', 62.85, 11.3), ('target', 94.7, 1.38)],
-     "shots": 4},
-    # seed 1073; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 57.99, 7.46, -0.001), ('block', 'stone', 2.0, 6.0, 89.42, 3.48, -0.0), ('block', 'stone', 4.0, 3.0, 89.41, 12.97, 0.001), ('block', 'stone', 6.0, 2.0, 57.99, 3.46, -0.0), ('block', 'stone', 6.0, 2.0, 58.0, 1.49, 0.003), ('block', 'wood', 2.0, 6.0, 75.33, 5.48, 0.004), ('block', 'wood', 4.0, 3.0, 58.0, 11.96, -0.002), ('block', 'wood', 4.0, 3.0, 89.42, 7.98, -0.001), ('block', 'wood', 6.0, 2.0, 47.41, 1.49, 0.003), ('block', 'wood', 6.0, 2.0, 47.41, 3.49, 0.004), ('block', 'wood', 6.0, 2.0, 75.35, 1.48, 0.005), ('block', 'wood', 6.0, 2.0, 89.42, 10.47, 0.0), ('target', 69.73, 1.38), ('target', 89.13, 15.36)],
+    # seed 9513, targets=3; 18 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.05, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.05, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 59.14, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.14, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 86.28, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 92.28, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 73.11, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 47.05, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 62.14, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 89.28, 7.49, -0.002), ('target', 62.14, 1.38), ('target', 77.11, 1.38), ('target', 89.28, 1.38)],
      "shots": 3},
-    # seed 1074; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.82, 14.45, 0.011), ('block', 'stone', 2.0, 6.0, 43.9, 3.48, 0.001), ('block', 'stone', 2.0, 8.0, 77.18, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 59.77, 6.95, 0.003), ('block', 'stone', 4.0, 3.0, 88.83, 9.98, 0.006), ('block', 'stone', 6.0, 2.0, 43.87, 10.46, 0.011), ('block', 'stone', 6.0, 2.0, 88.88, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 88.86, 5.48, 0.006), ('block', 'wood', 4.0, 3.0, 43.89, 7.98, 0.004), ('block', 'wood', 4.0, 3.0, 59.8, 3.96, 0.006), ('block', 'wood', 6.0, 2.0, 59.81, 1.49, 0.003), ('target', 37.19, 1.19), ('target', 58.83, 9.33), ('target', 81.18, 1.38)],
+    # seed 9514, targets=4; 168 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 72.17, 9.48, 0.01), ('block', 'stone', 2.0, 6.0, 87.94, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.94, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 44.06, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 62.8, 8.94, -0.002), ('block', 'stone', 6.0, 2.0, 62.81, 1.49, 0.003), ('block', 'wood', 2.0, 6.0, 72.09, 15.47, 0.015), ('block', 'wood', 2.0, 6.0, 72.2, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 62.81, 5.95, -0.003), ('block', 'wood', 6.0, 2.0, 62.81, 3.47, 0.001), ('block', 'wood', 8.0, 2.0, 90.94, 7.49, -0.002), ('target', 48.06, 1.38), ('target', 63.22, 11.33), ('target', 66.7, 1.3), ('target', 90.94, 1.38)],
      "shots": 4},
-    # seed 1075; 8 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.95, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.95, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 84.34, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.34, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 72.23, 6.97, -0.0), ('block', 'wood', 2.0, 6.0, 58.02, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 64.02, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 72.24, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 72.23, 4.48, -0.001), ('block', 'wood', 8.0, 2.0, 45.95, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 61.02, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.34, 7.49, -0.002), ('target', 72.31, 9.36), ('target', 87.34, 1.38)],
+    # seed 9515, targets=3; 25 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.87, 9.46, 0.002), ('block', 'stone', 2.0, 6.0, 85.68, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.68, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 44.89, 1.49, 0.002), ('block', 'stone', 6.0, 2.0, 44.89, 3.47, 0.0), ('block', 'wood', 6.0, 2.0, 44.88, 5.46, 0.002), ('block', 'wood', 8.0, 2.0, 88.68, 7.49, -0.002), ('target', 44.33, 13.35), ('target', 48.89, 1.38), ('target', 88.68, 1.38)],
      "shots": 3},
-    # seed 1076; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 6.0, 2.0, 68.28, 1.48, 0.005), ('block', 'wood', 2.0, 6.0, 39.19, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.19, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 68.19, 14.48, 0.006), ('block', 'wood', 2.0, 6.0, 68.25, 5.48, 0.006), ('block', 'wood', 2.0, 6.0, 87.17, 3.5, 0.0), ('block', 'wood', 4.0, 3.0, 68.22, 9.98, 0.007), ('block', 'wood', 6.0, 2.0, 87.16, 7.48, 0.002), ('block', 'wood', 8.0, 2.0, 42.19, 7.49, -0.002), ('target', 63.84, 1.22), ('target', 86.62, 9.36)],
+    # seed 9516, targets=4; 39 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 54.91, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.91, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 91.24, 8.44, -0.011), ('block', 'stone', 4.0, 3.0, 91.29, 12.94, -0.012), ('block', 'wood', 2.0, 6.0, 43.93, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.93, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 74.17, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 80.17, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 91.2, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 91.2, 4.45, -0.007), ('block', 'wood', 8.0, 2.0, 46.93, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 57.91, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 77.17, 7.49, -0.002), ('target', 46.93, 1.38), ('target', 57.91, 1.38), ('target', 77.17, 1.38), ('target', 93.51, 15.28)],
+     "shots": 4},
+    # seed 9517, targets=3; 13 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 65.16, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 92.9, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 41.65, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.65, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.65, 7.49, -0.002), ('target', 44.65, 1.38), ('target', 69.16, 1.38), ('target', 96.9, 1.38)],
      "shots": 3},
-    # seed 1077; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 40.31, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.31, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 87.59, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.59, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 58.32, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 75.52, 6.47, 0.0), ('block', 'wood', 4.0, 3.0, 75.53, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 75.52, 4.48, -0.001), ('block', 'wood', 8.0, 2.0, 43.31, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.59, 7.49, -0.002), ('target', 43.31, 1.38), ('target', 90.59, 1.38)],
+    # seed 9518, targets=4; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 73.73, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 79.73, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 59.7, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 43.07, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.07, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 89.53, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 95.53, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 46.07, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 76.73, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.53, 7.49, -0.002), ('target', 46.07, 1.38), ('target', 63.7, 1.38), ('target', 76.73, 1.38), ('target', 92.53, 1.38)],
+     "shots": 4},
+    # seed 9519, targets=3; 14 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.41, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.41, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 73.89, 3.5, -0.0), ('block', 'stone', 2.0, 8.0, 58.3, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 73.88, 9.48, 0.001), ('block', 'wood', 2.0, 6.0, 87.06, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.06, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 42.41, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.06, 7.49, -0.002), ('target', 62.3, 1.38), ('target', 73.5, 13.36), ('target', 90.06, 1.38)],
      "shots": 3},
-    # seed 1078; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 4.0, 3.0, 88.52, 3.97, 0.011), ('block', 'stone', 6.0, 2.0, 88.53, 1.49, 0.004), ('block', 'wood', 2.0, 6.0, 41.67, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.67, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 88.47, 8.46, 0.011), ('block', 'wood', 8.0, 2.0, 44.67, 7.49, -0.002), ('target', 44.67, 1.38), ('target', 69.62, 1.37)],
+    # seed 9520, targets=4; 25 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.55, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.55, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 66.69, 1.43, 1.578), ('block', 'wood', 2.0, 6.0, 87.31, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.31, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.55, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.31, 7.49, -0.002), ('target', 44.55, 1.38), ('target', 73.58, 1.3), ('target', 75.36, 1.38), ('target', 90.31, 1.38)],
+     "shots": 4},
+    # seed 9521, targets=3; 27 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 44.51, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 57.27, 13.95, -0.003), ('block', 'wood', 2.0, 6.0, 57.26, 9.45, -0.002), ('block', 'wood', 2.0, 6.0, 71.3, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 77.3, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 87.48, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.48, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 57.24, 1.99, 0.001), ('block', 'wood', 4.0, 3.0, 57.25, 4.96, -0.004), ('block', 'wood', 8.0, 2.0, 74.3, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.48, 7.49, -0.002), ('target', 48.51, 1.38), ('target', 74.3, 1.38), ('target', 90.48, 1.38)],
      "shots": 3},
-    # seed 1079; 10 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.3, 3.48, 0.0), ('block', 'stone', 2.0, 6.0, 88.34, 5.46, 0.008), ('block', 'stone', 2.0, 8.0, 59.78, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 42.25, 12.96, 0.01), ('block', 'stone', 4.0, 3.0, 88.27, 11.95, 0.013), ('block', 'wood', 2.0, 6.0, 72.41, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.41, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 42.28, 9.97, 0.007), ('block', 'wood', 6.0, 2.0, 42.3, 7.48, 0.004), ('block', 'wood', 6.0, 2.0, 88.3, 9.46, 0.013), ('block', 'wood', 6.0, 2.0, 88.37, 1.47, 0.007), ('block', 'wood', 8.0, 2.0, 75.41, 7.49, -0.002), ('target', 63.78, 1.38), ('target', 75.41, 1.38), ('target', 81.11, 0.95)],
+    # seed 9522, targets=4; 9 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.48, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.48, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 88.69, 8.46, -0.007), ('block', 'stone', 2.0, 8.0, 59.31, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 73.09, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 88.67, 4.46, -0.003), ('block', 'wood', 4.0, 3.0, 88.67, 1.99, 0.001), ('block', 'wood', 8.0, 2.0, 47.48, 7.49, -0.002), ('target', 47.48, 1.38), ('target', 63.31, 1.38), ('target', 77.09, 1.38), ('target', 91.65, 7.0)],
      "shots": 4},
-    # seed 1080; 28 expansions, 4-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 84.12, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.12, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 47.91, 9.48, 0.002), ('block', 'wood', 2.0, 6.0, 47.93, 3.5, 0.0), ('block', 'wood', 8.0, 2.0, 87.12, 7.49, -0.002), ('target', 47.37, 13.36), ('target', 51.93, 1.38), ('target', 87.12, 1.38)],
-     "shots": 4},
-    # seed 1081; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 42.77, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.77, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 68.13, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 84.65, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.65, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 68.13, 3.98, 0.0), ('block', 'wood', 8.0, 2.0, 45.77, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.65, 7.49, -0.002), ('target', 45.77, 1.38), ('target', 67.98, 6.36), ('target', 87.65, 1.38)],
-     "shots": 4},
-    # seed 1082; 28 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.56, 3.5, 0.001), ('block', 'stone', 2.0, 8.0, 92.61, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 43.56, 7.99, 0.001), ('block', 'wood', 2.0, 6.0, 56.08, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 62.08, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 72.88, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 78.88, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 59.08, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 75.88, 7.49, -0.002), ('target', 59.08, 1.38), ('target', 75.88, 1.38), ('target', 96.61, 1.38)],
-     "shots": 4},
-    # seed 1083; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 88.01, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 42.06, 3.49, 0.009), ('block', 'wood', 2.0, 6.0, 47.87, 3.5, -0.0), ('block', 'wood', 8.0, 2.0, 44.91, 7.49, -0.002), ('target', 39.96, 1.38), ('target', 44.87, 1.38), ('target', 92.01, 1.38)],
-     "shots": 4},
-    # seed 1084; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 87.51, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 41.81, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 47.81, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 44.81, 7.49, -0.002), ('target', 44.81, 1.38), ('target', 91.51, 1.38), ('target', 95.51, 1.38)],
-     "shots": 4},
-    # seed 1085; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 58.79, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 88.07, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.07, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 45.09, 1.99, 0.001), ('block', 'stone', 6.0, 2.0, 45.08, 4.49, -0.0), ('block', 'wood', 2.0, 6.0, 58.79, 11.48, -0.002), ('block', 'wood', 2.0, 6.0, 72.24, 5.48, 0.004), ('block', 'wood', 6.0, 2.0, 58.78, 7.48, 0.0), ('block', 'wood', 6.0, 2.0, 72.26, 1.49, 0.004), ('block', 'wood', 8.0, 2.0, 91.07, 7.49, -0.002), ('target', 59.23, 15.36), ('target', 91.07, 1.38)],
+    # seed 9523, targets=3; 23 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 73.33, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 79.33, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.79, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 59.74, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 85.44, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 91.44, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 76.33, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 88.44, 7.49, -0.002), ('target', 47.79, 1.38), ('target', 63.74, 1.38), ('target', 88.44, 1.38)],
      "shots": 3},
-    # seed 1086; 14 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 74.35, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 80.35, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.94, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 90.36, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 59.64, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 65.64, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 62.64, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 77.35, 7.49, -0.002), ('target', 47.94, 1.38), ('target', 77.35, 1.38), ('target', 94.36, 1.38)],
+    # seed 9524, targets=4; 30 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.91, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 45.81, 3.49, -0.007), ('block', 'wood', 2.0, 6.0, 62.56, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 68.56, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 89.19, 5.48, 0.004), ('block', 'wood', 6.0, 2.0, 89.21, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 42.89, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 65.56, 7.49, -0.002), ('target', 42.91, 1.38), ('target', 47.66, 1.38), ('target', 65.56, 1.38), ('target', 83.59, 1.38)],
      "shots": 4},
-    # seed 1087; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 8.0, 43.28, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 73.18, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 90.57, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 57.96, 11.47, 0.0), ('block', 'wood', 4.0, 3.0, 57.97, 4.98, 0.001), ('block', 'wood', 4.0, 3.0, 57.98, 1.99, 0.002), ('block', 'wood', 6.0, 2.0, 57.97, 7.47, 0.002), ('target', 47.28, 1.38), ('target', 57.69, 15.36), ('target', 94.57, 1.38)],
-     "shots": 4},
-    # seed 1088; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 4.0, 3.0, 43.98, 6.95, 0.003), ('block', 'stone', 6.0, 2.0, 89.2, 4.47, -0.003), ('block', 'wood', 2.0, 6.0, 59.6, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 65.6, 3.48, 0.0), ('block', 'wood', 2.0, 6.0, 75.84, 6.48, 0.0), ('block', 'wood', 4.0, 3.0, 44.01, 3.96, 0.006), ('block', 'wood', 4.0, 3.0, 75.84, 1.98, -0.0), ('block', 'wood', 4.0, 3.0, 89.2, 1.99, 0.0), ('block', 'wood', 6.0, 2.0, 44.02, 1.49, 0.003), ('block', 'wood', 6.0, 2.0, 89.19, 6.47, -0.002), ('block', 'wood', 8.0, 2.0, 62.6, 7.49, -0.002), ('target', 43.04, 9.33), ('target', 75.76, 10.36), ('target', 89.76, 8.35)],
-     "shots": 4},
-    # seed 1089; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 87.31, 3.5, -0.0), ('block', 'stone', 2.0, 8.0, 45.11, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 67.48, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 73.48, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 87.3, 9.48, 0.001), ('block', 'wood', 8.0, 2.0, 70.48, 7.49, -0.002), ('target', 49.11, 1.38), ('target', 70.48, 1.38), ('target', 86.92, 13.36)],
-     "shots": 4},
-    # seed 1090; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 61.69, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 67.69, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 44.35, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 88.09, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.09, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 44.35, 3.98, 0.0), ('block', 'wood', 8.0, 2.0, 64.69, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.09, 7.49, -0.002), ('target', 44.2, 6.36), ('target', 91.09, 1.38)],
+    # seed 9525, targets=3; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'wood', 2.0, 6.0, 42.25, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 48.25, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 64.17, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 70.17, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 89.56, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 95.56, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 45.25, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 67.17, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.56, 7.49, -0.002), ('target', 45.25, 1.38), ('target', 67.17, 1.38), ('target', 92.56, 1.38)],
      "shots": 3},
-    # seed 1091; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 6.0, 2.0, 46.09, 1.49, 0.003), ('block', 'stone', 6.0, 2.0, 46.09, 3.49, 0.004), ('block', 'stone', 6.0, 2.0, 69.42, 1.49, 0.003), ('block', 'stone', 6.0, 2.0, 69.42, 3.47, -0.0), ('block', 'wood', 2.0, 6.0, 69.42, 7.47, -0.001), ('block', 'wood', 2.0, 6.0, 86.76, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 92.76, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 46.08, 5.48, 0.004), ('block', 'wood', 8.0, 2.0, 89.76, 7.49, -0.002), ('target', 69.45, 11.35), ('target', 89.76, 1.38)],
+    # seed 9526, targets=4; 38 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 84.39, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 90.29, 3.49, -0.007), ('block', 'stone', 2.0, 8.0, 45.27, 4.5, -0.0), ('block', 'wood', 8.0, 2.0, 87.37, 7.5, -0.0), ('target', 49.27, 1.38), ('target', 53.27, 1.38), ('target', 87.39, 1.38), ('target', 92.14, 1.38)],
+     "shots": 4},
+    # seed 9527, targets=3; 19 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 56.1, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.1, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 42.3, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 89.47, 6.48, 0.003), ('block', 'wood', 4.0, 3.0, 89.48, 1.98, 0.0), ('block', 'wood', 6.0, 2.0, 76.9, 7.45, 0.005), ('block', 'wood', 6.0, 2.0, 76.92, 5.46, 0.004), ('block', 'wood', 6.0, 2.0, 76.93, 3.47, 0.002), ('block', 'wood', 6.0, 2.0, 76.94, 1.49, 0.002), ('block', 'wood', 8.0, 2.0, 59.1, 7.49, -0.002), ('target', 46.3, 1.38), ('target', 59.1, 1.38), ('target', 75.49, 9.34)],
      "shots": 3},
-    # seed 1092; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 43.78, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 49.78, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 75.82, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 60.89, 3.48, 0.004), ('block', 'wood', 2.0, 6.0, 88.86, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.86, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 60.89, 5.98, 0.005), ('block', 'wood', 6.0, 2.0, 60.9, 1.49, 0.003), ('block', 'wood', 8.0, 2.0, 46.78, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.86, 7.49, -0.002), ('target', 46.78, 1.38), ('target', 79.82, 1.38), ('target', 91.86, 1.38)],
+    # seed 9528, targets=4; 22 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.1, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.1, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 67.28, 4.5, -0.0), ('block', 'wood', 4.0, 3.0, 92.69, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 92.68, 4.49, -0.0), ('block', 'wood', 8.0, 2.0, 44.1, 7.49, -0.002), ('target', 44.1, 1.38), ('target', 71.28, 1.38), ('target', 92.79, 6.37), ('target', 96.69, 1.38)],
      "shots": 4},
-    # seed 1093; 2 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 67.14, 11.48, 0.007), ('block', 'stone', 2.0, 6.0, 67.18, 5.48, 0.007), ('block', 'stone', 6.0, 2.0, 67.21, 1.48, 0.005), ('block', 'stone', 6.0, 2.0, 91.11, 7.47, 0.005), ('block', 'wood', 2.0, 6.0, 43.29, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.29, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 91.12, 3.48, 0.003), ('block', 'wood', 6.0, 2.0, 91.1, 9.46, 0.001), ('block', 'wood', 8.0, 2.0, 46.29, 7.49, -0.002), ('target', 46.29, 1.38), ('target', 61.05, 1.19), ('target', 90.65, 11.34)],
-     "shots": 4},
-    # seed 1094; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 71.09, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 77.09, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 61.15, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 45.95, 5.48, 0.006), ('block', 'wood', 2.0, 6.0, 89.0, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 95.0, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 45.92, 9.97, 0.006), ('block', 'wood', 6.0, 2.0, 45.98, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 74.09, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.0, 7.49, -0.002), ('target', 44.17, 12.35), ('target', 74.09, 1.38), ('target', 92.0, 1.38)],
-     "shots": 4},
-    # seed 1095; 22 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 46.83, 6.49, 0.004), ('block', 'stone', 2.0, 6.0, 70.92, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.92, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 59.92, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 46.85, 1.99, 0.004), ('block', 'wood', 2.0, 6.0, 46.77, 18.48, 0.005), ('block', 'wood', 2.0, 6.0, 46.81, 12.48, 0.005), ('block', 'wood', 2.0, 6.0, 91.45, 6.48, 0.0), ('block', 'wood', 4.0, 3.0, 91.45, 1.98, -0.0), ('block', 'wood', 8.0, 2.0, 73.92, 7.49, -0.002), ('target', 63.92, 1.38), ('target', 73.92, 1.38), ('target', 91.37, 10.36)],
-     "shots": 4},
-    # seed 1096; 22 expansions, 3-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 84.13, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.13, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 59.44, 1.49, 0.004), ('block', 'stone', 6.0, 2.0, 74.71, 13.47, 0.008), ('block', 'wood', 2.0, 6.0, 47.52, 8.46, 0.004), ('block', 'wood', 2.0, 6.0, 59.44, 7.47, -0.002), ('block', 'wood', 2.0, 6.0, 74.75, 9.47, 0.009), ('block', 'wood', 2.0, 6.0, 74.79, 3.48, 0.002), ('block', 'wood', 4.0, 3.0, 47.54, 3.96, 0.007), ('block', 'wood', 6.0, 2.0, 47.55, 1.49, 0.004), ('block', 'wood', 6.0, 2.0, 59.43, 3.47, -0.001), ('block', 'wood', 8.0, 2.0, 87.13, 7.49, -0.002), ('target', 38.87, 1.34), ('target', 59.96, 11.35), ('target', 87.13, 1.38)],
-     "shots": 4},
-    # seed 1097; 5 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 89.94, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 95.94, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 42.13, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 60.7, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 73.93, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 79.93, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 76.93, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 92.94, 7.49, -0.002), ('target', 64.7, 1.38), ('target', 76.93, 1.38)],
+    # seed 9529, targets=3; 31 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.3, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 48.2, 3.49, -0.007), ('block', 'stone', 2.0, 6.0, 85.98, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 91.98, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 45.28, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 88.98, 7.49, -0.002), ('target', 45.3, 1.38), ('target', 50.03, 1.38), ('target', 88.98, 1.38)],
      "shots": 3},
-    # seed 1098; 3 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 2.0, 6.0, 68.02, 7.46, 0.0), ('block', 'stone', 2.0, 8.0, 44.34, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 92.45, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 68.03, 1.49, 0.003), ('block', 'wood', 6.0, 2.0, 68.02, 3.46, -0.001), ('target', 67.95, 11.35), ('target', 96.45, 1.38)],
+    # seed 9530, targets=4; 124 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.27, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.27, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 56.23, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.23, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 88.48, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 94.48, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 72.11, 3.99, 0.004), ('block', 'wood', 6.0, 2.0, 72.11, 1.49, 0.004), ('block', 'wood', 8.0, 2.0, 42.27, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 59.23, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 91.48, 7.49, -0.002), ('target', 42.27, 1.38), ('target', 59.23, 1.38), ('target', 70.85, 6.37), ('target', 91.48, 1.38)],
+     "shots": 4},
+    # seed 9531, targets=3; 17 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 62.39, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 68.39, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 92.88, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 39.97, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.97, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 42.97, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 65.39, 7.49, -0.002), ('target', 42.97, 1.38), ('target', 65.39, 1.38), ('target', 96.88, 1.38)],
      "shots": 3},
-    # seed 1099; 4 expansions, 2-shot plan
-    {"bodies": [('block', 'stone', 6.0, 2.0, 43.43, 9.46, 0.011), ('block', 'wood', 2.0, 6.0, 43.47, 3.48, 0.002), ('block', 'wood', 2.0, 6.0, 68.82, 6.48, 0.0), ('block', 'wood', 2.0, 6.0, 84.98, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 90.98, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 68.82, 1.98, -0.0), ('block', 'wood', 4.0, 3.0, 68.82, 10.98, -0.0), ('block', 'wood', 6.0, 2.0, 43.46, 7.47, 0.01), ('block', 'wood', 8.0, 2.0, 87.98, 7.49, -0.002), ('target', 40.21, 11.3), ('target', 87.98, 1.38)],
+    # seed 9532, targets=4; 11 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.63, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 50.53, 3.49, -0.007), ('block', 'wood', 2.0, 6.0, 87.68, 3.49, 0.009), ('block', 'wood', 2.0, 6.0, 93.49, 3.5, -0.0), ('block', 'wood', 8.0, 2.0, 47.61, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 90.53, 7.49, -0.002), ('target', 47.63, 1.38), ('target', 52.36, 1.38), ('target', 85.58, 1.38), ('target', 90.49, 1.38)],
+     "shots": 4},
+    # seed 9533, targets=3; 22 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 71.94, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 77.94, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 87.37, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.37, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.17, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 59.43, 12.48, 0.008), ('block', 'wood', 2.0, 6.0, 59.48, 6.49, 0.007), ('block', 'wood', 4.0, 3.0, 59.5, 1.99, 0.004), ('block', 'wood', 8.0, 2.0, 74.94, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.37, 7.49, -0.002), ('target', 55.67, 4.05), ('target', 74.94, 1.38), ('target', 90.37, 1.38)],
+     "shots": 3},
+    # seed 9534, targets=4; 35 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 59.12, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.12, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 70.35, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.35, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 46.89, 10.98, 0.006), ('block', 'stone', 4.0, 3.0, 46.96, 1.99, 0.005), ('block', 'stone', 4.0, 3.0, 89.7, 3.98, 0.004), ('block', 'wood', 2.0, 6.0, 46.93, 6.48, 0.007), ('block', 'wood', 6.0, 2.0, 46.88, 13.48, 0.006), ('block', 'wood', 6.0, 2.0, 89.7, 1.49, 0.004), ('block', 'wood', 8.0, 2.0, 62.12, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 73.35, 7.49, -0.002), ('target', 44.97, 15.35), ('target', 62.12, 1.38), ('target', 73.35, 1.38), ('target', 88.45, 6.36)],
+     "shots": 4},
+    # seed 9535, targets=3; 16 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 40.93, 3.5, 0.0), ('block', 'stone', 2.0, 6.0, 46.83, 3.49, -0.007), ('block', 'stone', 2.0, 6.0, 87.09, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.09, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 43.91, 7.5, -0.0), ('block', 'wood', 8.0, 2.0, 90.09, 7.49, -0.002), ('target', 43.93, 1.38), ('target', 48.66, 1.38), ('target', 90.09, 1.38)],
+     "shots": 3},
+    # seed 9536, targets=4; 14 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 42.12, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 48.12, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 60.06, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 77.44, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 90.95, 9.49, 0.004), ('block', 'wood', 2.0, 6.0, 90.96, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 60.06, 9.99, 0.004), ('block', 'wood', 6.0, 2.0, 60.06, 7.49, 0.0), ('block', 'wood', 6.0, 2.0, 90.93, 13.48, 0.011), ('block', 'wood', 8.0, 2.0, 45.12, 7.49, -0.002), ('target', 45.12, 1.38), ('target', 58.87, 12.36), ('target', 81.44, 1.38), ('target', 86.91, 14.4)],
+     "shots": 4},
+    # seed 9537, targets=3; 12 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.98, 3.49, 0.009), ('block', 'stone', 2.0, 6.0, 50.88, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 90.02, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 90.02, 7.99, 0.002), ('block', 'wood', 6.0, 2.0, 90.01, 10.49, 0.004), ('block', 'wood', 8.0, 2.0, 47.89, 7.49, 0.002), ('target', 43.11, 1.38), ('target', 47.88, 1.38), ('target', 88.79, 12.36)],
+     "shots": 3},
+    # seed 9538, targets=4; 22 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 56.33, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 62.33, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 43.23, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 91.1, 1.99, 0.004), ('block', 'stone', 6.0, 2.0, 74.67, 7.47, 0.006), ('block', 'wood', 2.0, 6.0, 74.69, 3.48, 0.003), ('block', 'wood', 2.0, 6.0, 91.08, 6.49, 0.006), ('block', 'wood', 4.0, 3.0, 74.66, 9.97, 0.006), ('block', 'wood', 4.0, 3.0, 91.03, 13.98, 0.006), ('block', 'wood', 4.0, 3.0, 91.05, 10.98, 0.005), ('block', 'wood', 8.0, 2.0, 59.33, 7.49, -0.002), ('target', 47.23, 1.38), ('target', 59.33, 1.38), ('target', 72.73, 12.34), ('target', 89.44, 16.37)],
+     "shots": 4},
+    # seed 9539, targets=3; 11 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 44.69, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 50.69, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 65.75, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 91.38, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 65.75, 9.49, 0.001), ('block', 'wood', 4.0, 3.0, 65.74, 13.98, 0.011), ('block', 'wood', 8.0, 2.0, 47.69, 7.49, -0.002), ('target', 47.69, 1.38), ('target', 61.02, 4.76), ('target', 95.38, 1.38)],
+     "shots": 3},
+    # seed 9540, targets=4; 15 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 8.0, 91.24, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 42.79, 5.48, 0.004), ('block', 'wood', 2.0, 6.0, 65.71, 3.5, -0.0), ('block', 'wood', 2.0, 6.0, 71.5, 3.49, -0.008), ('block', 'wood', 6.0, 2.0, 42.81, 1.48, 0.005), ('block', 'wood', 8.0, 2.0, 68.67, 7.5, -0.001), ('target', 37.19, 1.38), ('target', 68.71, 1.38), ('target', 73.29, 1.38), ('target', 95.24, 1.38)],
+     "shots": 4},
+    # seed 9541, targets=3; 32 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 40.84, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 46.84, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 60.96, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 70.75, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 76.75, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 88.61, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 94.61, 3.5, -0.001), ('block', 'wood', 6.0, 2.0, 60.95, 7.48, 0.002), ('block', 'wood', 8.0, 2.0, 43.84, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 73.75, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 91.61, 7.49, -0.002), ('target', 43.84, 1.38), ('target', 73.75, 1.38), ('target', 91.61, 1.38)],
+     "shots": 3},
+    # seed 9542, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 54.44, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 60.44, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 91.99, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 46.34, 6.48, 0.0), ('block', 'wood', 2.0, 6.0, 69.46, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 75.46, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 46.34, 1.98, -0.0), ('block', 'wood', 8.0, 2.0, 57.44, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 72.46, 7.49, -0.002), ('target', 46.26, 10.36), ('target', 57.44, 1.38), ('target', 72.46, 1.38), ('target', 95.99, 1.38)],
+     "shots": 4},
+    # seed 9543, targets=3; 25 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 59.68, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 65.68, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 44.01, 4.5, -0.0), ('block', 'stone', 6.0, 2.0, 77.22, 1.48, -0.0), ('block', 'wood', 2.0, 6.0, 89.73, 11.47, 0.001), ('block', 'wood', 4.0, 3.0, 77.22, 3.98, 0.0), ('block', 'wood', 4.0, 3.0, 89.73, 6.98, 0.002), ('block', 'wood', 4.0, 3.0, 89.74, 1.99, 0.002), ('block', 'wood', 6.0, 2.0, 89.73, 4.48, 0.001), ('block', 'wood', 8.0, 2.0, 62.68, 7.49, -0.002), ('target', 48.01, 1.38), ('target', 62.68, 1.38), ('target', 77.07, 6.36)],
+     "shots": 3},
+    # seed 9544, targets=4; 71 expansions, 4-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 71.45, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 77.45, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 57.76, 4.5, -0.0), ('block', 'stone', 2.0, 8.0, 92.55, 4.5, -0.0), ('block', 'wood', 2.0, 6.0, 43.79, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 49.79, 3.5, -0.001), ('block', 'wood', 8.0, 2.0, 46.79, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 74.45, 7.49, -0.002), ('target', 46.79, 1.38), ('target', 61.76, 1.38), ('target', 74.45, 1.38), ('target', 96.55, 1.38)],
+     "shots": 4},
+    # seed 9545, targets=3; 23 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 58.86, 11.47, 0.005), ('block', 'stone', 2.0, 6.0, 70.83, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 76.83, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 58.82, 17.47, 0.009), ('block', 'wood', 2.0, 6.0, 58.9, 3.48, 0.002), ('block', 'wood', 2.0, 6.0, 87.82, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 93.82, 3.5, -0.001), ('block', 'wood', 4.0, 3.0, 46.45, 1.99, 0.002), ('block', 'wood', 6.0, 2.0, 46.43, 6.48, 0.001), ('block', 'wood', 6.0, 2.0, 46.44, 4.49, 0.0), ('block', 'wood', 6.0, 2.0, 58.88, 7.47, 0.005), ('block', 'wood', 8.0, 2.0, 73.83, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.82, 7.49, -0.002), ('target', 46.18, 8.37), ('target', 73.83, 1.38), ('target', 90.82, 1.38)],
+     "shots": 3},
+    # seed 9546, targets=4; 26 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 72.81, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 84.77, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 90.77, 3.5, -0.001), ('block', 'stone', 2.0, 8.0, 45.08, 4.5, -0.0), ('block', 'stone', 4.0, 3.0, 57.94, 7.97, 0.002), ('block', 'wood', 4.0, 3.0, 57.94, 4.98, 0.0), ('block', 'wood', 4.0, 3.0, 57.95, 1.99, 0.001), ('block', 'wood', 6.0, 2.0, 72.82, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 87.77, 7.49, -0.002), ('target', 49.08, 1.38), ('target', 57.33, 10.35), ('target', 73.35, 9.37), ('target', 87.77, 1.38)],
+     "shots": 4},
+    # seed 9547, targets=3; 27 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 58.45, 3.48, 0.001), ('block', 'stone', 2.0, 6.0, 72.39, 9.47, 0.01), ('block', 'stone', 2.0, 6.0, 87.88, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 93.88, 3.5, -0.001), ('block', 'stone', 4.0, 3.0, 72.34, 13.97, 0.01), ('block', 'wood', 2.0, 6.0, 39.13, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 45.13, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 72.43, 3.48, 0.003), ('block', 'wood', 4.0, 3.0, 58.43, 12.96, -0.0), ('block', 'wood', 4.0, 3.0, 58.44, 9.96, -0.001), ('block', 'wood', 6.0, 2.0, 58.44, 7.47, 0.004), ('block', 'wood', 8.0, 2.0, 42.13, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 90.88, 7.49, -0.002), ('target', 42.13, 1.38), ('target', 68.14, 9.2), ('target', 90.88, 1.38)],
+     "shots": 3},
+    # seed 9548, targets=4; 18 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 41.9, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 47.9, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 62.57, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 68.57, 3.5, -0.0), ('block', 'stone', 2.0, 8.0, 85.96, 1.43, 1.578), ('block', 'wood', 8.0, 2.0, 44.9, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 65.57, 7.5, -0.0), ('target', 44.9, 1.38), ('target', 65.57, 1.38), ('target', 92.85, 1.3), ('target', 94.63, 1.38)],
+     "shots": 4},
+    # seed 9549, targets=3; 24 expansions, 3-shot plan
+    {"bodies": [('block', 'stone', 2.0, 6.0, 39.93, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 45.93, 3.5, -0.001), ('block', 'stone', 2.0, 6.0, 71.24, 3.5, -0.0), ('block', 'stone', 2.0, 6.0, 77.24, 3.5, -0.001), ('block', 'stone', 6.0, 2.0, 87.1, 1.49, 0.004), ('block', 'wood', 2.0, 6.0, 56.45, 3.5, 0.0), ('block', 'wood', 2.0, 6.0, 62.45, 3.5, -0.001), ('block', 'wood', 2.0, 6.0, 87.06, 8.46, 0.005), ('block', 'wood', 4.0, 3.0, 87.09, 3.97, 0.007), ('block', 'wood', 8.0, 2.0, 42.93, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 59.45, 7.49, -0.002), ('block', 'wood', 8.0, 2.0, 74.24, 7.49, -0.002), ('target', 42.93, 1.38), ('target', 59.45, 1.38), ('target', 79.89, 1.24)],
      "shots": 3},
 )

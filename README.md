@@ -34,7 +34,6 @@ season or city, so a benchmark is not limited to what ships.
 | Flipull | `flipull` | 100 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
 | Adventures of Lolo | `lolo` | 100 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
 | Slingshot | `slingshot` | 100 levels | the structures, their materials, where the targets sit, and the shots | game, physics | [docs](docs/environments/slingshot.md) |
-| Artillery | `artillery` | 100 fields | the terrain, where the targets dig in, the wind, and the shells | game, physics | [docs](docs/environments/artillery.md) |
 | Tower defence | `tower_defence` | 100 maps | the path, the building slots, the waves, the gold and the lives | game | [docs](docs/environments/tower-defence.md) |
 | Fluid | `fluid` | 100 caves | the cave, the spring, the basin, the drain, the water needed and the digs allowed | game | [docs](docs/environments/fluid.md) |
 | Billiards | `billiards` | 100 tables | where the balls lie, how many there are, and the shots | game, physics | [docs](docs/environments/billiards.md) |
@@ -404,7 +403,6 @@ planiverse/environments/
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
 ├── games/           # the four games, reimplemented in pure Python
 ├── slingshot/       # a physics puzzle on pymunk
-├── artillery/       # ballistics over a destructible field, pure Python
 ├── tower_defence/   # waves fought by simulation, pure Python
 ├── fluid/           # a cellular automaton of water, pure Python
 ├── billiards/       # pool on pooltool
@@ -472,7 +470,6 @@ planiverse/
 │   │   ├── game_boy.py                 # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
 │   │   └── stable_retro.py             # RetroEnv: a Stable-Retro integration from its save states
 │   ├── slingshot/                      # SlingshotEnv: a physics puzzle on pymunk
-│   ├── artillery/                      # ArtilleryEnv: ballistics over a destructible field
 │   ├── tower_defence/                  # TowerDefenceEnv: waves fought by simulation
 │   ├── fluid/                          # FluidEnv: a cellular automaton of water
 │   ├── billiards/                      # BilliardsEnv: pool on pooltool
@@ -549,11 +546,11 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Twenty-three environments: nine simulator-backed operational ones (water distribution, power
+- Twenty-two environments: nine simulator-backed operational ones (water distribution, power
   grid, crop management, flood adaptation, a city on the Micropolis engine, an epidemic on
   Covasim, traffic signals on SUMO, crossing aircraft on BlueSky, reservoirs on pywr), the NASim network attack, four games reimplemented
-  in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, an artillery
-  game, a tower defence, a cellular fluid puzzle, a Lemmings-like, an early-game factory on
+  in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, a tower
+  defence, a cellular fluid puzzle, a Lemmings-like, an early-game factory on
   factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.

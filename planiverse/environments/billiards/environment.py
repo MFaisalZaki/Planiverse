@@ -136,7 +136,12 @@ def strike(balls, action):
     system = build_system(balls)
     phi = pt.aim.at_ball(system, action.ball, cut=action.cut)
     system.cue.set_state(V0=action.speed, phi=phi)
-    pt.simulate(system, inplace=True)
+    try:
+        pt.simulate(system, inplace=True)
+    except (AssertionError, ArithmeticError, ValueError):
+        # pooltool's collision models assert on the odd geometry (a ball resting against a
+        # pocket jaw with no closing speed); a shot the physics cannot resolve is not offered.
+        return None
     after = {}
     for ball_id, ball in system.balls.items():
         if ball.state.s == pt.constants.pocketed:
@@ -160,7 +165,7 @@ def draw_table(random_, balls=3, shots=None):
             if all((x - px) ** 2 + (y - py) ** 2 > (4 * RADIUS) ** 2 for px, py in placed.values()):
                 placed[ball] = (round(x, MM), round(y, MM))
                 break
-    return {"balls": {ball: list(xy) for ball, xy in placed.items()}, "shots": shots or balls + 1}
+    return {"balls": {ball: list(xy) for ball, xy in placed.items()}, "shots": shots or balls}
 
 
 class BilliardsEnv(Environment):
@@ -193,25 +198,27 @@ class BilliardsEnv(Environment):
         self.index = None
         self.witness = self.witness_expansions = None
 
-    def generate_instance(self, seed=None, balls=None, shots=None, min_plan_length=2,
-                          search_limit=40, attempts=30):
+    def generate_instance(self, seed=None, balls=None, shots=None, min_plan_length=3,
+                          search_limit=80, attempts=30):
         """Draw a table, select it, and return it as the dict `set_instance` takes.
 
-        `balls` (two or three object balls, drawn when unset) and `shots` (one more than
-        the balls when unset) are `draw_table`'s. A draw is kept only if a best-first search
-        over shots, fewest balls left first, finds a plan within `search_limit` expansions
-        that is at least `min_plan_length` shots long; the plan is left in `witness` and
-        what the search spent in `witness_expansions`.
+        `balls` (three or four object balls, drawn when unset) and `shots` (as many as the
+        balls when unset, so no shot may be wasted) are `draw_table`'s. A draw is kept only if
+        a breadth-first search over shots finds a plan within `search_limit` expansions and
+        that plan, a shortest one, is at least `min_plan_length` shots long: the search has
+        then shown that no shorter plan exists, so a table two shots clear is thrown back. The
+        plan is left in `witness` and what the search spent in `witness_expansions`.
         """
         random_, _ = rng(seed)
         found = {}
 
         def draw(attempt):
-            return draw_table(random_, balls=balls or random_.randint(2, 3), shots=shots)
+            count = balls or random_.randint(3, 4)
+            return draw_table(random_, balls=count, shots=shots or count)
 
         def accept(instance):
             self.set_instance(instance)
-            outcome = bounded_search(self, search_limit, progress=lambda s: len(s.object_balls))
+            outcome = bounded_search(self, search_limit)
             if outcome.plan is None or len(outcome.plan) < min_plan_length:
                 return False
             found["plan"], found["expansions"] = outcome.plan, outcome.expansions
@@ -284,9 +291,9 @@ class BilliardsEnv(Environment):
         return lines
 
 
-#: The bundled tables: `generate_instance(seed)` for the seed beside each, embedded as the
-#: plain data `set_instance` takes, with the plan each was accepted on in
-#: `tests/data/billiards_solutions.json`.
+#: The bundled tables: `generate_instance(seed, balls=n)` for the seed and ball count beside
+#: each, embedded as the plain data `set_instance` takes, with the plan each was accepted on
+#: in `tests/data/billiards_solutions.json`.
 TABLES = (
     # seed 5000; 2 expansions, 2-shot plan
     {"balls": {"cue": [0.386, 0.804], "1": [0.177, 0.811], "2": [0.122, 1.846]}, "shots": 3},

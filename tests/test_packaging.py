@@ -38,7 +38,6 @@ ENTRY_POINTS = [
     "planiverse.environments.games.lolo",
     "planiverse.environments.games.amazing_tater",
     "planiverse.environments.slingshot.environment",
-    "planiverse.environments.artillery.environment",
     "planiverse.environments.tower_defence.environment",
     "planiverse.environments.fluid.environment",
     "planiverse.environments.billiards.environment",

@@ -129,17 +129,6 @@ REGISTRY = (
         tags=frozenset({"game", "physics"}),
     ),
     EnvironmentSpec(
-        name="artillery",
-        factory="planiverse.environments.artillery.environment:ArtilleryEnv",
-        summary="Artillery over a hilly field: lob shells through the wind to destroy every target",
-        instances="100 fields, generated",
-        generates="the terrain, where the targets dig in, the wind, and the shells",
-        deterministic=True,
-        state_identity="value",
-        docs="docs/environments/artillery.md",
-        tags=frozenset({"game", "physics", "dependency-free"}),
-    ),
-    EnvironmentSpec(
         name="tower_defence",
         factory="planiverse.environments.tower_defence.environment:TowerDefenceEnv",
         summary="Tower defence: build between waves so that the last wave leaves you alive",

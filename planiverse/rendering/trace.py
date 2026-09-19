@@ -129,12 +129,16 @@ def kept_indices(count, max_states=None):
 
 
 def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
-                 captions=True):
+                 captions=True, frames=None):
     """Every state of a trace as an image, captioned unless you ask otherwise.
 
     `actions` labels each frame with the action that produced it — the trace is one longer
     than the plan, so frame 0 is captioned "start". `env` lets the caption say which states
     are goals and which are dead ends, which is usually the thing you are looking for.
+
+    `frames` supplies the picture of each state, one PIL image or `(height, width, 3)` array
+    per state of the trace, for an environment whose states have a screen of their own (the
+    emulators); without it a state is typeset from its text.
 
     `max_states` thins a long trace by keeping the first, the last, and an even spread
     between: a 128-step wander from a goal-free planner is not worth 128 pages, and dropping
@@ -144,14 +148,19 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
     states = list(trace)
     if not states:
         raise ValueError("nothing to render: the trace is empty")
+    if frames is not None:
+        frames = list(frames)
+        if len(frames) != len(states):
+            raise ValueError(f"{len(frames)} frames for {len(states)} states")
     indices = kept_indices(len(states), max_states)
 
-    frames = []
+    pictures = []
     for index in indices:
         state = states[index]
-        image = render_state(state, font_size=font_size)
+        image = _picture(frames[index]) if frames is not None \
+            else render_state(state, font_size=font_size)
         if not captions:
-            frames.append(image)
+            pictures.append(image)
             continue
 
         if index == 0:
@@ -170,8 +179,17 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
             note = f"{note} · state {index} of {len(states) - 1}" if note \
                 else f"state {index} of {len(states) - 1}"
 
-        frames.append(_caption(image, title, note, colour))
-    return frames
+        pictures.append(_caption(image, title, note, colour))
+    return pictures
+
+
+def _picture(frame):
+    """A supplied frame as an RGB PIL image: it may be one already, or an array."""
+    from PIL import Image
+
+    if not isinstance(frame, Image.Image):
+        frame = Image.fromarray(frame)
+    return frame.convert("RGB")
 
 
 def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
@@ -198,7 +216,7 @@ def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
 
 def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_size=14,
                  max_states=None, columns=DEFAULT_COLUMNS, per_page=None, captions=None,
-                 charts=None):
+                 charts=None, frames=None):
     """Write every state of a trace to `target`. The extension decides the format.
 
     - `<name>.png` (or any other single-image extension): a **contact sheet**, `columns`
@@ -219,12 +237,15 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
     the steps so far. It defaults to the chart wherever one is registered; `False` asks
     for the text anyway, `True` for the chart and an error where there is none. A chart
     trace ignores `columns` and `per_page`: its sheet is one figure, not tiles.
+
+    `frames`, one picture per state, replaces the typeset text with the state's own screen
+    (see `trace_frames`); the emulator environments pass their consoles' frames this way.
     """
     from planiverse.rendering.readings import readings_of
 
     extension = os.path.splitext(str(target))[1].lower()
     if charts is None:
-        charts = bool(trace) and readings_of(trace[0]) is not None
+        charts = bool(trace) and frames is None and readings_of(trace[0]) is not None
     if charts:
         return _render_charts(trace, target, extension, actions, env, duration_ms, max_states)
     if captions is None:
@@ -232,7 +253,7 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
             or actions is not None or env is not None
 
     frames = trace_frames(trace, actions=actions, env=env, max_states=max_states,
-                          font_size=font_size, captions=captions)
+                          font_size=font_size, captions=captions, frames=frames)
 
     if extension == ".gif":
         first, *rest = _uniform(frames)

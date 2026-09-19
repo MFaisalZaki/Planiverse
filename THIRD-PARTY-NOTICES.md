@@ -27,8 +27,9 @@ memory map of any commercial title.
 
 Stable-Retro ships one game with its own package, *Airstriker* (© Electrokinesis, distributed
 by Stable-Retro on its author's terms), which is the Stable-Retro environment's default and
-the only game its tests run. Every other Stable-Retro integration needs a ROM the user imports
-into Stable-Retro; none is here.
+the only game its tests run; `docs/renders/retro.gif` and `retro.png` show its screen, as
+drawn by the emulator from a trace. Every other Stable-Retro integration needs a ROM the user
+imports into Stable-Retro; none is here.
 
 ## Physics engines
 

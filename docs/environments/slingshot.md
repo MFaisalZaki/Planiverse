@@ -25,7 +25,7 @@ and so are all the levels.
 
 ![BFWS solving slingshot instance 0](../renders/slingshot.gif)
 
-BFWS's plan for instance `0`: 2 moves, one frame per state. The same plan is also a
+BFWS's plan for instance `0`: 3 moves, one frame per state. The same plan is also a
 [contact sheet](../renders/slingshot.png), every frame on one image, captioned with the step
 number, the action that produced it, and a note on the goal state.
 
@@ -114,10 +114,11 @@ and 75 units per second: eighteen shots, each costing 1. `get_actions()` lists t
 The hundred levels are the generator's own draws, embedded in the module as the plain data
 `set_instance` takes with the seed each came from beside it, and the plan each was accepted on
 is in `tests/data/slingshot_solutions.json`. A level has two to four structures, each a tower
-of two to four blocks, a shelter (a wooden roof on two pillars) or a stone slab, and two or
-three targets seated on top of a tower, under a roof or behind a slab, so that some need a lob
-over, some a roof broken and some a tower toppled. The shots given are one more than the
-targets.
+of two to four blocks, a shelter (a wooden roof on two pillars) or a stone slab, and three or
+four targets seated on top of a tower, under a roof or behind a slab, so that some need a lob
+over, some a roof broken and some a tower toppled. The shots given are exactly as many as the
+targets, so none may be wasted, and every level's shortest plan is at least three shots: the
+generator's breadth-first search has shown that no two shots flatten it.
 
 ## Generating levels
 
@@ -134,10 +135,10 @@ state, info = env.reset()                       # info["generated"] is True
 | Option | Default | What it does |
 |---|---|---|
 | `structures` | 2 to 4 at random | towers, shelters and slabs on the ground |
-| `targets` | 2 or 3 at random | targets seated on or among them |
-| `shots` | `targets + 1` | shots the player gets |
-| `min_plan_length` | 2 | the shortest plan must be at least this long, so a level one shot flattens is thrown back |
-| `search_limit` | 400 | expansions the acceptance search may spend per draw |
+| `targets` | 3 or 4 at random | targets seated on or among them |
+| `shots` | as many as the targets | shots the player gets |
+| `min_plan_length` | 3 | the shortest plan must be at least this long, so a level two shots flatten is thrown back |
+| `search_limit` | 600 | expansions the acceptance search may spend per draw |
 | `attempts` | 60 | draws before giving up with `GenerationError` |
 
 The draw is settled under gravity before it is played, so its opening is a fixed point of the

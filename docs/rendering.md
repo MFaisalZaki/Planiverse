@@ -48,6 +48,11 @@ Which readings an environment charts, and the panels they go on, is written down
 `render_trace` needs no telling; `charts=False` asks for the text anyway. matplotlib draws it
 through its object API, so no display is involved.
 
+For the two emulators (the Game Boy and Stable-Retro) a frame is **the console's own screen**
+at that state, which the environment reads back by loading the state's snapshot and drawing
+one frame; their `render_trace` passes those pictures through `frames=`, one per state, and
+the captions go on as for text. `frames=` is open to any caller with a picture per state.
+
 ## Files
 
 | Path | What |

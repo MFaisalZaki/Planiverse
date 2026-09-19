@@ -120,7 +120,7 @@ def test_every_level_has_shots_targets_and_a_plan():
         solutions = {int(index): plan for index, plan in json.load(handle).items()}
     assert len(LEVELS) == 100 and sorted(solutions) == list(range(100))
     for index, level in enumerate(LEVELS):
-        assert level["shots"] >= len(solutions[index]) >= 2, f"level {index}"
+        assert level["shots"] >= len(solutions[index]) >= 3, f"level {index}"
         assert sum(1 for body in level["bodies"] if body[0] == "target") >= 2
 
 
@@ -143,10 +143,13 @@ def test_set_index_refuses_a_level_that_is_not_there():
             game.set_index(index)
 
 
-def test_a_generated_level_reproduces_from_its_seed_and_needs_two_shots():
+@pytest.mark.slow
+def test_a_generated_level_reproduces_from_its_seed_and_needs_three_shots():
+    """Level 0 is seed 9000 drawn with three targets; the draw is a breadth-first search of
+    the level, so it is seconds rather than milliseconds."""
     game = SlingshotEnv()
-    level = game.generate_instance(seed=1000)
-    assert level["bodies"] == [list(body) for body in LEVELS[0]["bodies"]], "level 0 is seed 1000"
-    assert len(game.witness) >= 2 and game.validate(game.witness)
-    again = SlingshotEnv().generate_instance(seed=1000)
+    level = game.generate_instance(seed=9000, targets=3)
+    assert level["bodies"] == [list(body) for body in LEVELS[0]["bodies"]], "level 0 is seed 9000"
+    assert len(game.witness) >= 3 and game.validate(game.witness)
+    again = SlingshotEnv().generate_instance(seed=9000, targets=3)
     assert again == level
