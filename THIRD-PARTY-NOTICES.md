@@ -80,6 +80,28 @@ Factorio is a game by Wube Software Ltd and "Factorio" is a trademark of Wube So
 used here descriptively to say what the simulator was measured against. Neither factory-sim nor
 this repository is affiliated with, sponsored by or endorsed by Wube Software Ltd.
 
+## The operational simulators
+
+Four environments drive simulators installed from PyPI, none of them included here:
+
+- `planiverse/environments/epidemic/` runs [Covasim](https://github.com/institutefordiseasemodeling/covasim)
+  (MIT), the Institute for Disease Modeling's agent-based model of COVID-19.
+- `planiverse/environments/traffic/` runs [SUMO](https://eclipse.dev/sumo/), the Eclipse
+  Foundation's traffic simulator, under the Eclipse Public License 2.0 with the GNU GPL version 2
+  or later as a secondary licence, through the `eclipse-sumo` binaries and the `libsumo` binding;
+  the grid is drawn by its `netgenerate` on the user's machine.
+- `planiverse/environments/airspace/` runs [BlueSky](https://github.com/TUDelft-CNS-ATM/bluesky)
+  (TU Delft, MIT), which flies aircraft on the [OpenAP](https://github.com/junzis/openap)
+  performance model (LGPL-3.0) over BlueSky's navigation data package (GPL-3.0);
+  `scripts/install_bluesky.sh` installs the three, since the simulator's own dependency list names
+  a package that no longer builds.
+- `planiverse/environments/reservoir/` runs [pywr](https://github.com/pywr/pywr) (University of
+  Manchester, GPL-3.0-or-later), the water resource system simulator, through a network this
+  repository builds in code.
+
+Each is used as a library through its published interface; the instances, decisions, constraints
+and targets are this repository's work.
+
 ## The flood adaptation model
 
 `planiverse/environments/flood_transport/` follows the MAAT environment of

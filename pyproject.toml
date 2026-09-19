@@ -31,6 +31,12 @@ dependencies = [
     "pyyaml (>=6.0)",               # PCSE agromanagement is written as YAML
     # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
     # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.
+    "covasim (>=3.1)",              # IDM's agent-based epidemic, for the epidemic environment
+    "eclipse-sumo (>=1.20)",        # the SUMO binaries, for the traffic signals
+    "libsumo (>=1.20)",             # SUMO's in-process binding
+    "pywr (>=1.20)",                # Manchester's water resource simulator, for the reservoirs
+    # BlueSky (the airspace environment) is installed by scripts/install_bluesky.sh: its
+    # published dependency list names a package that no longer builds.
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
     "pooltool-billiards (>=0.6)",   # event-based billiards physics, for the billiards table
     "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers

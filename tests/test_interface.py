@@ -151,6 +151,42 @@ def micropolis():
     return env
 
 
+def epidemic():
+    pytest.importorskip("covasim", reason="covasim is not installed")
+    from planiverse.environments.epidemic.environment import EpidemicEnv
+
+    env = EpidemicEnv()
+    env.set_index(0)
+    return env
+
+
+def traffic():
+    pytest.importorskip("libsumo", reason="libsumo is not installed")
+    from planiverse.environments.traffic.environment import TrafficEnv
+
+    env = TrafficEnv()
+    env.set_index(0)
+    return env
+
+
+def airspace():
+    pytest.importorskip("bluesky", reason="bluesky is not installed")
+    from planiverse.environments.airspace.environment import AirspaceEnv
+
+    env = AirspaceEnv()
+    env.set_index(0)
+    return env
+
+
+def reservoir():
+    pytest.importorskip("pywr", reason="pywr is not installed")
+    from planiverse.environments.reservoir.environment import ReservoirEnv
+
+    env = ReservoirEnv()
+    env.set_index(0)
+    return env
+
+
 def factory_env():
     pytest.importorskip("fsim", reason="factory-sim is not built")
     from planiverse.environments.factory.environment import FactoryEnv
@@ -196,6 +232,10 @@ ENVIRONMENTS = {
     "lemmings": lemmings,
     "micropolis": micropolis,
     "factory": factory_env,
+    "epidemic": epidemic,
+    "traffic": traffic,
+    "airspace": pytest.param(airspace, marks=pytest.mark.slow),
+    "reservoir": reservoir,
     "game_boy": game_boy,
     "retro": retro,
 }
@@ -261,7 +301,8 @@ def test_every_registered_environment_is_in_the_catalogue():
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "slingshot", "artillery", "tower_defence", "fluid", "billiards",
-            "lemmings", "micropolis", "factory", "game_boy", "retro"} == registered
+            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir",
+            "game_boy", "retro"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():

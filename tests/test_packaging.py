@@ -19,11 +19,13 @@ PYPROJECT = REPO / "pyproject.toml"
 DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "sklearn": "scikit-learn", "cv2": "opencv-python",
                    "retro": "stable-retro",    # its import name before 1.0, kept as a fallback
-                   "pooltool": "pooltool-billiards"}
+                   "pooltool": "pooltool-billiards",
+                   "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
+                   "bluesky": "bluesky-simulator"}
 
 #: Built from source rather than installed from PyPI, so not declarable: the Micropolis engine
 #: (see `scripts/build_micropolis.sh`) and factory-sim (`scripts/build_factory_sim.sh`).
-BUILT_FROM_SOURCE = {"micropolisengine", "fsim"}
+BUILT_FROM_SOURCE = {"micropolisengine", "fsim", "bluesky"}   # bluesky: scripts/install_bluesky.sh
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -43,6 +45,10 @@ ENTRY_POINTS = [
     "planiverse.environments.lemmings.environment",
     "planiverse.environments.micropolis.environment",
     "planiverse.environments.factory.environment",
+    "planiverse.environments.epidemic.environment",
+    "planiverse.environments.traffic.environment",
+    "planiverse.environments.airspace.environment",
+    "planiverse.environments.reservoir.environment",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",

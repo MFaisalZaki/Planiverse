@@ -63,7 +63,47 @@ def flood_transport(state):
             "in place": len(state.protected)}
 
 
+def epidemic(state):
+    return {"infectious": state.infectious, "in hospital": state.load, "beds": state.capacity,
+            "deaths": state.deaths, "allowed": state.target, "points spent": state.points,
+            "budget": state.budget}
+
+
+def traffic(state):
+    return {"on the road": state.running, "arrived": state.arrived, "to come": state.pending,
+            "vehicle-seconds": state.travel, "target": state.target}
+
+
+def airspace(state):
+    return {"in the sector": len(state.flying), "closest, nm": min(state.closest, 30.0),
+            "standard": 5.0, "miles to go": sum(a[5] for a in state.flying),
+            "exit times, s": state.exit_sum, "target": state.target}
+
+
+def reservoir(state):
+    city, farm, river, turbine = state.delivered
+    return {"upper": state.upper, "lower": state.lower, "released": turbine, "city": city,
+            "farm": farm, "river": river, "farm shortfall": state.farm_short, "allowed": state.target}
+
+
 READINGS = {
+    ("planiverse.environments.epidemic.environment", "EpidemicState"): Readings(
+        epidemic, (Panel("people", ("infectious",), None),
+                   Panel("in hospital", ("in hospital",), "beds"),
+                   Panel("deaths", ("deaths",), "allowed"),
+                   Panel("disruption points", ("points spent",), "budget"))),
+    ("planiverse.environments.traffic.environment", "TrafficState"): Readings(
+        traffic, (Panel("vehicles", ("on the road", "arrived", "to come"), None),
+                  Panel("travel, vehicle-seconds", ("vehicle-seconds",), "target"))),
+    ("planiverse.environments.airspace.environment", "AirspaceState"): Readings(
+        airspace, (Panel("aircraft in the sector", ("in the sector",), None),
+                   Panel("closest pair, nautical miles", ("closest, nm",), "standard"),
+                   Panel("miles still to fly", ("miles to go",), None),
+                   Panel("exit times, seconds", ("exit times, s",), "target"))),
+    ("planiverse.environments.reservoir.environment", "ReservoirState"): Readings(
+        reservoir, (Panel("volume", ("upper", "lower"), None),
+                    Panel("flows a month", ("released", "city", "farm", "river"), None),
+                    Panel("farm shortfall", ("farm shortfall",), "allowed"))),
     ("planiverse.environments.micropolis.environment", "MicropolisState"): Readings(
         micropolis, (Panel("people", ("population", "residents", "commerce", "industry"), "target"),
                      Panel("funds", ("funds",), None),

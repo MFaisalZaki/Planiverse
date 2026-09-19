@@ -76,6 +76,26 @@ def factory(state):
     return max(0, state.target - state.plates)
 
 
+def epidemic(state):
+    """Weeks still to get through, and every death over the target on top."""
+    return max(0, state.weeks - state.week) + max(0, state.deaths - state.target)
+
+
+def traffic(state):
+    """Vehicles still to get through the grid."""
+    return state.left
+
+
+def airspace(state):
+    """Aircraft still in the sector, and the miles they have to go."""
+    return len(state.flying) + sum(a[5] for a in state.flying) / 100
+
+
+def reservoir(state):
+    """Months still to run, and the farm's shortfall over the target on top."""
+    return max(0, 12 - state.month) + max(0.0, state.farm_short - state.target)
+
+
 def water_network(state):
     """Junctions still contaminated."""
     return state.contaminated
@@ -137,6 +157,10 @@ MEASURES = {
     "lemmings": lemmings,
     "micropolis": micropolis,
     "factory": factory,
+    "epidemic": epidemic,
+    "traffic": traffic,
+    "airspace": airspace,
+    "reservoir": reservoir,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,
