@@ -59,6 +59,11 @@ def _spread(positions, gap):
     return out
 
 
+def _figure(value):
+    """A target's figure: thousands with commas, small values to four significant figures."""
+    return f"{value:,.0f}" if abs(value) >= 1000 else f"{value:.4g}"
+
+
 def _step_labels(trace, actions):
     labels = ["start"]
     for index in range(1, len(trace)):
@@ -124,7 +129,7 @@ def chart_image(trace, actions=None, env=None, upto=None, readings=None, dpi=DPI
         if panel.target and rows[0].get(panel.target) is not None:
             target = rows[0][panel.target]
             axis.axhline(target, color=MUTED, linewidth=1, linestyle=(0, (4, 3)))
-            axis.text(-0.45, target, f"{panel.target} {target:.4g}", ha="left", va="bottom",
+            axis.text(-0.45, target, f"{panel.target} {_figure(target)}", ha="left", va="bottom",
                       fontsize=7.5, color=MUTED)
         ends = []
         for k, name in enumerate(panel.series):
