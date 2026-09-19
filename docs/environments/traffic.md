@@ -1,12 +1,12 @@
 # Traffic signals
 
 Signals on a SUMO grid. Three by three signalised junctions, a stub road off each edge of the
-map, a seeded morning of trips from one stub to another, and a decision every fifteen seconds:
+map, a seeded morning of trips from one stub to another, and a decision every thirty seconds:
 switch one junction, a row, a column, all nine, or none. A switch is three seconds of amber and
 then the other green. The goal is every trip through before the horizon with the total travel
 time under the target. Car-following, lane changing, queues spilling back through the grid and
 the time each trip takes are SUMO's, and the effect of a switch is only known by running the
-next fifteen seconds, which keeps the environment out of PDDL.
+next thirty seconds, which keeps the environment out of PDDL.
 
 [SUMO](https://eclipse.dev/sumo/) (Eclipse Public License 2.0 with GPL-2.0-or-later as a
 secondary licence; Lopez et al. 2018, https://doi.org/10.1109/ITSC.2018.8569938) is the Eclipse
@@ -55,7 +55,7 @@ env.close()
    junction a signal with a north-south and an east-west green. The trips are the instance's:
    one departure every `spacing` seconds from a seeded entry stub to a seeded exit stub on
    another side.
-2. A decision is fifteen seconds. `switch(j)` puts junction `j` on amber for three seconds and
+2. A decision is thirty seconds. `switch(j)` puts junction `j` on amber for three seconds and
    then on the other green; `switch(row1)`, `switch(col2)` and `switch(all)` do it to a row, a
    column or all nine at once; `hold` changes nothing.
 3. The goal is every vehicle arrived before the horizon with the vehicle-seconds spent on the
@@ -107,7 +107,7 @@ print(env.witness, env.witness_expansions)     # the cycle it was accepted on, a
 | `horizon` | 600, 750 or 900 s | the deadline |
 | `attempts` | 40 | draws before giving up with `GenerationError` |
 
-A draw is measured by fixed cycles that switch every junction every two, three, four or six
+A draw is measured by fixed cycles that switch every junction every one, two or three
 decisions, and by holding the signals as they start. The target is the least travel any of them
 clears the grid with before the horizon; the draw is thrown back when none does or when holding
 is already best, and the best cycle is the witness.

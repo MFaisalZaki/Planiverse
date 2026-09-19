@@ -1,5 +1,5 @@
 """Traffic signals on SUMO: a three-by-three grid of signalised junctions, a seeded morning of
-trips across it, and a switch every fifteen seconds; get everyone through before the horizon
+trips across it, and a switch every thirty seconds; get everyone through before the horizon
 with the total travel time under the target.
 
 SUMO (https://eclipse.dev/sumo/, Eclipse Public License 2.0 with GPL-2.0-or-later as a
@@ -39,7 +39,7 @@ from planiverse.environments.generation import draw_until, rng
 #: The grid: three by three, 150 m blocks, 120 m stubs to the edge of the map.
 GRID, BLOCK, STUB = 3, 150, 120
 #: A decision covers this many seconds, of which a switch spends these on amber.
-DECISION, AMBER = 15, 3
+DECISION, AMBER = 30, 3
 #: The junctions with signals worth switching, by SUMO's names for a grid.
 JUNCTIONS = tuple(f"{column}{row}" for column in "ABC" for row in "012")
 ROWS = tuple(tuple(f"{column}{row}" for column in "ABC") for row in "012")
@@ -49,7 +49,7 @@ VEHICLES = (120, 160, 200, 240)
 SPACINGS = (1.0, 1.5, 2.0)
 HORIZONS = (600, 750, 900)
 #: How often a fixed cycle switches all signals, in decisions, for the reference timers.
-CYCLES = (2, 3, 4, 6)
+CYCLES = (1, 2, 3)
 
 _net = {}
 
@@ -407,204 +407,204 @@ class TrafficEnv(Environment):
 #: plain data `set_instance` takes, with the plan each was accepted on in
 #: `tests/data/traffic_solutions.json`.
 MORNINGS = (
-    # seed 9000; 200 vehicles every 2.0 s, horizon 600 s, 35-step plan
-    {"seed": 369326630, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15397},
-    # seed 9001; 200 vehicles every 1.5 s, horizon 600 s, 30-step plan
-    {"seed": 39830315, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 18089},
-    # seed 9002; 200 vehicles every 2.0 s, horizon 600 s, 35-step plan
-    {"seed": 295778760, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15660},
-    # seed 9003; 120 vehicles every 1.0 s, horizon 900 s, 17-step plan
-    {"seed": 610606394, "vehicles": 120, "spacing": 1.0, "horizon": 900, "target": 11385},
-    # seed 9004; 240 vehicles every 1.5 s, horizon 750 s, 35-step plan
-    {"seed": 1063345461, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 22114},
-    # seed 9005; 240 vehicles every 1.0 s, horizon 750 s, 29-step plan
-    {"seed": 376437504, "vehicles": 240, "spacing": 1.0, "horizon": 750, "target": 22940},
-    # seed 9006; 120 vehicles every 1.5 s, horizon 750 s, 22-step plan
-    {"seed": 1012944643, "vehicles": 120, "spacing": 1.5, "horizon": 750, "target": 9367},
-    # seed 9007; 120 vehicles every 1.0 s, horizon 900 s, 19-step plan
-    {"seed": 359003885, "vehicles": 120, "spacing": 1.0, "horizon": 900, "target": 9930},
-    # seed 9008; 240 vehicles every 1.5 s, horizon 750 s, 33-step plan
-    {"seed": 648715749, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 21317},
-    # seed 9009; 160 vehicles every 1.5 s, horizon 900 s, 27-step plan
-    {"seed": 311388747, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 13830},
-    # seed 9010; 160 vehicles every 2.0 s, horizon 900 s, 30-step plan
-    {"seed": 121293936, "vehicles": 160, "spacing": 2.0, "horizon": 900, "target": 12862},
-    # seed 9011; 200 vehicles every 1.5 s, horizon 750 s, 31-step plan
-    {"seed": 573281517, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 19722},
-    # seed 9012; 200 vehicles every 1.5 s, horizon 750 s, 29-step plan
-    {"seed": 397153799, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 15296},
-    # seed 9013; 200 vehicles every 2.0 s, horizon 750 s, 33-step plan
-    {"seed": 1038183361, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15367},
-    # seed 9014; 240 vehicles every 2.0 s, horizon 750 s, 41-step plan
-    {"seed": 344065333, "vehicles": 240, "spacing": 2.0, "horizon": 750, "target": 19857},
-    # seed 9015; 120 vehicles every 1.5 s, horizon 600 s, 21-step plan
-    {"seed": 691710551, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9446},
-    # seed 9016; 160 vehicles every 2.0 s, horizon 750 s, 31-step plan
-    {"seed": 468718473, "vehicles": 160, "spacing": 2.0, "horizon": 750, "target": 12503},
-    # seed 9017; 160 vehicles every 1.5 s, horizon 900 s, 25-step plan
-    {"seed": 996360513, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 12397},
-    # seed 9018; 240 vehicles every 2.0 s, horizon 900 s, 41-step plan
-    {"seed": 284830276, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 20183},
-    # seed 9019; 240 vehicles every 1.0 s, horizon 600 s, 29-step plan
-    {"seed": 968392874, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 23798},
-    # seed 9020; 200 vehicles every 1.0 s, horizon 900 s, 24-step plan
-    {"seed": 975312175, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 18894},
-    # seed 9021; 160 vehicles every 1.5 s, horizon 750 s, 25-step plan
-    {"seed": 85217924, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12835},
-    # seed 9022; 200 vehicles every 1.5 s, horizon 600 s, 29-step plan
-    {"seed": 139603094, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 15901},
-    # seed 9023; 120 vehicles every 2.0 s, horizon 900 s, 25-step plan
-    {"seed": 1036363007, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9300},
-    # seed 9024; 160 vehicles every 1.0 s, horizon 900 s, 23-step plan
-    {"seed": 20831278, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 16255},
-    # seed 9025; 120 vehicles every 1.0 s, horizon 600 s, 17-step plan
-    {"seed": 219434381, "vehicles": 120, "spacing": 1.0, "horizon": 600, "target": 9739},
-    # seed 9026; 200 vehicles every 1.5 s, horizon 750 s, 29-step plan
-    {"seed": 942561203, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 16612},
-    # seed 9027; 240 vehicles every 1.0 s, horizon 900 s, 29-step plan
-    {"seed": 338707991, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 24377},
-    # seed 9028; 200 vehicles every 1.0 s, horizon 900 s, 23-step plan
-    {"seed": 422354421, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 17118},
-    # seed 9029; 240 vehicles every 1.5 s, horizon 750 s, 33-step plan
-    {"seed": 457078268, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 19937},
-    # seed 9030; 240 vehicles every 1.5 s, horizon 750 s, 35-step plan
-    {"seed": 321373061, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 20328},
-    # seed 9031; 200 vehicles every 2.0 s, horizon 750 s, 33-step plan
-    {"seed": 1059605557, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15515},
-    # seed 9032; 240 vehicles every 1.0 s, horizon 900 s, 27-step plan
-    {"seed": 992213298, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 20832},
-    # seed 9033; 200 vehicles every 1.0 s, horizon 750 s, 25-step plan
-    {"seed": 1053202513, "vehicles": 200, "spacing": 1.0, "horizon": 750, "target": 18489},
-    # seed 9034; 120 vehicles every 2.0 s, horizon 750 s, 27-step plan
-    {"seed": 149446519, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 8526},
-    # seed 9035; 160 vehicles every 1.5 s, horizon 750 s, 24-step plan
-    {"seed": 271017444, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 14082},
-    # seed 9036; 200 vehicles every 2.0 s, horizon 600 s, 35-step plan
-    {"seed": 1049550267, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 16206},
-    # seed 9037; 200 vehicles every 1.5 s, horizon 600 s, 29-step plan
-    {"seed": 961625233, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 17678},
-    # seed 9038; 160 vehicles every 1.0 s, horizon 900 s, 21-step plan
-    {"seed": 25569470, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 14566},
-    # seed 9039; 160 vehicles every 1.5 s, horizon 750 s, 23-step plan
-    {"seed": 943283422, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 13965},
-    # seed 9040; 120 vehicles every 2.0 s, horizon 750 s, 24-step plan
-    {"seed": 398697691, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 9086},
-    # seed 9041; 160 vehicles every 1.5 s, horizon 900 s, 26-step plan
-    {"seed": 815210155, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 14132},
-    # seed 9042; 200 vehicles every 1.5 s, horizon 900 s, 29-step plan
-    {"seed": 271295058, "vehicles": 200, "spacing": 1.5, "horizon": 900, "target": 17114},
-    # seed 9043; 200 vehicles every 2.0 s, horizon 750 s, 37-step plan
-    {"seed": 273441536, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 16664},
-    # seed 9044; 240 vehicles every 2.0 s, horizon 900 s, 41-step plan
-    {"seed": 696776955, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 18528},
-    # seed 9045; 240 vehicles every 1.5 s, horizon 750 s, 33-step plan
-    {"seed": 803278543, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 21058},
-    # seed 9046; 160 vehicles every 1.5 s, horizon 750 s, 25-step plan
-    {"seed": 578882619, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12924},
-    # seed 9047; 200 vehicles every 1.0 s, horizon 900 s, 25-step plan
-    {"seed": 513292069, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 19436},
-    # seed 9048; 200 vehicles every 1.0 s, horizon 600 s, 23-step plan
-    {"seed": 295537948, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 18524},
-    # seed 9049; 200 vehicles every 2.0 s, horizon 900 s, 35-step plan
-    {"seed": 684449591, "vehicles": 200, "spacing": 2.0, "horizon": 900, "target": 15199},
-    # seed 9050; 200 vehicles every 2.0 s, horizon 900 s, 33-step plan
-    {"seed": 528476589, "vehicles": 200, "spacing": 2.0, "horizon": 900, "target": 15959},
-    # seed 9051; 120 vehicles every 1.5 s, horizon 750 s, 19-step plan
-    {"seed": 196542150, "vehicles": 120, "spacing": 1.5, "horizon": 750, "target": 10147},
-    # seed 9052; 120 vehicles every 1.5 s, horizon 900 s, 21-step plan
-    {"seed": 17052900, "vehicles": 120, "spacing": 1.5, "horizon": 900, "target": 9337},
-    # seed 9053; 240 vehicles every 1.0 s, horizon 750 s, 27-step plan
-    {"seed": 389593505, "vehicles": 240, "spacing": 1.0, "horizon": 750, "target": 22062},
-    # seed 9054; 240 vehicles every 1.5 s, horizon 600 s, 31-step plan
-    {"seed": 767538779, "vehicles": 240, "spacing": 1.5, "horizon": 600, "target": 19290},
-    # seed 9055; 160 vehicles every 1.0 s, horizon 600 s, 23-step plan
-    {"seed": 944213926, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 15259},
-    # seed 9056; 120 vehicles every 1.5 s, horizon 600 s, 20-step plan
-    {"seed": 240960256, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9374},
-    # seed 9057; 120 vehicles every 2.0 s, horizon 900 s, 25-step plan
-    {"seed": 1015081419, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9472},
-    # seed 9058; 240 vehicles every 2.0 s, horizon 900 s, 41-step plan
-    {"seed": 599193888, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 18722},
-    # seed 9059; 160 vehicles every 1.0 s, horizon 750 s, 21-step plan
-    {"seed": 682590923, "vehicles": 160, "spacing": 1.0, "horizon": 750, "target": 14722},
-    # seed 9060; 240 vehicles every 1.0 s, horizon 600 s, 27-step plan
-    {"seed": 512873994, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 24232},
-    # seed 9061; 120 vehicles every 1.5 s, horizon 600 s, 21-step plan
-    {"seed": 584200868, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9984},
-    # seed 9062; 200 vehicles every 1.5 s, horizon 750 s, 31-step plan
-    {"seed": 652146434, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 16596},
-    # seed 9063; 120 vehicles every 1.0 s, horizon 750 s, 18-step plan
-    {"seed": 400279027, "vehicles": 120, "spacing": 1.0, "horizon": 750, "target": 11191},
-    # seed 9064; 160 vehicles every 1.0 s, horizon 900 s, 19-step plan
-    {"seed": 482156899, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 14496},
-    # seed 9065; 240 vehicles every 1.5 s, horizon 750 s, 33-step plan
-    {"seed": 625277176, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 18880},
-    # seed 9066; 160 vehicles every 1.0 s, horizon 900 s, 23-step plan
-    {"seed": 408229125, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 15049},
-    # seed 9067; 120 vehicles every 1.0 s, horizon 600 s, 19-step plan
-    {"seed": 222515115, "vehicles": 120, "spacing": 1.0, "horizon": 600, "target": 10101},
-    # seed 9068; 240 vehicles every 1.0 s, horizon 600 s, 28-step plan
-    {"seed": 51399698, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 22616},
-    # seed 9069; 160 vehicles every 2.0 s, horizon 600 s, 31-step plan
-    {"seed": 98048014, "vehicles": 160, "spacing": 2.0, "horizon": 600, "target": 12649},
-    # seed 9070; 120 vehicles every 1.5 s, horizon 600 s, 20-step plan
-    {"seed": 426812545, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 10072},
-    # seed 9071; 160 vehicles every 1.5 s, horizon 750 s, 25-step plan
-    {"seed": 1051066146, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 13307},
-    # seed 9072; 120 vehicles every 2.0 s, horizon 600 s, 25-step plan
-    {"seed": 172985337, "vehicles": 120, "spacing": 2.0, "horizon": 600, "target": 9714},
-    # seed 9073; 200 vehicles every 1.0 s, horizon 750 s, 26-step plan
-    {"seed": 829910765, "vehicles": 200, "spacing": 1.0, "horizon": 750, "target": 19755},
-    # seed 9074; 160 vehicles every 1.0 s, horizon 750 s, 19-step plan
-    {"seed": 872933550, "vehicles": 160, "spacing": 1.0, "horizon": 750, "target": 13881},
-    # seed 9075; 120 vehicles every 2.0 s, horizon 900 s, 26-step plan
-    {"seed": 541486175, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9378},
-    # seed 9076; 200 vehicles every 1.0 s, horizon 600 s, 23-step plan
-    {"seed": 813098918, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 17170},
-    # seed 9077; 160 vehicles every 1.0 s, horizon 600 s, 23-step plan
-    {"seed": 116243095, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 15869},
-    # seed 9078; 160 vehicles every 1.5 s, horizon 600 s, 24-step plan
-    {"seed": 326699894, "vehicles": 160, "spacing": 1.5, "horizon": 600, "target": 12638},
-    # seed 9079; 200 vehicles every 1.5 s, horizon 750 s, 29-step plan
-    {"seed": 146580488, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 18842},
-    # seed 9080; 200 vehicles every 1.0 s, horizon 900 s, 27-step plan
-    {"seed": 508828721, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 21937},
-    # seed 9081; 200 vehicles every 1.0 s, horizon 600 s, 25-step plan
-    {"seed": 526468421, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 19136},
-    # seed 9082; 160 vehicles every 1.0 s, horizon 600 s, 22-step plan
-    {"seed": 540643337, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 13198},
-    # seed 9083; 240 vehicles every 1.5 s, horizon 900 s, 35-step plan
-    {"seed": 399316842, "vehicles": 240, "spacing": 1.5, "horizon": 900, "target": 20693},
-    # seed 9084; 160 vehicles every 1.0 s, horizon 600 s, 20-step plan
-    {"seed": 1057066203, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 13555},
-    # seed 9085; 240 vehicles every 1.5 s, horizon 900 s, 36-step plan
-    {"seed": 485457192, "vehicles": 240, "spacing": 1.5, "horizon": 900, "target": 22453},
-    # seed 9086; 120 vehicles every 2.0 s, horizon 900 s, 28-step plan
-    {"seed": 166489957, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9107},
-    # seed 9087; 200 vehicles every 2.0 s, horizon 600 s, 36-step plan
-    {"seed": 630841644, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15855},
-    # seed 9088; 120 vehicles every 2.0 s, horizon 900 s, 25-step plan
-    {"seed": 651011267, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9212},
-    # seed 9089; 240 vehicles every 1.0 s, horizon 600 s, 29-step plan
-    {"seed": 854362708, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 24788},
-    # seed 9090; 120 vehicles every 1.5 s, horizon 600 s, 21-step plan
-    {"seed": 312148943, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9524},
-    # seed 9091; 200 vehicles every 2.0 s, horizon 750 s, 33-step plan
-    {"seed": 767218348, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15829},
-    # seed 9092; 240 vehicles every 1.0 s, horizon 900 s, 26-step plan
-    {"seed": 88075309, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 23505},
-    # seed 9093; 120 vehicles every 2.0 s, horizon 750 s, 23-step plan
-    {"seed": 583838555, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 8948},
-    # seed 9094; 160 vehicles every 2.0 s, horizon 600 s, 29-step plan
-    {"seed": 707630003, "vehicles": 160, "spacing": 2.0, "horizon": 600, "target": 12117},
-    # seed 9095; 240 vehicles every 1.0 s, horizon 900 s, 28-step plan
-    {"seed": 411955586, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 24462},
-    # seed 9096; 200 vehicles every 1.5 s, horizon 600 s, 28-step plan
-    {"seed": 68672395, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 17989},
-    # seed 9097; 160 vehicles every 1.5 s, horizon 750 s, 25-step plan
-    {"seed": 332188830, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12848},
-    # seed 9098; 200 vehicles every 1.0 s, horizon 600 s, 22-step plan
-    {"seed": 187907080, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 17966},
-    # seed 9099; 240 vehicles every 2.0 s, horizon 900 s, 40-step plan
-    {"seed": 26071750, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 19474},
+    # seed 9000; 200 vehicles every 2.0 s, horizon 600 s, 17-step plan
+    {"seed": 369326630, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15579},
+    # seed 9001; 200 vehicles every 1.5 s, horizon 600 s, 15-step plan
+    {"seed": 39830315, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 16872},
+    # seed 9002; 200 vehicles every 2.0 s, horizon 600 s, 17-step plan
+    {"seed": 295778760, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15916},
+    # seed 9003; 120 vehicles every 1.0 s, horizon 900 s, 8-step plan
+    {"seed": 610606394, "vehicles": 120, "spacing": 1.0, "horizon": 900, "target": 9920},
+    # seed 9004; 240 vehicles every 1.5 s, horizon 750 s, 18-step plan
+    {"seed": 1063345461, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 22033},
+    # seed 9005; 240 vehicles every 1.0 s, horizon 750 s, 14-step plan
+    {"seed": 376437504, "vehicles": 240, "spacing": 1.0, "horizon": 750, "target": 22868},
+    # seed 9006; 120 vehicles every 1.5 s, horizon 750 s, 10-step plan
+    {"seed": 1012944643, "vehicles": 120, "spacing": 1.5, "horizon": 750, "target": 9251},
+    # seed 9007; 120 vehicles every 1.0 s, horizon 900 s, 9-step plan
+    {"seed": 359003885, "vehicles": 120, "spacing": 1.0, "horizon": 900, "target": 10048},
+    # seed 9008; 240 vehicles every 1.5 s, horizon 750 s, 17-step plan
+    {"seed": 648715749, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 21083},
+    # seed 9009; 160 vehicles every 1.5 s, horizon 900 s, 13-step plan
+    {"seed": 311388747, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 14029},
+    # seed 9010; 160 vehicles every 2.0 s, horizon 900 s, 15-step plan
+    {"seed": 121293936, "vehicles": 160, "spacing": 2.0, "horizon": 900, "target": 12345},
+    # seed 9011; 200 vehicles every 1.5 s, horizon 750 s, 15-step plan
+    {"seed": 573281517, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 17291},
+    # seed 9012; 200 vehicles every 1.5 s, horizon 750 s, 15-step plan
+    {"seed": 397153799, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 15925},
+    # seed 9013; 200 vehicles every 2.0 s, horizon 750 s, 17-step plan
+    {"seed": 1038183361, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15274},
+    # seed 9014; 240 vehicles every 2.0 s, horizon 750 s, 21-step plan
+    {"seed": 344065333, "vehicles": 240, "spacing": 2.0, "horizon": 750, "target": 20540},
+    # seed 9015; 120 vehicles every 1.5 s, horizon 600 s, 11-step plan
+    {"seed": 691710551, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9890},
+    # seed 9016; 160 vehicles every 2.0 s, horizon 750 s, 16-step plan
+    {"seed": 468718473, "vehicles": 160, "spacing": 2.0, "horizon": 750, "target": 12074},
+    # seed 9017; 160 vehicles every 1.5 s, horizon 900 s, 12-step plan
+    {"seed": 996360513, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 12686},
+    # seed 9018; 240 vehicles every 2.0 s, horizon 900 s, 20-step plan
+    {"seed": 284830276, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 19411},
+    # seed 9019; 240 vehicles every 1.0 s, horizon 600 s, 13-step plan
+    {"seed": 968392874, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 24593},
+    # seed 9020; 200 vehicles every 1.0 s, horizon 900 s, 12-step plan
+    {"seed": 975312175, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 17653},
+    # seed 9021; 160 vehicles every 1.5 s, horizon 750 s, 13-step plan
+    {"seed": 85217924, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12544},
+    # seed 9022; 200 vehicles every 1.5 s, horizon 600 s, 15-step plan
+    {"seed": 139603094, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 16638},
+    # seed 9023; 120 vehicles every 2.0 s, horizon 900 s, 13-step plan
+    {"seed": 1036363007, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9238},
+    # seed 9024; 160 vehicles every 1.0 s, horizon 900 s, 12-step plan
+    {"seed": 20831278, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 15751},
+    # seed 9025; 120 vehicles every 1.0 s, horizon 600 s, 9-step plan
+    {"seed": 219434381, "vehicles": 120, "spacing": 1.0, "horizon": 600, "target": 10471},
+    # seed 9026; 200 vehicles every 1.5 s, horizon 750 s, 15-step plan
+    {"seed": 942561203, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 16725},
+    # seed 9027; 240 vehicles every 1.0 s, horizon 900 s, 14-step plan
+    {"seed": 338707991, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 23688},
+    # seed 9028; 200 vehicles every 1.0 s, horizon 900 s, 13-step plan
+    {"seed": 422354421, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 18634},
+    # seed 9029; 240 vehicles every 1.5 s, horizon 750 s, 17-step plan
+    {"seed": 457078268, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 20371},
+    # seed 9030; 240 vehicles every 1.5 s, horizon 750 s, 17-step plan
+    {"seed": 321373061, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 20428},
+    # seed 9031; 200 vehicles every 2.0 s, horizon 750 s, 17-step plan
+    {"seed": 1059605557, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15370},
+    # seed 9032; 240 vehicles every 1.0 s, horizon 900 s, 13-step plan
+    {"seed": 992213298, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 23119},
+    # seed 9033; 200 vehicles every 1.0 s, horizon 750 s, 12-step plan
+    {"seed": 1053202513, "vehicles": 200, "spacing": 1.0, "horizon": 750, "target": 19805},
+    # seed 9034; 120 vehicles every 2.0 s, horizon 750 s, 12-step plan
+    {"seed": 149446519, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 8888},
+    # seed 9035; 160 vehicles every 1.5 s, horizon 750 s, 12-step plan
+    {"seed": 271017444, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 13304},
+    # seed 9036; 200 vehicles every 2.0 s, horizon 600 s, 18-step plan
+    {"seed": 1049550267, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 16449},
+    # seed 9037; 200 vehicles every 1.5 s, horizon 600 s, 14-step plan
+    {"seed": 961625233, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 16661},
+    # seed 9038; 160 vehicles every 1.0 s, horizon 900 s, 10-step plan
+    {"seed": 25569470, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 14417},
+    # seed 9039; 160 vehicles every 1.5 s, horizon 750 s, 13-step plan
+    {"seed": 943283422, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 13740},
+    # seed 9040; 120 vehicles every 2.0 s, horizon 750 s, 12-step plan
+    {"seed": 398697691, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 9126},
+    # seed 9041; 160 vehicles every 1.5 s, horizon 900 s, 13-step plan
+    {"seed": 815210155, "vehicles": 160, "spacing": 1.5, "horizon": 900, "target": 13772},
+    # seed 9042; 200 vehicles every 1.5 s, horizon 900 s, 15-step plan
+    {"seed": 271295058, "vehicles": 200, "spacing": 1.5, "horizon": 900, "target": 18184},
+    # seed 9043; 200 vehicles every 2.0 s, horizon 750 s, 18-step plan
+    {"seed": 273441536, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 16108},
+    # seed 9044; 240 vehicles every 2.0 s, horizon 900 s, 20-step plan
+    {"seed": 696776955, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 18821},
+    # seed 9045; 240 vehicles every 1.5 s, horizon 750 s, 17-step plan
+    {"seed": 803278543, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 19543},
+    # seed 9046; 160 vehicles every 1.5 s, horizon 750 s, 12-step plan
+    {"seed": 578882619, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12674},
+    # seed 9047; 200 vehicles every 1.0 s, horizon 900 s, 12-step plan
+    {"seed": 513292069, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 21490},
+    # seed 9048; 200 vehicles every 1.0 s, horizon 600 s, 12-step plan
+    {"seed": 295537948, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 19542},
+    # seed 9049; 200 vehicles every 2.0 s, horizon 900 s, 17-step plan
+    {"seed": 684449591, "vehicles": 200, "spacing": 2.0, "horizon": 900, "target": 15569},
+    # seed 9050; 200 vehicles every 2.0 s, horizon 900 s, 18-step plan
+    {"seed": 528476589, "vehicles": 200, "spacing": 2.0, "horizon": 900, "target": 15974},
+    # seed 9051; 120 vehicles every 1.5 s, horizon 750 s, 11-step plan
+    {"seed": 196542150, "vehicles": 120, "spacing": 1.5, "horizon": 750, "target": 10465},
+    # seed 9052; 120 vehicles every 1.5 s, horizon 900 s, 10-step plan
+    {"seed": 17052900, "vehicles": 120, "spacing": 1.5, "horizon": 900, "target": 9666},
+    # seed 9053; 240 vehicles every 1.0 s, horizon 750 s, 14-step plan
+    {"seed": 389593505, "vehicles": 240, "spacing": 1.0, "horizon": 750, "target": 23531},
+    # seed 9054; 240 vehicles every 1.5 s, horizon 600 s, 17-step plan
+    {"seed": 767538779, "vehicles": 240, "spacing": 1.5, "horizon": 600, "target": 19040},
+    # seed 9055; 160 vehicles every 1.0 s, horizon 600 s, 13-step plan
+    {"seed": 944213926, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 15632},
+    # seed 9056; 120 vehicles every 1.5 s, horizon 600 s, 11-step plan
+    {"seed": 240960256, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 10186},
+    # seed 9057; 120 vehicles every 2.0 s, horizon 900 s, 12-step plan
+    {"seed": 1015081419, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9265},
+    # seed 9058; 240 vehicles every 2.0 s, horizon 900 s, 20-step plan
+    {"seed": 599193888, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 19648},
+    # seed 9059; 160 vehicles every 1.0 s, horizon 750 s, 10-step plan
+    {"seed": 682590923, "vehicles": 160, "spacing": 1.0, "horizon": 750, "target": 14546},
+    # seed 9060; 240 vehicles every 1.0 s, horizon 600 s, 14-step plan
+    {"seed": 512873994, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 24716},
+    # seed 9061; 120 vehicles every 1.5 s, horizon 600 s, 11-step plan
+    {"seed": 584200868, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9550},
+    # seed 9062; 200 vehicles every 1.5 s, horizon 750 s, 16-step plan
+    {"seed": 652146434, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 16559},
+    # seed 9063; 120 vehicles every 1.0 s, horizon 750 s, 9-step plan
+    {"seed": 400279027, "vehicles": 120, "spacing": 1.0, "horizon": 750, "target": 10669},
+    # seed 9064; 160 vehicles every 1.0 s, horizon 900 s, 11-step plan
+    {"seed": 482156899, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 14596},
+    # seed 9065; 240 vehicles every 1.5 s, horizon 750 s, 18-step plan
+    {"seed": 625277176, "vehicles": 240, "spacing": 1.5, "horizon": 750, "target": 20446},
+    # seed 9066; 160 vehicles every 1.0 s, horizon 900 s, 11-step plan
+    {"seed": 408229125, "vehicles": 160, "spacing": 1.0, "horizon": 900, "target": 14925},
+    # seed 9067; 120 vehicles every 1.0 s, horizon 600 s, 10-step plan
+    {"seed": 222515115, "vehicles": 120, "spacing": 1.0, "horizon": 600, "target": 10702},
+    # seed 9068; 240 vehicles every 1.0 s, horizon 600 s, 14-step plan
+    {"seed": 51399698, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 24192},
+    # seed 9069; 160 vehicles every 2.0 s, horizon 600 s, 15-step plan
+    {"seed": 98048014, "vehicles": 160, "spacing": 2.0, "horizon": 600, "target": 12145},
+    # seed 9070; 120 vehicles every 1.5 s, horizon 600 s, 12-step plan
+    {"seed": 426812545, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 10230},
+    # seed 9071; 160 vehicles every 1.5 s, horizon 750 s, 12-step plan
+    {"seed": 1051066146, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 12460},
+    # seed 9072; 120 vehicles every 2.0 s, horizon 600 s, 13-step plan
+    {"seed": 172985337, "vehicles": 120, "spacing": 2.0, "horizon": 600, "target": 9485},
+    # seed 9073; 200 vehicles every 1.0 s, horizon 750 s, 13-step plan
+    {"seed": 829910765, "vehicles": 200, "spacing": 1.0, "horizon": 750, "target": 19094},
+    # seed 9074; 160 vehicles every 1.0 s, horizon 750 s, 10-step plan
+    {"seed": 872933550, "vehicles": 160, "spacing": 1.0, "horizon": 750, "target": 13980},
+    # seed 9075; 120 vehicles every 2.0 s, horizon 900 s, 12-step plan
+    {"seed": 541486175, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9157},
+    # seed 9076; 200 vehicles every 1.0 s, horizon 600 s, 12-step plan
+    {"seed": 813098918, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 17556},
+    # seed 9077; 160 vehicles every 1.0 s, horizon 600 s, 10-step plan
+    {"seed": 116243095, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 15839},
+    # seed 9078; 160 vehicles every 1.5 s, horizon 600 s, 12-step plan
+    {"seed": 326699894, "vehicles": 160, "spacing": 1.5, "horizon": 600, "target": 13248},
+    # seed 9079; 200 vehicles every 1.5 s, horizon 750 s, 16-step plan
+    {"seed": 146580488, "vehicles": 200, "spacing": 1.5, "horizon": 750, "target": 19170},
+    # seed 9080; 200 vehicles every 1.0 s, horizon 900 s, 12-step plan
+    {"seed": 508828721, "vehicles": 200, "spacing": 1.0, "horizon": 900, "target": 21293},
+    # seed 9081; 200 vehicles every 1.0 s, horizon 600 s, 12-step plan
+    {"seed": 526468421, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 18475},
+    # seed 9082; 160 vehicles every 1.0 s, horizon 600 s, 11-step plan
+    {"seed": 540643337, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 14609},
+    # seed 9083; 240 vehicles every 1.5 s, horizon 900 s, 17-step plan
+    {"seed": 399316842, "vehicles": 240, "spacing": 1.5, "horizon": 900, "target": 20411},
+    # seed 9084; 160 vehicles every 1.0 s, horizon 600 s, 11-step plan
+    {"seed": 1057066203, "vehicles": 160, "spacing": 1.0, "horizon": 600, "target": 14733},
+    # seed 9085; 240 vehicles every 1.5 s, horizon 900 s, 16-step plan
+    {"seed": 485457192, "vehicles": 240, "spacing": 1.5, "horizon": 900, "target": 21668},
+    # seed 9086; 120 vehicles every 2.0 s, horizon 900 s, 12-step plan
+    {"seed": 166489957, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 9124},
+    # seed 9087; 200 vehicles every 2.0 s, horizon 600 s, 17-step plan
+    {"seed": 630841644, "vehicles": 200, "spacing": 2.0, "horizon": 600, "target": 15891},
+    # seed 9088; 120 vehicles every 2.0 s, horizon 900 s, 13-step plan
+    {"seed": 651011267, "vehicles": 120, "spacing": 2.0, "horizon": 900, "target": 10091},
+    # seed 9089; 240 vehicles every 1.0 s, horizon 600 s, 14-step plan
+    {"seed": 854362708, "vehicles": 240, "spacing": 1.0, "horizon": 600, "target": 25486},
+    # seed 9090; 120 vehicles every 1.5 s, horizon 600 s, 10-step plan
+    {"seed": 312148943, "vehicles": 120, "spacing": 1.5, "horizon": 600, "target": 9224},
+    # seed 9091; 200 vehicles every 2.0 s, horizon 750 s, 17-step plan
+    {"seed": 767218348, "vehicles": 200, "spacing": 2.0, "horizon": 750, "target": 15533},
+    # seed 9092; 240 vehicles every 1.0 s, horizon 900 s, 13-step plan
+    {"seed": 88075309, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 23823},
+    # seed 9093; 120 vehicles every 2.0 s, horizon 750 s, 12-step plan
+    {"seed": 583838555, "vehicles": 120, "spacing": 2.0, "horizon": 750, "target": 9429},
+    # seed 9094; 240 vehicles every 2.0 s, horizon 600 s, 20-step plan
+    {"seed": 647389462, "vehicles": 240, "spacing": 2.0, "horizon": 600, "target": 17918},
+    # seed 9095; 240 vehicles every 1.0 s, horizon 900 s, 14-step plan
+    {"seed": 411955586, "vehicles": 240, "spacing": 1.0, "horizon": 900, "target": 25866},
+    # seed 9096; 200 vehicles every 1.5 s, horizon 600 s, 14-step plan
+    {"seed": 68672395, "vehicles": 200, "spacing": 1.5, "horizon": 600, "target": 16599},
+    # seed 9097; 160 vehicles every 1.5 s, horizon 750 s, 12-step plan
+    {"seed": 332188830, "vehicles": 160, "spacing": 1.5, "horizon": 750, "target": 13203},
+    # seed 9098; 200 vehicles every 1.0 s, horizon 600 s, 12-step plan
+    {"seed": 187907080, "vehicles": 200, "spacing": 1.0, "horizon": 600, "target": 19793},
+    # seed 9099; 240 vehicles every 2.0 s, horizon 900 s, 20-step plan
+    {"seed": 26071750, "vehicles": 240, "spacing": 2.0, "horizon": 900, "target": 18801},
 )

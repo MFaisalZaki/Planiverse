@@ -54,7 +54,7 @@ Two things the reduction does not hide:
   to the benchmark (validate each plan on ten unseen seeds and report the fraction that still
   reach the goal).
 - The horizon has to be short in decisions, so the actions are per-period macro decisions: a
-  level for the week, a switch every fifteen seconds, an instruction a minute, a release for
+  level for the week, a switch every thirty seconds, an instruction a minute, a release for
   the month. That is what keeps the branching and depth inside what width-based search can
   do; it is the same choice Micropolis makes with a zone a year.
 
@@ -67,7 +67,7 @@ problem; both run in the benchmark without any change.
 | Environment | Decision, period | Dead ends (`is_terminal`) | Accumulators bounded at the goal | Final-state conditions | Target from |
 |---|---|---|---|---|---|
 | `epidemic` (Covasim) | open, distancing or lockdown; a week | hospital load over the beds; budget exceeded; horizon with deaths over target | deaths ≤ target; disruption points ≤ budget | the last week reached | four scripted schedules |
-| `traffic` (SUMO) | switch a junction, row, column, all, or hold; 15 s | horizon with vehicles left; everyone through over the target | vehicle-seconds ≤ target | every vehicle arrived | fixed cycles of 2, 3, 4, 6 decisions, and holding |
+| `traffic` (SUMO) | switch a junction, row, column, all, or hold; 30 s | horizon with vehicles left; everyone through over the target | vehicle-seconds ≤ target | every vehicle arrived | fixed cycles of 1, 2, 3 decisions, and holding |
 | `airspace` (BlueSky) | turn left or right, direct-to, hold; a minute | loss of separation; horizon with aircraft in; everyone out over the target | sum of exit times ≤ target | every aircraft out | a rule-based right- or left-turn controller, with a tenth in hand |
 | `reservoir` (pywr) | release 2 to 10 and the farm on full or half; a month | river below its minimum; city below 90 %; year ending short | farm shortfall ≤ target | both reservoirs above their reserves | steady, summer-rationed and seasonal release policies; a draw a steady release solves is thrown back |
 
