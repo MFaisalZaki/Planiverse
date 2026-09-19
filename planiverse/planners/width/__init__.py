@@ -24,18 +24,31 @@ What changes when the task is a simulator rather than a PDDL model:
 * **The atoms are whatever `literals` says.** How coarsely an environment spells its state is
   what fixes its width (see `novelty`).
 """
+from planiverse.planners.width.approximate import (
+    ApproximateNoveltySearch, BloomFilter, BloomNoveltyTable,
+)
+from planiverse.planners.width.bee import BoundaryExtensionFeatures
 from planiverse.planners.width.bfws import BFWSSearch, IteratedBFWS
+from planiverse.planners.width.count import CountNoveltySearch, CountNoveltyTable
+from planiverse.planners.width.hierarchical import HierarchicalIW
 from planiverse.planners.width.iw import IteratedWidth, IWSearch, SIWSearch
 from planiverse.planners.width.novelty import (
     MAX_PRACTICAL_WIDTH, DepthNoveltyTable, NoveltyTable, PartitionedNovelty, path_novelty,
 )
 from planiverse.planners.width.policy import PiIW, PolicyNetwork
+from planiverse.planners.width.prioritized import PrioritizedIW, RewardNoveltyTable
+from planiverse.planners.width.quantified import HeuristicNovelty, QuantifiedNoveltySearch
+from planiverse.planners.width.relevant import BFWSR
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
 from planiverse.planners.width.rollout import RolloutIW, RolloutNode
+from planiverse.planners.width.twobfs import TwoBFS
 
 __all__ = [
-    "BFWSSearch", "Budget", "DepthNoveltyTable", "IWSearch", "IteratedBFWS", "IteratedWidth",
-    "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "PiIW", "PolicyNetwork",
-    "RolloutIW", "RolloutNode", "SIWSearch", "SearchResult", "SearchStatistics",
+    "ApproximateNoveltySearch", "BFWSR", "BFWSSearch", "BloomFilter", "BloomNoveltyTable",
+    "BoundaryExtensionFeatures", "Budget", "CountNoveltySearch", "CountNoveltyTable",
+    "DepthNoveltyTable", "HeuristicNovelty", "HierarchicalIW", "IWSearch", "IteratedBFWS",
+    "IteratedWidth", "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "PiIW",
+    "PolicyNetwork", "PrioritizedIW", "QuantifiedNoveltySearch", "RewardNoveltyTable",
+    "RolloutIW", "RolloutNode", "SIWSearch", "SearchResult", "SearchStatistics", "TwoBFS",
     "path_novelty",
 ]

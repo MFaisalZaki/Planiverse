@@ -212,3 +212,17 @@ What has to happen, in order:
 
 Unrelated to the planners but still pending: the caption of the overlap figure describes four
 groups and the figure has five, and the bar order the report writes is not the caption's.
+
+## The candidate planners
+
+The planners added after the paper ([docs/planners/more-planners.md](planners/more-planners.md))
+are registered in `planiverse/benchmark/candidates.py` under their own tags and are **not**
+part of the protocol: `generate` and `report` include them only with `--candidates`, and
+their results live in their own directories under `sandbox/results/`, so a report without
+the flag is the paper's. With it, every candidate that left results joins the coverage and
+status tables and the cactus plot; the overlap and runtime figures stay over BFWS, IW and
+SIW. `solve` accepts a candidate tag either way, so one can be run by hand:
+
+```bash
+python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0
+```

@@ -39,8 +39,9 @@ class IWSearch:
     ```
     """
 
-    def __init__(self, width=1, strict=True, novelty_rule="standard"):
-        """`novelty_rule` picks how novelty is measured.
+    def __init__(self, width=1, strict=True, novelty_rule="standard", atoms=None):
+        """`novelty_rule` picks how novelty is measured; `atoms(state)` what it is measured
+        over (`state.literals` when `None`, see `bee.py` for the alternative).
 
         `"standard"` is the textbook definition: the smallest tuple of atoms in the state not
         seen anywhere in this search. `"path"` is the rule the pyBehaviourPlanningLTL
@@ -53,6 +54,10 @@ class IWSearch:
         self.width = width
         self.strict = strict
         self.novelty_rule = novelty_rule
+        self.atoms = atoms
+
+    def __atoms__(self, state):
+        return state.literals if self.atoms is None else self.atoms(state)
 
     def solve(self, env, budget=None, state=None):
         """Search from `state`, or from `env.reset()` when it is not given."""
@@ -67,8 +72,8 @@ class IWSearch:
 
         # The initial state is always kept, whatever its novelty: pruning it would leave
         # nothing to search.
-        table.evaluate_and_record(state.literals)
-        frontier = deque([(state, [], [state], frozenset(state.literals))])
+        table.evaluate_and_record(self.__atoms__(state))
+        frontier = deque([(state, [], [state], frozenset(self.__atoms__(state)))])
         closed = {state.literals}
 
         while frontier:
@@ -85,10 +90,11 @@ class IWSearch:
                     statistics.pruned_duplicate += 1
                     continue
 
+                atoms = self.__atoms__(successor)
                 if self.novelty_rule == "standard":
-                    novel = table.evaluate_and_record(successor.literals) <= self.width
+                    novel = table.evaluate_and_record(atoms) <= self.width
                 else:
-                    novel = path_novelty(successor.literals, path_atoms) >= self.width
+                    novel = path_novelty(atoms, path_atoms) >= self.width
                 if not novel:
                     statistics.pruned_novelty += 1
                     continue
@@ -107,7 +113,7 @@ class IWSearch:
                     continue
 
                 frontier.append((successor, successor_plan, successor_trace,
-                                 path_atoms | frozenset(successor.literals)))
+                                 path_atoms | frozenset(atoms)))
 
         return self.__result__("exhausted", None, [], statistics, budget, table)
 

@@ -282,6 +282,10 @@ See [docs/rendering.md](docs/rendering.md).
 | MCTS / UCT | [`planiverse/planners/mcts.py`](planiverse/planners/mcts.py) | `successors`; a `reward` callback helps a lot |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
+| More width-based: 2BFS, p-IW, BFWS(R), quantified, count-based and approximate novelty, boundary-extension features, hierarchical IW | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; `progress` for most |
+| Heuristic search: greedy and weighted A*, restarting WA*, ε-greedy, type-based, diverse, local exploration, EHC, random walks, beam and BULB, discrepancy search, LRTA*/RTAA*, FESS, multi-queue | [`planiverse/planners/heuristic/`](planiverse/planners/heuristic/) | a `progress` measure |
+| Sampling: RHEA, CEM, random shooting, rollout, nested Monte Carlo, Fractal Monte Carlo, Go-Explore, MAP-Elites, EST/KPIECE/SST, local search | [`planiverse/planners/sampling/`](planiverse/planners/sampling/) | `successors`; `progress` helps |
+| Blind: breadth-first, uniform cost, iterative deepening | [`planiverse/planners/blind.py`](planiverse/planners/blind.py) | `successors` only |
 
 ```python
 from planiverse.planners.width import IWSearch, BFWSSearch, Budget
@@ -311,11 +315,14 @@ open. That makes `option_count` a goal-free measure of how close a state is to b
 useful as a heuristic for the other planners precisely when heuristics are hardest to
 write.
 
-What the library could add next is surveyed in
-[docs/planners/candidates.md](docs/planners/candidates.md): thirty training-free planners
+The last four rows are the planners surveyed in
+[docs/planners/candidates.md](docs/planners/candidates.md), thirty training-free planners
 from the planning, search, games and control literature that need nothing beyond this
-contract, with MCTS and anything that learns before it plans left out, and a suggested order
-of implementation.
+contract, with MCTS and anything that learns before it plans left out. They are implemented
+and documented in [docs/planners/more-planners.md](docs/planners/more-planners.md), which
+also lists the choices made where a paper could not be read in full, and their smoke results
+on Puzznic level 1. They join the benchmark only with `planiverse-bench generate
+--candidates`.
 
 ## Benchmarking
 

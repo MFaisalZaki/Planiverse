@@ -46,9 +46,11 @@ class BFWSSearch:
     """
 
     def __init__(self, width=1, progress=None, heuristic=None, partition=None, strict=True,
-                 prune=False):
+                 prune=False, atoms=None):
         """
         - `progress(state)`: lower is better; stands in for the unachieved-goal count.
+        - `atoms(state)`: what novelty is measured over; `state.literals` when `None`. The
+          hook `BoundaryExtensionFeatures` (see `bee.py`) plugs into.
         - `heuristic(state)`: lower is better; breaks ties among equally-progressed states.
         - `partition(state)`: what novelty is measured within. Defaults to `progress`, which
           is the classical choice; pass something else to partition on more than progress.
@@ -63,6 +65,10 @@ class BFWSSearch:
         self.partition = partition
         self.strict = strict
         self.prune = prune
+        self.atoms = atoms
+
+    def __atoms__(self, state):
+        return state.literals if self.atoms is None else self.atoms(state)
 
     def __partition_of__(self, state):
         if self.partition is not None:
@@ -91,7 +97,8 @@ class BFWSSearch:
             return self.__result__("solved", [], [state], statistics, budget, novelty)
 
         heap = []
-        opened = novelty.evaluate_and_record(self.__partition_of__(state), state.literals)
+        opened = novelty.evaluate_and_record(self.__partition_of__(state),
+                                             self.__atoms__(state))
         heappush(heap, (self.__key__(state, opened), next(tiebreak), state, [], [state]))
         closed = set()
 
@@ -129,7 +136,7 @@ class BFWSSearch:
                 # for, which turns this back into a filter (k-BFWS) and gives IW's
                 # incompleteness back with IW's bounded frontier.
                 score = novelty.evaluate_and_record(self.__partition_of__(successor),
-                                                    successor.literals)
+                                                    self.__atoms__(successor))
                 if self.prune and score > self.width:
                     statistics.pruned_novelty += 1
                     continue
@@ -183,7 +190,7 @@ class IteratedBFWS:
     """
 
     def __init__(self, max_width=1000, progress=None, heuristic=None, partition=None,
-                 strict=True, final_complete=True):
+                 strict=True, final_complete=True, atoms=None):
         """`final_complete` is the unpruned round. Turning it off leaves only the pruned
         rounds: cheaper, and incomplete the way IW is."""
         if max_width < 1:
@@ -194,6 +201,7 @@ class IteratedBFWS:
         self.partition = partition
         self.strict = strict
         self.final_complete = final_complete
+        self.atoms = atoms
 
     def solve(self, env, budget=None, state=None):
         budget = (budget or Budget()).start()
@@ -230,7 +238,8 @@ class IteratedBFWS:
 
     def __round__(self, env, budget, state, totals, width, prune):
         search = BFWSSearch(width, progress=self.progress, heuristic=self.heuristic,
-                            partition=self.partition, strict=self.strict, prune=prune)
+                            partition=self.partition, strict=self.strict, prune=prune,
+                            atoms=self.atoms)
         remaining = Budget(
             max_expansions=(None if budget.max_expansions is None
                             else max(0, budget.max_expansions - totals.expansions)),
