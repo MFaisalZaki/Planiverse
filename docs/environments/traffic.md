@@ -29,8 +29,8 @@ the instance's seed.
 | little travel time overall | vehicle-seconds accumulate in the state and are bounded at the goal; everyone through over the bound is a dead end, since nothing can then improve |
 | the horizon itself | the time is in the state |
 
-The target is the least travel any fixed cycle achieves, so the planner is asked to do at least
-as well as a timer by switching where the queues are. [NOTES.md](../../NOTES.md) sets the
+The target is the least travel any fixed cycle achieves with a tenth in hand, so the planner is
+asked to come within a tenth of a timer by switching where the queues are. [NOTES.md](../../NOTES.md) sets the
 reduction out in full.
 
 ## Quickstart
@@ -109,8 +109,8 @@ print(env.witness, env.witness_expansions)     # the cycle it was accepted on, a
 
 A draw is measured by fixed cycles that switch every junction every one, two or three
 decisions, and by holding the signals as they start. The target is the least travel any of them
-clears the grid with before the horizon; the draw is thrown back when none does or when holding
-is already best, and the best cycle is the witness.
+clears the grid with before the horizon, with a tenth in hand; the draw is thrown back when none
+does or when holding is already best, and the best cycle is the witness.
 
 ## Files
 
