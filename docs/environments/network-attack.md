@@ -308,7 +308,7 @@ formats.
 
 ## Notes and limits
 
-Three things are worth knowing before building on this environment. First, `reset()` rebuilds the
+Three notes before building on this environment. First, `reset()` rebuilds the
 environment every call, re-running `make_benchmark`; it is not cheap, so do not call it inside a
 loop. Second, `successors` needs `reset()` first, because it reads `self.actionslist`, which is
 `None` until reset. Third, `is_terminal` is always `False`; see
