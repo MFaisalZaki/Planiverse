@@ -519,7 +519,10 @@ The four game environments reimplement commercially published titles in Python. 
 repository ships no ROM image, no original code and no original graphics, and runs none of
 the original programs. *Adventures of Lolo* (HAL Laboratory / Nintendo), *Puzznic* and
 *Flipull* (Taito), *Amazing Tater* (Atlus) and *Super Mario Land* (Nintendo) are the copyright
-works and trade marks of their respective owners, used here descriptively. This project is
+works and trade marks of their respective owners, used here descriptively. Micropolis is a
+registered trademark of Micropolis Corporation (Micropolis GmbH) and is licensed here as a
+courtesy of the owner ([micropolis.com](https://micropolis.com/)); Factorio is a trademark of
+Wube Software Ltd, named here to say what factory-sim was measured against. This project is
 unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and
 [docs/provenance.md](docs/provenance.md).
 

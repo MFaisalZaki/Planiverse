@@ -23,4 +23,5 @@ site="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 rm -rf "$site/fsim"
 cp -r fsim "$site/fsim"
 rm -f "$site"/fsim/_fsim.c "$site"/fsim/_fsim.o
+cp LICENSE NOTICE "$site/fsim/"          # the MIT licence travels with every copy
 python3 -c 'import fsim; s = fsim.Sim(water=[]); print("fsim installed:", fsim.lib.IT_COUNT, "items")'
