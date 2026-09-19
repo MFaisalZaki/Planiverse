@@ -94,7 +94,7 @@ def reservoir(state):
 
 
 def water_network(state):
-    """Junctions still contaminated."""
+    """The share of the water delivered that is contaminated, carried on the state."""
     return state.contaminated
 
 
