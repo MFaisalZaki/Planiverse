@@ -10,6 +10,10 @@ below. Boundary-extension features, multi-queue alternation and the macro-action
 pruning add-ons need per-environment callbacks the benchmark does not carry, so they are
 not registered.
 
+No configuration takes a reward: every planner here is driven by `is_goal` and the
+progress heuristic, and the surveyed planners defined by an accumulated reward (2BFS,
+prioritised IW, Fractal Monte Carlo, the rollout algorithm) were left out of the library.
+
 Parameters are the classes' defaults except where the paper's planners fix the same
 thing: 500,000 expansions bound the approximate-novelty policy, and the per-decision
 budgets of the online planners match Rollout IW's 1,000 expansions.
@@ -23,13 +27,12 @@ from planiverse.planners.heuristic import (
 )
 from planiverse.planners.macros import MacroPlanner
 from planiverse.planners.sampling import (
-    CrossEntropyPlanner, FractalMonteCarlo, GoExplore, KinodynamicTree, MAPElitesPlanner,
-    NestedMonteCarloSearch, PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
-    RolloutPlanner,
+    CrossEntropyPlanner, GoExplore, KinodynamicTree, MAPElitesPlanner, NestedMonteCarloSearch,
+    PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
 )
 from planiverse.planners.width import (
-    BFWSR, ApproximateNoveltySearch, CountNoveltySearch, HierarchicalIW, PrioritizedIW,
-    QuantifiedNoveltySearch, TwoBFS,
+    BFWSR, ApproximateNoveltySearch, CountNoveltySearch, HierarchicalIW,
+    QuantifiedNoveltySearch,
 )
 
 
@@ -42,8 +45,6 @@ class FESSOnProgress(FeatureSpaceSearch):
 
 CANDIDATES = {
     # width-based variants
-    "2bfs": (TwoBFS, {"width": 1}),
-    "piw": (PrioritizedIW, {"width": 1}),
     "bfwsr": (BFWSR, {"width": 1}),
     "qn": (QuantifiedNoveltySearch, {}),
     "cbn": (CountNoveltySearch, {"width": 1}),
@@ -69,9 +70,7 @@ CANDIDATES = {
     "rhea": (RollingHorizonEvolution, {"expansions_per_step": 1000}),
     "cem": (CrossEntropyPlanner, {}),
     "shoot": (RandomShooting, {}),
-    "roll": (RolloutPlanner, {}),
     "nmcs": (NestedMonteCarloSearch, {}),
-    "fmc": (FractalMonteCarlo, {}),
     "goexp": (GoExplore, {}),
     "mapel": (MAPElitesPlanner, {}),
     "est": (KinodynamicTree, {"strategy": "est"}),

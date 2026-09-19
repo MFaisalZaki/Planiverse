@@ -21,15 +21,13 @@ from planiverse.planners.heuristic import (
 from planiverse.planners.macros import FocusedMacros, MacroPlanner
 from planiverse.planners.pruning import DominatedActionPruner
 from planiverse.planners.sampling import (
-    CrossEntropyPlanner, FractalMonteCarlo, GoExplore, KinodynamicTree, MAPElitesPlanner,
-    NestedMonteCarloSearch, PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
-    RolloutPlanner, evaluate_sequence,
+    CrossEntropyPlanner, GoExplore, KinodynamicTree, MAPElitesPlanner, NestedMonteCarloSearch,
+    PlanLocalSearch, RandomShooting, RollingHorizonEvolution, evaluate_sequence,
 )
 from planiverse.planners.width import (
     BFWSR, ApproximateNoveltySearch, BFWSSearch, BloomFilter, BloomNoveltyTable,
     BoundaryExtensionFeatures, Budget, CountNoveltySearch, CountNoveltyTable,
-    HeuristicNovelty, HierarchicalIW, IWSearch, PrioritizedIW, QuantifiedNoveltySearch,
-    RewardNoveltyTable, SearchResult, TwoBFS,
+    HeuristicNovelty, HierarchicalIW, QuantifiedNoveltySearch, SearchResult,
 )
 
 
@@ -53,12 +51,9 @@ def budget():
 
 
 #: Every planner, and whether it is expected to solve the level within the budget. The
-#: ones marked False are the ones whose mechanism is not enough here (p-IW(1) exhausts
-#: where IW(1) does; the depth-first probes and LRTA* run out of time or steps), and the
-#: test only asks them to stop cleanly.
+#: ones marked False are the ones whose mechanism is not enough here (the depth-first
+#: probes and LRTA* run out of time or steps), and the test only asks them to stop cleanly.
 PLANNERS = [
-    ("2bfs", lambda: TwoBFS(progress=boxes), True),
-    ("piw", lambda: PrioritizedIW(progress=boxes), False),
     ("bfwsr", lambda: BFWSR(progress=boxes), True),
     ("qn", lambda: QuantifiedNoveltySearch(progress=boxes), True),
     ("cbn", lambda: CountNoveltySearch(progress=boxes, open_limit=500), True),
@@ -95,10 +90,8 @@ PLANNERS = [
     ("rhea", lambda: RollingHorizonEvolution(progress=boxes, seed=0), True),
     ("cem", lambda: CrossEntropyPlanner(progress=boxes, seed=0), True),
     ("shoot", lambda: RandomShooting(progress=boxes, seed=0), False),
-    ("roll", lambda: RolloutPlanner(progress=boxes, seed=0), True),
     ("nmcs", lambda: NestedMonteCarloSearch(progress=boxes, level=2, horizon=20, seed=0),
      True),
-    ("fmc", lambda: FractalMonteCarlo(progress=boxes, seed=0), True),
     ("goexp", lambda: GoExplore(progress=boxes, seed=0), True),
     ("mapel", lambda: MAPElitesPlanner(progress=boxes, seed=0), True),
     ("est", lambda: KinodynamicTree("est", seed=0), True),
@@ -127,21 +120,14 @@ def test_every_candidate_runs_stops_and_never_lies(env, name, build, solves):
 
 # ---------------------------------------------------------------- width variants
 
-def test_prioritised_iw_exhausts_where_iw_one_does(env):
-    """Reward-aware novelty only reopens on a strictly higher reward, and the only reward on
-    level 1 is the dead-end pair clearance, so p-IW(1) sees exactly IW(1)'s reach."""
-    plain = IWSearch(width=1).solve(env, budget())
-    prioritised = PrioritizedIW(progress=boxes).solve(env, budget())
-    assert plain.status == "exhausted"
-    assert prioritised.status == "exhausted"
-    assert prioritised.statistics.expansions == plain.statistics.expansions
-
-
-def test_reward_novelty_reopens_on_a_higher_reward():
-    table = RewardNoveltyTable(width=1)
-    assert table.evaluate_and_record({"a"}, 0.0) == 1
-    assert table.evaluate_and_record({"a"}, 0.0) == 2, "same atom, no more reward"
-    assert table.evaluate_and_record({"a"}, 1.0) == 1, "reached with more reward"
+def test_no_planner_takes_a_reward():
+    """This is a planning suite: every planner is driven by `is_goal` and, at most, a
+    goal-distance heuristic. Nothing added here accepts a reward callback."""
+    import inspect
+    for _, build, _ in PLANNERS:
+        planner = build()
+        assert "reward" not in inspect.signature(type(planner).__init__).parameters, \
+            type(planner).__name__
 
 
 def test_bfws_r_finds_relevant_atoms_from_its_pre_search(env):
@@ -294,14 +280,6 @@ def test_go_explore_keeps_one_trajectory_per_cell_and_prefers_shorter(env):
 def test_the_kinodynamic_strategies_are_the_three_the_docs_name():
     with pytest.raises(ValueError, match="strategy"):
         KinodynamicTree("rrt")
-
-
-def test_fractal_monte_carlo_commits_the_action_with_most_walkers(env):
-    result = FractalMonteCarlo(progress=boxes, walkers=16, iterations=10, seed=0).solve(
-        env, budget())
-    assert result.solved
-    assert result.statistics.episodes == len(result.plan) or result.statistics.episodes + 1 \
-        >= len(result.plan) - 30, "one decision per committed action, plus the goal walk"
 
 
 def test_rolling_horizon_evolution_ends_a_decision_by_generations_when_the_cache_is_warm(env):

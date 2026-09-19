@@ -1,7 +1,7 @@
 """Scoring an action sequence against the simulator, the way every sampling planner does.
 
-There is no reward to sum, so a sequence is scored by where it ends: the negated `progress`
-of its last state, `+inf` when it reaches a goal, `-inf` when it walks into a dead end. A
+A sequence is scored by where it ends, with the goal-distance heuristic every planner in
+the library takes and nothing else: the negated `progress` of its last state, `+inf` when it reaches a goal, `-inf` when it walks into a dead end. A
 gene that is not applicable where it lands is **skipped**, the way a game's forward model
 treats an invalid input as a no-op, which is what makes random sequences over a per-state
 action set workable; `actions` in the result lists only the genes that were applied.

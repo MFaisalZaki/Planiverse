@@ -7,10 +7,12 @@ learned model, policy, value function or feature extractor is required before th
 can be pointed at an instance. That rules out MCTS and its descendants (see
 [Excluded](#excluded-and-why)) as well as π-IW, which the library keeps for comparison.
 
-**Status.** Every candidate below has since been implemented; see
+**Status.** The candidates below have since been implemented; see
 [more-planners.md](more-planners.md) for the classes, what each one needs, the choices made
-where a paper could not be read in full, and the smoke results. Time-bounded A\* (item 18)
-is the one exception, for the reason given there.
+where a paper could not be read in full, and the smoke results. Five are not in the
+library: 2BFS (1), prioritised IW (2), the rollout algorithm (23) and Fractal Monte Carlo
+(25) are defined by an accumulated reward, which a planning suite does not have, and
+time-bounded A\* (18) needs reversible actions.
 
 Every method below needs only what the [environment contract](../../README.md#the-environment-interface)
 already gives: `successors`, `literals`, `is_goal`, `is_terminal`, and for some `simulate` or

@@ -1,9 +1,13 @@
 # The planners added after the tool paper
 
-Thirty-odd training-free planners from the [survey](candidates.md), implemented against the
-same `successors` / `literals` / `is_goal` / `is_terminal` contract as everything else. None
-touches the environment interface, none learns before it plans, and none is a Monte Carlo
-tree search. Where a paper's exact rule could not be read from the machine this was written
+The training-free planners from the [survey](candidates.md), implemented against the same
+`successors` / `literals` / `is_goal` / `is_terminal` contract as everything else. None
+touches the environment interface, none learns before it plans, none is a Monte Carlo tree
+search, and **none takes a reward**: this is a planning suite, so every planner here is
+driven by the black-box goal test and, at most, the `progress` heuristic (how far a state
+is from the goal, lower is better). Four surveyed planners are defined by an accumulated
+reward and were left out for that reason: 2BFS, prioritised IW, Fractal Monte Carlo and
+the rollout algorithm; see [Left out](#left-out). Where a paper's exact rule could not be read from the machine this was written
 on, the rule used is stated in the class's docstring and repeated here under
 [What is inferred](#what-is-inferred), the way `fsx.py` does it.
 
@@ -13,13 +17,13 @@ planners take, lower is better. Nothing below needs anything else from an enviro
 except where a column says so.
 
 ```python
-from planiverse.planners.width import TwoBFS, BFWSR, CountNoveltySearch, Budget
+from planiverse.planners.width import BFWSR, CountNoveltySearch, Budget
 from planiverse.planners.heuristic import EnforcedHillClimbing, BULB
 from planiverse.planners.sampling import GoExplore, RollingHorizonEvolution
 
 env.set_index(0)
 budget = Budget(max_expansions=5000, max_seconds=60)
-for planner in (TwoBFS(progress=boxes), GoExplore(progress=boxes, seed=0)):
+for planner in (BFWSR(progress=boxes), GoExplore(progress=boxes, seed=0)):
     result = planner.solve(env, budget)
     print(planner.__class__.__name__, result.status, len(result), result.statistics)
 ```
@@ -28,8 +32,6 @@ for planner in (TwoBFS(progress=boxes), GoExplore(progress=boxes, seed=0)):
 
 | Class | File | Reference | Beyond `progress` it needs |
 |---|---|---|---|
-| `TwoBFS` | `twobfs.py` | Lipovetzky, Ramírez & Geffner 2015 | nothing |
-| `PrioritizedIW` | `prioritized.py` | Shleyfman, Tuisov & Domshlak 2016 | nothing |
 | `BFWSR` | `relevant.py` | Lipovetzky & Geffner 2017; Francès et al. 2017 | nothing |
 | `QuantifiedNoveltySearch` | `quantified.py` | Katz, Lipovetzky, Moshkovich & Tuisov 2017 | nothing |
 | `CountNoveltySearch` | `count.py` | Rosa & Lipovetzky 2024 | nothing |
@@ -41,11 +43,7 @@ for planner in (TwoBFS(progress=boxes), GoExplore(progress=boxes, seed=0)):
 so that novelty can be measured over something other than `literals`; that is the hook
 `BoundaryExtensionFeatures` plugs into, and the only change to the existing planners.
 
-**2BFS** keeps two heaps over the same nodes, `<novelty, -reward>` and `<-reward,
-novelty>`, and pops from them alternately; a node popped from one is closed for both.
-**p-IW** keeps, per atom tuple, the best accumulated reward a state containing it was reached
-with, and keeps a state when it has a new tuple *or* raises that record; duplicates are
-reopened on a higher reward. **BFWS(R)** runs IW(`r_width`) first, on `r_share` of the
+**BFWS(R)** runs IW(`r_width`) first, on `r_share` of the
 expansion budget; `R` is the union of the literals on the paths to every state that strictly
 improved `progress`, and if that pre-search reaches the goal its plan is returned. The main
 search is BFWS with novelty measured within `(progress, #r)` partitions and ties broken on
@@ -102,9 +100,7 @@ tests run with a time limit.
 |---|---|---|---|
 | `RollingHorizonEvolution` | `rhea.py` | Perez et al. 2013; Gaina et al. 2017, 2021 | nothing |
 | `CrossEntropyPlanner`, `RandomShooting` | `cem.py` | Rubinstein 1999; Pinneri et al. 2020 | nothing |
-| `RolloutPlanner` | `policy_rollout.py` | Bertsekas, Tsitsiklis & Wu 1997 | nothing; `policy` optional |
 | `NestedMonteCarloSearch` | `nested.py` | Cazenave 2009 | nothing |
-| `FractalMonteCarlo` | `fractal.py` | Hernández Cerezo & Duran Ballester 2018 | nothing |
 | `GoExplore` | `goexplore.py` | Ecoffet et al. 2019, 2021 | nothing; `cell` optional |
 | `MAPElitesPlanner` | `qd.py` | Mouret & Clune 2015; Lehman & Stanley 2011 | nothing; `descriptor` optional |
 | `KinodynamicTree` | `kinodynamic.py` | Hsu et al. 1997; Şucan & Kavraki 2008; Li et al. 2016 | nothing; `projection` optional |
@@ -114,8 +110,10 @@ All of them replay action sequences through `SuccessorCache`
 ([`planiverse/planners/common.py`](../../planiverse/planners/common.py)), which memoises
 `successors` on `literals` and counts an expansion once, so a prefix the population evaluates
 a hundred times costs the simulator once. A sequence is scored by where it ends
-(`sequences.py`): the negated `progress` of the last state, `+inf` at a goal, `-inf` in a
-dead end; a gene that is not applicable where it lands is skipped, the way a game's forward
+(`sequences.py`), with the goal-distance heuristic and nothing else: the negated `progress`
+of the last state, `+inf` at a goal, `-inf` in a dead end. In their home literature these
+planners maximise a game score; here there is no score, only how far from the goal a
+sequence leaves the simulator. A gene that is not applicable where it lands is skipped, the way a game's forward
 model treats an invalid input. A goal reached during any evaluation ends the search with that
 sequence as the plan. The receding-horizon planners commit the first gene the best sequence
 actually applied, and fall back to a random live child only when it applied none.
@@ -154,8 +152,6 @@ are the runs `tests/test_candidate_planners.py` repeats; they are not the benchm
 
 | Planner | Status | Plan | Expansions | Note |
 |---|---|---|---|---|
-| `TwoBFS` | solved | 12 | 98 | |
-| `PrioritizedIW` | exhausted | | 32 | the only reward is the dead end, so it sees IW(1)'s reach |
 | `BFWSR` | solved | 12 | 122 | `R` is empty at width 1 here; `r_width=2` returns the pre-search's plan |
 | `QuantifiedNoveltySearch` | solved | 12 | 90 | |
 | `CountNoveltySearch(open_limit=500)` | solved | 12 | 65 | |
@@ -183,9 +179,7 @@ are the runs `tests/test_candidate_planners.py` repeats; they are not the benchm
 | `RollingHorizonEvolution` | solved | 150 | 111 | |
 | `CrossEntropyPlanner` | solved | 142 | 123 | |
 | `RandomShooting` | step limit | | 55 | |
-| `RolloutPlanner` | solved | 42 | 109 | |
 | `NestedMonteCarloSearch(level=2, horizon=20)` | solved | 14 | 177 | |
-| `FractalMonteCarlo` | solved | 26 | 150 | |
 | `GoExplore` (exact cells / block-count cells) | solved | 20 / 28 | 274 / 119 | |
 | `MAPElitesPlanner` (exact descriptor) | solved | 12 | 151 | fails with the block-count descriptor: one cell |
 | `KinodynamicTree` (`est` / `kpiece` / `sst`) | solved | 24 / 22 / 24 | 273 / 75 / 273 | KPIECE on the block-count projection |
@@ -211,13 +205,29 @@ docstring says so; what follows is the list.
   over the first action of a walk; the paper's exact MDA formula is not.
 - **FESS** (`fess.py`): cells keyed by the feature vector, round-robin over cells,
   least-weight move first, advisors marking moves. The Sokoban-specific machinery is not.
-- **Fractal Monte Carlo** (`fractal.py`): the swarm, the virtual reward `R^α · D^β`, the
-  cloning rule and dead-walker cloning are the paper's; the normalisation (standardise,
-  then `1 + log(1 + z)` or `exp(z)`) is as remembered from the authors' code.
 - **KPIECE** (`kinodynamic.py`): the exterior-cell preference has no counterpart in a
   symbolic projection and is left out of the importance.
 - **Focused macros** (`macros.py`): exhaustive enumeration at small lengths in place of the
   paper's best-first search over sequences, with the same footprint criterion.
+
+## Left out
+
+Four of the survey's candidates are defined by an accumulated reward rather than by a goal
+and a distance to it, and a planning suite has no reward to give them:
+
+- **2BFS** (Lipovetzky, Ramírez & Geffner 2015): one of its two queues is ordered by the
+  reward accumulated along the path.
+- **Prioritised IW** (Shleyfman, Tuisov & Domshlak 2016): its novelty test keeps a state
+  that reaches a known atom with more accumulated reward.
+- **Fractal Monte Carlo** (Hernández Cerezo & Duran Ballester 2018): its walkers clone by a
+  virtual reward, the product of accumulated reward and distance.
+- **The rollout algorithm** (Bertsekas, Tsitsiklis & Wu 1997): one step of policy
+  iteration on a base policy's return.
+
+Each could be run with `progress(root) - progress(node)` standing in for the reward, and
+was, in an earlier revision of this branch; the mechanism is the reward's, so they went.
+Rollout IW and π-IW in the existing library take the same stand-in, and `MCTSPlanner` a
+`reward` callback; they predate this rule and are the paper's comparison points.
 
 ## Running them in the benchmark
 
@@ -233,9 +243,9 @@ per-environment callbacks the benchmark does not carry and are not registered.
 | Path | What |
 |---|---|
 | [`common.py`](../../planiverse/planners/common.py) | `SuccessorCache`, `action_vocabulary`, `remaining`, `finish` |
-| [`width/`](../../planiverse/planners/width/) | the eight width-based additions |
+| [`width/`](../../planiverse/planners/width/) | the six width-based additions |
 | [`heuristic/`](../../planiverse/planners/heuristic/) | the best-first family, EHC, random walks, beam, real-time, FESS, alternation |
-| [`sampling/`](../../planiverse/planners/sampling/) | RHEA, CEM, rollout, NMCS, FMC, Go-Explore, MAP-Elites, kinodynamic trees, local search |
+| [`sampling/`](../../planiverse/planners/sampling/) | RHEA, CEM, NMCS, Go-Explore, MAP-Elites, kinodynamic trees, local search |
 | [`blind.py`](../../planiverse/planners/blind.py) | the three blind baselines |
 | [`pruning.py`](../../planiverse/planners/pruning.py), [`macros.py`](../../planiverse/planners/macros.py) | the add-ons |
 | [`benchmark/candidates.py`](../../planiverse/benchmark/candidates.py) | the opt-in benchmark registry |

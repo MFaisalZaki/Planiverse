@@ -36,19 +36,16 @@ from planiverse.planners.width.novelty import (
     MAX_PRACTICAL_WIDTH, DepthNoveltyTable, NoveltyTable, PartitionedNovelty, path_novelty,
 )
 from planiverse.planners.width.policy import PiIW, PolicyNetwork
-from planiverse.planners.width.prioritized import PrioritizedIW, RewardNoveltyTable
 from planiverse.planners.width.quantified import HeuristicNovelty, QuantifiedNoveltySearch
 from planiverse.planners.width.relevant import BFWSR
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
 from planiverse.planners.width.rollout import RolloutIW, RolloutNode
-from planiverse.planners.width.twobfs import TwoBFS
 
 __all__ = [
     "ApproximateNoveltySearch", "BFWSR", "BFWSSearch", "BloomFilter", "BloomNoveltyTable",
     "BoundaryExtensionFeatures", "Budget", "CountNoveltySearch", "CountNoveltyTable",
     "DepthNoveltyTable", "HeuristicNovelty", "HierarchicalIW", "IWSearch", "IteratedBFWS",
     "IteratedWidth", "MAX_PRACTICAL_WIDTH", "NoveltyTable", "PartitionedNovelty", "PiIW",
-    "PolicyNetwork", "PrioritizedIW", "QuantifiedNoveltySearch", "RewardNoveltyTable",
-    "RolloutIW", "RolloutNode", "SIWSearch", "SearchResult", "SearchStatistics", "TwoBFS",
-    "path_novelty",
+    "PolicyNetwork", "QuantifiedNoveltySearch", "RolloutIW", "RolloutNode", "SIWSearch",
+    "SearchResult", "SearchStatistics", "path_novelty",
 ]
