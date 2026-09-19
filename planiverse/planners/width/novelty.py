@@ -94,9 +94,6 @@ class NoveltyTable:
         self.record(literals)
         return novelty
 
-    def is_novel(self, literals):
-        return self.evaluate_and_record(literals) <= self.width
-
     def __len__(self):
         return sum(len(level) for level in self.seen.values())
 

@@ -12,7 +12,7 @@ reversible: a block shoved into the wrong pit is gone, and so is the room.
 - **Class:** `AmazingTaterGame`
 - **Import:** `from planiverse.environments.gameboy_py.amazing_tater import AmazingTaterGame`
 - **Source:** [`planiverse/environments/gameboy_py/amazing_tater.py`](../../planiverse/environments/gameboy_py/amazing_tater.py)
-- **Instances:** 105 rooms, indices `0`–`104`
+- **Instances:** 105 rooms, indices `0` to `104`
 - **Generator:** `generate_instance(seed, width=8, height=6, blocks=2, pits=2, turnstiles=1, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
 
@@ -139,11 +139,11 @@ stored room and a board dumped out of the cartridge are the same string:
 | `.` | floor |
 | `O` | an open pit |
 | `E` | the exit flag |
-| `1`–`4` | the taters |
+| `1` to `4` | the taters |
 | `@` | a turnstile pivot |
 | `^ > v <` | a turnstile arm, pointing the way it sticks out from its pivot |
 | `U R D L` | the same four arms, hanging over a pit |
-| `a`–`p` | a block square on floor, one letter per set of neighbours it is joined to |
+| `a` to `p` | a block square on floor, one letter per set of neighbours it is joined to |
 | `ABCFGHIJKMNPQSTV` | the same sixteen, for a square settled into a pit |
 
 Blocks are letters rather than a single glyph because the cartridge records, for every block

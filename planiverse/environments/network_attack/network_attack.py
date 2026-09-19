@@ -125,6 +125,26 @@ class NASimState(State):
             if self.host_has_access(addr,AccessLevel.ROOT):
                 self.literals |= frozenset([f'compromised_host_{self.host_num_map[addr]}'])
 
+    def __str__(self):
+        """The attack so far, host by host: what is discovered, reached, owned and rooted.
+
+        NASim's own `State.__str__` prints the address space and nothing that changes, so a
+        rendered trace would show the same frame at every step.
+        """
+        lines = []
+        for addr in self.network.address_space:
+            if not self.host_discovered(addr):
+                continue
+            marks = ["discovered"]
+            if self.host_reachable(addr):
+                marks.append("reachable")
+            if self.host_compromised(addr):
+                marks.append("rooted" if self.host_has_access(addr, AccessLevel.ROOT)
+                             else "compromised")
+            sensitive = " (sensitive)" if addr in self.network.sensitive_addresses else ""
+            lines.append(f"host {addr}{sensitive}: {', '.join(marks)}")
+        return "\n".join(lines) if lines else "nothing discovered"
+
 #: Expansions the generator's search may spend proving a drawn network solvable. NASim's
 #: generated networks keep their sensitive hosts reachable, so this is a check on the
 #: environment's own transition function rather than on the draw, and small networks

@@ -12,10 +12,6 @@ from planiverse.environments.crop_management.environment import (  # noqa: E402
     decision_days,
 )
 
-from conftest import (  # noqa: E402
-    assert_state_contract, assert_string_literals, assert_successors_contract,
-)
-
 
 @pytest.fixture(scope="module")
 def env():
@@ -110,17 +106,6 @@ def test_reset_without_set_index_takes_the_first_season():
 
 
 # --------------------------------------------------------------------------- contract
-
-def test_state_contract(env):
-    state, _ = env.reset()
-    assert_state_contract(state)
-    assert_string_literals(state)
-
-
-def test_successors_contract(env):
-    state, _ = env.reset()
-    assert_successors_contract(env.successors(state))
-
 
 def test_a_state_is_identified_by_its_schedule(env):
     state, _ = env.reset()

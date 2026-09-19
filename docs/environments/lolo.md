@@ -11,7 +11,7 @@ We measured every rule below on the cartridge rather than taking it from a manua
 - **Class:** `LoloGame`
 - **Import:** `from planiverse.environments.gameboy_py.lolo import LoloGame, LoloAction`
 - **Source:** [`planiverse/environments/gameboy_py/lolo.py`](../../planiverse/environments/gameboy_py/lolo.py)
-- **Instances:** 163 rooms, indices `0`–`162`
+- **Instances:** 163 rooms, indices `0` to `162`
 - **Generator:** `generate_instance(seed, hearts=3, framers=2, snakeys=1, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
 
@@ -98,10 +98,9 @@ cartridge has six river codes and they do not behave alike; we measured each one
 | `$83` | accepted | rides, and the raft drifts **up** |
 | `$85` | accepted | rides, and the raft drifts **down** |
 
-The room texts spell all six `~`, so this module could not tell one river from another and
-used to refuse every push, which lost `int 1-3`. `DRIFTING_RIVERS` closes that: it carries the
-`$83` and `$85` cells, read back out of the cartridge. An egg pushed at a still river floats; an
-egg pushed at a drifting one is refused.
+The room texts spell all six `~`, so the text alone cannot tell one river from another;
+`DRIFTING_RIVERS` carries the `$83` and `$85` cells, read back out of the cartridge. An egg
+pushed at a still river floats; an egg pushed at a drifting one is refused.
 
 That split is exact rather than a guess, because a current runs on frames and not on moves.
 Board the raft on `tutorial 14a`'s `$83` channel and Lolo slides one cell every 160 frames with
@@ -119,7 +118,7 @@ game.set_index(40)                     # int 1-3
 # right right up shoot up up up left left up up up
 ```
 
-Three further rooms gain a plan this way — `int 4-8`, `int 5-4` and `adv 3-1` — and all three
+Three further rooms gain a plan this way (`int 4-8`, `int 5-4` and `adv 3-1`), and all three
 die when replayed on the cartridge. Each holds a mobile enemy, so what defeats them is the
 freeze above rather than the raft: `int 1-3` and `tutorial 14a`, the two raft rooms with no
 mobile enemy in them, both now agree with the cartridge.
@@ -164,8 +163,8 @@ off the board is more permissive than moving it, so this bounds the cost rather 
 cartridge, while on `int 2-10` and `int 5-2` the cartridge proves the room unsolvable too.
 
 Every other disagreement runs the expected way round: the plan found here is a plan against the
-easier puzzle, and it dies on the cartridge. Since rafts were fixed above, `tutorial 4a` is the
-only room the pairing has found where this module proves unsolvable something the cartridge clears.
+easier puzzle, and it dies on the cartridge. `tutorial 4a` is the only room the pairing has found
+where this module proves unsolvable something the cartridge clears.
 
 ## Quickstart
 
@@ -208,10 +207,10 @@ decoded out of the cartridge's room table rather than transcribed by hand.
 
 | Indices | `label` | What |
 |---|---|---|
-| 0–37 | `tutorial 1a` … `tutorial 19b` | 19 puzzles, each stored twice |
-| 38–107 | `int 1-1` … `int 5-14` | 5 intermediate floors of 14 |
-| 108–157 | `adv 1-1` … `adv 10-5` | 10 advanced floors of 5 |
-| 158–162 | `pro 1` … `pro 5` | the Pro rooms |
+| 0 to 37 | `tutorial 1a` … `tutorial 19b` | 19 puzzles, each stored twice |
+| 38 to 107 | `int 1-1` … `int 5-14` | 5 intermediate floors of 14 |
+| 108 to 157 | `adv 1-1` … `adv 10-5` | 10 advanced floors of 5 |
+| 158 to 162 | `pro 1` … `pro 5` | the Pro rooms |
 
 Print any of them:
 

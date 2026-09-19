@@ -33,6 +33,7 @@ FAST = {
     "water_network": dict(network="Net1.inp"),
     "power_grid": dict(),
     "crop_management": dict(),
+    "flood_transport": dict(zones=8, years=30, rain="design"),
     # The emulators check a draw only when asked (`solvable`), since one expansion is a
     # frame's worth of emulation per action; a near survival goal keeps the check short.
     "game_boy": dict(solvable=True, warmup=(0, 4), goal={"survive": 5}, search_limit=100),

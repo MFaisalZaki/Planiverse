@@ -12,10 +12,6 @@ from planiverse.environments.power_grid.environment import (  # noqa: E402
     SECURE_RHO, SCENARIOS, PowerGridAction, PowerGridEnv, PowerGridState, Scenario,
 )
 
-from conftest import (  # noqa: E402
-    assert_state_contract, assert_string_literals, assert_successors_contract,
-)
-
 
 @pytest.fixture(scope="module")
 def env():
@@ -123,18 +119,6 @@ def test_the_scenarios_span_severities_and_deadlines():
 
 
 # --------------------------------------------------------------------------- contract
-
-def test_state_contract(env):
-    state, _ = env.reset()
-    assert_state_contract(state)
-    assert_string_literals(state)
-
-
-@pytest.mark.slow
-def test_successors_contract(env):
-    state, _ = env.reset()
-    assert_successors_contract(env.successors(state))
-
 
 def test_a_state_is_identified_by_its_action_path(env):
     state, _ = env.reset()

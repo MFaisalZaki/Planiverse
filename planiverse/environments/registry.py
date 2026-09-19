@@ -188,6 +188,17 @@ REGISTRY = (
         tags=frozenset({"operational", "infrastructure", "solver-in-the-loop"}),
     ),
     EnvironmentSpec(
+        name="flood_transport",
+        factory="planiverse.environments.flood_transport.environment:FloodTransportEnv",
+        summary="Protecting a flooding city's roads: which zones to adapt, and when",
+        instances="9 scenarios",
+        generates="the city, its storms, the horizon and the measures on offer",
+        deterministic=True,
+        state_identity="path",
+        docs="docs/environments/flood-transport.md",
+        tags=frozenset({"operational", "infrastructure", "climate"}),
+    ),
+    EnvironmentSpec(
         name="crop_management",
         factory="planiverse.environments.crop_management.environment:CropEnv",
         summary="Scheduling irrigation across a growing season",

@@ -19,9 +19,6 @@ class Heuristic:
     def __call__(self, state) -> float:
         raise NotImplementedError("a Heuristic scores a state; subclass and implement __call__")
 
-    def is_dead_state(self, state) -> bool:
-        return False
-
 
 class CostFunction:
     def __init__(self, env) -> None:

@@ -212,7 +212,8 @@ def test_the_opening_hand_always_makes_the_first_throw_legal():
         game = FlipullGame()
         game.set_index(index)
         state, _ = game.reset()
-        assert state.can_throw(), f"stage {index} cannot open with a throw"
+        offered = {action.name for action, _ in game.successors(state)}
+        assert "throw" in offered, f"stage {index} cannot open with a throw"
 
 
 def test_states_carry_string_literals(env):
@@ -278,7 +279,7 @@ def test_replaying_the_same_plan_gives_the_same_trace(env):
 
 def test_step_reports_how_many_blocks_went(env):
     state, _ = env.reset()
-    assert state.can_throw()
+    assert "throw" in {action.name for action, _ in env.successors(state)}
     _, cleared = env.step(FlipullAction("throw"))
     assert cleared >= 1
 

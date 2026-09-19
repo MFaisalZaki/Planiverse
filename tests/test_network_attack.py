@@ -13,7 +13,7 @@ from planiverse.environments.network_attack.network_attack import (  # noqa: E40
     EnvNASim, NASimState,
 )
 
-from conftest import assert_state_contract, assert_successors_contract  # noqa: E402
+from conftest import assert_state_contract  # noqa: E402
 
 TINY = 0
 
@@ -122,10 +122,6 @@ def test_reset_is_repeatable(tiny_env):
 def test_state_is_a_nasim_state(tiny_state):
     assert isinstance(tiny_state, NASimState)
     assert tiny_state.tensor is not None
-
-
-def test_successors_contract(tiny_env, tiny_state):
-    assert_successors_contract(tiny_env.successors(tiny_state))
 
 
 def test_successors_exclude_actions_that_change_nothing(tiny_env, tiny_state):

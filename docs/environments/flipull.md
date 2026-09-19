@@ -11,7 +11,7 @@ cleared once few enough blocks are left, which the cartridge calls the CLEAR tar
 - **Class:** `FlipullGame`
 - **Import:** `from planiverse.environments.gameboy_py.flipull import FlipullGame`
 - **Source:** [`planiverse/environments/gameboy_py/flipull.py`](../../planiverse/environments/gameboy_py/flipull.py)
-- **Instances:** 32 stages, indices `0`–`31`
+- **Instances:** 32 stages, indices `0` to `31`
 - **Generator:** `generate_instance(seed, width=5, height=5, types=4, ...)`; see [Generating stages](#generating-stages)
 - **Dependencies:** none
 
@@ -113,7 +113,7 @@ Stage strings use this alphabet:
 |---|---|
 | `#` | Wall |
 | (space) | Empty cell |
-| `1`–`4` | A block; the digit is its type |
+| `1` to `4` | A block; the digit is its type |
 
 ## Generating stages
 

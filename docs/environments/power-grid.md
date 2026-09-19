@@ -15,13 +15,13 @@ solve.
 - **Class:** `PowerGridEnv`
 - **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/power_grid/environment.py)
-- **Instances:** 9 scenarios, indices `0`–`8`
+- **Instances:** 9 scenarios, indices `0` to `8`
 - **Generator:** `generate_instance(seed, chronic=None, line=None, max_offset=200, ...)`; see [Generating contingencies](#generating-contingencies)
 - **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is nothing to
   download.
 
 This is not a PDDL domain, for two reasons. First, the flow on every line is the solution of the
-AC power-flow equations, found by Newton–Raphson at each step, so there is no way to write down
+AC power-flow equations, found by Newton-Raphson at each step, so there is no way to write down
 that the effect of moving this line to busbar 2 is that line 17 now carries 1.08 of its rating:
 the only way to know is to solve the network, and a local action has a global, numerical effect.
 Second, doing nothing is not safe, because the demand time series keeps moving, so the problem is

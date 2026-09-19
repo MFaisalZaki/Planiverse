@@ -20,7 +20,7 @@ cartridge's walk.
 - **Class:** `SuperMarioLandGame`
 - **Import:** `from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame`
 - **Source:** [`planiverse/environments/gameboy_py/super_mario_land.py`](../../planiverse/environments/gameboy_py/super_mario_land.py)
-- **Instances:** 12 levels, indices `0`–`11`, plus any you supply yourself
+- **Instances:** 12 levels, indices `0` to `11`, plus any you supply yourself
 - **Generator:** `generate_instance(seed, width=40, gaps=2, platforms=2, enemies=2, hazards=1)`; see [Generating levels](#generating-levels)
 - **Dependencies:** none
 
@@ -122,8 +122,8 @@ each level cost BFWS(w=2) when it was accepted:
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Expansions | 5 | 6 | 7 | 15 | 16 | 17 | 92 | 406 | 750 | 1564 | 2552 | 7356 |
 
-Note that those numbers are data rather than a promise: changing a physics constant moves them,
-which is what happened when we refitted the physics to the cartridge and re-measured the set.
+Note that those numbers are data rather than a promise: changing a physics constant moves
+them, and the set has to be re-measured when one does.
 
 There are twelve levels because that is how many the cartridge has, four worlds of three. The
 count is all that the two sets share. These levels are original, and index `i` is the `i`th step of a

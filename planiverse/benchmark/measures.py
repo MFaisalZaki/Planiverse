@@ -79,6 +79,13 @@ def emulated(state):
     return state.progress
 
 
+def flood_transport(state):
+    """Years still to plan, plus how much of the target is spent; past the target is worst."""
+    if state.terminal:
+        return state.years + 2
+    return (state.years - state.year) + state.cost / state.target
+
+
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
@@ -92,4 +99,5 @@ MEASURES = {
     "network_attack": network_attack,
     "game_boy": emulated,
     "retro": emulated,
+    "flood_transport": flood_transport,
 }

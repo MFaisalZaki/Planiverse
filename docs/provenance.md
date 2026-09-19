@@ -50,7 +50,7 @@ from the original titles, and they differ title by title:
 | Lolo | 163 rooms | Yes | Decoded out of the cartridge's room table. Nothing transcribed by hand |
 | Amazing Tater | 105 rooms | Yes | Dumped from the board the running game composes in work RAM. Nothing transcribed by hand. The 41 PUZZLE rooms and 64 BEGINNER/ACTION rooms; the 96 PRACTICE rooms are deliberately absent |
 | Puzznic | 128 rounds | Yes | The first 50 transcribed by hand, the rest read out of the running game's grid memory |
-| Flipull | 32 stages | **No — contract only** | Only the board size and CLEAR target match the original's 32-entry stage table. The arrangements are this project's own: the original draws each stage from an RNG seeded by boot timing, so there is no canonical layout to copy |
+| Flipull | 32 stages | **No: contract only** | Only the board size and CLEAR target match the original's 32-entry stage table. The arrangements are this project's own: the original draws each stage from an RNG seeded by boot timing, so there is no canonical layout to copy |
 | Super Mario Land | 12 levels | **No** | Original levels. Only the count matches the cartridge's four worlds of three |
 
 So three environments ship layouts taken from the original titles and two do not. Every
@@ -59,7 +59,7 @@ project's work throughout: a generated level, room, stage or season derives from
 the seed.
 
 For the three that ship derived layouts, the basis relied on is section 29A of the Copyright,
-Designs and Patents Act 1988 — non-commercial research — with the sources acknowledged in
+Designs and Patents Act 1988 (non-commercial research), with the sources acknowledged in
 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
 ## 4. What is not here
@@ -77,9 +77,7 @@ integrations, not here.
 ## 5. Open question
 
 The copyright status of the derived layouts in section 3 is under review by the author's
-institution. This document will be updated when that review reports.
-
-TODO(author): record the outcome here, including whether section 29A is the right basis for
-the three environments that ship derived layouts, and whether the Flipull and Super Mario
-Land instances — which are this project's own work throughout — need any acknowledgement
-beyond the trade mark notice.
+institution. When that review reports, this document will record whether section 29A is the
+right basis for the three environments that ship derived layouts, and whether the Flipull and
+Super Mario Land instances, which are this project's own work throughout, need any
+acknowledgement beyond the trade mark notice.

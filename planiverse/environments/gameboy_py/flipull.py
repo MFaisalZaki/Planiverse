@@ -289,10 +289,6 @@ class FlipullState:
         literals.append(f"remaining({self.blocks_remaining})")
         self.literals = frozenset(literals)
 
-    def can_throw(self):
-        """Would a throw from here connect? Known exactly, because the rules are known."""
-        return throw([list(cells) for cells in self.grid], self.row, self.held) is not None
-
     def any_throw_connects(self):
         """Is there a row this player could stand on and throw from?
 

@@ -10,7 +10,7 @@ the tuber weight at harvest.
 - **Class:** `CropEnv`
 - **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
-- **Instances:** 22 seasons, indices `0`–`21`
+- **Instances:** 22 seasons, indices `0` to `21`
 - **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
   by PCSE itself, so a season runs offline.
@@ -175,7 +175,7 @@ holds; nothing is searched for. An instance written by hand may leave `rainfed` 
 ## Attribution
 
 Built on [PCSE](https://github.com/ajwdewit/pcse), Wageningen University's Python implementation
-of the WOFOST crop model, with the CABO weather files it ships (Netherlands, 1976–1999).
+of the WOFOST crop model, with the CABO weather files it ships (Netherlands, 1976 to 1999).
 
 ## Files
 

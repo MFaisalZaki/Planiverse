@@ -89,6 +89,14 @@ def network_attack():
     return env
 
 
+def flood_transport():
+    from planiverse.environments.flood_transport.environment import FloodTransportEnv
+
+    env = FloodTransportEnv()
+    env.set_index(0)
+    return env
+
+
 def game_boy():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from counter_rom import COUNTER, counter_rom
@@ -120,6 +128,7 @@ ENVIRONMENTS = {
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
     "network_attack": network_attack,
+    "flood_transport": flood_transport,
     "game_boy": game_boy,
     "retro": retro,
 }
@@ -184,7 +193,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "flipull", "lolo", "amazing_tater", "super_mario_land",
             "network_attack", "water_network", "power_grid", "crop_management",
-            "game_boy", "retro"} == registered
+            "flood_transport", "game_boy", "retro"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():

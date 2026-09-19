@@ -8,14 +8,12 @@ Blocks fall under gravity, and when two or more of the same colour touch, they v
 is won when every block has been cleared. Matching is pairwise, so leaving a colour with exactly
 one block on the board makes the level unwinnable (i.e., a dead end that no later move can undo).
 
-This is the reference implementation of the Planiverse interface, since it is the only environment
-that implements every method in the contract, `step`, `validate`, `get_actions` and `render`
-included.
+It is the smallest environment in the library, which is why the README's examples use it.
 
 - **Class:** `PuzznicGame`
 - **Import:** `from planiverse.environments.gameboy_py.puzznic import PuzznicGame`
 - **Source:** [`planiverse/environments/gameboy_py/puzznic.py`](../../planiverse/environments/gameboy_py/puzznic.py)
-- **Instances:** 128 levels, indices `0`–`127`, one per round of the original game
+- **Instances:** 128 levels, indices `0` to `127`, one per round of the original game
 - **Generator:** `generate_instance(seed, width=5, height=6, colours=3, ...)`; see [Generating levels](#generating-levels)
 - **Dependencies:** none
 
@@ -92,7 +90,7 @@ Level strings use this alphabet:
 |---|---|
 | `#` | Wall |
 | (space) | Empty cell |
-| `1`–`9` | A block; the digit is its colour |
+| `1` to `9` | A block; the digit is its colour |
 | `0` | Empty cell, treated as a space |
 | `c` | Cursor start position; the cell itself is empty |
 

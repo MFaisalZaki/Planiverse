@@ -5,7 +5,7 @@ from planiverse.environments.gameboy_py.puzznic import (
     Box, Cursor, EmptySpace, Level, PuzznicGame, PuzznicState, Wall,
 )
 
-from conftest import assert_state_contract, assert_successors_contract
+from conftest import assert_state_contract
 
 LEVEL_0 = """######
 #12c #
@@ -99,11 +99,6 @@ def test_initial_state_renders_as_the_level(puzznic_env):
 def test_get_actions(puzznic_env):
     puzznic_env.reset()
     assert puzznic_env.get_actions() == ["left", "right", "up", "down", "left-hold", "right-hold"]
-
-
-def test_successors_contract(puzznic_env):
-    state, _ = puzznic_env.reset()
-    assert_successors_contract(puzznic_env.successors(state))
 
 
 def test_successors_exclude_self_loops(puzznic_env):

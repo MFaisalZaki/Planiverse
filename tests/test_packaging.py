@@ -35,6 +35,7 @@ ENTRY_POINTS = [
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",
     "planiverse.environments.network_attack.network_attack",
+    "planiverse.environments.flood_transport.environment",
     "planiverse.environments.emulated.game_boy",
     "planiverse.environments.emulated.stable_retro",
     "planiverse.benchmark",

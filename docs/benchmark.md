@@ -145,7 +145,7 @@ another planner did not use the union over seeds, which is the strongest form of
   difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
   largest width) that the paper's open-challenges section tabulates.
 
-The sandbox behind the paper is `sandbox.zip` on the
+The sandbox behind the paper is `paper-results.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
 repository and `report` regenerates every number in the paper from it. That sandbox also holds
 results for the five emulator-backed environments the paper compared, which have since been
@@ -154,57 +154,85 @@ runs can no longer be repeated from here.
 
 ## Bringing the paper up to date
 
-The paper compares five planners. The code now runs seven, and the two rollout planners have no
-results in the released sandbox, so the report shows them as `MISSING` until their arrays are run.
-What has to happen, in order:
+The paper compares five planners and the code runs seven. Rollout IW and π-IW have no results
+in the released sandbox, so `report` lists their runs as `MISSING` until their arrays are run.
+We have run the pipeline end to end on a pilot (two instances, both planners, one seed each,
+then `report`), which checked that `generate` writes the ten arrays, that `solve` records
+`rollouts` and `episodes`, and that `report` emits the two coverage columns, the two status
+rows and the two cactus curves. What remains is the compute, and then the prose, which is
+drafted below so that the runs are the only thing between the code and the paper.
 
-1. **Run the ten new arrays.** `generate` writes `riw-s0` to `riw-s4` and `piiw-s0` to `piiw-s4`
-   beside the existing thirteen: 4,980 runs over the 498 instances still in the tree. Nothing
-   already run needs repeating: the protocol, the limits and the other planners' parameters are
-   unchanged. The paper's cartridge rows cannot be extended, since those environments are no
-   longer here; the tables have to say so. Re-release `sandbox.zip` afterwards.
-2. **The planner section.** Two new paragraphs, with the adaptations stated the way the paper
-   states SIW's and BFWS's:
-   - Rollout IW (Bandres, Bonet and Geffner, AAAI 2018): novelty measured against the depth an
-     atom was first seen at, rollouts instead of a breadth-first frontier, a per-decision budget
-     of 1,000 expansions, subtree reuse, the novelty table reset at every committed action. The
-     reward is the drop in the environment's progress measure, since there is no score; a goal
-     ends the search as soon as a rollout finds one; and a dead end backs up minus infinity,
-     because `is_terminal` means no goal is reachable, where the paper's Atari reading would score
-     the step into it.
-   - π-IW (Junyent, Jonsson and Gómez, ICAPS 2019): the same lookahead with a budget of 100
-     expansions per decision, rollouts sampled from a policy network trained online by
-     cross-entropy toward softmax(R/τ) over the root's returns, one Adam step per decision from a
-     replay buffer, and learning carried across episodes for as long as the budget lasts. The
-     network is a one-hidden-layer model over hashed literals rather than a convolutional one over
-     pixels; returns are scaled to [0, 1] among the root's children before the softmax so one
-     temperature serves every environment, with a dead end's minus infinity entering the
-     softmax as a probability of zero; the environment's literals are the novelty atoms,
-     with the paper's binarised hidden layer available as an option.
-   - The two citations in the bibliography.
-3. **The protocol paragraph.** "Five planner configurations" becomes seven; "five seeds for the
-   two stochastic planners" becomes five seeds for the four that take one, with the note that
-   for Rollout IW and π-IW the seed drives the rollouts and, for π-IW, the network's
-   initialisation and its training batches. The parameter table gains the two rows in
-   [The protocol](#the-protocol) above.
-4. **Table 2 (coverage)** gains columns `RIW` and `PIIW`, as mean over seeds with the standard
-   deviation in brackets; `coverage.tex` already emits them. The bold total may move.
-5. **Table 3 (statuses)** gains two rows and the median solve time for each; `statuses.tex`
-   already emits them. Rollout IW runs one episode, so an episode that ends at a dead end or
-   the step cap is `UNSOLVED`; π-IW keeps starting episodes, so short of a plan it ends only at
-   a limit, `NODEOUT` or `TIMEOUT`. Each result file now records `rollouts` and `episodes`.
-6. **The cactus plot** gains two curves. The overlap and runtime figures stay as they are: they
-   compare the three deterministic width planners, and a seeded planner has no single time per
-   instance to put on them.
-7. **The numbers in the prose**, all read from `facts.txt`: coverage per seed, what each rollout
-   planner solved in some seed that BFWS never did and the reverse, the medians, and the per-family
-   coverage line the report now writes for every seeded planner. The claims comparing the width
-   family against the sampling planners have to be reworded, since Rollout IW is a width planner
-   that samples.
-8. **The discussion.** The one result worth a paragraph is whichever way it falls: whether
-   resetting the novelty table per decision lets Rollout IW(1) reach instances Iterated Width
-   needed width 3 or 4 for, and whether π-IW's policy shortens its plans and its expansions
-   against Rollout IW's on the environments where the progress measure is dense.
+**The runs.** `generate` writes `riw-s0` to `riw-s4` and `piiw-s0` to `piiw-s4` beside the
+existing arrays: ten arrays over the instances in the tree, 4,990 runs for the 499 the paper's
+environments have. Nothing already run needs repeating, since the protocol, the limits and the
+other planners' parameters are unchanged. The paper's cartridge rows cannot be extended, since
+those environments are no longer here, and the tables have to say so. Afterwards, re-release
+`paper-results.zip` with the new result files in it.
 
-Unrelated to the planners but still pending: the caption of the overlap figure describes four
-groups and the figure has five, and the bar order the report writes is not the caption's.
+**The planner section.** Two paragraphs, to follow the paragraph on BFWS, with the
+adaptations stated the way the paper states SIW's and BFWS's:
+
+> Bandres, Bonet and Geffner (2018) proposed Rollout IW, an online form of IW(k) that keeps
+> the novelty filter and replaces the breadth-first order with rollouts (i.e., paths grown
+> from the root one node at a time, each stopping at the first node that is not novel, is a
+> dead end, or has nothing left beneath it). Novelty is measured against depth: a tuple of
+> atoms is novel at a node when it has never been seen that shallow, which lets rollouts
+> arrive in any order without the first deep visit pre-empting every shallower one. After a
+> budget of 1,000 expansions, the action whose subtree backed up the best discounted return
+> is committed to, its subtree is kept, and the novelty table is reset; the reset is what
+> renews exploration, and it is why the online form solves instances that a single width-1
+> lookahead cannot. We adapt it to simulators in three ways. First, there is no score, so the
+> reward of a transition is the drop in the environment's progress measure, the same measure
+> SIW and BFWS take, and a goal ends the search as soon as a rollout reaches one. Second, a
+> dead end backs up a return of minus infinity, because `is_terminal` means that no goal is
+> reachable from there, whereas the Atari reading would merely stop scoring at the step into
+> it. Third, an expansion generates every child of a node, since the contract is
+> `successors()`, and the rollout picks one; a sibling reached by a later rollout has its
+> novelty assessed then, as a new node. The planner runs a single episode, so an episode that
+> ends at a dead end or at the step cap is an unsolved run.
+
+> Junyent, Jonsson and Gómez (2019) proposed π-IW, which keeps Rollout IW's lookahead and
+> replaces the uniform choice of the child a rollout follows with a sample from a policy
+> trained on the planner itself: after every committed action, the returns the lookahead
+> backed up to the root's children become a target distribution, a softmax of the returns at
+> temperature τ, and the network is pushed toward it by cross-entropy. We give it a budget of
+> 100 expansions per decision, a tenth of Rollout IW's, since its claim is that a learned
+> policy makes a small lookahead go a long way, and we let it learn across episodes for as
+> long as the run's budget lasts, so that an episode which ends without a goal is not wasted.
+> The network is a one-hidden-layer model over hashed literals (2,048 inputs and 64 hidden
+> units) rather than a convolutional one over pixels, trained by one Adam step per decision on
+> a batch of 32 drawn from a replay of the last 10,000 targets, with τ = 0.5. Returns are
+> scaled to [0, 1] among the root's children before the softmax, so that one temperature
+> serves every environment, and a dead end's minus infinity enters the softmax as a
+> probability of zero, so the policy is taught not to go there. The environment's literals are
+> the atoms novelty is measured over; the paper's binarised hidden layer is available as an
+> option and is not used here. This is enough for the mechanism the paper describes and is
+> not a claim to match its Atari numbers.
+
+**The protocol paragraph.** "Five planner configurations" becomes seven, and "five seeds for
+the two stochastic planners" becomes five seeds for the four that take one, with the note that
+for Rollout IW and π-IW the seed drives the rollouts and, for π-IW, the network's
+initialisation and its training batches. The parameter table gains the two rows in
+[The protocol](#the-protocol) above. The claims that set the width family against the sampling
+planners have to be reworded, since Rollout IW is a width planner that samples.
+
+**Tables, figures and numbers.** Table 2 (coverage) gains the columns `RIW` and `PIIW`, as
+means over seeds with the standard deviation in brackets, which `coverage.tex` already emits;
+the bold total may move. Table 3 (statuses) gains two rows and their median solve times,
+which `statuses.tex` already emits; Rollout IW's single episode makes a dead end or the step
+cap an `UNSOLVED`, whereas π-IW keeps starting episodes and, short of a plan, ends only at a
+limit. The cactus plot gains two curves; the overlap and runtime figures stay as they are,
+since they compare the three deterministic width planners and a seeded planner has no single
+time per instance to put on them. The numbers the prose quotes are all in `facts.txt`:
+coverage per seed, what each rollout planner solved in some seed that BFWS never did and the
+reverse, the medians, and the per-family coverage line the report writes for every seeded
+planner.
+
+**The discussion.** One result is worth a paragraph whichever way it falls: whether resetting
+the novelty table per decision lets Rollout IW(1) reach instances that Iterated Width needed
+width 3 or 4 for, and whether π-IW's policy shortens its plans and its expansions against
+Rollout IW's on the environments where the progress measure is dense.
+
+One item is unrelated to the planners and still pending: the caption of the overlap figure
+describes four groups and the figure has five, and the bar order the report writes is not the
+caption's.

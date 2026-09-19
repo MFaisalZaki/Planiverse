@@ -30,13 +30,25 @@ by Stable-Retro on its author's terms), which is the Stable-Retro environment's 
 the only game its tests run. Every other Stable-Retro integration needs a ROM the user imports
 into Stable-Retro; none is here.
 
+## The flood adaptation model
+
+`planiverse/environments/flood_transport/` follows the MAAT environment of
+[floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl) (MLSM-at-DTU, MIT):
+Costa, Petersen, Vandervoort, Drews, Morrissey and Pereira, *Climate Adaptation with
+Reinforcement Learning: Experiments with Flooding and Transportation in Copenhagen*, 2024.
+The damage curves, road values and measure costs it tabulates come from van Ginkel, Dottori,
+Alfieri, Feyen and Koks, *Flood risk assessment of the European road network*, Natural Hazards
+and Earth System Sciences 21 (2021), and the rainfall projections from the Danish Klimaatlas,
+both as MAAT tabulates them. None of MAAT's data is included: its cities, road networks and
+flood maps stay with it, and the cities here are drawn from a seed.
+
 ## Copyright and trade marks
 
-- *Adventures of Lolo* — © HAL Laboratory, Inc. / Nintendo Co., Ltd.
-- *Puzznic* — © Taito Corporation
-- *Flipull* / *Plotting* — © Taito Corporation
-- *Amazing Tater* — © Atlus Co., Ltd.
-- *Super Mario Land* — © Nintendo Co., Ltd.
+- *Adventures of Lolo*: © HAL Laboratory, Inc. / Nintendo Co., Ltd.
+- *Puzznic*: © Taito Corporation
+- *Flipull* / *Plotting*: © Taito Corporation
+- *Amazing Tater*: © Atlus Co., Ltd.
+- *Super Mario Land*: © Nintendo Co., Ltd.
 
 All trade marks are the property of their respective owners and are used here
 descriptively, to identify the titles studied. This project is unofficial and is

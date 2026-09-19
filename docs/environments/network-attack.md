@@ -8,7 +8,7 @@ make it deterministic, so a planner can reason about it rather than sampling it.
 - **Class:** `EnvNASim`
 - **Import:** `from planiverse.environments.network_attack.network_attack import EnvNASim`
 - **Source:** [`network_attack.py`](../../planiverse/environments/network_attack/network_attack.py)
-- **Instances:** 18 NASim benchmark scenarios, indices `0`–`17`
+- **Instances:** 18 NASim benchmark scenarios, indices `0` to `17`
 - **Generator:** `generate_instance(seed, hosts=5, services=3, **options)`; see [Generating networks](#generating-networks)
 - **Dependencies:** `nasim`, the `MFaisalZaki/NetworkAttackSimulator` fork pinned in
   `pyproject.toml`. Upstream `nasim` will not work: `generative_step` and the patched internals
@@ -20,15 +20,11 @@ Related upstream work is [PenGym](https://github.com/cyb3rlab/PenGym).
 
 ![BFWS's plan for network_attack instance 0](../renders/network_attack.png)
 
-BFWS's plan for instance `0` (`tiny`): 6 actions, shown as a contact sheet rather than an
-animation, because there is nothing here to animate. `render_trace` falls back to
-`str(state)` for an environment with no screen, and NASim's own `State.__str__` prints host
-addresses and nothing else , so all seven states typeset identically and the GIF is a single
-frame. The captions still carry the attack: exploit, subnet scan, exploit, privilege
-escalation, exploit, privilege escalation, and the goal.
-
-What changes between those states lives in `state.literals`, which the text does not show.
-Giving `NASimState` a `__str__` that prints the compromised set would make this render.
+BFWS's plan for instance `0` (`tiny`): 6 actions, shown as a contact sheet. Each frame is
+the state's own text, which lists the hosts discovered so far and says of each whether it is
+reachable, compromised or rooted, so the frames show the attack advancing host by host, and
+the captions carry the actions: exploit, subnet scan, exploit, privilege escalation, exploit,
+privilege escalation, and the goal.
 
 ```python
 from planiverse.environments.network_attack.network_attack import EnvNASim
@@ -191,25 +187,10 @@ offered.
 
 ## Rendering
 
-NASim's own `State.__str__` prints host addresses and nothing else, so every state in a trace
-typesets identically and a GIF comes out as a single frame. Render a contact sheet instead, where
-the captions carry the attack:
-
-```python
-from planiverse.planners.width import IteratedBFWS
-from planiverse.benchmark import measures
-
-env = EnvNASim()
-env.set_index(0)
-env.reset()
-
-result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
-trace = env.simulate(result.plan)
-env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
-```
-
-What changes between states lives in `state.literals`, which the text does not show. Giving
-`NASimState` a `__str__` that prints the compromised set would make this render properly. See
+`str(state)` lists the hosts discovered so far, one line each, with whether the host is
+reachable, compromised or rooted and whether it is sensitive. NASim's own `State.__str__`
+prints the address space and nothing that changes, so `NASimState` overrides it; the full
+state, every cell of the tensor, is in `state.literals`. See
 [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Notes and limits

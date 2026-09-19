@@ -13,10 +13,6 @@ from planiverse.environments.water_network.environment import (  # noqa: E402
     WaterNetworkEnv, WaterNetworkState, network_library, rank_sources,
 )
 
-from conftest import (  # noqa: E402
-    assert_state_contract, assert_string_literals, assert_successors_contract,
-)
-
 
 @pytest.fixture
 def env():
@@ -142,17 +138,6 @@ def test_rank_sources_is_how_the_scenarios_were_chosen():
 
 
 # --------------------------------------------------------------------------- contract
-
-def test_state_contract(env):
-    state, _ = env.reset()
-    assert_state_contract(state)
-    assert_string_literals(state)
-
-
-def test_successors_contract(env):
-    state, _ = env.reset()
-    assert_successors_contract(env.successors(state))
-
 
 def test_a_state_is_identified_by_its_closed_set(env):
     """Because the solve is deterministic, the closed set determines everything else, so

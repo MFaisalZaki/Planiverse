@@ -14,8 +14,6 @@ from planiverse.environments.gameboy_py.amazing_tater import (
     friendly, group_blocks, initial_state, label_for, parse_level, solve,
 )
 
-from conftest import assert_string_literals, assert_successors_contract
-
 
 def play(rows, *actions):
     """Run a hand-made room through `actions` and give back `(level, state)`.
@@ -402,12 +400,6 @@ def test_reset_reports_the_room(game):
     assert info["taters"] == 1
     assert info["turnstiles"] == 3
     assert not game.is_goal(state)
-
-
-def test_state_contract(game):
-    state, _ = game.reset()
-    assert_string_literals(state)
-    assert_successors_contract(game.successors(state))
 
 
 def test_successors_never_include_a_move_that_changes_nothing(game):
