@@ -4,7 +4,7 @@ Hoffmann and Nebel, *The FF Planning System: Fast Plan Generation Through Heuris
 Search*, JAIR 2001. FF's search: from the current state, breadth-first search until a
 state with a strictly lower heuristic value turns up, move there, and repeat until the goal.
 It never backtracks over a commitment, which makes it incomplete and fast, and it is
-`SIWSearch` with the heuristic doing the job novelty does there: SIW's legs stop at the
+`SIW` with the heuristic doing the job novelty does there: SIW's legs stop at the
 first state that improves `progress` and are bounded by novelty; EHC's stop at the same
 place and are bounded by nothing but the budget.
 

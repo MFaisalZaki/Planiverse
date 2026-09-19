@@ -13,7 +13,7 @@ novelty to *order* rather than to discard.
 Adapting this to a simulator rather than a PDDL task changes three things:
 
 * **There is no goal decomposition.** `is_goal` is a black-box predicate, so Serialised IW's
-  "make one more subgoal true" has nothing to count. `SIWSearch` takes a `progress` callback
+  "make one more subgoal true" has nothing to count. `SIW` takes a `progress` callback
   instead, and says plainly what it degrades to without one.
 * **Expansions are expensive** (seconds each in the power grid environment), so every search
   takes a `Budget` and reports what it spent.
@@ -27,16 +27,11 @@ from planiverse.planners.width.result import Budget, SearchResult, SearchStatist
 
 
 class IWSearch:
-    """IW(k): breadth-first search that keeps only states of novelty ≤ k.
+    """IW(k) at one fixed width: breadth-first search that keeps only states of novelty ≤ k.
 
-    ```python
-    from planiverse.planners.width import IWSearch
-
-    env.set_index(0)
-    result = IWSearch(width=1).solve(env)
-    if result:
-        env.validate(result.plan)
-    ```
+    The component `IW` and `SIW` are built from, not a planner in its own right: the
+    literature's IW is the iteration over widths, which is `IW` below. It is not exported
+    from the package; `IW(width=k)` runs one width.
     """
 
     def __init__(self, width=1, strict=True, novelty_rule="standard", atoms=None):
@@ -127,11 +122,25 @@ class IWSearch:
                             statistics=statistics)
 
 
-class IteratedWidth:
-    """Run IW(1), IW(2), … until one solves it, or until no larger width could help.
+class IW:
+    """Iterated Width: IW(1), IW(2), … until one solves it, or until no larger width could help.
 
-    The standard answer to IW(k)'s incompleteness, and the right way to run IW when you do
-    not already know the problem's width. Note what it costs against a simulator: each width
+    Lipovetzky and Geffner, *Width and Serialization of Classical Planning Problems*, ECAI
+    2012, and *Classical Planning with Simulators: Results on the Atari Video Games*, IJCAI
+    2015, where IW(1) runs against a black-box simulator. The iteration is the standard answer
+    to IW(k)'s incompleteness, and the right way to run IW when you do not already know the
+    problem's width; `width=k` runs that one width only.
+
+    ```python
+    from planiverse.planners.width import IW
+
+    env.set_index(0)
+    result = IW(max_width=2).solve(env)     # IW(1), then IW(2)
+    result = IW(width=2).solve(env)         # IW(2) alone
+    if result:
+        env.validate(result.plan)
+    ```
+ Note what it costs against a simulator: each width
     restarts from scratch and re-expands everything the previous one did, and here an
     expansion is a hydraulic solve or a power-flow solve rather than a bitmask update. The
     budget is shared across widths rather than granted afresh to each.
@@ -146,27 +155,37 @@ class IteratedWidth:
        the interesting one: if nothing was ever discarded for being unnovel, then IW(k) saw
        the whole reachable space, and no larger width can see more. The problem has no
        solution, and iterating further would re-run the identical search. This is what makes
-       `IteratedWidth` complete when it gets that far, and what makes a bound of 1000
-       harmless rather than a thousand wasted restarts.
+       `IW` complete when it gets that far, and what makes a bound of 1000 harmless rather
+       than a thousand wasted restarts.
 
     Above `strict`'s practical width the tuple enumeration gets expensive fast, so widths
     beyond 2 need `strict=False`; `NoveltyTable` refuses them otherwise.
     """
 
-    def __init__(self, max_width=2, strict=True, novelty_rule="standard"):
+    def __init__(self, max_width=2, width=None, strict=True, novelty_rule="standard",
+                 atoms=None):
+        """`width` pins one width, so IW(k) runs on its own; `max_width` is otherwise the
+        bound the iteration stops at."""
+        if width is not None and width < 1:
+            raise ValueError(f"width must be at least 1, got {width}")
         if max_width < 1:
             raise ValueError(f"max_width must be at least 1, got {max_width}")
+        self.width = width
         self.max_width = max_width
         self.strict = strict
         self.novelty_rule = novelty_rule
+        self.atoms = atoms
 
     def solve(self, env, budget=None, state=None):
         budget = (budget or Budget()).start()
         totals = SearchStatistics()
         last = None
 
-        for width in range(1, self.max_width + 1):
-            search = IWSearch(width, strict=self.strict, novelty_rule=self.novelty_rule)
+        widths = ([self.width] if self.width is not None
+                  else range(1, self.max_width + 1))
+        for width in widths:
+            search = IWSearch(width, strict=self.strict, novelty_rule=self.novelty_rule,
+                              atoms=self.atoms)
             remaining = Budget(
                 max_expansions=(None if budget.max_expansions is None
                                 else max(0, budget.max_expansions - totals.expansions)),
@@ -212,18 +231,21 @@ class IteratedWidth:
         return result
 
 
-class SIWSearch:
+class SIW:
     """Serialised IW: chain short IW searches, each ending as soon as progress is made.
 
-    Classically "progress" means one more of the goal conjunction is true, and SIW is what
-    makes width-based planning scale: it decomposes a problem no single IW call could reach.
+    Lipovetzky and Geffner, ECAI 2012. Classically "progress" means one more of the goal
+    conjunction is true, and SIW is what makes width-based planning scale: it decomposes a
+    problem no single IW call could reach.
 
     **A simulator has no goal conjunction to count.** `is_goal` is opaque, so there is nothing
     to be one-closer to. Supply `progress(state) -> comparable`, lower being better, and SIW
     will chain searches that each strictly reduce it:
 
     ```python
-    SIWSearch(progress=lambda s: s.blocks_remaining).solve(env)
+    from planiverse.planners.width import SIW
+
+    SIW(progress=lambda s: s.blocks_remaining).solve(env)
     ```
 
     Without one this degrades to plain IW(k) (it says so in `status` rather than pretending
@@ -280,7 +302,7 @@ class SIWSearch:
         budget = (budget or Budget()).start()
         if self.progress is None:
             search = (IWSearch(self.width, strict=self.strict) if self.max_width is None
-                      else IteratedWidth(self.ceiling, strict=self.strict))
+                      else IW(self.ceiling, strict=self.strict))
             result = search.solve(env, budget, state)
             if not result.solved:
                 result.status = f"{result.status} (no progress measure; SIW degraded to IW)"

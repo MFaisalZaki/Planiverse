@@ -25,10 +25,12 @@ from planiverse.planners.sampling import (
     PlanLocalSearch, RandomShooting, RollingHorizonEvolution, evaluate_sequence,
 )
 from planiverse.planners.width import (
-    BFWSR, ApproximateNoveltySearch, BFWSSearch, BloomFilter, BloomNoveltyTable,
-    BoundaryExtensionFeatures, Budget, CountNoveltySearch, CountNoveltyTable,
-    HeuristicNovelty, HierarchicalIW, QuantifiedNoveltySearch, SearchResult,
+    ApproximateNoveltySearch, BFNoS, BFWS, BoundaryExtensionFeatures, Budget, HierarchicalIW,
+    QuantifiedNoveltySearch, SearchResult,
 )
+from planiverse.planners.width.approximate import BloomFilter, BloomNoveltyTable
+from planiverse.planners.width.count import CountNoveltyTable
+from planiverse.planners.width.quantified import HeuristicNovelty
 
 
 def boxes(state):
@@ -54,13 +56,13 @@ def budget():
 #: ones marked False are the ones whose mechanism is not enough here (the depth-first
 #: probes and LRTA* run out of time or steps), and the test only asks them to stop cleanly.
 PLANNERS = [
-    ("bfwsr", lambda: BFWSR(progress=boxes), True),
+    ("bfwsr", lambda: BFWS(progress=boxes, relevant="iw"), True),
     ("qn", lambda: QuantifiedNoveltySearch(progress=boxes), True),
-    ("cbn", lambda: CountNoveltySearch(progress=boxes, open_limit=500), True),
+    ("cbn", lambda: BFNoS(progress=boxes, open_limit=500), True),
     ("ans", lambda: ApproximateNoveltySearch(width=2, progress=boxes, space_bound=2000,
                                              seed=0), True),
     ("hiw", lambda: HierarchicalIW(low_expansions=100), True),
-    ("bfws-bee", lambda: BFWSSearch(width=1, progress=boxes,
+    ("bfws-bee", lambda: BFWS(width=1, progress=boxes,
                                     atoms=BoundaryExtensionFeatures(
                                         lambda s: {"boxes": boxes(s)}, bins=2)), True),
     ("gbfs", lambda: BestFirstSearch(progress=boxes), True),
@@ -134,12 +136,14 @@ def test_bfws_r_finds_relevant_atoms_from_its_pre_search(env):
     """At width 1 the pre-search finds no progress on level 1 (the only improvement is
     the dead end, which is dropped), so R is empty and the search is plain BFWS. At width
     2 the pre-search reaches the goal itself, and the atoms on its path are R."""
-    narrow = BFWSR(progress=boxes)
-    assert narrow.solve(env, budget()).solved and not narrow.relevant
-    wide = BFWSR(progress=boxes, r_width=2)
+    narrow = BFWS(progress=boxes, relevant="iw")
+    assert narrow.solve(env, budget()).solved and not narrow.relevant_atoms
+    wide = BFWS(progress=boxes, relevant="iw", r_width=2)
     result = wide.solve(env, budget())
     assert result.solved and result.width == 2
-    assert wide.relevant and all(isinstance(atom, str) for atom in wide.relevant)
+    assert wide.relevant_atoms and all(isinstance(a, str) for a in wide.relevant_atoms)
+    with pytest.raises(ValueError, match="relevant"):
+        BFWS(relevant="ff")
 
 
 def test_heuristic_novelty_counts_atoms_never_seen_this_close():
@@ -162,7 +166,7 @@ def test_count_novelty_keeps_discriminating_after_the_first_sighting():
 def test_the_trimmed_open_list_reports_what_it_dropped(env):
     """Trimming discards, so a search that trimmed and found nothing is `failed`, never
     `exhausted`: it did not see the whole space."""
-    result = CountNoveltySearch(progress=boxes, open_limit=4).solve(env, budget())
+    result = BFNoS(progress=boxes, open_limit=4).solve(env, budget())
     assert result.statistics.pruned_novelty > 0, "with an open list of 4, trimming happened"
     assert result.solved or result.status == "failed"
 

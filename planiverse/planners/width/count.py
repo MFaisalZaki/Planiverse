@@ -69,13 +69,14 @@ class CountNoveltyTable:
         return value
 
 
-class CountNoveltySearch:
-    """Best-first on count-based novelty, with a trimmed open list.
+class BFNoS:
+    """Best-First Novelty Search on count-based novelty, with a trimmed open list: the
+    paper's planner, under its name.
 
     ```python
-    from planiverse.planners.width import CountNoveltySearch
+    from planiverse.planners.width import BFNoS
 
-    result = CountNoveltySearch(progress=boxes, open_limit=2000).solve(env, budget)
+    result = BFNoS(progress=boxes, open_limit=2000).solve(env, budget)
     ```
 
     `open_limit=None` never trims, which keeps the search complete and the memory unbounded.

@@ -41,13 +41,13 @@ the snippet below produces the same pair of files as every other environment her
 ```python
 from planiverse.environments.water_network.environment import WaterNetworkEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import BFWS
 
 env = WaterNetworkEnv()
 env.set_index(0)
 env.reset()
 
-result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
+result = BFWS(width=1, progress=measures.water_network).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "water_network.gif")                             # animated

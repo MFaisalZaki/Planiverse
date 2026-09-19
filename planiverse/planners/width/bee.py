@@ -11,7 +11,7 @@ advance, and k-BFWS over them matched deep reinforcement learning on the gym cla
 tasks with no learning at all.
 
 `BoundaryExtensionFeatures` is a callable `state -> frozenset` to hand to any width planner
-that takes `atoms=` (`IWSearch`, `BFWSSearch`, `IteratedBFWS`). It takes a `variables(state)
+that takes `atoms=` (`IWSearch`, `BFWS`, `DualBFWS`). It takes a `variables(state)
 -> {name: value}` callback, since the environment contract exposes numbers only through
 `literals`, and each environment knows which of its quantities are continuous.
 

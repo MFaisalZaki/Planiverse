@@ -30,8 +30,7 @@ from planiverse.planners.sampling import (
     PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
 )
 from planiverse.planners.width import (
-    BFWSR, ApproximateNoveltySearch, CountNoveltySearch, HierarchicalIW,
-    QuantifiedNoveltySearch,
+    BFWS, ApproximateNoveltySearch, BFNoS, DualBFWS, HierarchicalIW, QuantifiedNoveltySearch,
 )
 
 
@@ -44,9 +43,10 @@ class FESSOnProgress(FeatureSpaceSearch):
 
 CANDIDATES = {
     # width-based variants
-    "bfwsr": (BFWSR, {"width": 1}),
+    "dual": (DualBFWS, {"max_width": 1000}),
+    "bfwsr": (BFWS, {"width": 1, "relevant": "iw"}),
     "qn": (QuantifiedNoveltySearch, {}),
-    "cbn": (CountNoveltySearch, {"width": 1}),
+    "bfnos": (BFNoS, {"width": 1}),
     "ans": (ApproximateNoveltySearch, {"width": 2, "space_bound": 500_000}),
     "hiw": (HierarchicalIW, {"low_expansions": 1000}),
     # heuristic search

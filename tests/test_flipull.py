@@ -11,7 +11,7 @@ from planiverse.environments.gameboy_py.flipull import (
     BLOCK_TYPES, EMPTY, FlipullAction, FlipullGame, FlipullState, STAGES, WALL,
     collapse, count_blocks, parse_stage, playable_rows, throw,
 )
-from planiverse.planners.width import BFWSSearch, Budget
+from planiverse.planners.width import BFWS, Budget
 
 from conftest import assert_string_literals, assert_successors_contract
 
@@ -163,7 +163,7 @@ def test_every_stage_can_actually_be_solved(index):
     turning out to have unreachable targets, which makes for a useless benchmark."""
     game = FlipullGame()
     game.set_index(index)
-    result = BFWSSearch(width=2, progress=lambda s: s.blocks_remaining).solve(
+    result = BFWS(width=2, progress=lambda s: s.blocks_remaining).solve(
         game, Budget(max_expansions=400000, max_seconds=180))
     assert result.solved, f"stage {index}: {result.status}"
     assert game.validate(result.plan), "and the plan replays to a goal"
@@ -291,7 +291,7 @@ def test_step_before_reset_is_an_error():
 
 
 def test_a_goal_state_is_absorbing(env):
-    result = BFWSSearch(width=2, progress=lambda s: s.blocks_remaining).solve(
+    result = BFWS(width=2, progress=lambda s: s.blocks_remaining).solve(
         env, Budget(max_expansions=400000, max_seconds=180))
     assert result.solved
     goal = env.simulate(result.plan)[-1]

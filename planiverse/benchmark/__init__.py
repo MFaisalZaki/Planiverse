@@ -31,7 +31,7 @@ from planiverse.benchmark.candidates import CANDIDATES
 from planiverse.benchmark.measures import MEASURES
 from planiverse.environments import REGISTRY, get_spec
 from planiverse.planners.fsx import FSXPlanner
-from planiverse.planners.width import Budget, IteratedBFWS, IteratedWidth, SIWSearch
+from planiverse.planners.width import BFWS, Budget, IW, SIW
 
 #: Per run: 30 minutes of wall clock, 8 GB of address space, 500,000 expansions.
 LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
@@ -41,9 +41,9 @@ LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
 #: This is a planning library: nothing here takes a reward, and nothing learns before it
 #: plans.
 PLANNERS = {
-    "bfws": (IteratedBFWS, {"max_width": 1000}),
-    "iw": (IteratedWidth, {"max_width": 1000, "strict": False}),
-    "siw": (SIWSearch, {"width": 1, "max_width": 1000, "strict": False}),
+    "bfws": (BFWS, {"width": 1}),
+    "iw": (IW, {"max_width": 1000, "strict": False}),
+    "siw": (SIW, {"width": 1, "max_width": 1000, "strict": False}),
     "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
 }
 

@@ -17,13 +17,13 @@ planners take, lower is better. Nothing below needs anything else from an enviro
 except where a column says so.
 
 ```python
-from planiverse.planners.width import BFWSR, CountNoveltySearch, Budget
+from planiverse.planners.width import BFWS, BFNoS, Budget
 from planiverse.planners.heuristic import EnforcedHillClimbing, BULB
 from planiverse.planners.sampling import GoExplore, RollingHorizonEvolution
 
 env.set_index(0)
 budget = Budget(max_expansions=5000, max_seconds=60)
-for planner in (BFWSR(progress=boxes), GoExplore(progress=boxes, seed=0)):
+for planner in (BFWS(progress=boxes, relevant="iw"), GoExplore(progress=boxes, seed=0)):
     result = planner.solve(env, budget)
     print(planner.__class__.__name__, result.status, len(result), result.statistics)
 ```
@@ -32,24 +32,26 @@ for planner in (BFWSR(progress=boxes), GoExplore(progress=boxes, seed=0)):
 
 | Class | File | Reference | Beyond `progress` it needs |
 |---|---|---|---|
-| `BFWSR` | `relevant.py` | Lipovetzky & Geffner 2017; Francès et al. 2017 | nothing |
+| `BFWS(relevant="iw")` | `bfws.py` | Lipovetzky & Geffner 2017; Francès et al. 2017 | nothing |
 | `QuantifiedNoveltySearch` | `quantified.py` | Katz, Lipovetzky, Moshkovich & Tuisov 2017 | nothing |
-| `CountNoveltySearch` | `count.py` | Rosa & Lipovetzky 2024 | nothing |
+| `BFNoS` | `count.py` | Rosa & Lipovetzky 2024 | nothing |
 | `ApproximateNoveltySearch` | `approximate.py` | Singh, Lipovetzky, Ramírez & Segovia-Aguas 2021 | nothing |
 | `BoundaryExtensionFeatures` | `bee.py` | Teichteil-Königsbuch, Ramírez & Lipovetzky 2020 | `variables(state) -> {name: float}` |
 | `HierarchicalIW` | `hierarchical.py` | Junyent, Gómez & Jonsson 2021 | nothing; `features` optional |
 
-`IWSearch`, `BFWSSearch` and `IteratedBFWS` gained one optional argument, `atoms(state)`,
-so that novelty can be measured over something other than `literals`; that is the hook
-`BoundaryExtensionFeatures` plugs into, and the only change to the existing planners.
+`IW`, `BFWS` and `DualBFWS` gained one optional argument, `atoms(state)`, so that novelty
+can be measured over something other than `literals`; that is the hook
+`BoundaryExtensionFeatures` plugs into. The package exports only the literature's names:
+`IW` (iterated, or one width with `width=k`), `SIW`, `BFWS`, `DualBFWS` and the four
+variants below; the fixed-width IW(k) search and the novelty tables are internals.
 
-**BFWS(R)** runs IW(`r_width`) first, on `r_share` of the
+**BFWS(R)** is `BFWS(relevant="iw")`. It runs IW(`r_width`) first, on `r_share` of the
 expansion budget; `R` is the union of the literals on the paths to every state that strictly
 improved `progress`, and if that pre-search reaches the goal its plan is returned. The main
 search is BFWS with novelty measured within `(progress, #r)` partitions and ties broken on
 `progress` then `#r`. **Quantified novelty** counts the atoms of a state that no earlier state
 with a heuristic value at most as good contained, and searches greedily on `(-QN, h)`,
-`(h, -QN)` or the binary version. **Count-based novelty** scores a state by the number of
+`(h, -QN)` or the binary version. **BFNoS**, the count-based novelty planner, scores a state by the number of
 recorded states that contained its rarest tuple and drops the worse half of the open list
 whenever it exceeds `open_limit`; a search that trimmed and found nothing is `failed`, never
 `exhausted`. **Approximate novelty** keeps sampled tuples in a bank of Bloom filters, one per
@@ -152,12 +154,12 @@ are the runs `tests/test_candidate_planners.py` repeats; they are not the benchm
 
 | Planner | Status | Plan | Expansions | Note |
 |---|---|---|---|---|
-| `BFWSR` | solved | 12 | 122 | `R` is empty at width 1 here; `r_width=2` returns the pre-search's plan |
+| `BFWS(relevant="iw")` | solved | 12 | 122 | `R` is empty at width 1 here; `r_width=2` returns the pre-search's plan |
 | `QuantifiedNoveltySearch` | solved | 12 | 90 | |
-| `CountNoveltySearch(open_limit=500)` | solved | 12 | 65 | |
+| `BFNoS(open_limit=500)` | solved | 12 | 65 | |
 | `ApproximateNoveltySearch(width=2)` | solved | 12 | 90 | |
 | `HierarchicalIW` | solved | 12 | 385 | features discovered, none given |
-| `BFWSSearch` over `BoundaryExtensionFeatures` | solved | 12 | 90 | |
+| `BFWS` over `BoundaryExtensionFeatures` | solved | 12 | 90 | |
 | `BestFirstSearch` (greedy, and `weight=2`) | solved | 12 | 76 | |
 | `RestartingWeightedAStar` | solved | 12 | 118 | weights 5, 3, 2, 1.5, 1 |
 | `EpsilonGreedySearch` | solved | 12 | 80 | |

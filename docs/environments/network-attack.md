@@ -32,13 +32,13 @@ Giving `NASimState` a `__str__` that prints the compromised set would make this 
 ```python
 from planiverse.environments.network_attack.network_attack import EnvNASim
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import BFWS
 
 env = EnvNASim()
 env.set_index(0)
 env.reset()
 
-result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
+result = BFWS(width=1, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)
 env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
 ```
@@ -167,14 +167,14 @@ typesets identically and a GIF comes out as a single frame. Render a contact she
 the captions carry the attack:
 
 ```python
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import BFWS
 from planiverse.benchmark import measures
 
 env = EnvNASim()
 env.set_index(0)
 env.reset()
 
-result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
+result = BFWS(width=1, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)
 env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
 ```

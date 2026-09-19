@@ -11,7 +11,7 @@ from planiverse.environments.gameboy_py.super_mario_land import (
     MEASURED_EXPANSIONS, SPEED, TILE,
     SuperMarioLandAction, SuperMarioLandGame, blocked, parse_level,
 )
-from planiverse.planners.width import BFWSSearch, Budget
+from planiverse.planners.width import BFWS, Budget
 
 from conftest import assert_string_literals, assert_successors_contract
 
@@ -291,7 +291,7 @@ def test_every_shipped_level_can_be_finished(index):
     game.set_index(index)
     _, info = game.reset()
     width = info["width"]
-    result = BFWSSearch(width=2, progress=lambda s: width - s.tile_x).solve(
+    result = BFWS(width=2, progress=lambda s: width - s.tile_x).solve(
         game, Budget(max_expansions=200000, max_seconds=180))
     assert result.solved, f"level {index}: {result.status}"
     assert game.validate(result.plan), "and the plan replays to the flag"

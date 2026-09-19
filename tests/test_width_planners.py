@@ -7,9 +7,11 @@ import pytest
 
 from planiverse.environments.gameboy_py.puzznic import PuzznicGame
 from planiverse.planners.width import (
-    MAX_PRACTICAL_WIDTH, BFWSSearch, Budget, IteratedBFWS, IteratedWidth, IWSearch,
-    NoveltyTable, PartitionedNovelty, SIWSearch, SearchResult, SearchStatistics,
-    path_novelty,
+    BFWS, Budget, DualBFWS, IW, SIW, SearchResult, SearchStatistics,
+)
+from planiverse.planners.width.iw import IWSearch
+from planiverse.planners.width.novelty import (
+    MAX_PRACTICAL_WIDTH, NoveltyTable, PartitionedNovelty, path_novelty,
 )
 
 
@@ -101,7 +103,7 @@ def test_iw_one_exhausts_where_iw_two_solves(env):
 
 def test_iterated_width_finds_the_width_it_needs(env):
     """And charges for the widths it tried on the way; each restarts from scratch."""
-    result = IteratedWidth(max_width=2).solve(env, Budget(max_expansions=5000))
+    result = IW(max_width=2).solve(env, Budget(max_expansions=5000))
     assert result.solved and result.width == 2
     assert result.statistics.widths_tried == (1, 2)
     assert env.validate(result.plan)
@@ -116,7 +118,7 @@ def test_iterated_width_gives_up_when_its_ceiling_is_too_low(env):
     still pruning, so a wider round would have seen more. The benchmark reads "exhausted"
     as a proof of unsolvability (`catalogue.is_complete`), and this is not one. Level 1 is
     solvable at width 2."""
-    result = IteratedWidth(max_width=1).solve(env, Budget(max_expansions=5000))
+    result = IW(max_width=1).solve(env, Budget(max_expansions=5000))
     assert not result.solved
     assert result.status == "failed"
     assert result.statistics.widths_tried == (1,)
@@ -149,7 +151,7 @@ def test_a_huge_width_bound_costs_nothing_when_the_space_is_already_covered():
     """`max_width` is a bound, not a plan. If a width exhausts the reachable space without
     discarding anything for novelty, no larger width can reach further, so iterating on
     would re-run the identical search a thousand times."""
-    result = IteratedWidth(max_width=1000, strict=False).solve(_Chain(), Budget())
+    result = IW(max_width=1000, strict=False).solve(_Chain(), Budget())
     assert result.statistics.widths_tried == (1,), "it stopped after the first"
     assert result.status == "exhausted", "and says the space really was covered"
 
@@ -157,19 +159,19 @@ def test_a_huge_width_bound_costs_nothing_when_the_space_is_already_covered():
 def test_exhausting_the_space_is_reported_as_such_not_as_a_plain_failure():
     """`SearchResult.__bool__` is `solved`, so `last.status if last else ...` silently
     reported "failed" for every unsolved outcome, including a proof that there is no plan."""
-    assert IteratedWidth(max_width=3, strict=False).solve(_Chain(), Budget()).status \
+    assert IW(max_width=3, strict=False).solve(_Chain(), Budget()).status \
         == "exhausted"
 
 
 def test_running_out_of_budget_is_not_mistaken_for_covering_the_space():
-    result = IteratedWidth(max_width=1000, strict=False).solve(
+    result = IW(max_width=1000, strict=False).solve(
         _Chain(), Budget(max_expansions=1))
     assert result.status == "out_of_budget"
 
 
 def test_a_width_strict_refuses_stops_the_iteration_rather_than_raising(env):
     """The widths already tried are a real result; an exception would throw them away."""
-    result = IteratedWidth(max_width=9, strict=True).solve(env, Budget(max_expansions=5000))
+    result = IW(max_width=9, strict=True).solve(env, Budget(max_expansions=5000))
     assert result.solved or result.statistics.widths_tried == (1, 2)
 
 
@@ -180,10 +182,10 @@ def test_siw_can_iterate_a_legs_width_instead_of_pinning_it(env):
     def boxes(state):
         return sum(1 for literal in state.literals if literal.startswith("at(box"))
 
-    pinned = SIWSearch(width=2, progress=boxes).solve(env, Budget(max_expansions=5000))
+    pinned = SIW(width=2, progress=boxes).solve(env, Budget(max_expansions=5000))
     assert pinned.statistics.widths_tried == (2,), "unchanged without max_width"
 
-    iterated = SIWSearch(width=1, max_width=1000, strict=False, progress=boxes).solve(
+    iterated = SIW(width=1, max_width=1000, strict=False, progress=boxes).solve(
         env, Budget(max_expansions=5000))
     assert iterated.solved
     assert iterated.statistics.widths_tried == (1, 2), \
@@ -193,12 +195,12 @@ def test_siw_can_iterate_a_legs_width_instead_of_pinning_it(env):
 
 def test_a_max_width_below_the_starting_width_is_refused():
     with pytest.raises(ValueError, match="max_width"):
-        SIWSearch(width=3, max_width=2)
+        SIW(width=3, max_width=2)
 
 
 def test_a_bound_below_one_is_refused():
     with pytest.raises(ValueError, match="max_width"):
-        IteratedWidth(max_width=0)
+        IW(max_width=0)
 
 
 def test_novelty_stops_at_the_number_of_atoms_a_state_has():
@@ -290,7 +292,7 @@ def test_the_path_rule_is_selectable_and_validated():
 def test_siw_without_a_progress_measure_degrades_to_iw_and_says_so(env):
     """A simulator has no goal conjunction to count, so SIW has nothing to serialise on.
     It should say that rather than quietly behaving like something else."""
-    result = SIWSearch(width=1).solve(env, Budget(max_expansions=5000))
+    result = SIW(width=1).solve(env, Budget(max_expansions=5000))
     assert not result.solved
     assert "degraded to IW" in result.status
 
@@ -303,17 +305,17 @@ def test_siw_walks_into_a_dead_end_unless_told_not_to(env):
     A simulator that computes `is_terminal` lets the leg refuse (a dead end is not
     progress), and that alone turns a failure into a solved instance.
     """
-    classical = SIWSearch(width=2, progress=boxes, avoid_dead_ends=False)
+    classical = SIW(width=2, progress=boxes, avoid_dead_ends=False)
     assert not classical.solve(env, Budget(max_expansions=5000)).solved
 
-    careful = SIWSearch(width=2, progress=boxes, avoid_dead_ends=True)
+    careful = SIW(width=2, progress=boxes, avoid_dead_ends=True)
     result = careful.solve(env, Budget(max_expansions=5000))
     assert result.solved, "refusing dead-end progress solves it"
     assert env.validate(result.plan)
 
 
 def test_siw_reports_the_widths_it_used(env):
-    result = SIWSearch(width=2, progress=boxes).solve(env, Budget(max_expansions=5000))
+    result = SIW(width=2, progress=boxes).solve(env, Budget(max_expansions=5000))
     assert result.statistics.widths_tried == (2,)
     assert result.statistics.expansions > 0
 
@@ -323,7 +325,7 @@ def test_siw_reports_the_widths_it_used(env):
 def test_bfws_solves_what_iw_one_cannot(env):
     """Novelty as an ordering rather than a filter: nothing is discarded, so width 1 is
     still complete where IW(1) exhausted."""
-    result = BFWSSearch(width=1, progress=boxes).solve(env, Budget(max_expansions=5000))
+    result = BFWS(width=1, progress=boxes).solve(env, Budget(max_expansions=5000))
     assert result.solved
     assert env.validate(result.plan)
 
@@ -331,21 +333,21 @@ def test_bfws_solves_what_iw_one_cannot(env):
 def test_bfws_never_prunes_for_novelty(env):
     """The defining difference from IW. If this counter ever moves, novelty has become a
     filter again and completeness is gone."""
-    result = BFWSSearch(width=1, progress=boxes).solve(env, Budget(max_expansions=5000))
+    result = BFWS(width=1, progress=boxes).solve(env, Budget(max_expansions=5000))
     assert result.statistics.pruned_novelty == 0
 
 
 def test_bfws_works_with_no_callbacks_at_all(env):
     """Degrades to breadth-first-with-a-preference-for-novel-states. Weaker, not broken:
     it has no idea which way the goal is."""
-    result = BFWSSearch(width=1).solve(env, Budget(max_expansions=5000))
+    result = BFWS(width=1).solve(env, Budget(max_expansions=5000))
     assert result.status in ("solved", "exhausted", "out_of_budget")
     if result.solved:
         assert env.validate(result.plan)
 
 
 def test_a_heuristic_breaks_ties_without_changing_soundness(env):
-    result = BFWSSearch(width=1, progress=boxes,
+    result = BFWS(width=1, progress=boxes,
                         heuristic=lambda s: len(s.literals)).solve(
         env, Budget(max_expansions=5000))
     assert result.solved
@@ -354,14 +356,14 @@ def test_a_heuristic_breaks_ties_without_changing_soundness(env):
 
 def test_the_progress_measure_partitions_novelty_by_default(env):
     """The classical choice, and the one that keeps exploration renewing."""
-    search = BFWSSearch(width=1, progress=boxes)
+    search = BFWS(width=1, progress=boxes)
     state, _ = env.reset()
     assert search.__partition_of__(state) == boxes(state)
 
-    explicit = BFWSSearch(width=1, progress=boxes, partition=lambda s: "one")
+    explicit = BFWS(width=1, progress=boxes, partition=lambda s: "one")
     assert explicit.__partition_of__(state) == "one"
 
-    bare = BFWSSearch(width=1)
+    bare = BFWS(width=1)
     assert bare.__partition_of__(state) == 0, "a single global partition"
 
 
@@ -371,7 +373,7 @@ def test_pruned_bfws_has_iw_reach_and_iw_incompleteness(env):
     """`prune=True` is k-BFWS: BFWS's ordering inside IW's novelty filter. On level 1 it
     exhausts at width 1 exactly where IW(1) does, because the filter, not the ordering,
     is what bounds what it can see."""
-    result = BFWSSearch(width=1, prune=True, progress=boxes).solve(
+    result = BFWS(width=1, prune=True, progress=boxes).solve(
         env, Budget(max_expansions=5000))
     assert result.status == "exhausted"
     assert result.statistics.pruned_novelty > 0, "the filter is really back on"
@@ -383,9 +385,9 @@ def test_pruned_bfws_has_iw_reach_and_iw_incompleteness(env):
 
 def test_iterated_bfws_escalates_width_only_when_the_filter_bites(env):
     """The pruned width-1 round exhausts, so the loop pays for a width-2 round, which
-    solves it: the same escalation as IteratedWidth, with BFWS's ordering inside each
+    solves it: the same escalation as IW, with BFWS's ordering inside each
     round."""
-    result = IteratedBFWS(max_width=2, progress=boxes).solve(
+    result = DualBFWS(max_width=2, progress=boxes).solve(
         env, Budget(max_expansions=5000))
     assert result.solved and result.width == 2
     assert result.statistics.widths_tried == (1, 2)
@@ -397,13 +399,13 @@ def test_iterated_bfws_final_round_is_the_safety_net(env):
     (plain BFWS(1), which is complete) is what rescues it. Without that round the same
     search reports "failed", never "exhausted": hitting the ceiling with the filter still
     biting proves nothing."""
-    result = IteratedBFWS(max_width=1, progress=boxes).solve(
+    result = DualBFWS(max_width=1, progress=boxes).solve(
         env, Budget(max_expansions=5000))
     assert result.solved
     assert result.statistics.widths_tried == (1, 1), "the trailing 1 is the unpruned round"
     assert env.validate(result.plan)
 
-    bare = IteratedBFWS(max_width=1, progress=boxes, final_complete=False).solve(
+    bare = DualBFWS(max_width=1, progress=boxes, final_complete=False).solve(
         env, Budget(max_expansions=5000))
     assert bare.status == "failed"
     assert bare.statistics.widths_tried == (1,)
@@ -413,13 +415,13 @@ def test_iterated_bfws_stops_when_a_pruned_round_covers_the_space():
     """If a pruned round empties its frontier without discarding anything, it saw the whole
     reachable space; the unpruned round would re-run the identical search, so it is
     skipped and the "exhausted" is a proof that there is no plan."""
-    result = IteratedBFWS(max_width=1000, strict=False).solve(_Chain(), Budget())
+    result = DualBFWS(max_width=1000, strict=False).solve(_Chain(), Budget())
     assert result.status == "exhausted"
     assert result.statistics.widths_tried == (1,), "no wider round, no final round"
 
 
 def test_iterated_bfws_running_out_of_budget_says_so():
-    result = IteratedBFWS(max_width=1000, strict=False).solve(
+    result = DualBFWS(max_width=1000, strict=False).solve(
         _Chain(), Budget(max_expansions=1))
     assert result.status == "out_of_budget"
 
@@ -427,7 +429,7 @@ def test_iterated_bfws_running_out_of_budget_says_so():
 def test_iterated_bfws_survives_a_width_strict_refuses(env):
     """Widths above 2 are refused under `strict`; the rounds already run are a real result
     and the loop moves on to the final round rather than raising."""
-    result = IteratedBFWS(max_width=9, strict=True, progress=boxes).solve(
+    result = DualBFWS(max_width=9, strict=True, progress=boxes).solve(
         env, Budget(max_expansions=5000))
     assert result.solved
     assert result.statistics.widths_tried == (1, 2)
@@ -435,7 +437,7 @@ def test_iterated_bfws_survives_a_width_strict_refuses(env):
 
 def test_iterated_bfws_refuses_a_bound_below_one():
     with pytest.raises(ValueError, match="max_width"):
-        IteratedBFWS(max_width=0)
+        DualBFWS(max_width=0)
 
 
 # ------------------------------------------------------------------------- statistics
@@ -482,7 +484,7 @@ def test_bfws_solves_a_growing_season():
     game = CropEnv()
     try:
         game.set_index(10)                    # 1986: irrigation is worth 2698 kg/ha
-        result = BFWSSearch(width=1, progress=lambda s: -s.biomass).solve(
+        result = BFWS(width=1, progress=lambda s: -s.biomass).solve(
             game, Budget(max_expansions=400, max_seconds=240))
         assert result.solved, f"expected a plan, got {result.status}"
         assert game.validate(result.plan)

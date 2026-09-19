@@ -83,9 +83,9 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 
 | Planner | Class | Parameters |
 |---|---|---|
-| `bfws` | `IteratedBFWS` | `max_width=1000` |
-| `iw` | `IteratedWidth` | `max_width=1000, strict=False` |
-| `siw` | `SIWSearch` | `width=1, max_width=1000, strict=False` |
+| `bfws` | `BFWS` | `width=1` |
+| `iw` | `IW` | `max_width=1000, strict=False` |
+| `siw` | `SIW` | `width=1, max_width=1000, strict=False` |
 | `fsx` | `FSXPlanner` | `horizon=6, walkers=8`, the run's seed; the distinct-state count, zero temperature and 200 committed steps are the class defaults |
 
 SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count a classical
@@ -146,10 +146,7 @@ another planner did not use the union over seeds, which is the strongest form of
   and the rest, and the difficulty profile (open instances, BFWS's plan lengths, successors
   per expansion, IW's largest width).
 
-An earlier run's sandbox is `sandbox.zip` on the
-[release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
-repository and `report` reads whatever result directories match the registered planners; the
-directories of planners since removed from the library are ignored.
+Dual BFWS and BFWS(R) run as the candidates `dual` and `bfwsr`.
 
 ## The candidate planners
 

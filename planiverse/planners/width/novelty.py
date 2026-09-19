@@ -45,7 +45,7 @@ class NoveltyTable:
         self.width = width
         # `{size: set of tuples}`, filled on demand. A list of `width` sets would allocate
         # one per level whether or not any state has that many atoms, so a width of 1000
-        # (what `IteratedWidth` is given as a bound) cost a thousand allocations per level
+        # (what `IW` is given as a bound) cost a thousand allocations per level
         # tried, for nine atoms' worth of work.
         self.seen = {}
         self.evaluations = 0
@@ -60,7 +60,7 @@ class NoveltyTable:
         self.evaluations += 1
         atoms = sorted(literals)
         # A tuple longer than the state has atoms does not exist, so widths above that add
-        # nothing. Capping here is what lets `IteratedWidth` take a bound of 1000 without
+        # nothing. Capping here is what lets `IW` take a bound of 1000 without
         # spinning through 990 empty combination ranges per state.
         for size in range(1, self.__ceiling__(atoms) + 1):
             seen = self.seen.get(size, ())

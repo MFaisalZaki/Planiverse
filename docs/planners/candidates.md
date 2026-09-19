@@ -25,7 +25,7 @@ methods below rely on, is free.
 
 | Family | Classes | Reference |
 |---|---|---|
-| Width-based, breadth/best-first | `IWSearch`, `IteratedWidth`, `SIWSearch`, `BFWSSearch`, `IteratedBFWS` (k-BFWS, Dual-BFWS shape) | Lipovetzky & Geffner 2012, 2017 |
+| Width-based | `IW`, `SIW`, `BFWS`, `DualBFWS` | Lipovetzky & Geffner 2012, 2017 |
 | Sampling | `FSXPlanner` | Wissner-Gross & Freer 2013 |
 
 Rollout IW, π-IW and an MCTS planner were in the library when this survey was written and
@@ -44,7 +44,7 @@ what would have to change for a simulator. A **priority** column at the end rank
    Atari Video Games*, IJCAI 2015. Two open lists: one ordered by `<novelty, reward>`, the other
    by `<reward, novelty>`, expanded alternately. The paper's best planner on Atari after IW(1),
    and the one that beat UCT. Needs `successors`, `literals`, `progress` (as the reward).
-   A short generalisation of `BFWSSearch` to several queues.
+   A short generalisation of `BFWS` to several queues.
 
 2. **Prioritised IW, p-IW(1)** — Shleyfman, Tuisov & Domshlak, *Blind Search for Atari-Like
    Online Planning Revisited*, IJCAI 2016. IW's novelty filter is relaxed with a value test: a
@@ -69,7 +69,7 @@ what would have to change for a simulator. A **priority** column at the end rank
    relative to a heuristic: an atom of `s` is novel if no earlier state with a heuristic value
    at most `h(s)` contained it, and the *number* of such atoms becomes a heuristic to search
    on, alone or combined with `h`. Needs `progress` as `h`. A different ordering for
-   `BFWSSearch` rather than a new search.
+   `BFWS` rather than a new search.
 
 5. **Count-based novelty with a trimmed open list** — Rosa & Lipovetzky, *Count-Based Novelty
    Exploration in Classical Planning*, ECAI 2024. Replaces the binary seen/unseen record with
@@ -126,7 +126,7 @@ needs nothing from the model.
 12. **Enforced Hill-Climbing (EHC)** — Hoffmann & Nebel, *The FF Planning System*, JAIR 2001.
     Breadth-first search to the first state that strictly improves the heuristic, commit, repeat.
     SIW with `progress` in place of novelty; with `is_terminal` it gets the same dead-end refusal
-    `SIWSearch` has. Also worth having as a novelty-pruned variant.
+    `SIW` has. Also worth having as a novelty-pruned variant.
 
 13. **Type-based exploration and ε-greedy node selection** — Xie, Müller, Holte & Imai,
     *Type-Based Exploration with Multiple Search Queues for Satisficing Planning*, AAAI 2014;

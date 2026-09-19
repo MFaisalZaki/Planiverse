@@ -277,7 +277,7 @@ See [docs/rendering.md](docs/rendering.md).
 
 | Family | Where | What it needs from an environment |
 |---|---|---|
-| Width-based: IW(k), Iterated Width, SIW, BFWS | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
+| Width-based: `IW`, `SIW`, `BFWS` (with BFWS(R) as `relevant="iw"`), `DualBFWS` | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
 | Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
 | Tree search / A* | [`planiverse/planners/super_mario_planner_gb.py`](planiverse/planners/super_mario_planner_gb.py) | a heuristic and a cost function |
 | More width-based: BFWS(R), quantified, count-based and approximate novelty, boundary-extension features, hierarchical IW | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; `progress` for most |
@@ -286,10 +286,10 @@ See [docs/rendering.md](docs/rendering.md).
 | Blind: breadth-first, uniform cost, iterative deepening | [`planiverse/planners/blind.py`](planiverse/planners/blind.py) | `successors` only |
 
 ```python
-from planiverse.planners.width import IWSearch, BFWSSearch, Budget
+from planiverse.planners.width import IW, BFWS, Budget
 
 env.set_index(0)
-result = IWSearch(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
+result = IW(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
 if result:
     env.validate(result.plan)
 ```
@@ -356,10 +356,8 @@ pass for coverage.
 `report` writes two tables (`coverage.tex`, `statuses.tex`), three figures (`cactus.pdf`,
 `overlap_bfws_iw_siw.pdf`, `runtime_bfws_iw_siw.pdf`) and `facts.txt`, the numbers a write-up
 would quote, into `sandbox/report/`. A seeded planner is reported as its mean over seeds with
-the standard deviation, never its best seed. An earlier run's sandbox is attached to the
-[release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the
-repository and `report` reads whatever result directories match the registered planners.
-[docs/benchmark.md](docs/benchmark.md) has the details.
+the standard deviation, never its best seed. [docs/benchmark.md](docs/benchmark.md) has the
+details.
 
 ## Writing a planner
 
@@ -539,7 +537,7 @@ What is in the tree:
   environment and as a dependency-free Python counterpart. Four of the counterparts are twins of
   their cartridge; the Super Mario Land one shares the genre and the measured physics, not the
   levels.
-- The planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Future State
+- The planners: IW, SIW, BFWS and Dual BFWS under their literature names; Future State
   Maximization; and the surveyed additions in [docs/planners/more-planners.md](docs/planners/more-planners.md).
   No planner takes a reward or learns.
 - `planiverse-bench`, the evaluation protocol as code: four reference configurations, five
