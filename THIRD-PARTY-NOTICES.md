@@ -63,6 +63,22 @@ Micropolis is a registered trademark of Micropolis Corporation (Micropolis GmbH)
 here as a courtesy of the owner (https://micropolis.com/), under the *"Micropolis" Public Name
 License* that accompanies the source, which asks for this attribution wherever the name is used.
 
+## The factory simulator
+
+`planiverse/environments/factory/` drives [factory-sim](https://github.com/divagr18/factory-sim)
+(MIT), a C simulator of a small slice of Factorio's early game with a Python binding. It is not
+included here: `scripts/build_factory_sim.sh` fetches it at a pinned commit, compiles it and
+installs it, and the environment imports it as `fsim`. factory-sim's own notice is explicit about
+what it holds: every rule and number in it was measured on the running game and written down,
+and no code, data file, prototype definition, art, sound or font of Factorio's was copied or is
+included. This repository adds nothing of Factorio's either; the environment's decisions, rules,
+patches and reference lines are this repository's work, and its scenes are drawn with
+factory-sim's own scene generator.
+
+Factorio is a game by Wube Software Ltd and "Factorio" is a trademark of Wube Software Ltd,
+used here descriptively to say what the simulator was measured against. Neither factory-sim nor
+this repository is affiliated with, sponsored by or endorsed by Wube Software Ltd.
+
 ## The flood adaptation model
 
 `planiverse/environments/flood_transport/` follows the MAAT environment of
@@ -82,6 +98,7 @@ flood maps stay with it, and the cities here are drawn from a seed.
 - *Flipull* / *Plotting*: © Taito Corporation
 - *Amazing Tater*: © Atlus Co., Ltd.
 - *Super Mario Land*: © Nintendo Co., Ltd.
+- *Factorio*: © Wube Software Ltd.
 
 All trade marks are the property of their respective owners and are used here
 descriptively, to identify the titles studied. This project is unofficial and is

@@ -23,6 +23,7 @@ season or city, so a benchmark is not limited to what ships.
 | Power grid | `power_grid` | 100 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
 | Crop management | `crop_management` | 100 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
 | Micropolis city | `micropolis` | 100 cities | the map, the layout, the horizon and the population target | operational, city | [docs](docs/environments/micropolis.md) |
+| Factory | `factory` | 100 patches | the ore patch, its walls, the start, what is carried, the horizon and the plate target | game, operational, factory | [docs](docs/environments/factory.md) |
 | Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
 | Network attack | `network_attack` | 100 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
 | Puzznic | `puzznic` | 100 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
@@ -402,6 +403,7 @@ planiverse/environments/
 ├── billiards/       # pool on pooltool
 ├── lemmings/        # a crowd of walkers, pure Python
 ├── micropolis/      # a city on the Micropolis engine, built from source
+├── factory/         # an early-game factory on factory-sim, built from source
 ├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
 └── <one subpackage per simulator-backed environment>
 ```
@@ -465,6 +467,7 @@ planiverse/
 │   ├── billiards/                      # BilliardsEnv: pool on pooltool
 │   ├── lemmings/                       # LemmingsEnv: a crowd of walkers steered with skills
 │   ├── micropolis/                     # MicropolisEnv: a city on the Micropolis engine
+│   ├── factory/                        # FactoryEnv: an early-game factory on factory-sim
 │   ├── flood_transport/                # FloodTransportEnv (after MAAT), a city drawn from a seed
 │   ├── network_attack/                 # EnvNASim (wraps NASim)
 │   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
@@ -505,6 +508,7 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Slingshot | [pymunk](https://www.pymunk.org/) (MIT), the Python binding of Chipmunk2D (MIT) |
 | Billiards | [pooltool](https://github.com/ekiefl/pooltool) (Apache-2.0) |
 | Micropolis city | [MicropolisCore](https://github.com/SimHacker/micropolis) (GPL-3.0 with Electronic Arts' additional terms), built from source by `scripts/build_micropolis.sh` |
+| Factory | [factory-sim](https://github.com/divagr18/factory-sim) (MIT), a tick-exact C simulator of Factorio's early game measured on the game itself, built from source by `scripts/build_factory_sim.sh` |
 | Flood adaptation | [floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl) (DTU, MIT), the MAAT model, with a city of its own |
 | Game Boy | [PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), with the game wrappers of [MFaisalZaki/PyBoy](https://github.com/MFaisalZaki/PyBoy) |
 | Stable-Retro | [Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (Farama Foundation, MIT), which ships Airstriker |
@@ -523,11 +527,11 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Eighteen environments: five simulator-backed operational ones (water distribution, power
+- Nineteen environments: five simulator-backed operational ones (water distribution, power
   grid, crop management, flood adaptation, a city on the Micropolis engine), the NASim network attack, four games reimplemented
   in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, an artillery
-  game, a tower defence, a cellular fluid puzzle, a Lemmings-like, and two generic emulator
-  environments, one for any Game Boy cartridge under
+  game, a tower defence, a cellular fluid puzzle, a Lemmings-like, an early-game factory on
+  factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the

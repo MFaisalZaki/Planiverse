@@ -1,0 +1,187 @@
+# Factory
+
+An early-game factory on factory-sim. A character stands near a patch of iron ore carrying a
+burner mining drill or two, a stone furnace or two and some coal. A decision is thirty ticks,
+half a second of the game: walk, place a drill on the ore or a furnace where a drill drops its
+ore, hand a machine coal, dig ore by hand, take the plates out of a furnace, or wait. A drill
+burns coal at 150 kW and lifts one ore every four seconds; a furnace burns it at 90 kW and
+smelts a plate in 3.2 seconds; a piece of coal is four megajoules; the hand reaches ten tiles for
+a machine and 2.7 for ore. The goal is a number of plates in the character's hands by a horizon
+of forty seconds to two minutes. Which machines to build with what is carried, how to split the
+coal between drills and furnaces, where to stand so that everything is in reach, and how long
+to wait before the plates are worth collecting is only known by running the ticks, which keeps
+the environment out of PDDL: the numbers above are the measured game's, and a plan's worth is
+what the simulator makes of it.
+
+[factory-sim](https://github.com/divagr18/factory-sim) (MIT) is a C simulator of a small slice
+of Factorio's early game, checked decision by decision and tick by tick against traces recorded
+from the game itself (Factorio 2.0.60, through its FactorioRL harness). It has none of the game
+in it: every rule and number was measured on the running game and written down, and no code,
+data, art or sound of Factorio's is copied. Factorio is a game by Wube Software Ltd and
+"Factorio" is Wube's trademark; neither factory-sim nor this environment is affiliated with or
+endorsed by Wube. Nothing of the simulator is included here: it has to be built from source
+(below), and the notice is in [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md).
+
+- **Import:** `from planiverse.environments.factory.environment import FactoryEnv`
+- **Source:** [`planiverse/environments/factory/environment.py`](../../planiverse/environments/factory/environment.py)
+- **Instances:** 100 patches, indices `0` to `99`, all drawn by the generator at recorded seeds
+- **Generator:** `generate_instance(seed, drills=None, furnaces=None, coal=None, horizon=None, ...)`; see [Generating patches](#generating-patches)
+- **Dependency:** `fsim`, built by [`scripts/build_factory_sim.sh`](../../scripts/build_factory_sim.sh)
+
+## Why this one
+
+We wanted a factory game, and we wanted to wrap a maintained implementation rather than write
+one. The candidates were the [Factorio Learning Environment](https://github.com/JackHopkins/factorio-learning-environment)
+(MIT), which drives the real game through its headless server and so needs Docker and Wube's
+server binary, free to download but not ours to ship; [Mindustry](https://github.com/Anuken/Mindustry)
+(GPL-3.0), a Java game whose headless server takes console commands but has no simulation
+interface without a plugin of our own; and factory-sim, which needs a C compiler and nothing
+else, runs a decision in microseconds, is deterministic to the byte, and is measured against the
+game rather than imagined. It covers the early game only (drills, furnaces, coal, walking and
+hand mining; no belts, inserters or assemblers yet), and it is young, so the build script pins
+the commit the patches were drawn on. We took it, and the other two are noted in case the slice
+ever proves too small.
+
+## Building the simulator
+
+```console
+$ pip install cffi numpy                 # what the binding needs
+$ bash scripts/build_factory_sim.sh      # git, a C compiler and the Python headers
+```
+
+The script fetches factory-sim at the pinned commit, compiles its C core into the cffi
+extension `fsim._fsim` and copies the `fsim` package into the running Python's site-packages.
+A decision of thirty ticks takes about four microseconds, and expanding a state a millisecond
+or two.
+
+## Quickstart
+
+```python
+from planiverse.environments.factory.environment import FactoryEnv, FactoryAction
+
+env = FactoryEnv()
+env.set_index(0)
+state, info = env.reset()          # info: patch, family, target, horizon, generated
+print(state)                       # tick 0: at (5.4, -11.6); holds coal 6, drill 2, furnace 2; ...
+
+state, gained = env.step("place(drill, 0, 0, south)")
+for action, child in env.successors(state):
+    print(action, child.tick, child.plates)
+```
+
+## The rules
+
+1. The scene is a rectangle of iron ore, ten thousand ore a tile, with walls in some families,
+   and the character starts eight to thirteen tiles from its centre carrying the instance's
+   drills, furnaces and coal. The arena is sixty tiles square about the origin.
+2. A decision is thirty ticks. `move(d)` walks for all of them, about four and a half tiles;
+   `step(d)` for seven, about one tile; either stops at a wall or a machine.
+3. `place(drill, x, y, d)` puts a drill, two tiles by two centred on the corner `(x, y)`, on four
+   free ore tiles within ten tiles of the character, facing `d`. `place(furnace, x, y)` puts a
+   furnace where a drill drops its ore: two tiles in front of the drill's centre, on free tiles.
+   A placement the simulator refuses (the character standing on it, out of reach) changes
+   nothing and is not offered as a successor.
+4. `give(x, y, coal, n)` hands a machine within reach 1, 2, 5 or 10 coal; `give(x, y, ore)` hands
+   a furnace all the ore the character holds, up to the 54 its slot takes. `take(x, y)` takes
+   every plate out of a furnace.
+5. `mine(tx, ty)` digs five ore from the tile whose corner is `(tx, ty)`, within 2.7 tiles of
+   the character, and takes about two seconds a piece; the decision lasts until the ore is dug.
+6. `wait(n)` waits `n` decisions, for `n` of 1, 10 or 40.
+7. The goal is the instance's plates in the character's inventory at or before the horizon. A
+   state at the horizon without them is a dead end, and so is one past it.
+
+Everything else is the simulator's: fuel burning through energy buffers, the drill's mining
+progress and where it drops, the furnace's slots and smelting, collisions, reach, and the
+inventory's stacks.
+
+## State
+
+`FactoryState` holds the tick, the character's position in 1/256 tiles, what it holds, every
+machine (its centre, facing, the simulator's status, and the coal, ore and plates in its slots,
+with the energy, progress and the rest kept underneath), the piles on the ground, the ore left
+under each tile of the patch, and the plates made so far. Identity is these contents, not the
+decisions that led to them, so two orders of the same decisions that leave the same factory at
+the same tick are one state; `path` is kept for replay and `depth` is bookkeeping. `target`
+and `horizon` are carried for the benchmark's measure.
+
+`literals` names the character's tile, what it holds, each machine with its status and fuel, a
+furnace's ore and plates, the plates made, and the tick:
+
+```
+at(5, -11)
+holds(coal, 4)
+holds(plate, 0)
+drill(3, -2, north)
+status(drill, 3, -2, working)
+fuel(drill, 3, -2, 1)
+furnace(3, -4)
+ore_in(3, -4, 1)
+plates_in(3, -4, 7)
+made(7)
+tick(1830)
+```
+
+## Actions
+
+Eight walks, a drill placement per free anchor and facing within reach, a furnace placement per
+drill whose drop is free, coal in four amounts for each machine within reach, ore for a furnace,
+a take per furnace holding plates, a dig per ore tile within the hand's reach, and three waits,
+each costing 1. `get_actions(state)` lists what is open before the simulator has its say, and
+`FactoryAction.parse` reads one back from its name. A start offers between fifteen and a
+hundred and fifty decisions, depending on how much of the patch is within reach; a factory that
+is built and fuelled offers the walks, the waits, and whatever coal, ore and plates are left to
+hand over.
+
+## Patches
+
+The hundred patches are the generator's own draws, embedded in the module as the plain data
+`set_instance` takes (`family`, `ore`, `walls`, `start`, `drills`, `furnaces`, `coal`, `target`,
+`horizon`) with the seed each came from beside it, and the plan each was accepted on is in
+`tests/data/factory_solutions.json`. The scenes are factory-sim's ten families (open, offset,
+obstructed, varied, cluttered, square and narrow patches, with walls in the obstructed,
+cluttered and narrow ones), drawn with its own generator, which draws them the way FactorioRL
+does. Half the patches give the character two drills and two furnaces, since two lines are the
+richer problem; the coal is 6 to 40 pieces; the horizon 2,400 to 7,200 ticks. A target is the
+most plates a scripted line brings back: 8 in forty seconds, up to 54 with two lines and two
+minutes.
+
+## Generating patches
+
+`generate_instance` draws a patch, selects it, and returns it as the dict `set_instance` takes
+back:
+
+```python
+env = FactoryEnv()
+patch = env.generate_instance(seed=7, horizon=4800)
+print(env.witness, env.witness_expansions)     # the plan it was accepted on, and the lines measured
+state, info = env.reset()                       # info["generated"] is True
+```
+
+| Option | Default | What it does |
+|---|---|---|
+| `drills`, `furnaces` | one or two each, two of each half the time | what the character carries |
+| `coal` | 6, 8, 12, 16, 24 or 40 | the coal it carries |
+| `horizon` | 2,400 to 7,200 ticks | the deadline |
+| `min_plates` | 5 | the least a target may be; a scene no line works to that is thrown back |
+| `attempts` | 40 | scenes drawn before giving up with `GenerationError` |
+
+A draw is measured by scripted lines (`reference_plans`): the nearest two places one line
+fits, the nearest two a second fits beside it when two of each machine are carried, and every
+split of the coal between drill and furnace in the amounts a hand gives; each walks to a spot
+within reach of its machines (a breadth-first search over the walks, so walls are gone round),
+builds, fuels, waits out the horizon in tens and forties of decisions, and takes the plates. The
+target is the most any of them brings back and that plan is the witness. The method is
+generate-and-test with the target set off a reference policy, as the flood and Micropolis
+environments set theirs (Togelius, Yannakakis, Stanley and Browne, 2011,
+https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content
+Generation in Games*, 2016, https://pcgbook.com/). A planner is free to beat the target: the
+lines never dig by hand, never feed a furnace ore, and never give a machine coal twice.
+
+## Files
+
+| File | Contents |
+|---|---|
+| [`environment.py`](../../planiverse/environments/factory/environment.py) | `FactoryAction`, `FactoryState`, the scene (`scene_instance`, `blueprint_of`), `FactoryEnv` with the scripted lines (`lines`, `reference_plan`, `reference_plans`), `PATCHES` |
+| [`scripts/build_factory_sim.sh`](../../scripts/build_factory_sim.sh) | Builds and installs the simulator's Python binding |
+| [`tests/test_factory.py`](../../tests/test_factory.py) | Tests |
+| [`tests/data/factory_solutions.json`](../../tests/data/factory_solutions.json) | The plan each patch was accepted on |

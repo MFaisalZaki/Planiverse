@@ -22,8 +22,8 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "pooltool": "pooltool-billiards"}
 
 #: Built from source rather than installed from PyPI, so not declarable: the Micropolis engine
-#: (see `scripts/build_micropolis.sh`).
-BUILT_FROM_SOURCE = {"micropolisengine"}
+#: (see `scripts/build_micropolis.sh`) and factory-sim (`scripts/build_factory_sim.sh`).
+BUILT_FROM_SOURCE = {"micropolisengine", "fsim"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -42,6 +42,7 @@ ENTRY_POINTS = [
     "planiverse.environments.billiards.environment",
     "planiverse.environments.lemmings.environment",
     "planiverse.environments.micropolis.environment",
+    "planiverse.environments.factory.environment",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",

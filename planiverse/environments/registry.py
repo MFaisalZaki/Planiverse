@@ -197,6 +197,18 @@ REGISTRY = (
         tags=frozenset({"operational", "city"}),
     ),
     EnvironmentSpec(
+        name="factory",
+        factory="planiverse.environments.factory.environment:FactoryEnv",
+        summary="An early-game factory on factory-sim: drills, furnaces and coal on an ore patch, and plates to bring back by the deadline",
+        instances="100 patches, generated",
+        generates="the patch, the walls, the start, what is carried, the horizon and the plate target",
+        deterministic=True,
+        state_identity="value",
+        requires=("fsim",),
+        docs="docs/environments/factory.md",
+        tags=frozenset({"game", "operational", "factory"}),
+    ),
+    EnvironmentSpec(
         name="game_boy",
         factory="planiverse.environments.emulated.game_boy:GameBoyEnv",
         summary="Any Game Boy cartridge, through PyBoy and its game wrappers",

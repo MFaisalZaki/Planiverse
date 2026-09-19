@@ -71,6 +71,11 @@ def micropolis(state):
     return max(0, state.target - state.population)
 
 
+def factory(state):
+    """Plates still to bring back, counting from the patch's target carried on the state."""
+    return max(0, state.target - state.plates)
+
+
 def water_network(state):
     """Junctions still contaminated."""
     return state.contaminated
@@ -131,6 +136,7 @@ MEASURES = {
     "billiards": billiards,
     "lemmings": lemmings,
     "micropolis": micropolis,
+    "factory": factory,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,

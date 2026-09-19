@@ -35,6 +35,7 @@ FAST = {
     "billiards": dict(balls=2, search_limit=20),
     "lemmings": dict(search_limit=300),
     "micropolis": dict(years=10, search_limit=20),
+    "factory": dict(horizon=2400),
     "water_network": dict(network="Net1.inp"),
     "power_grid": dict(),
     "crop_management": dict(),

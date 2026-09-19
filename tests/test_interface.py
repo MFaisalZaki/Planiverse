@@ -151,6 +151,15 @@ def micropolis():
     return env
 
 
+def factory_env():
+    pytest.importorskip("fsim", reason="factory-sim is not built")
+    from planiverse.environments.factory.environment import FactoryEnv
+
+    env = FactoryEnv()
+    env.set_index(0)
+    return env
+
+
 def slingshot():
     pytest.importorskip("pymunk", reason="pymunk is not installed")
     from planiverse.environments.slingshot.environment import SlingshotEnv
@@ -186,6 +195,7 @@ ENVIRONMENTS = {
     "billiards": billiards,
     "lemmings": lemmings,
     "micropolis": micropolis,
+    "factory": factory_env,
     "game_boy": game_boy,
     "retro": retro,
 }
@@ -251,7 +261,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "slingshot", "artillery", "tower_defence", "fluid", "billiards",
-            "lemmings", "micropolis", "game_boy", "retro"} == registered
+            "lemmings", "micropolis", "factory", "game_boy", "retro"} == registered
 
 
 def test_a_spec_can_be_loaded_without_importing_the_rest():
