@@ -52,26 +52,35 @@ an environment with no screen to photograph. See
    player's hand, a swap.
 3. If the very first block it meets is a different type, **nothing happens**. The throw is refused
    and the position is unchanged.
-4. Every destroyed cell **collapses its column**: the run of blocks stacked directly above it
+4. A **wall turns the block downward**: it slides down the face of the wall it met, and rules 1 to
+   3 apply to what it meets on the way down. The floor bounces it back into the hand, and whatever
+   it destroyed on the way stays destroyed. So a throw from above the wall of blocks reaches the
+   top of the far column, and a throw that empties its row carries on down the far side.
+5. Every destroyed cell **collapses its column**: the run of blocks stacked directly above it
    falls one row. The run stops at the first gap, so a block with air under it stays put.
 
-Rule 3 is what makes this a puzzle rather than a shuffling exercise. Only the rightmost block of a
-row is reachable, so a throw is legal only where that block matches what the player is holding,
-and what the player is holding is decided by the previous throw. A board where no row's rightmost
-block matches the hand can never change again.
+Rule 3 is what makes this a puzzle rather than a shuffling exercise. From a row, only its rightmost
+block is reachable, and from above the wall only the top of the far column, so a throw is legal
+only where that block matches what the player is holding, and what the player is holding is
+decided by the previous throw. A board where neither matches the hand anywhere can never change
+again.
 
-This is a Flipull-like environment with a stated rule set rather than a clone of the cartridge,
-and we made two simplifications deliberately. First, there is no staircase (i.e., the fixed
-diagonal structure some cartridge stages carry at the left), because what a thrown block does when
-it meets one is not established. Second, there is no clock, so the only failure is a genuine dead
-end and a plan's length is bounded by the search budget rather than by a timer.
+Rules 1 to 3 and 5 we derived by driving a real Flipull cartridge and predicting what it would do
+next; they reproduce field and hand exactly for throws taken level with the wall in the positions
+we checked. Rule 4 is the original's, documented for the arcade *Plotting* the cartridge ports: a
+block that reaches the back wall slides straight down it, as it does off the ceiling, and one that
+reaches the floor bounces back to the player ([the arcade
+FAQ](https://gamefaqs.gamespot.com/arcade/584111-plotting/faqs/41573),
+[Wikipedia](https://en.wikipedia.org/wiki/Plotting_(video_game))). It is what an earlier automated
+comparison against the cartridge was missing: the throws it disagreed on were those whose row was
+empty or emptied, which this module used to refuse or stop and the cartridge carries down the far
+side.
 
-We derived the rules above by driving a real Flipull cartridge and predicting what it
-would do next. They reproduce field and hand exactly for throws taken level with the wall in the
-positions we checked. Over a longer automated comparison they agreed on about half of the level
-throws and four in five of the throws from above the wall, so something more is going on that we
-have not pinned down. What this environment is good for is a well-defined, dependency-free
-planning problem, not predicting the cartridge.
+Two simplifications remain. The cartridge's stages carry a staircase of fixed bricks at the left
+and, later, pipes; a `#` inside the board deflects a block here the way the back wall does, which
+is what the staircase does, but the bundled stages carry none and pipes are not modelled. And there
+is no clock, so the only failure is a genuine dead end and a plan's length is bounded by the search
+budget rather than by a timer.
 
 ## Quickstart
 
@@ -98,14 +107,15 @@ env.render()          # prints the state history
 
 ## Stages
 
-`set_index(i)` selects stage `i`. Indices run from `0` to `31` and match the cartridge's stage
-table, giving the same board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6),
-stage for stage. `STAGES` is a literal tuple of `(ascii, clear_target)` pairs in the module, so
-the indices are stable.
+`set_index(i)` selects stage `i`. Indices `0` to `31` match the cartridge's stage table, giving
+the same board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6), stage for
+stage. `STAGES` is a literal tuple of `(ascii, clear_target)` pairs in the module, so the indices
+are stable.
 
 We generated the arrangements rather than copying them, because the cartridge stores none: it
-draws each stage's layout from an RNG seeded by boot timing. Each board is kept only when the
-fewest blocks it can be reduced to under the rules above is exactly the cartridge's target.
+draws each stage's layout from an RNG seeded by boot timing. Each board is `generate_instance`
+at the seed beside it, kept when the cartridge's target can be reached under the rules above,
+which is what the cartridge's own stages are: a random layout against a fixed target.
 
 Stage strings use this alphabet:
 
@@ -135,16 +145,16 @@ state, info = env.reset()
 | `width`, `height` | a bundled one's | the wall of blocks, in blocks |
 | `types` | 4 | block types, `1` upward |
 | `clear_target` | a bundled one's | a CLEAR target to demand; unset, the draw's own is used |
-| `max_target_fraction` | a bundled one's | with no target given, reject a draw whose fewest reachable blocks exceed this share of the wall |
-| `search_limit` | 200000 | positions the exhaustive exploration may visit per draw |
+| `max_target_fraction` | 0.4 | with a size given and no target, reject a draw whose fewest reachable blocks exceed this share of the wall |
+| `search_limit` | 200000 | positions a draw's search may visit |
 | `attempts` | 100 | draws before giving up with `GenerationError` |
 
-Each draw is explored exhaustively (`fewest_blocks_reachable`), and the fewest blocks it can
-be worn down to becomes its target, so a generated stage is always clearable and, because
-the target is the minimum, never clearable by accident. With `clear_target` given, a draw is
-kept exactly when it can be reduced that far. A draw whose state space outgrows
-`search_limit` is rejected as undecided. The plan that reached the fewest blocks is left in
-`env.witness`.
+With a target, a bundled stage's or the caller's, a draw is searched breadth-first for a
+position that meets it and kept when one is found within `search_limit` positions; the plan is
+left in `env.witness`. With a size of the caller's own and no target, the draw is explored
+exhaustively instead (`fewest_blocks_reachable`) and the fewest blocks it can be worn down to
+becomes its target, so the stage is clearable by construction; a draw whose state space outgrows
+`search_limit` is rejected as undecided.
 
 `FlipullState` holds the grid (a tuple of tuples of single characters), the row the player is on,
 the block in hand, the clear target and a depth counter. Equality and hashing are over `(grid,
@@ -161,14 +171,14 @@ remaining(7)           blocks left on the board
 ```
 
 Left unset, a draw takes the size and the CLEAR target of one of the cartridge's 32 stages at
-random (`PROFILES`) and is kept exactly when the fewest blocks it can be reduced to is that
-target, which is how the bundled stages were made; a size of the caller's own goes with the
-fewest-blocks rule above instead. The method is generate-and-test, which the procedural content
-generation literature calls search-based PCG (Togelius, Yannakakis, Stanley and Browne, 2011,
-https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content
-Generation in Games*, 2016, https://pcgbook.com/); the test is an exhaustive breadth-first
-exploration
-of the stage's positions.
+random (`PROFILES`) and is kept when that target can be reached, which is how the bundled
+stages were made and what the cartridge's own are, a random layout against a fixed target; a
+size of the caller's own goes with the fewest-blocks rule above instead. The method is
+generate-and-test, which the procedural content generation literature calls search-based PCG
+(Togelius, Yannakakis, Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116;
+Shaker, Togelius and Nelson, *Procedural Content Generation in Games*, 2016,
+https://pcgbook.com/); the test is breadth-first search to the target, or an exhaustive
+exploration of the positions for a size of the caller's own.
 
 ## Actions
 

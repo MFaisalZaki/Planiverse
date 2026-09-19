@@ -187,17 +187,21 @@ def test_draw_until_refuses_to_hand_out_an_unchecked_draw():
 
 # ------------------------------------------------------------------ per-environment knobs
 
-def test_flipull_targets_are_the_fewest_blocks_a_stage_reaches():
-    """The bundled stages were made the way the generator makes them, so the two agree."""
+def test_flipull_targets_are_reachable_and_a_size_of_ones_own_gets_the_fewest():
+    """The bundled stages were made the way the generator makes them, so the two agree: a
+    cartridge target that can be reached, or, for a wall of the caller's own size, the fewest
+    blocks it can be reduced to."""
     from planiverse.environments.games.flipull import STAGES, fewest_blocks_reachable
 
     for index in (0, 7, 31):
-        fewest, exhausted, plan, _ = fewest_blocks_reachable(STAGES[index][0])
-        assert exhausted and fewest == STAGES[index][1]
+        fewest, _, plan, _ = fewest_blocks_reachable(STAGES[index][0])
+        assert fewest <= STAGES[index][1]
         env = make("flipull", index=index)
         assert env.validate(plan), "and the plan that reaches the fewest clears the stage"
     env, (text, target) = fresh("flipull", seed=1, clear_target=6)
-    assert target == 6 and fewest_blocks_reachable(text)[0] <= 6
+    assert target == 6 and env.validate(env.witness)
+    env, (text, target) = fresh("flipull", seed=2, width=4, height=4)
+    assert target == fewest_blocks_reachable(text)[0] <= 0.4 * 16
 
 
 def test_the_generators_refuse_impossible_options():

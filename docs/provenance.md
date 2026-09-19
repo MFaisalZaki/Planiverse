@@ -22,10 +22,10 @@ with the original rather than smoothing it over:
   cartridge" is the model the others follow: six of the eight enemies are frozen, `EXACT_ROOMS`
   names the 21 of the 100 shipped rooms the model is therefore faithful for, and the divergence is shown
   to run in both directions rather than being presented as a relaxation.
-- [`flipull.py`](../planiverse/environments/games/flipull.py) is the most explicit: it
-  calls itself "a Flipull-*like* environment with a stated rule set, not a clone", because over
-  an automated comparison it agreed with the original on about half of the level throws and
-  four in five of the throws from above the wall.
+- [`flipull.py`](../planiverse/environments/games/flipull.py) states its rules outright and
+  says where each came from: four were derived by driving the cartridge, and the one an
+  automated comparison showed to be missing, that a wall turns a thrown block downward, is
+  the original's documented rule, cited in the module.
 - [`puzznic.py`](../planiverse/environments/games/puzznic.py) records two known gaps, in
   where the cursor starts and in how eagerly matches are cleared.
 - [`amazing_tater.py`](../planiverse/environments/games/amazing_tater.py) records none

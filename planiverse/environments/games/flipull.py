@@ -13,7 +13,12 @@ the rows or throws. A throw sends the held block leftward along the player's row
    the player's hand: a swap.
 3. If the *very first* block it meets is a different type, **nothing happens at all**: the
    block flies out and comes back, and the position is unchanged.
-4. Every destroyed cell **collapses its column**: everything above it falls one row.
+4. A **wall turns the block downward**: it slides down the face of the wall it met, and rules
+   1 to 3 apply to what it meets on the way down. The floor bounces it back into the hand,
+   with whatever it destroyed on the way staying destroyed. So a throw from above the wall of
+   blocks reaches the top of the far column, and a throw that empties its row carries on down
+   the far side.
+5. Every destroyed cell **collapses its column**: everything above it falls one row.
 
 A stage is cleared when few enough blocks are left.
 
@@ -23,16 +28,18 @@ refused most of the time and choosing which row to stand on is the whole game.
 
 ## How faithful is this to the cartridge?
 
-Partly, and the honest answer is worth more than a claim. The rules above were derived by
-driving Flipull and predicting what it would do, and they reproduce it **exactly**
-(field and hand, cell for cell) for throws taken level with the wall in the positions
-checked. Over a longer automated comparison they agreed on about half of the level throws and
-four in five of the throws from above the wall, so something more is going on that has not
-been pinned down: the staircase, or a bounce, or a fall the model does not have.
-
-So this is a Flipull-*like* environment with a stated rule set, not a clone. What it is good
-for is a well-defined, dependency-free planning problem; what it is not good for is
-predicting the original game.
+Rules 1 to 3 and 5 were derived by driving Flipull and predicting what it would do, and they
+reproduce it exactly (field and hand, cell for cell) for throws taken level with the wall in
+the positions checked. Rule 4 is the original's, documented for the arcade *Plotting* the
+cartridge ports: a block that reaches the back wall slides straight down it, as it does off
+the ceiling, and one that reaches the floor bounces back to the player
+(https://gamefaqs.gamespot.com/arcade/584111-plotting/faqs/41573;
+https://en.wikipedia.org/wiki/Plotting_(video_game)). It is what an earlier automated
+comparison was missing: the throws it disagreed on were those whose row was empty or emptied,
+which this module used to refuse or stop and the cartridge carries down the far side. The
+cartridge's own stages also carry a staircase of fixed bricks and, later, pipes; a `#` inside
+the board deflects a block here the way the back wall does, which is what the staircase does,
+but the bundled stages carry none and pipes are not modelled.
 
 ## What a stated rule set buys
 
@@ -43,33 +50,33 @@ a puzzle searchable, so this is not a small difference.
 
 ## Where the stages came from
 
-The 32 stages replicate the cartridge's own stage table: stage for stage, the same board
-size and the same CLEAR target as Flipull. The arrangements are generated rather
-than copied, for two reasons. First, the cartridge has no canonical arrangements to copy:
-it draws each stage's block layout from an RNG seeded by boot timing, and its ROM stores
-only the block total and the CLEAR target per stage. Second, arrangements the cartridge
-happens to draw are mostly unreachable to their targets under this module's stated rules
-(26 of 32 in one deterministic draw, proved by exhausting their state spaces), which is a
-measure of how much the unpinned throw mechanics matter. So each board here was produced
-randomly, explored exhaustively, and kept only when the fewest blocks it can be reduced
-to is exactly the cartridge's target. `tests/test_flipull.py` re-derives a solution for
-every one of them, so a stage whose goal drifts out of reach fails the suite rather than
-quietly wasting a planner's budget.
+The first 32 stages replicate the cartridge's own stage table: stage for stage, the same
+board size and the same CLEAR target as Flipull. The arrangements are generated rather
+than copied, because the cartridge has no canonical arrangements to copy: it draws each
+stage's block layout from an RNG seeded by boot timing, and its ROM stores only the block
+total and the CLEAR target per stage. (Under the earlier rule set, without rule 4, most
+arrangements the cartridge happened to draw could not reach their targets at all, 26 of 32
+in one draw, which is what showed a throw mechanic was missing.) So each board here is
+`generate_instance(seed)` for the seed beside it: drawn at random and kept when the
+cartridge's target can be reached, with the plan that reached it stored beside the stage.
+`tests/test_flipull.py` re-derives a solution for every one of them, so a stage
+whose goal drifts out of reach fails the suite rather than quietly wasting a planner's
+budget.
 
 ## Generating stages
 
 `generate_instance(seed, ...)` draws stages the same way the bundled ones were made: a
-random wall of blocks of the requested size, explored exhaustively, and kept only when the
-fewest blocks it can be reduced to is low enough to be worth playing for. That count becomes
-the stage's CLEAR target unless the caller names one, so a generated stage is always
-clearable and never clearable by accident.
+random wall of blocks with the size and CLEAR target of one of the cartridge's stages, kept
+when the target can be reached, which is what the cartridge's own stages are. Given a size
+of the caller's own and no target, the wall is explored exhaustively and the fewest blocks
+it can be reduced to becomes the target, so a generated stage is always clearable.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import draw_until, from_profile, rng
+from planiverse.environments.generation import draw_until, from_profile, rng, solvable_draw
 
-#: `1`-`4` are block types, `#` is wall, and a space is empty. There is no staircase: the
-#: cartridge has a fixed diagonal one at the left of some stages, and since it is not clear
-#: what a thrown block does when it meets it, this module leaves it out rather than guess.
+#: `1`-`4` are block types, `#` is wall, and a space is empty. A wall inside the board turns
+#: a thrown block downward as the back wall does, which is what the cartridge's staircase of
+#: fixed bricks does; the bundled stages carry none.
 WALL, EMPTY = "#", " "
 BLOCK_TYPES = ("1", "2", "3", "4")
 
@@ -77,46 +84,78 @@ BLOCK_TYPES = ("1", "2", "3", "4")
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
 #: of Flipull. The arrangements are this module's own, because the cartridge has
 #: none to copy: it draws each stage's arrangement from an RNG seeded by boot timing, so
-#: there is no canonical layout per stage, only a contract. Each board here was generated
-#: randomly and explored exhaustively, and kept only when the fewest blocks it can be
-#: reduced to under this module's rules is *exactly* the cartridge's target, so a stage is
-#: only cleared by playing it out rather than by chipping away at it.
+#: there is no canonical layout per stage, only a contract. Each board here is
+#: `generate_instance(seed)` for the seed in its comment: drawn at random and explored
+#: exhaustively until the target is reached, and kept when it is, which is what the
+#: cartridge's own stages are: a random layout against a fixed target.
 #:
 #: The player starts on the bottom row of the wall, as on the cartridge: the position where
 #: `down` does nothing.
 STAGES = (
-    ("#######\n#     #\n#42442#\n#44311#\n#34431#\n#24133#\n#31211#\n#######", 9),
-    ("#######\n#     #\n#24111#\n#34422#\n#21334#\n#11141#\n#23421#\n#######", 9),
-    ("#######\n#     #\n#34441#\n#24231#\n#43413#\n#42442#\n#44413#\n#######", 8),
-    ("#######\n#     #\n#31131#\n#42221#\n#14132#\n#23243#\n#22333#\n#33231#\n#######", 8),
-    ("#######\n#     #\n#21142#\n#14243#\n#14122#\n#44434#\n#42222#\n#12211#\n#######", 8),
-    ("#######\n#     #\n#43313#\n#43444#\n#23331#\n#44133#\n#11223#\n#22121#\n#######", 7),
-    ("#######\n#     #\n#41331#\n#41233#\n#13341#\n#42314#\n#42433#\n#41122#\n#######", 7),
-    ("########\n#      #\n#423324#\n#441431#\n#122341#\n#232321#\n#434441#\n#142312#\n########", 7),
-    ("########\n#      #\n#144144#\n#232242#\n#443124#\n#321242#\n#141314#\n#231434#\n########", 8),
-    ("########\n#      #\n#114411#\n#331224#\n#241444#\n#231442#\n#442321#\n#343142#\n########", 8),
-    ("########\n#      #\n#121241#\n#334131#\n#422343#\n#114244#\n#412144#\n#321111#\n########", 8),
-    ("#######\n#     #\n#23222#\n#12324#\n#42442#\n#12141#\n#31214#\n#44412#\n#######", 7),
-    ("#######\n#     #\n#21324#\n#42214#\n#32323#\n#43342#\n#21214#\n#31311#\n#######", 7),
-    ("########\n#      #\n#442434#\n#133234#\n#413421#\n#132114#\n#243224#\n#414444#\n########", 7),
-    ("########\n#      #\n#131113#\n#433111#\n#331112#\n#444344#\n#132211#\n#133443#\n########", 7),
-    ("#######\n#     #\n#22244#\n#21323#\n#41142#\n#21331#\n#14424#\n#12133#\n#######", 7),
-    ("#######\n#     #\n#23214#\n#22441#\n#12424#\n#41222#\n#34144#\n#42113#\n#######", 7),
-    ("#######\n#     #\n#43132#\n#11324#\n#11433#\n#41334#\n#24432#\n#31233#\n#######", 7),
-    ("#######\n#     #\n#12334#\n#32431#\n#31244#\n#42232#\n#14221#\n#33124#\n#######", 7),
-    ("#######\n#     #\n#43234#\n#44431#\n#32322#\n#43312#\n#42422#\n#34334#\n#######", 7),
-    ("#######\n#     #\n#21121#\n#21142#\n#14443#\n#24441#\n#44324#\n#11234#\n#######", 7),
-    ("#######\n#     #\n#42342#\n#12242#\n#34424#\n#43113#\n#23344#\n#13424#\n#######", 6),
-    ("#######\n#     #\n#23214#\n#44123#\n#24432#\n#43122#\n#42421#\n#24141#\n#######", 6),
-    ("########\n#      #\n#342424#\n#434333#\n#432324#\n#423341#\n#121221#\n#112131#\n########", 6),
-    ("########\n#      #\n#343232#\n#341111#\n#414222#\n#232222#\n#423322#\n#443113#\n########", 6),
-    ("########\n#      #\n#131133#\n#243414#\n#214313#\n#342112#\n#314211#\n#231433#\n########", 6),
-    ("########\n#      #\n#443443#\n#413113#\n#341411#\n#433413#\n#411111#\n#442234#\n########", 6),
-    ("########\n#      #\n#144412#\n#432431#\n#143323#\n#212141#\n#111234#\n#311123#\n########", 6),
-    ("########\n#      #\n#412114#\n#123122#\n#213124#\n#222442#\n#243141#\n#232134#\n########", 6),
-    ("#######\n#     #\n#22121#\n#44314#\n#12433#\n#23323#\n#21314#\n#######", 6),
-    ("#######\n#     #\n#13113#\n#24124#\n#14213#\n#42444#\n#42433#\n#######", 6),
-    ("#######\n#     #\n#21422#\n#31342#\n#42134#\n#11441#\n#21123#\n#######", 6),
+    # seed 5040; 363 positions explored, 35-move plan
+    ("#######\n#     #\n#41321#\n#12423#\n#33431#\n#24231#\n#42334#\n#######", 9),
+    # seed 5071; 302 positions explored, 42-move plan
+    ("#######\n#     #\n#41332#\n#21242#\n#23142#\n#33343#\n#31144#\n#######", 9),
+    # seed 5036; 243 positions explored, 30-move plan
+    ("#######\n#     #\n#24434#\n#41431#\n#13141#\n#21432#\n#34432#\n#######", 8),
+    # seed 5008; 6855 positions explored, 42-move plan
+    ("#######\n#     #\n#11314#\n#21333#\n#41222#\n#13124#\n#34112#\n#22443#\n#######", 8),
+    # seed 5012; 3666 positions explored, 46-move plan
+    ("#######\n#     #\n#13112#\n#22212#\n#31443#\n#34111#\n#24421#\n#42224#\n#######", 8),
+    # seed 5002; 3092 positions explored, 52-move plan
+    ("#######\n#     #\n#11443#\n#12323#\n#23133#\n#11411#\n#11442#\n#32443#\n#######", 7),
+    # seed 5010; 1529 positions explored, 57-move plan
+    ("#######\n#     #\n#14223#\n#41344#\n#23234#\n#23121#\n#14331#\n#43232#\n#######", 7),
+    # seed 5000; 2893 positions explored, 54-move plan
+    ("########\n#      #\n#344141#\n#343114#\n#412334#\n#211232#\n#221411#\n#323444#\n########", 7),
+    # seed 5003; 644 positions explored, 56-move plan
+    ("########\n#      #\n#434444#\n#223442#\n#132423#\n#412222#\n#341212#\n#213143#\n########", 8),
+    # seed 5006; 13435 positions explored, 67-move plan
+    ("########\n#      #\n#212232#\n#131341#\n#432131#\n#241241#\n#324432#\n#234424#\n########", 8),
+    # seed 5007; 3251 positions explored, 64-move plan
+    ("########\n#      #\n#334123#\n#323123#\n#242234#\n#331243#\n#142412#\n#332324#\n########", 8),
+    # seed 5011; 3302 positions explored, 36-move plan
+    ("#######\n#     #\n#21142#\n#13311#\n#41311#\n#11144#\n#41441#\n#44321#\n#######", 7),
+    # seed 5013; 656 positions explored, 54-move plan
+    ("#######\n#     #\n#44434#\n#41241#\n#12131#\n#31111#\n#41233#\n#43221#\n#######", 7),
+    # seed 5005; 6008 positions explored, 67-move plan
+    ("########\n#      #\n#212443#\n#321211#\n#211224#\n#232243#\n#333321#\n#214231#\n########", 7),
+    # seed 5018; 17319 positions explored, 53-move plan
+    ("########\n#      #\n#231212#\n#413224#\n#432242#\n#113111#\n#324113#\n#114124#\n########", 7),
+    # seed 5026; 3219 positions explored, 45-move plan
+    ("#######\n#     #\n#34314#\n#31241#\n#32312#\n#34413#\n#12443#\n#34121#\n#######", 7),
+    # seed 5029; 6889 positions explored, 50-move plan
+    ("#######\n#     #\n#44342#\n#23441#\n#13133#\n#44341#\n#32323#\n#12112#\n#######", 7),
+    # seed 5030; 8031 positions explored, 42-move plan
+    ("#######\n#     #\n#24141#\n#31232#\n#44224#\n#14243#\n#34322#\n#43134#\n#######", 7),
+    # seed 5035; 4849 positions explored, 40-move plan
+    ("#######\n#     #\n#31423#\n#44334#\n#34143#\n#22111#\n#23222#\n#12343#\n#######", 7),
+    # seed 5037; 9141 positions explored, 48-move plan
+    ("#######\n#     #\n#22323#\n#44232#\n#34114#\n#24331#\n#33224#\n#13132#\n#######", 7),
+    # seed 5038; 10489 positions explored, 41-move plan
+    ("#######\n#     #\n#44234#\n#24322#\n#12322#\n#24134#\n#23343#\n#42433#\n#######", 7),
+    # seed 5004; 8585 positions explored, 48-move plan
+    ("#######\n#     #\n#33243#\n#12121#\n#12134#\n#23421#\n#13312#\n#12411#\n#######", 6),
+    # seed 5017; 7895 positions explored, 48-move plan
+    ("#######\n#     #\n#21431#\n#21324#\n#41132#\n#32114#\n#31132#\n#42342#\n#######", 6),
+    # seed 5001; 11221 positions explored, 52-move plan
+    ("########\n#      #\n#134334#\n#212334#\n#341432#\n#414333#\n#433244#\n#234132#\n########", 6),
+    # seed 5015; 4269 positions explored, 69-move plan
+    ("########\n#      #\n#414111#\n#431124#\n#242223#\n#212214#\n#312324#\n#123324#\n########", 6),
+    # seed 5020; 9748 positions explored, 61-move plan
+    ("########\n#      #\n#311232#\n#442324#\n#441112#\n#223232#\n#432413#\n#443234#\n########", 6),
+    # seed 5022; 26101 positions explored, 61-move plan
+    ("########\n#      #\n#333221#\n#424242#\n#331114#\n#312434#\n#114213#\n#321234#\n########", 6),
+    # seed 5031; 12054 positions explored, 58-move plan
+    ("########\n#      #\n#134321#\n#312413#\n#422422#\n#434322#\n#441334#\n#234411#\n########", 6),
+    # seed 5048; 23116 positions explored, 63-move plan
+    ("########\n#      #\n#134123#\n#142324#\n#332113#\n#221233#\n#322223#\n#324114#\n########", 6),
+    # seed 5024; 1334 positions explored, 39-move plan
+    ("#######\n#     #\n#44113#\n#24234#\n#31432#\n#21332#\n#42241#\n#######", 6),
+    # seed 5034; 568 positions explored, 40-move plan
+    ("#######\n#     #\n#14331#\n#21244#\n#31322#\n#34131#\n#24441#\n#######", 6),
+    # seed 5056; 290 positions explored, 45-move plan
+    ("#######\n#     #\n#34122#\n#44232#\n#41414#\n#14124#\n#12211#\n#######", 6),
 )
 
 
@@ -124,142 +163,142 @@ STAGES = (
 #: too: `(stage, clear_target)` pairs like `STAGES`, each `generate_instance(seed)` for the
 #: seed in its comment, with the size and target of one of the cartridge's stages.
 GENERATED_STAGES = (
-    # seed 2000, defaults; 8703 positions explored
-    ("########\n#      #\n#344234#\n#414223#\n#424234#\n#144243#\n#242242#\n#422214#\n########", 7),
-    # seed 2001, defaults; 4005 positions explored
-    ("########\n#      #\n#313424#\n#222112#\n#224242#\n#442211#\n#433132#\n#441114#\n########", 7),
-    # seed 2002, defaults; 11375 positions explored
-    ("########\n#      #\n#114214#\n#122244#\n#134214#\n#311131#\n#422442#\n#142112#\n########", 7),
-    # seed 2003, defaults; 364 positions explored
-    ("#######\n#     #\n#31242#\n#22244#\n#21331#\n#43422#\n#11322#\n#13143#\n#######", 7),
-    # seed 2004, defaults; 1953 positions explored
-    ("#######\n#     #\n#21121#\n#42413#\n#14111#\n#23442#\n#14114#\n#14214#\n#######", 6),
-    # seed 2005, defaults; 2541 positions explored
-    ("########\n#      #\n#343113#\n#324223#\n#131114#\n#412444#\n#123344#\n#311112#\n########", 6),
-    # seed 2006, defaults; 6083 positions explored
-    ("########\n#      #\n#423433#\n#134341#\n#211324#\n#414432#\n#213334#\n#121333#\n########", 7),
-    # seed 2007, defaults; 1443 positions explored
-    ("########\n#      #\n#213243#\n#222324#\n#412322#\n#121344#\n#144444#\n#434444#\n########", 6),
-    # seed 2008, defaults; 557 positions explored
-    ("#######\n#     #\n#24411#\n#11341#\n#13342#\n#41413#\n#11312#\n#33414#\n#######", 7),
-    # seed 2009, defaults; 1047 positions explored
-    ("#######\n#     #\n#44231#\n#31121#\n#43442#\n#44333#\n#44434#\n#31131#\n#######", 7),
-    # seed 2010, defaults; 266 positions explored
-    ("#######\n#     #\n#42334#\n#43314#\n#11332#\n#23223#\n#32223#\n#######", 6),
-    # seed 2011, defaults; 2724 positions explored
-    ("#######\n#     #\n#33131#\n#32114#\n#24322#\n#21313#\n#13333#\n#31121#\n#######", 7),
-    # seed 2012, defaults; 1081 positions explored
-    ("#######\n#     #\n#23321#\n#12211#\n#13221#\n#14113#\n#44224#\n#42333#\n#######", 7),
-    # seed 2013, defaults; 223 positions explored
-    ("#######\n#     #\n#31131#\n#22411#\n#41313#\n#23113#\n#33134#\n#######", 6),
-    # seed 2014, defaults; 859 positions explored
-    ("########\n#      #\n#234344#\n#244441#\n#121442#\n#133334#\n#224344#\n#312444#\n########", 8),
-    # seed 2015, defaults; 3006 positions explored
-    ("#######\n#     #\n#31321#\n#33234#\n#13342#\n#43332#\n#33112#\n#44311#\n#######", 7),
-    # seed 2016, defaults; 3363 positions explored
-    ("########\n#      #\n#232314#\n#134332#\n#311423#\n#241112#\n#342133#\n#311341#\n########", 6),
-    # seed 2017, defaults; 1579 positions explored
-    ("########\n#      #\n#322124#\n#444421#\n#341234#\n#443111#\n#131333#\n#222423#\n########", 6),
-    # seed 2018, defaults; 406 positions explored
-    ("#######\n#     #\n#31412#\n#44144#\n#31311#\n#24332#\n#14233#\n#12314#\n#######", 6),
-    # seed 2019, defaults; 963 positions explored
-    ("#######\n#     #\n#14413#\n#32131#\n#22333#\n#42411#\n#41112#\n#11341#\n#######", 7),
-    # seed 2020, defaults; 4853 positions explored
-    ("#######\n#     #\n#44434#\n#34413#\n#34444#\n#34422#\n#33432#\n#12424#\n#######", 7),
-    # seed 2021, defaults; 3723 positions explored
-    ("########\n#      #\n#321441#\n#333412#\n#211314#\n#124333#\n#412244#\n#412443#\n########", 6),
-    # seed 2022, defaults; 6440 positions explored
-    ("########\n#      #\n#411442#\n#123423#\n#134313#\n#113113#\n#434322#\n#124143#\n########", 6),
-    # seed 2023, defaults; 254 positions explored
-    ("#######\n#     #\n#13234#\n#11312#\n#12211#\n#43244#\n#32131#\n#######", 9),
-    # seed 2024, defaults; 8662 positions explored
-    ("########\n#      #\n#433223#\n#244332#\n#413423#\n#423321#\n#243324#\n#324314#\n########", 6),
-    # seed 2025, defaults; 2637 positions explored
-    ("#######\n#     #\n#22432#\n#13334#\n#33123#\n#44433#\n#12231#\n#32242#\n#######", 8),
-    # seed 2026, defaults; 12806 positions explored
-    ("########\n#      #\n#212341#\n#214224#\n#223423#\n#342222#\n#211332#\n#233242#\n########", 6),
-    # seed 2027, defaults; 1110 positions explored
-    ("########\n#      #\n#243123#\n#334314#\n#344243#\n#423443#\n#134341#\n#133333#\n########", 6),
-    # seed 2028, defaults; 1252 positions explored
-    ("#######\n#     #\n#43224#\n#14134#\n#31434#\n#13133#\n#32212#\n#44433#\n#######", 7),
-    # seed 2029, defaults; 2087 positions explored
-    ("########\n#      #\n#311123#\n#132333#\n#332434#\n#131221#\n#123323#\n#424123#\n########", 8),
-    # seed 2030, defaults; 2471 positions explored
-    ("#######\n#     #\n#32341#\n#12341#\n#11334#\n#21112#\n#14442#\n#44233#\n#######", 6),
-    # seed 2031, defaults; 787 positions explored
-    ("#######\n#     #\n#22344#\n#24142#\n#21131#\n#21124#\n#21311#\n#22231#\n#######", 7),
-    # seed 2032, defaults; 580 positions explored
-    ("########\n#      #\n#112331#\n#321331#\n#434141#\n#413114#\n#221433#\n#334223#\n########", 6),
-    # seed 2033, defaults; 1269 positions explored
-    ("#######\n#     #\n#21433#\n#43422#\n#33141#\n#11411#\n#23422#\n#31244#\n#######", 7),
-    # seed 2034, defaults; 5747 positions explored
-    ("########\n#      #\n#132342#\n#431343#\n#412113#\n#411114#\n#212322#\n#444224#\n########", 6),
-    # seed 2035, defaults; 649 positions explored
-    ("#######\n#     #\n#44142#\n#31213#\n#34211#\n#32324#\n#34314#\n#31333#\n#######", 6),
-    # seed 2036, defaults; 1740 positions explored
-    ("#######\n#     #\n#14114#\n#32231#\n#33313#\n#33242#\n#23424#\n#24241#\n#######", 7),
-    # seed 2037, defaults; 4078 positions explored
-    ("#######\n#     #\n#34341#\n#44124#\n#13122#\n#14413#\n#24341#\n#33243#\n#######", 7),
-    # seed 2038, defaults; 1310 positions explored
-    ("#######\n#     #\n#34124#\n#43231#\n#34334#\n#34222#\n#32414#\n#43443#\n#######", 8),
-    # seed 2039, defaults; 1683 positions explored
-    ("#######\n#     #\n#33334#\n#11113#\n#41131#\n#24141#\n#23322#\n#43233#\n#######", 7),
-    # seed 2040, defaults; 12272 positions explored
-    ("########\n#      #\n#344432#\n#211241#\n#333132#\n#113342#\n#111223#\n#114233#\n########", 6),
-    # seed 2041, defaults; 671 positions explored
-    ("########\n#      #\n#223414#\n#121141#\n#332424#\n#123211#\n#224343#\n#214134#\n########", 6),
-    # seed 2042, defaults; 1074 positions explored
-    ("#######\n#     #\n#34321#\n#21312#\n#33441#\n#22111#\n#31244#\n#11324#\n#######", 7),
-    # seed 2043, defaults; 927 positions explored
-    ("########\n#      #\n#242221#\n#444421#\n#131232#\n#122434#\n#413112#\n#124144#\n########", 7),
-    # seed 2044, defaults; 1733 positions explored
-    ("#######\n#     #\n#14442#\n#22221#\n#11241#\n#44233#\n#11331#\n#14331#\n#######", 7),
-    # seed 2045, defaults; 445 positions explored
-    ("#######\n#     #\n#33321#\n#34244#\n#22343#\n#41423#\n#14313#\n#######", 6),
-    # seed 2046, defaults; 201 positions explored
-    ("#######\n#     #\n#44214#\n#14342#\n#21331#\n#11434#\n#43312#\n#######", 8),
-    # seed 2047, defaults; 2433 positions explored
-    ("#######\n#     #\n#14143#\n#21144#\n#42111#\n#43343#\n#34314#\n#21234#\n#######", 7),
-    # seed 2048, defaults; 1754 positions explored
-    ("########\n#      #\n#422244#\n#114112#\n#333133#\n#324134#\n#231314#\n#122344#\n########", 8),
-    # seed 2049, defaults; 4948 positions explored
-    ("#######\n#     #\n#31342#\n#31144#\n#11111#\n#44144#\n#41243#\n#11343#\n#######", 6),
-    # seed 2050, defaults; 20230 positions explored
-    ("########\n#      #\n#222111#\n#123124#\n#244113#\n#244122#\n#424112#\n#113421#\n########", 6),
-    # seed 2051, defaults; 2487 positions explored
-    ("#######\n#     #\n#41144#\n#43122#\n#13221#\n#32144#\n#34443#\n#43234#\n#######", 7),
-    # seed 2052, defaults; 3022 positions explored
-    ("########\n#      #\n#344223#\n#443221#\n#313223#\n#432321#\n#124121#\n#343214#\n########", 8),
-    # seed 2053, defaults; 234 positions explored
-    ("#######\n#     #\n#32443#\n#44244#\n#11342#\n#34131#\n#32434#\n#######", 6),
-    # seed 2054, defaults; 1401 positions explored
-    ("#######\n#     #\n#13343#\n#32123#\n#41411#\n#11144#\n#31322#\n#33241#\n#######", 7),
-    # seed 2055, defaults; 2964 positions explored
-    ("#######\n#     #\n#24243#\n#44121#\n#22324#\n#11133#\n#12442#\n#12242#\n#######", 7),
-    # seed 2056, defaults; 1407 positions explored
-    ("#######\n#     #\n#34323#\n#41322#\n#11124#\n#12113#\n#32211#\n#23423#\n#######", 7),
-    # seed 2057, defaults; 2074 positions explored
-    ("#######\n#     #\n#33324#\n#34343#\n#22133#\n#42441#\n#23313#\n#24213#\n#######", 6),
-    # seed 2058, defaults; 7939 positions explored
-    ("########\n#      #\n#111231#\n#133341#\n#124432#\n#431322#\n#344334#\n#442134#\n########", 6),
-    # seed 2059, defaults; 358 positions explored
-    ("#######\n#     #\n#31234#\n#42122#\n#23443#\n#43431#\n#24422#\n#######", 6),
-    # seed 2060, defaults; 13768 positions explored
-    ("########\n#      #\n#431414#\n#114441#\n#412142#\n#223414#\n#134224#\n#423122#\n########", 6),
-    # seed 2061, defaults; 2835 positions explored
-    ("########\n#      #\n#341314#\n#142142#\n#231143#\n#232323#\n#314313#\n#211223#\n########", 6),
-    # seed 2062, defaults; 1236 positions explored
-    ("#######\n#     #\n#22313#\n#43123#\n#24441#\n#12413#\n#32242#\n#32443#\n#######", 7),
-    # seed 2063, defaults; 3587 positions explored
-    ("#######\n#     #\n#24331#\n#34432#\n#11311#\n#44244#\n#41432#\n#22144#\n#######", 6),
-    # seed 2064, defaults; 7337 positions explored
-    ("########\n#      #\n#442421#\n#124313#\n#233223#\n#324212#\n#442311#\n#141422#\n########", 6),
-    # seed 2065, defaults; 6117 positions explored
-    ("########\n#      #\n#341233#\n#131242#\n#231441#\n#432112#\n#443123#\n#442113#\n########", 6),
-    # seed 2066, defaults; 7546 positions explored
-    ("########\n#      #\n#342243#\n#142124#\n#412314#\n#442242#\n#142112#\n#212444#\n########", 6),
-    # seed 2067, defaults; 3846 positions explored
-    ("########\n#      #\n#224131#\n#322212#\n#144334#\n#143234#\n#211421#\n#424241#\n########", 6),
+    # seed 5009; 20001 positions explored, 52-move plan
+    ("########\n#      #\n#331412#\n#343114#\n#341121#\n#131413#\n#114231#\n#242312#\n########", 8),
+    # seed 5014; 1823 positions explored, 57-move plan
+    ("########\n#      #\n#243243#\n#114432#\n#314244#\n#214413#\n#344334#\n#113213#\n########", 8),
+    # seed 5016; 9973 positions explored, 57-move plan
+    ("########\n#      #\n#334113#\n#131223#\n#313344#\n#234314#\n#224213#\n#142231#\n########", 8),
+    # seed 5019; 6056 positions explored, 53-move plan
+    ("########\n#      #\n#313331#\n#331434#\n#234313#\n#123123#\n#143314#\n#342214#\n########", 7),
+    # seed 5021; 14233 positions explored, 49-move plan
+    ("#######\n#     #\n#12323#\n#42141#\n#33413#\n#12324#\n#41342#\n#31143#\n#######", 6),
+    # seed 5023; 2123 positions explored, 38-move plan
+    ("#######\n#     #\n#42433#\n#43221#\n#14322#\n#21341#\n#22221#\n#13344#\n#######", 8),
+    # seed 5025; 8094 positions explored, 51-move plan
+    ("#######\n#     #\n#14213#\n#31133#\n#33434#\n#23224#\n#31243#\n#41224#\n#######", 6),
+    # seed 5027; 8087 positions explored, 53-move plan
+    ("########\n#      #\n#331244#\n#121312#\n#314142#\n#422224#\n#412243#\n#232332#\n########", 8),
+    # seed 5028; 625 positions explored, 39-move plan
+    ("#######\n#     #\n#32122#\n#44143#\n#42213#\n#32214#\n#33442#\n#23133#\n#######", 8),
+    # seed 5032; 28861 positions explored, 56-move plan
+    ("########\n#      #\n#431112#\n#144321#\n#413443#\n#431233#\n#213141#\n#234132#\n########", 7),
+    # seed 5033; 4642 positions explored, 39-move plan
+    ("#######\n#     #\n#24431#\n#22114#\n#14441#\n#14334#\n#11441#\n#33324#\n#######", 8),
+    # seed 5039; 5276 positions explored, 57-move plan
+    ("#######\n#     #\n#23431#\n#44341#\n#41113#\n#21243#\n#21234#\n#42421#\n#######", 7),
+    # seed 5041; 17740 positions explored, 43-move plan
+    ("#######\n#     #\n#43232#\n#44243#\n#34423#\n#31134#\n#22123#\n#21324#\n#######", 7),
+    # seed 5042; 11650 positions explored, 66-move plan
+    ("########\n#      #\n#121413#\n#322132#\n#432221#\n#422333#\n#344341#\n#224332#\n########", 7),
+    # seed 5043; 12814 positions explored, 52-move plan
+    ("#######\n#     #\n#41214#\n#13433#\n#43341#\n#12422#\n#22432#\n#43134#\n#######", 6),
+    # seed 5044; 507 positions explored, 57-move plan
+    ("#######\n#     #\n#43221#\n#32132#\n#43112#\n#21123#\n#11314#\n#23234#\n#######", 7),
+    # seed 5045; 95844 positions explored, 57-move plan
+    ("########\n#      #\n#124142#\n#211313#\n#313231#\n#431333#\n#434243#\n#441113#\n########", 7),
+    # seed 5046; 841 positions explored, 32-move plan
+    ("#######\n#     #\n#24241#\n#42441#\n#34112#\n#11323#\n#13312#\n#######", 8),
+    # seed 5047; 13098 positions explored, 53-move plan
+    ("########\n#      #\n#333412#\n#244214#\n#233334#\n#132133#\n#222131#\n#421412#\n########", 7),
+    # seed 5049; 1403 positions explored, 46-move plan
+    ("#######\n#     #\n#34221#\n#21434#\n#12321#\n#13114#\n#11311#\n#43322#\n#######", 8),
+    # seed 5050; 4419 positions explored, 42-move plan
+    ("#######\n#     #\n#14423#\n#33133#\n#33432#\n#32323#\n#33112#\n#34231#\n#######", 8),
+    # seed 5051; 3163 positions explored, 54-move plan
+    ("########\n#      #\n#342411#\n#421122#\n#412424#\n#333131#\n#143431#\n#421442#\n########", 8),
+    # seed 5052; 19086 positions explored, 60-move plan
+    ("########\n#      #\n#424332#\n#122331#\n#322234#\n#212412#\n#423434#\n#131343#\n########", 6),
+    # seed 5053; 8329 positions explored, 51-move plan
+    ("########\n#      #\n#412411#\n#421413#\n#211422#\n#112142#\n#313341#\n#231142#\n########", 8),
+    # seed 5054; 3870 positions explored, 54-move plan
+    ("########\n#      #\n#433412#\n#232412#\n#414233#\n#333331#\n#133442#\n#421431#\n########", 7),
+    # seed 5055; 2241 positions explored, 35-move plan
+    ("#######\n#     #\n#14413#\n#22134#\n#23443#\n#41132#\n#33332#\n#13221#\n#######", 7),
+    # seed 5057; 5147 positions explored, 36-move plan
+    ("#######\n#     #\n#21342#\n#33121#\n#43341#\n#21344#\n#14122#\n#14112#\n#######", 7),
+    # seed 5058; 1492 positions explored, 53-move plan
+    ("#######\n#     #\n#22323#\n#44214#\n#43411#\n#41241#\n#34113#\n#31424#\n#######", 7),
+    # seed 5059; 1596 positions explored, 46-move plan
+    ("########\n#      #\n#432414#\n#133334#\n#432421#\n#121414#\n#242431#\n#433341#\n########", 7),
+    # seed 5060; 2505 positions explored, 46-move plan
+    ("########\n#      #\n#343113#\n#313441#\n#324214#\n#214344#\n#412444#\n#243333#\n########", 7),
+    # seed 5061; 3255 positions explored, 57-move plan
+    ("########\n#      #\n#233341#\n#323124#\n#333432#\n#214423#\n#112341#\n#214443#\n########", 8),
+    # seed 5062; 10713 positions explored, 57-move plan
+    ("########\n#      #\n#114444#\n#141121#\n#343113#\n#421131#\n#144222#\n#343243#\n########", 6),
+    # seed 5063; 3445 positions explored, 46-move plan
+    ("#######\n#     #\n#43131#\n#32213#\n#23134#\n#22131#\n#34322#\n#42124#\n#######", 7),
+    # seed 5064; 17303 positions explored, 55-move plan
+    ("########\n#      #\n#311124#\n#223442#\n#232211#\n#411422#\n#144344#\n#133224#\n########", 7),
+    # seed 5065; 4491 positions explored, 54-move plan
+    ("#######\n#     #\n#44241#\n#33213#\n#32232#\n#11311#\n#43141#\n#12433#\n#######", 7),
+    # seed 5066; 5349 positions explored, 39-move plan
+    ("#######\n#     #\n#23443#\n#21132#\n#41444#\n#42433#\n#14233#\n#32134#\n#######", 7),
+    # seed 5067; 13245 positions explored, 50-move plan
+    ("########\n#      #\n#433242#\n#124211#\n#122444#\n#311123#\n#221424#\n#232134#\n########", 7),
+    # seed 5068; 6231 positions explored, 51-move plan
+    ("#######\n#     #\n#32341#\n#41411#\n#21344#\n#43442#\n#13411#\n#14123#\n#######", 6),
+    # seed 5069; 7207 positions explored, 51-move plan
+    ("########\n#      #\n#331211#\n#333123#\n#424433#\n#211132#\n#222343#\n#241322#\n########", 7),
+    # seed 5070; 6779 positions explored, 63-move plan
+    ("########\n#      #\n#233113#\n#142432#\n#233143#\n#144331#\n#243342#\n#312432#\n########", 6),
+    # seed 5072; 27840 positions explored, 54-move plan
+    ("########\n#      #\n#243334#\n#123232#\n#341221#\n#444214#\n#122411#\n#314342#\n########", 7),
+    # seed 5073; 1838 positions explored, 46-move plan
+    ("#######\n#     #\n#34143#\n#12441#\n#41342#\n#13212#\n#24223#\n#22223#\n#######", 8),
+    # seed 5074; 348 positions explored, 48-move plan
+    ("#######\n#     #\n#41412#\n#12114#\n#34343#\n#21124#\n#21221#\n#######", 6),
+    # seed 5075; 24621 positions explored, 57-move plan
+    ("########\n#      #\n#432114#\n#241242#\n#232433#\n#242122#\n#221242#\n#322113#\n########", 8),
+    # seed 5076; 1790 positions explored, 47-move plan
+    ("#######\n#     #\n#41141#\n#13313#\n#42423#\n#13223#\n#42234#\n#24324#\n#######", 7),
+    # seed 5077; 4276 positions explored, 38-move plan
+    ("#######\n#     #\n#11314#\n#31333#\n#12414#\n#44232#\n#22414#\n#23411#\n#######", 7),
+    # seed 5078; 3580 positions explored, 66-move plan
+    ("########\n#      #\n#322111#\n#432222#\n#221444#\n#213232#\n#422431#\n#413423#\n########", 6),
+    # seed 5079; 201 positions explored, 34-move plan
+    ("#######\n#     #\n#24124#\n#14142#\n#41412#\n#31333#\n#42411#\n#######", 8),
+    # seed 5080; 964 positions explored, 30-move plan
+    ("#######\n#     #\n#42131#\n#11131#\n#32233#\n#32141#\n#42331#\n#######", 9),
+    # seed 5081; 18620 positions explored, 71-move plan
+    ("########\n#      #\n#444142#\n#323312#\n#231423#\n#222221#\n#433413#\n#222124#\n########", 6),
+    # seed 5082; 813 positions explored, 41-move plan
+    ("#######\n#     #\n#44114#\n#44131#\n#42413#\n#32242#\n#24243#\n#######", 6),
+    # seed 5083; 4008 positions explored, 62-move plan
+    ("########\n#      #\n#134433#\n#134324#\n#341313#\n#213141#\n#434123#\n#322333#\n########", 7),
+    # seed 5084; 38963 positions explored, 58-move plan
+    ("########\n#      #\n#434124#\n#211343#\n#221121#\n#333144#\n#211441#\n#142314#\n########", 6),
+    # seed 5085; 32656 positions explored, 59-move plan
+    ("########\n#      #\n#441321#\n#421342#\n#414224#\n#242211#\n#213313#\n#134421#\n########", 6),
+    # seed 5086; 7375 positions explored, 46-move plan
+    ("#######\n#     #\n#22143#\n#44431#\n#12133#\n#22444#\n#44432#\n#34312#\n#######", 6),
+    # seed 5087; 1598 positions explored, 39-move plan
+    ("#######\n#     #\n#33422#\n#21424#\n#32233#\n#41141#\n#43232#\n#######", 6),
+    # seed 5088; 28182 positions explored, 57-move plan
+    ("########\n#      #\n#134231#\n#234134#\n#234434#\n#334243#\n#232332#\n#441411#\n########", 6),
+    # seed 5089; 17009 positions explored, 56-move plan
+    ("########\n#      #\n#324342#\n#422232#\n#322422#\n#241444#\n#111223#\n#121211#\n########", 8),
+    # seed 5090; 17884 positions explored, 69-move plan
+    ("########\n#      #\n#411314#\n#324111#\n#412424#\n#414144#\n#242331#\n#434243#\n########", 6),
+    # seed 5091; 1818 positions explored, 45-move plan
+    ("#######\n#     #\n#22211#\n#23412#\n#14331#\n#43221#\n#32444#\n#22441#\n#######", 8),
+    # seed 5092; 2078 positions explored, 40-move plan
+    ("#######\n#     #\n#13241#\n#24244#\n#23343#\n#43323#\n#33222#\n#32334#\n#######", 7),
+    # seed 5093; 2694 positions explored, 46-move plan
+    ("#######\n#     #\n#13244#\n#41333#\n#13144#\n#13123#\n#44412#\n#14114#\n#######", 8),
+    # seed 5094; 5698 positions explored, 46-move plan
+    ("#######\n#     #\n#11122#\n#22333#\n#34213#\n#21122#\n#22142#\n#21313#\n#######", 7),
+    # seed 5095; 30706 positions explored, 56-move plan
+    ("########\n#      #\n#142314#\n#112422#\n#321443#\n#111441#\n#224412#\n#431212#\n########", 7),
+    # seed 5096; 17280 positions explored, 53-move plan
+    ("########\n#      #\n#443422#\n#313114#\n#443113#\n#131243#\n#144231#\n#321211#\n########", 6),
+    # seed 5097; 608 positions explored, 33-move plan
+    ("#######\n#     #\n#32114#\n#32332#\n#43342#\n#11422#\n#22123#\n#######", 6),
+    # seed 5098; 1198 positions explored, 46-move plan
+    ("#######\n#     #\n#13114#\n#43423#\n#13412#\n#21331#\n#24441#\n#######", 6),
+    # seed 5099; 48662 positions explored, 56-move plan
+    ("########\n#      #\n#242432#\n#131424#\n#244231#\n#321212#\n#322141#\n#234221#\n########", 6),
 )
 
 #: Everything `set_index` selects between: the cartridge's stages, then the generated ones.
@@ -352,34 +391,39 @@ def count_blocks(grid):
 def throw(grid, row, held):
     """Apply a throw from `row` holding `held`. Returns `(grid, held)` or `None` for a no-op.
 
-    The whole rule set, in one place, so that it can be read and argued with.
+    The whole rule set, in one place, so that it can be read and argued with. The block
+    flies leftward along the player's row; a wall turns it downward and it slides down the
+    face of that wall until it meets a block or the floor.
     """
     if row is None or not 0 <= row < len(grid) or held not in BLOCK_TYPES:
         return None
 
     grid = [cells[:] for cells in grid]
-    destroyed, killed, new_held = [], 0, held
-
-    for col in range(len(grid[row]) - 1, -1, -1):
-        cell = grid[row][col]
-        if cell not in BLOCK_TYPES:
-            continue                       # empty or wall: the block flies past
-        if cell == held:
-            destroyed.append(col)
-            killed += 1
+    destroyed, new_held = [], held
+    r, c, falling = row, len(grid[row]) - 2, False       # inside the player's wall, flying left
+    while 0 <= r < len(grid) and 0 <= c < len(grid[r]):
+        cell = grid[r][c]
+        if cell == WALL:
+            if falling:
+                break                          # the floor: the block bounces back into the hand
+            falling = True                     # a wall turns the block downward, from the cell
+            r, c = r + 1, c + 1                # it just left
             continue
-        if killed == 0:
-            return None                    # a different type first: the throw is refused
-        grid[row][col] = held              # swap ours in and take theirs
-        new_held = cell
-        break
+        if cell in BLOCK_TYPES and cell != held:
+            if not destroyed:
+                return None                    # a different type first: the throw is refused
+            grid[r][c] = held                  # swap ours in and take theirs
+            new_held = cell
+            break
+        if cell == held:
+            destroyed.append((r, c))           # our own type: destroyed, and the block flies on
+        r, c = (r + 1, c) if falling else (r, c - 1)
 
-    if killed == 0:
-        return None
+    if not destroyed:
+        return None                            # it met nothing of its own type anywhere
 
-    for col in destroyed:
-        collapse(grid, row, col)
-
+    for r, c in destroyed:                     # in the order they were met, so a run down one
+        collapse(grid, r, c)                   # column drops the stack above it by the run
     return grid, new_held
 
 
@@ -518,55 +562,53 @@ class FlipullGame(Environment):
         self.witness = self.witness_expansions = None
 
     def generate_instance(self, seed=None, width=None, height=None, types=4,
-                          clear_target=None, max_target_fraction=None, search_limit=200_000,
+                          clear_target=None, max_target_fraction=0.4, search_limit=200_000,
                           attempts=100):
         """Draw a fresh stage, select it, and return it as a `[stage_text, clear_target]` pair.
 
-        Each draw is a random `width` by `height` wall of `types` block types, explored
-        exhaustively (up to `search_limit` positions). With nothing set, a draw takes the
-        size and the CLEAR target of one of the cartridge's 32 stages at random and is kept
-        exactly when the fewest blocks it can be reduced to is that target, which is how the
-        bundled stages were made. With a `width` and `height` of the caller's own and no
-        target, the fewest blocks reachable becomes the target, provided that is no more
-        than `max_target_fraction` (0.4) of the wall; with a `clear_target` given, a draw is
-        kept when it can be reduced that far.
+        Each draw is a random `width` by `height` wall of `types` block types. With nothing
+        set, a draw takes the size and the CLEAR target of one of the cartridge's 32 stages
+        at random and is kept when that target can be reached, which is how the bundled
+        stages were made and what the cartridge's own stages are: a random layout against a
+        fixed target. With a `clear_target` of the caller's own, the same. With a `width`
+        and `height` and no target, the draw is explored exhaustively (up to `search_limit`
+        positions) and the fewest blocks it can be reduced to becomes the target, provided
+        that is no more than `max_target_fraction` of the wall. The plan the draw was
+        accepted on is left in `self.witness`.
         """
         random_, _ = rng(seed)
-        found = {}
+
+        def options():
+            if width is None and height is None:
+                return from_profile(random_, PROFILES, clear_target=clear_target)
+            return {"width": width or 5, "height": height or 5, "clear_target": clear_target}
+
+        if clear_target is None and not (width is None and height is None):
+            found = {}
+
+            def draw(attempt):
+                chosen = options()
+                found["blocks"] = chosen["width"] * chosen["height"]
+                return generate_stage(random_, chosen["width"], chosen["height"], types)
+
+            def accept(text):
+                fewest, exhausted, plan, explored = fewest_blocks_reachable(text, search_limit)
+                if not exhausted or fewest > max_target_fraction * found["blocks"]:
+                    return False          # undecided within the budget, or not worth playing for
+                found.update(target=int(fewest), plan=plan, explored=explored)
+                return True
+
+            text = draw_until(draw, accept, attempts, "Flipull stage")
+            instance = [text, found["target"]]
+            self.set_instance(instance)
+            self.witness, self.witness_expansions = found["plan"], found["explored"]
+            return instance
 
         def draw(attempt):
-            if width is None and height is None:
-                options = from_profile(random_, PROFILES, clear_target=clear_target)
-                found["exact"] = clear_target is None
-            else:
-                options = {"width": width or 5, "height": height or 5,
-                           "clear_target": clear_target}
-                found["exact"] = False
-            found["options"] = options
-            return generate_stage(random_, options["width"], options["height"], types)
-
-        def accept(text):
-            fewest, exhausted, plan, explored = fewest_blocks_reachable(text, search_limit)
-            if not exhausted:
-                return False              # undecided within the budget: not this one
-            options = found["options"]
-            target = options["clear_target"]
-            if target is None:
-                blocks = options["width"] * options["height"]
-                if fewest > (0.4 if max_target_fraction is None else max_target_fraction) * blocks:
-                    return False
-                target = fewest
-            elif fewest != target if found["exact"] else fewest > target:
-                return False
-            found["target"] = int(target)
-            found["plan"], found["explored"] = plan, explored
-            return True
-
-        text = draw_until(draw, accept, attempts, "Flipull stage")
-        instance = [text, found["target"]]
-        self.set_instance(instance)
-        self.witness, self.witness_expansions = found["plan"], found["explored"]
-        return instance
+            chosen = options()
+            return [generate_stage(random_, chosen["width"], chosen["height"], types),
+                    int(chosen["clear_target"])]
+        return solvable_draw(self, draw, attempts, search_limit, what="Flipull stage")
 
     def reset(self):
         text, target = self.instance

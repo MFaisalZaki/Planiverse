@@ -514,9 +514,6 @@ Open:
 
 - [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
       one dependency list and a `dev` extra.
-- [ ] What a Flipull throw actually hits. Every row connects, so it is not simply the first block
-      in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
-      with a stated rule set rather than a clone of the original.
 - [ ] A generated benchmark: `planiverse-bench` runs the bundled instances only.
 
 ## Licence

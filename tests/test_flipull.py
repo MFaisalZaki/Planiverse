@@ -61,9 +61,30 @@ def test_a_throw_is_refused_when_the_first_block_it_meets_is_a_different_type():
     assert throw(grid, 2, "2") is not None, "holding a 2, the same row is legal"
 
 
-def test_a_throw_into_a_row_with_no_blocks_is_refused():
-    grid = grid_of("#####", "#   #", "#111#", "#####")
-    assert throw(grid, 1, "1") is None
+def test_a_wall_turns_the_block_downward():
+    """A throw from above the wall of blocks slides down the far side and meets the top of
+    the far column, where the same rules apply: the cartridge's back wall and ceiling do
+    this, so no row is a no-op merely for being empty."""
+    grid = grid_of("#####", "#   #", "#121#", "#221#", "#####")
+    board, held = throw(grid, 1, "1")
+    assert text_of(board)[2:4] == ["# 21#", "#121#"], "the top 1 went and the 2 under it swapped"
+    assert held == "2"
+    assert throw(grid, 1, "2") is None, "a different type at the top of the column: refused"
+
+
+def test_the_floor_bounces_the_block_back_into_the_hand():
+    grid = grid_of("#####", "#   #", "#1  #", "#####")
+    board, held = throw(grid, 1, "1")
+    assert count_blocks(board) == 0 and held == "1"
+    assert throw(grid_of("#####", "#   #", "#  1#", "#####"), 1, "1") is None, \
+        "sliding down an empty column to the floor meets nothing, so nothing happens"
+
+
+def test_a_throw_that_empties_its_row_carries_on_down_the_far_side():
+    grid = grid_of("#####", "#   #", "#111#", "#212#", "#####")
+    board, held = throw(grid, 2, "1")
+    assert text_of(board)[2:4] == ["#   #", "#112#"], "the row went, then the 2 below swapped"
+    assert held == "2"
 
 
 def test_a_throw_that_clears_the_row_leaves_nothing_in_hand_to_swap():
