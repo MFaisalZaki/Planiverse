@@ -11,9 +11,8 @@ season) but agree on three things, which live here so they are written once:
 2. **A draw is checked before it is handed out.** A random board is usually unsolvable, and
    an unsolvable instance is not an instance: a planner cannot tell "no plan" from "not yet".
    This is how the bundled instances were made in the first place: Flipull's stages were
-   drawn at random and explored exhaustively, Super Mario Land's levels were each searched
-   with BFWS before shipping and ranked by what that cost, and every simulator scenario
-   carries the depth it was actually solved at. So the generators search each draw and keep
+   drawn at random and explored exhaustively, and every simulator scenario carries the
+   depth it was actually solved at. So the generators search each draw and keep
    only the ones a plan was found for, within a stated budget, leaving that plan on the
    environment as `witness` and what the search spent as `witness_expansions`. The budget is
    a knob (`search_limit`) and so is the check itself (`solvable=False` hands out the raw
@@ -38,9 +37,8 @@ The techniques are the standard ones, and the references are: generate-and-test 
 solvability check is search-based procedural content generation (Togelius, Yannakakis,
 Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and
 Nelson, *Procedural Content Generation in Games*, 2016, https://pcgbook.com/); the check is
-breadth-first search, or best-first width search (BFWS: Lipovetzky and Geffner, 2017,
-https://ojs.aaai.org/index.php/AAAI/article/view/11027) where breadth-first would drown; the
-seed drives Python's own Mersenne Twister (https://docs.python.org/3/library/random.html).
+breadth-first search; the seed drives Python's own Mersenne Twister
+(https://docs.python.org/3/library/random.html).
 """
 import random
 from collections import deque, namedtuple
@@ -132,23 +130,6 @@ def bounded_search(env, limit, progress=None, key=None):
     return SearchOutcome(None, True, expansions)
 
 
-def width_search(env, limit, progress, width=2, seconds=None):
-    """Search `env` with BFWS, the planner the bundled game levels were accepted with.
-
-    The same shape as `bounded_search`, so a generator can use either: `SearchOutcome`, with
-    `expansions` what BFWS spent, which is the number Super Mario Land's shipped levels are
-    ranked by. Breadth-first drowns in a platformer's state space and a greedy search says
-    nothing comparable about difficulty; BFWS is what the levels were checked with, so it is
-    what generated ones are checked with.
-    """
-    from planiverse.planners.width import BFWSSearch, Budget
-
-    result = BFWSSearch(width=width, progress=progress).solve(
-        env, Budget(max_expansions=limit, max_seconds=seconds))
-    return SearchOutcome(result.plan if result.solved else None,
-                         result.status == "exhausted", result.statistics.expansions)
-
-
 def draw_until(draw, accept, attempts, what="an instance"):
     """Call `draw(attempt)` up to `attempts` times and return the first result `accept` likes.
 
@@ -166,28 +147,21 @@ def draw_until(draw, accept, attempts, what="an instance"):
 
 
 def solvable_draw(env, draw, attempts, search_limit, min_plan_length=1, progress=None,
-                  key=None, search=None, min_expansions=0, what="an instance"):
+                  key=None, what="an instance"):
     """Draw instances into `env` until one has a plan of at least `min_plan_length` actions.
 
     `draw(attempt)` returns an instance or `None`; each is loaded with `env.set_instance`
-    and searched, with `bounded_search` unless `search` (a callable of the same shape, such
-    as `width_search`) says otherwise. The winning instance is left selected, the plan found
-    is kept on the environment as `env.witness`, and what the search spent as
+    and searched with `bounded_search`. The winning instance is left selected, the plan
+    found is kept on the environment as `env.witness`, and what the search spent as
     `env.witness_expansions`, so a caller can see the depth an instance was accepted at and
-    what it cost; `min_expansions` rejects draws that were cheaper than that, which is a
-    difficulty floor in the currency the search reports.
+    what it cost.
     """
     found = {}
 
     def accept(instance):
         env.set_instance(instance)
-        if search is not None:
-            outcome = search(env, search_limit)
-        else:
-            outcome = bounded_search(env, search_limit, progress, key)
+        outcome = bounded_search(env, search_limit, progress, key)
         if outcome.plan is None or len(outcome.plan) < min_plan_length:
-            return False
-        if outcome.expansions < min_expansions:
             return False
         found["plan"], found["expansions"] = outcome.plan, outcome.expansions
         return True

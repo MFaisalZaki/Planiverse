@@ -37,7 +37,7 @@ import os
 from collections import namedtuple
 
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng
+from planiverse.environments.generation import draw_until, rng
 
 #: A potato crop on a Dutch field, which is what the bundled weather describes.
 CROP, VARIETY = "potato", "Potato_701"
@@ -70,7 +70,9 @@ REFERENCE_SCHEDULE = ((20, 2.0), (40, 2.0), (60, 2.0), (80, 2.0))
 #: different (or cheaper) schedule of the same quality also succeeds.
 TARGET_FRACTION = 0.98
 
-Scenario = namedtuple("Scenario", ["year", "rainfed", "reference", "sow"], defaults=(tuple(SOW_MONTH_DAY),))
+#: `seed` is the draw a generated season came from, and None for the bundled years.
+Scenario = namedtuple("Scenario", ["year", "rainfed", "reference", "sow", "seed"],
+                      defaults=(tuple(SOW_MONTH_DAY), None))
 
 #: How far, in days either way, a generated season may move the sowing date.
 SOW_SHIFT_DAYS = 14
@@ -108,14 +110,84 @@ SCENARIOS = (
     Scenario(1999, 10661.8, 12810.9),
     # Drawn by `generate_instance` at the seed each line records: a bundled year with the
     # sowing date moved, measured the same way.
-    Scenario(1986, 6706.2, 8462.0, sow=(4, 2)),   # seed 7000
-    Scenario(1979, 12925.7, 14691.0, sow=(4, 23)),   # seed 7001
-    Scenario(1995, 5336.9, 6745.9, sow=(4, 28)),   # seed 7002
-    Scenario(1999, 10898.7, 12662.5, sow=(4, 4)),   # seed 7003
-    Scenario(1980, 13220.5, 13220.5, sow=(4, 20)),   # seed 7004
-    Scenario(1989, 9352.9, 11449.1, sow=(4, 17)),   # seed 7005
-    Scenario(1987, 12826.0, 12927.7, sow=(4, 26)),   # seed 7006
-    Scenario(1997, 11135.1, 12182.9, sow=(4, 18)),   # seed 7007
+    Scenario(1986, 6706.2, 8462.0, sow=(4, 2), seed=7000),
+    Scenario(1979, 12925.7, 14691.0, sow=(4, 23), seed=7001),
+    Scenario(1995, 5336.9, 6745.9, sow=(4, 28), seed=7002),
+    Scenario(1999, 10898.7, 12662.5, sow=(4, 4), seed=7003),
+    Scenario(1980, 13220.5, 13220.5, sow=(4, 20), seed=7004),
+    Scenario(1989, 9352.9, 11449.1, sow=(4, 17), seed=7005),
+    Scenario(1987, 12826.0, 12927.7, sow=(4, 26), seed=7006),
+    Scenario(1997, 11135.1, 12182.9, sow=(4, 18), seed=7007),
+    Scenario(1984, 7608.1, 9518.6, sow=(4, 24), seed=7008),
+    Scenario(1986, 6758.3, 9386.9, sow=(4, 14), seed=7009),
+    Scenario(1979, 12995.5, 14773.2, sow=(4, 20), seed=7010),
+    Scenario(1987, 12697.3, 12857.9, sow=(4, 28), seed=7011),
+    Scenario(1992, 7652.5, 9938.4, sow=(4, 8), seed=7012),
+    Scenario(1977, 13719.6, 14040.4, sow=(4, 27), seed=7013),
+    Scenario(1977, 13085.8, 14180.5, sow=(4, 2), seed=7014),
+    Scenario(1983, 4136.1, 6282.1, sow=(4, 24), seed=7015),
+    Scenario(1979, 13586.4, 14562.5, sow=(4, 4), seed=7016),
+    Scenario(1999, 10661.8, 12806.5, sow=(4, 16), seed=7017),
+    Scenario(1986, 7412.0, 9824.5, sow=(4, 27), seed=7018),
+    Scenario(1979, 13586.4, 14560.8, sow=(4, 9), seed=7019),
+    Scenario(1978, 12071.8, 13832.1, sow=(4, 29), seed=7020),
+    Scenario(1992, 7852.4, 10188.7, sow=(4, 12), seed=7021),
+    Scenario(1977, 13205.8, 14153.2, sow=(4, 9), seed=7022),
+    Scenario(1985, 14883.6, 14915.2, sow=(4, 17), seed=7023),
+    Scenario(1995, 6808.8, 7616.2, sow=(4, 13), seed=7024),
+    Scenario(1997, 11332.2, 12320.1, sow=(4, 5), seed=7025),
+    Scenario(1999, 10718.1, 12671.2, sow=(4, 11), seed=7026),
+    Scenario(1988, 13677.8, 14046.1, sow=(4, 29), seed=7027),
+    Scenario(1989, 9082.3, 10714.4, sow=(4, 6), seed=7028),
+    Scenario(1985, 15071.2, 15101.3, sow=(4, 13), seed=7029),
+    Scenario(1983, 5218.5, 7006.7, sow=(4, 11), seed=7030),
+    Scenario(1986, 7287.7, 9763.4, sow=(4, 26), seed=7031),
+    Scenario(1984, 8028.5, 9887.1, sow=(4, 18), seed=7032),
+    Scenario(1980, 13745.2, 13772.1, sow=(4, 1), seed=7033),
+    Scenario(1999, 10749.9, 12816.0, sow=(4, 20), seed=7034),
+    Scenario(1997, 11099.3, 12083.9, sow=(4, 22), seed=7035),
+    Scenario(1992, 8004.3, 10285.0, sow=(4, 14), seed=7036),
+    Scenario(1977, 13387.8, 14130.5, sow=(4, 18), seed=7037),
+    Scenario(1984, 8511.6, 9439.4, sow=(4, 2), seed=7038),
+    Scenario(1977, 13205.8, 14153.3, sow=(4, 8), seed=7039),
+    Scenario(1992, 7493.4, 9669.8, sow=(4, 3), seed=7041),
+    Scenario(1977, 13205.8, 14155.7, sow=(4, 11), seed=7042),
+    Scenario(1979, 13630.4, 14606.2, sow=(4, 1), seed=7043),
+    Scenario(1987, 13779.4, 13946.6, sow=(4, 6), seed=7044),
+    Scenario(1978, 12046.1, 14033.8, sow=(4, 26), seed=7045),
+    Scenario(1985, 15417.5, 15426.9, sow=(4, 2), seed=7046),
+    Scenario(1979, 12908.5, 14679.9, sow=(4, 21), seed=7047),
+    Scenario(1994, 5546.3, 7033.6, sow=(4, 22), seed=7048),
+    Scenario(1980, 13089.8, 13089.8, sow=(4, 22), seed=7049),
+    Scenario(1998, 13411.9, 14046.6, sow=(4, 12), seed=7050),
+    Scenario(1995, 6344.5, 7857.1, sow=(4, 22), seed=7051),
+    Scenario(1998, 13411.9, 14047.5, sow=(4, 13), seed=7052),
+    Scenario(1985, 14765.3, 14797.3, sow=(4, 20), seed=7053),
+    Scenario(1994, 6543.2, 7400.1, sow=(4, 5), seed=7055),
+    Scenario(1996, 7244.7, 9485.5, sow=(4, 5), seed=7056),
+    Scenario(1994, 5382.4, 6861.3, sow=(4, 24), seed=7057),
+    Scenario(1978, 12052.5, 13691.3, sow=(4, 10), seed=7058),
+    Scenario(1993, 14774.3, 15796.5, sow=(4, 20), seed=7059),
+    Scenario(1993, 14205.9, 15907.1, sow=(4, 1), seed=7060),
+    Scenario(1987, 13926.3, 14080.2, sow=(4, 1), seed=7061),
+    Scenario(1977, 13085.8, 14167.5, sow=(4, 1), seed=7062),
+    Scenario(1976, 4190.4, 5850.0, sow=(4, 23), seed=7063),
+    Scenario(1989, 9142.5, 10585.3, sow=(4, 1), seed=7064),
+    Scenario(1987, 12971.9, 13261.7, sow=(4, 23), seed=7065),
+    Scenario(1985, 15071.2, 15102.1, sow=(4, 14), seed=7066),
+    Scenario(1984, 7798.3, 9701.2, sow=(4, 21), seed=7067),
+    Scenario(1986, 6950.0, 9665.0, sow=(4, 22), seed=7068),
+    Scenario(1981, 12510.5, 13803.1, sow=(4, 29), seed=7069),
+    Scenario(1995, 7552.8, 8353.2, sow=(4, 6), seed=7071),
+    Scenario(1997, 11258.5, 12251.3, sow=(4, 3), seed=7072),
+    Scenario(1983, 4088.1, 6074.1, sow=(4, 23), seed=7073),
+    Scenario(1985, 14701.2, 14733.4, sow=(4, 28), seed=7074),
+    Scenario(1981, 12472.3, 13876.2, sow=(4, 22), seed=7076),
+    Scenario(1979, 12815.2, 14582.1, sow=(4, 26), seed=7077),
+    Scenario(1997, 11281.0, 12257.4, sow=(4, 6), seed=7079),
+    Scenario(1997, 10824.9, 11645.8, sow=(4, 28), seed=7080),
+    Scenario(1988, 13073.8, 14470.1, sow=(4, 11), seed=7081),
+    Scenario(1994, 5776.6, 7356.1, sow=(4, 17), seed=7082),
 )
 
 AGROMANAGEMENT = """
@@ -281,26 +353,36 @@ class CropEnv(Environment):
         self.witness = self.witness_expansions = None
         self._cache = {}
 
-    def generate_instance(self, seed=None, year=None, sow_shift=SOW_SHIFT_DAYS):
+    def generate_instance(self, seed=None, year=None, sow_shift=SOW_SHIFT_DAYS, attempts=20):
         """Draw a fresh season, select it, and return it as a dict.
 
         `year` is one of the bundled seasons' years (default: one at random; the weather
         PCSE ships has no others without gaps), and the sowing date is the usual one moved by
         up to `sow_shift` days either way, which changes which weather the crop meets at each
         growth stage. The rainfed and reference yields are then measured, two seasons' worth
-        of simulation, so the instance records what its target is measured off.
+        of simulation, so the instance records what its target is measured off. A draw is
+        kept only if the reference schedule beats doing nothing, as it does in every bundled
+        season, since a season where irrigation hurts has no decision in it; the sowing date
+        is redrawn up to `attempts` times.
         """
         random_, _ = rng(seed)
-        years = [scenario.year for scenario in SCENARIOS]
+        years = [scenario.year for scenario in SCENARIOS
+                 if tuple(scenario.sow) == tuple(SOW_MONTH_DAY)]      # the bundled years
         if year is not None and year not in years:
             raise ValueError(f"no gap-free weather for {year}; choose from {years}")
         year = year if year is not None else random_.choice(years)
-        sowing = (datetime.date(year, *SOW_MONTH_DAY)
-                  + datetime.timedelta(days=random_.randint(-sow_shift, sow_shift)))
-        self.set_instance({"year": year, "sow": [sowing.month, sowing.day]})
-        self.__measure__()
+
+        def draw(attempt):
+            sowing = (datetime.date(year, *SOW_MONTH_DAY)
+                      + datetime.timedelta(days=random_.randint(-sow_shift, sow_shift)))
+            self.set_instance({"year": year, "sow": [sowing.month, sowing.day]})
+            self.__measure__()
+            return dict(self.instance)
+
+        instance = draw_until(draw, lambda season: season["reference"] >= season["rainfed"],
+                              attempts, what="a season irrigation helps")
         self.witness, self.witness_expansions = self.reference_plan(), 0
-        return dict(self.instance)
+        return instance
 
     def __measure__(self):
         """Fill in the season's rainfed and reference yields by running it both ways."""

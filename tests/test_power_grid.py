@@ -103,7 +103,7 @@ def test_doing_nothing_really_does_black_the_grid_out(env):
 def test_set_index_refuses_a_scenario_that_is_not_there():
     game = PowerGridEnv()
     try:
-        for index in (-1, len(SCENARIOS), 99):
+        for index in (-1, len(SCENARIOS), 999):
             with pytest.raises(IndexError, match="Invalid index"):
                 game.set_index(index)
     finally:
@@ -225,3 +225,22 @@ def test_simulate_and_step_track_the_history(env):
     assert after.path == (0,)
     assert isinstance(relief, float)
     assert len(env.render()) == 2
+
+
+@pytest.mark.slow
+def test_a_generated_contingency_reproduces_from_its_seed():
+    """The seed a generated contingency records is its provenance: drawing at it again gives
+    the same series, offset and line, and the same measurements."""
+    drawn = [s for s in SCENARIOS if s.seed is not None]
+    assert len(drawn) == len(SCENARIOS) - 9
+    for scenario in (drawn[0], drawn[-1]):
+        env = PowerGridEnv()
+        try:
+            instance = env.generate_instance(seed=scenario.seed)
+        finally:
+            env.close()
+        assert (instance["chronic"], instance["line"], instance["offset"]) == \
+               (scenario.chronic, scenario.line, scenario.offset)
+        assert instance["rho_after_trip"] == pytest.approx(scenario.rho_after_trip, abs=1e-3)
+        assert (instance["blackout_in"], instance["solved_at"]) == \
+               (scenario.blackout_in, scenario.solved_at)

@@ -32,13 +32,6 @@ def lolo(state):
     return state.hearts_left + (0 if getattr(state, "solved", False) else 1)
 
 
-def super_mario_land(state):
-    """Columns between Mario and the flag; a dead state scores worst."""
-    if getattr(state, "dead", False):
-        return len(state.tiles[0]) + 1
-    return max(0, state.goal[0] - state.tile_x)
-
-
 def water_network(state):
     """Junctions still contaminated."""
     return state.contaminated
@@ -92,7 +85,6 @@ MEASURES = {
     "flipull": flipull,
     "lolo": lolo,
     "amazing_tater": amazing_tater,
-    "super_mario_land": super_mario_land,
     "water_network": water_network,
     "power_grid": power_grid,
     "crop_management": crop_management,

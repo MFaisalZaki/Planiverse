@@ -93,7 +93,7 @@ def test_the_seasons_span_wet_and_dry():
 def test_set_index_refuses_a_season_that_is_not_there():
     game = CropEnv()
     try:
-        for index in (-1, len(SCENARIOS), 99):
+        for index in (-1, len(SCENARIOS), 999):
             with pytest.raises(IndexError, match="Invalid index"):
                 game.set_index(index)
     finally:
@@ -261,3 +261,20 @@ def test_simulate_and_step_track_the_history(env):
     assert after.schedule == (2.0,)
     assert isinstance(growth, float)
     assert len(env.render()) == 2
+
+
+def test_a_generated_season_reproduces_from_its_seed():
+    """The seed a generated season records is its provenance: drawing at it again gives the
+    same year, the same sowing date and the same measurements."""
+    drawn = [s for s in SCENARIOS if s.seed is not None]
+    assert len(drawn) == len(SCENARIOS) - 22
+    for scenario in (drawn[0], drawn[-1]):
+        game = CropEnv()
+        try:
+            season = game.generate_instance(seed=scenario.seed)
+        finally:
+            game.close()
+        assert (season["year"], tuple(season["sow"])) == (scenario.year, tuple(scenario.sow))
+        assert season["rainfed"] == pytest.approx(scenario.rainfed, abs=1.0)
+        assert season["reference"] == pytest.approx(scenario.reference, abs=1.0)
+        assert season["reference"] >= season["rainfed"], "irrigation never hurts here"

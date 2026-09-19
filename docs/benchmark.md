@@ -40,8 +40,8 @@ many instances it has. Then it writes:
   every array one instance set long, under a site's `MaxArraySize`, and finishes seed 0 first.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
-The suite's 498 instances make 23 arrays: three for the deterministic width planners and five
-each for MCTS, FSX, Rollout IW and π-IW, 11,454 runs. The commands call the interpreter that ran
+The suite's 956 instances, over the paper's eight environments, make 23 arrays: three for the
+deterministic width planners and five each for MCTS, FSX, Rollout IW and π-IW, 21,988 runs. The commands call the interpreter that ran
 `generate` by absolute path, so the jobs need no activation and cannot pick up a different
 install. An environment that cannot be built here (a missing dependency) is skipped, and
 `generate` says so.
@@ -163,7 +163,7 @@ rows and the two cactus curves. What remains is the compute, and then the prose,
 drafted below so that the runs are the only thing between the code and the paper.
 
 **The runs.** `generate` writes `riw-s0` to `riw-s4` and `piiw-s0` to `piiw-s4` beside the
-existing arrays: ten arrays over the instances in the tree, 4,990 runs for the 499 the paper's
+existing arrays: ten arrays over the instances in the tree, 9,560 runs for the 956 the paper's
 environments have. Nothing already run needs repeating, since the protocol, the limits and the
 other planners' parameters are unchanged. The paper's cartridge rows cannot be extended, since
 those environments are no longer here, and the tables have to say so. Afterwards, re-release

@@ -125,6 +125,93 @@ SCENARIOS = (
     (12, dict(zones=20, years=40, rain="design", period=2)),
     (13, dict(zones=24, years=60, rain="klimaatlas", start_year=20, measures=("elevate1", "elevate2"))),
     (14, dict(zones=36, years=60, rain="design", measures=("elevate1", "elevate2", "resist25", "resist50"))),
+    # Drawn by `generate_instance` over a grid of options at the seed each line records,
+    # accepted by the same test as the fifteen above.
+    (100, dict(zones=30, years=40, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 8-decision plan
+    (101, dict(zones=8, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2'))),   # 10-decision plan
+    (102, dict(zones=30, years=60, rain='design', measures=('elevate1',), period=2)),   # 30-decision plan
+    (103, dict(zones=8, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=20)),   # 10-decision plan
+    (104, dict(zones=10, years=50, rain='design', measures=('elevate1', 'resist50'), flood_share=0.6)),   # 10-decision plan
+    (105, dict(zones=30, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=30)),   # 10-decision plan
+    (106, dict(zones=8, years=30, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 6-decision plan
+    (107, dict(zones=20, years=50, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 10-decision plan
+    (108, dict(zones=30, years=40, rain='design', measures=('elevate1',), period=2)),   # 20-decision plan
+    (109, dict(zones=16, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=20)),   # 12-decision plan
+    (110, dict(zones=10, years=60, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), flood_share=0.6)),   # 12-decision plan
+    (111, dict(zones=36, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2'), start_year=30)),   # 10-decision plan
+    (112, dict(zones=30, years=50, rain='klimaatlas', measures=('elevate1',))),   # 10-decision plan
+    (114, dict(zones=24, years=30, rain='klimaatlas', measures=('elevate1',), period=2)),   # 15-decision plan
+    (115, dict(zones=30, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=20)),   # 12-decision plan
+    (116, dict(zones=12, years=40, rain='design', measures=('elevate1',), flood_share=0.6)),   # 8-decision plan
+    (117, dict(zones=8, years=50, rain='design', measures=('elevate1',))),   # 10-decision plan
+    (118, dict(zones=36, years=50, rain='design', measures=('elevate1', 'elevate2'))),   # 10-decision plan
+    (119, dict(zones=12, years=40, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 8-decision plan
+    (120, dict(zones=10, years=40, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), period=2)),   # 20-decision plan
+    (121, dict(zones=12, years=40, rain='design', measures=('elevate1', 'elevate2'))),   # 8-decision plan
+    (122, dict(zones=36, years=30, rain='design', measures=('elevate1', 'elevate2'), flood_share=0.6)),   # 6-decision plan
+    (123, dict(zones=20, years=60, rain='klimaatlas', measures=('elevate1',), start_year=30)),   # 12-decision plan
+    (124, dict(zones=10, years=40, rain='design', measures=('elevate1',))),   # 8-decision plan
+    (125, dict(zones=10, years=60, rain='klimaatlas', measures=('elevate1', 'resist50'))),   # 12-decision plan
+    (126, dict(zones=16, years=40, rain='klimaatlas', measures=('elevate1',), period=2)),   # 20-decision plan
+    (127, dict(zones=30, years=30, rain='design', measures=('elevate1',))),   # 6-decision plan
+    (128, dict(zones=12, years=60, rain='design', measures=('elevate1', 'resist50'), flood_share=0.6)),   # 12-decision plan
+    (129, dict(zones=16, years=30, rain='design', measures=('elevate1', 'resist50'))),   # 6-decision plan
+    (130, dict(zones=8, years=50, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 10-decision plan
+    (131, dict(zones=20, years=50, rain='klimaatlas', measures=('elevate1',))),   # 10-decision plan
+    (132, dict(zones=20, years=60, rain='design', measures=('elevate1',), period=2)),   # 30-decision plan
+    (133, dict(zones=16, years=50, rain='design', measures=('elevate1',))),   # 10-decision plan
+    (134, dict(zones=20, years=50, rain='design', measures=('elevate1', 'elevate2'), flood_share=0.6)),   # 10-decision plan
+    (135, dict(zones=36, years=30, rain='design', measures=('elevate1',))),   # 6-decision plan
+    (136, dict(zones=12, years=50, rain='design', measures=('elevate1', 'elevate2'))),   # 10-decision plan
+    (137, dict(zones=12, years=30, rain='klimaatlas', measures=('elevate1',))),   # 6-decision plan
+    (138, dict(zones=16, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), period=2)),   # 25-decision plan
+    (139, dict(zones=24, years=40, rain='klimaatlas', measures=('elevate1',), start_year=20)),   # 8-decision plan
+    (140, dict(zones=36, years=60, rain='design', measures=('elevate1',), flood_share=0.6)),   # 12-decision plan
+    (141, dict(zones=20, years=60, rain='design', measures=('elevate1', 'elevate2'))),   # 12-decision plan
+    (142, dict(zones=24, years=50, rain='design', measures=('elevate1', 'elevate2'))),   # 10-decision plan
+    (143, dict(zones=12, years=30, rain='design', measures=('elevate1', 'resist50'))),   # 6-decision plan
+    (144, dict(zones=24, years=40, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), period=2)),   # 20-decision plan
+    (145, dict(zones=10, years=30, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 6-decision plan
+    (146, dict(zones=16, years=30, rain='design', measures=('elevate1', 'elevate2'), flood_share=0.6)),   # 6-decision plan
+    (147, dict(zones=10, years=30, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=30)),   # 6-decision plan
+    (148, dict(zones=36, years=60, rain='design', measures=('elevate1', 'resist50'))),   # 12-decision plan
+    (149, dict(zones=20, years=40, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 8-decision plan
+    (150, dict(zones=24, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), period=2)),   # 30-decision plan
+    (151, dict(zones=24, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2'), start_year=20)),   # 10-decision plan
+    (152, dict(zones=12, years=40, rain='klimaatlas', measures=('elevate1', 'resist50'), flood_share=0.6)),   # 8-decision plan
+    (153, dict(zones=30, years=40, rain='klimaatlas', measures=('elevate1', 'elevate2'), start_year=30)),   # 8-decision plan
+    (154, dict(zones=24, years=60, rain='design', measures=('elevate1',))),   # 12-decision plan
+    (155, dict(zones=24, years=50, rain='klimaatlas', measures=('elevate1', 'resist50'))),   # 10-decision plan
+    (157, dict(zones=36, years=60, rain='klimaatlas', measures=('elevate1', 'resist50'), start_year=20)),   # 12-decision plan
+    (158, dict(zones=8, years=50, rain='klimaatlas', measures=('elevate1', 'resist50'), flood_share=0.6)),   # 10-decision plan
+    (159, dict(zones=24, years=50, rain='design', measures=('elevate1', 'resist50'))),   # 10-decision plan
+    (160, dict(zones=16, years=40, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 8-decision plan
+    (161, dict(zones=8, years=30, rain='klimaatlas', measures=('elevate1', 'elevate2'))),   # 6-decision plan
+    (162, dict(zones=16, years=60, rain='klimaatlas', measures=('elevate1',), period=2)),   # 30-decision plan
+    (163, dict(zones=8, years=30, rain='design', measures=('elevate1', 'resist50'))),   # 6-decision plan
+    (164, dict(zones=16, years=40, rain='design', measures=('elevate1', 'resist50'), flood_share=0.6)),   # 8-decision plan
+    (165, dict(zones=36, years=50, rain='design', measures=('elevate1', 'resist50'))),   # 10-decision plan
+    (166, dict(zones=8, years=40, rain='design', measures=('elevate1', 'resist50'))),   # 8-decision plan
+    (167, dict(zones=36, years=60, rain='klimaatlas', measures=('elevate1',))),   # 12-decision plan
+    (168, dict(zones=12, years=50, rain='klimaatlas', measures=('elevate1',), period=2)),   # 25-decision plan
+    (169, dict(zones=12, years=50, rain='design', measures=('elevate1',))),   # 10-decision plan
+    (170, dict(zones=20, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2'), flood_share=0.6)),   # 12-decision plan
+    (171, dict(zones=12, years=30, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=30)),   # 6-decision plan
+    (172, dict(zones=36, years=50, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 10-decision plan
+    (173, dict(zones=30, years=60, rain='design', measures=('elevate1', 'elevate2', 'resist25', 'resist50'))),   # 12-decision plan
+    (174, dict(zones=20, years=30, rain='design', measures=('elevate1', 'resist50'), period=2)),   # 15-decision plan
+    (175, dict(zones=30, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2'), start_year=20)),   # 12-decision plan
+    (176, dict(zones=8, years=30, rain='design', measures=('elevate1',), flood_share=0.6)),   # 6-decision plan
+    (177, dict(zones=20, years=40, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=30)),   # 8-decision plan
+    (178, dict(zones=24, years=40, rain='klimaatlas', measures=('elevate1', 'elevate2'))),   # 8-decision plan
+    (179, dict(zones=16, years=60, rain='design', measures=('elevate1',))),   # 12-decision plan
+    (180, dict(zones=20, years=40, rain='klimaatlas', measures=('elevate1',), period=2)),   # 20-decision plan
+    (181, dict(zones=12, years=60, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), start_year=20)),   # 12-decision plan
+    (183, dict(zones=10, years=30, rain='design', measures=('elevate1', 'elevate2'))),   # 6-decision plan
+    (184, dict(zones=16, years=40, rain='design', measures=('elevate1', 'elevate2'))),   # 8-decision plan
+    (185, dict(zones=10, years=30, rain='design', measures=('elevate1', 'resist50'))),   # 6-decision plan
+    (186, dict(zones=24, years=30, rain='klimaatlas', measures=('elevate1', 'elevate2', 'resist25', 'resist50'), period=2)),   # 15-decision plan
+    (187, dict(zones=20, years=30, rain='design', measures=('elevate1',))),   # 6-decision plan
 )
 
 

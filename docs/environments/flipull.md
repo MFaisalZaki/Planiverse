@@ -11,7 +11,7 @@ cleared once few enough blocks are left, which the cartridge calls the CLEAR tar
 - **Class:** `FlipullGame`
 - **Import:** `from planiverse.environments.games.flipull import FlipullGame`
 - **Source:** [`planiverse/environments/games/flipull.py`](../../planiverse/environments/games/flipull.py)
-- **Instances:** 48 stages, indices `0` to `47`: 32 to the cartridge's stage table, then 16 the generator drew
+- **Instances:** 100 stages, indices `0` to `99`: 32 to the cartridge's stage table, then 68 the generator drew
 - **Generator:** `generate_instance(seed, width=None, height=None, types=4, clear_target=None, ...)`; see [Generating stages](#generating-stages)
 - **Dependencies:** none
 
@@ -115,7 +115,7 @@ Stage strings use this alphabet:
 | (space) | Empty cell |
 | `1` to `4` | A block; the digit is its type |
 
-Indices `32` to `47` are stages the generator drew (`GENERATED_STAGES`), each to the size and
+Indices `32` to `99` are stages the generator drew (`GENERATED_STAGES`), each to the size and
 CLEAR target of one of the cartridge's stages, with the seed beside it in the module and the
 plan it was accepted on in `tests/data/flipull_solutions.json`.
 

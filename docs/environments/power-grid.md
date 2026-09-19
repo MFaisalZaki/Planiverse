@@ -15,7 +15,7 @@ solve.
 - **Class:** `PowerGridEnv`
 - **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/power_grid/environment.py)
-- **Instances:** 15 scenarios, indices `0` to `14`: nine from N-1 analysis at the start of the series, then six the generator drew further into them
+- **Instances:** 100 scenarios, indices `0` to `99`: nine from N-1 analysis at the start of the series, then 91 the generator drew further into them
 - **Generator:** `generate_instance(seed, chronic=None, line=None, max_offset=200, ...)`; see [Generating contingencies](#generating-contingencies)
 - **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is nothing to
   download.
@@ -121,7 +121,7 @@ every child is an AC power-flow solve of about 50 ms and one expansion takes 8 t
 119 candidates is worth more here than any amount of lookahead. For depth instead, the [water
 distribution](water-distribution.md) environment has solution depths of 2 to 7.
 
-Indices `9` to `14` were drawn by `generate_instance` at the seeds recorded beside them in
+Indices `9` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`: the same N-1 test, at a step into the time series (`offset`) rather than at its
 start, with the loading after the trip and the steps to blackout measured the same way.
 

@@ -30,7 +30,6 @@ ENTRY_POINTS = [
     "planiverse.environments.games.flipull",
     "planiverse.environments.games.lolo",
     "planiverse.environments.games.amazing_tater",
-    "planiverse.environments.games.super_mario_land",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",

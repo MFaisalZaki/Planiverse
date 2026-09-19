@@ -16,7 +16,6 @@ from planiverse.environments import (
 )
 from planiverse.environments.generation import (
     GenerationError, bounded_search, draw_until, place, rng, scatter, walled_grid,
-    width_search,
 )
 
 from conftest import assert_string_literals, assert_successors_contract
@@ -28,7 +27,6 @@ FAST = {
     "lolo": dict(hearts=2, framers=1, snakeys=1, min_plan_length=4, search_limit=5000),
     "amazing_tater": dict(width=6, height=5, blocks=1, pits=1, turnstiles=1,
                           min_plan_length=3, search_limit=5000),
-    "super_mario_land": dict(width=24, gaps=1, platforms=1, enemies=1, hazards=0),
     "network_attack": dict(hosts=4, services=2),
     "water_network": dict(network="Net1.inp"),
     "power_grid": dict(),
@@ -207,8 +205,6 @@ def test_the_generators_refuse_impossible_options():
         make("lolo").generate_instance(seed=0, hearts=1, magic_hearts=2)
     with pytest.raises(ValueError):
         make("amazing_tater").generate_instance(seed=0, taters=0)
-    with pytest.raises(ValueError):
-        make("super_mario_land").generate_instance(seed=0, width=8)
     with pytest.raises(GenerationError):
         make("puzznic").generate_instance(seed=0, width=3, height=3, colours=2,
                                           min_plan_length=500, attempts=2, search_limit=50)
@@ -218,22 +214,6 @@ def test_an_unchecked_draw_is_allowed_but_is_asked_for():
     env = make("puzznic")
     level = env.generate_instance(seed=0, solvable=False, **FAST["puzznic"])
     assert env.witness is None and env.instance == level
-
-
-def test_mario_levels_are_checked_the_way_the_shipped_ones_were():
-    """BFWS(w=2) under the distance to the flag accepted the shipped levels and recorded what
-    it spent as `MEASURED_EXPANSIONS`; a generated level gets the same check and the same
-    number, so `min_expansions` is a floor on that ramp."""
-    from planiverse.environments.games.super_mario_land import MEASURED_EXPANSIONS
-
-    env, _ = fresh("super_mario_land", seed=1)
-    assert env.witness_expansions >= 1
-    outcome = width_search(env, 20_000, lambda s: s.goal[0] - s.tile_x)
-    assert outcome.expansions == env.witness_expansions, "the check is BFWS, not a stand-in"
-    floor = MEASURED_EXPANSIONS[3]
-    env, _ = fresh("super_mario_land", seed=2, width=60, gaps=3, platforms=3, enemies=3,
-                   hazards=2, min_expansions=floor)
-    assert env.witness_expansions >= floor
 
 
 def test_amazing_tater_solve_and_the_generator_share_one_search():

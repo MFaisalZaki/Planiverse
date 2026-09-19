@@ -109,7 +109,7 @@ def test_every_scenario_has_a_known_solution_depth():
 def test_set_index_refuses_a_scenario_that_is_not_there():
     env = WaterNetworkEnv()
     try:
-        for index in (-1, len(SCENARIOS), 99):
+        for index in (-1, len(SCENARIOS), 999):
             with pytest.raises(IndexError, match="Invalid index"):
                 env.set_index(index)
     finally:
@@ -305,3 +305,19 @@ def test_close_removes_the_scratch_directory():
     assert os.path.isdir(workdir)
     game.close()
     assert not os.path.isdir(workdir)
+
+
+def test_a_generated_scenario_reproduces_from_its_seed():
+    """The seed a generated scenario records is its provenance: drawing at it again gives the
+    same network, the same source, the same baseline and the same depth."""
+    drawn = [s for s in SCENARIOS if s.seed is not None]
+    assert len(drawn) == len(SCENARIOS) - 9
+    for scenario in (drawn[0], drawn[-1]):
+        env = WaterNetworkEnv()
+        try:
+            instance = env.generate_instance(seed=scenario.seed)
+        finally:
+            env.close()
+        assert (instance["network"], instance["source"]) == (scenario.network, scenario.source)
+        assert instance["baseline"] == pytest.approx(scenario.baseline, abs=1e-3)
+        assert instance["solved_at"] == scenario.solved_at

@@ -197,20 +197,6 @@ def test_a_dead_end_beneath_the_root_does_not_poison_the_policy(env):
     assert planner.network.updates == updates, "nothing to prefer, nothing to learn"
 
 
-def test_pi_iw_survives_a_dead_end_at_its_first_decision():
-    """The benchmark's failure, reproduced: Super Mario Land's Python level 11 under seed 4
-    met a walled subtree at the first committed action and raised within a tenth of a
-    second."""
-    from planiverse.benchmark.measures import MEASURES
-    from planiverse.environments import make
-    planner = PiIW(width=1, expansions_per_step=100, seed=4,
-                   progress=MEASURES["super_mario_land"])
-    result = planner.solve(make("super_mario_land", index=11),
-                           Budget(max_expansions=2000, max_seconds=30))
-    assert result.statistics.expansions > 0
-    assert all(np.isfinite(p).all() for p in planner.network.params.values())
-
-
 def test_pi_iw_keeps_learning_across_episodes():
     """An episode that ends without a goal is not wasted: the next starts from what it
     taught, and `max_episodes` is unbounded by default."""

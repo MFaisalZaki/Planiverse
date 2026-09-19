@@ -12,7 +12,7 @@ the problem: every closed pipe contains a little more and costs a little more se
 - **Class:** `WaterNetworkEnv`
 - **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
-- **Instances:** 15 scenarios, indices `0` to `14`: nine chosen by hand from the source ranking, then six the generator drew
+- **Instances:** 100 scenarios, indices `0` to `99`: nine chosen by hand from the source ranking, then 91 the generator drew
 - **Generator:** `generate_instance(seed, network=None, min_baseline=0.1)`; see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** `wntr`. The benchmark networks ship inside it, so there is nothing to supply.
 
@@ -123,7 +123,7 @@ finding exactly three feasible closures at depth 7, one of which reaches zero co
 heuristic fails, since ranking states by contamination alone marches straight into "close
 everything", giving contamination zero, service zero, and the goal failed.
 
-Indices `9` to `14` were drawn by `generate_instance` at the seeds recorded beside them in
+Indices `9` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`, by the same two tests the nine above were chosen by, and carry their measured
 baseline and the depth they were solved at.
 

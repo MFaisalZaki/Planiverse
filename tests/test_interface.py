@@ -44,14 +44,6 @@ def amazing_tater():
     return env
 
 
-def super_mario_land():
-    from planiverse.environments.games.super_mario_land import SuperMarioLandGame
-
-    env = SuperMarioLandGame()
-    env.set_index(0)
-    return env
-
-
 def water_network():
     pytest.importorskip("wntr", reason="wntr is not installed")
     from planiverse.environments.water_network.environment import WaterNetworkEnv
@@ -123,7 +115,6 @@ ENVIRONMENTS = {
     "flipull": flipull,
     "lolo": lolo,
     "amazing_tater": amazing_tater,
-    "super_mario_land": super_mario_land,
     "water_network": water_network,
     "power_grid": pytest.param(power_grid, marks=pytest.mark.slow),
     "crop_management": crop_management,
@@ -191,7 +182,7 @@ def test_an_outside_environment_needs_no_subclassing():
 def test_every_registered_environment_is_in_the_catalogue():
     """The registry is the catalogue, so it cannot drift from what exists."""
     registered = {spec.name for spec in list_environments()}
-    assert {"puzznic", "flipull", "lolo", "amazing_tater", "super_mario_land",
+    assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "game_boy", "retro"} == registered
 

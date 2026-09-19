@@ -5,7 +5,7 @@ benchmark definitions authored for this repository. It does not cover, and canno
 any rights in, the third-party material described below.
 
 This repository ships no ROM image, no fragment of one, no disassembled or decompiled
-original code, no original graphics and no audio. The five game environments are
+original code, no original graphics and no audio. The four game environments are
 reimplementations in Python; nothing in this repository runs the original programs. The two
 emulator environments run whatever cartridge the user supplies, and supply none.
 
@@ -64,5 +64,4 @@ The level and room layouts used as benchmark instances in three of them (Puzznic
 rounds, Adventures of Lolo's 163 rooms and Amazing Tater's 105 rooms) are derived from
 the original titles. They are included for non-commercial research use under section 29A
 of the Copyright, Designs and Patents Act 1988, with the sources acknowledged above.
-Flipull's stages and Super Mario Land's levels are this project's own work throughout, as
-are all generated instances. See [docs/provenance.md](docs/provenance.md).
+Flipull's stages are this project's own work throughout, as are all generated instances. See [docs/provenance.md](docs/provenance.md).

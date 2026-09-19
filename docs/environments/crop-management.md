@@ -10,7 +10,7 @@ the tuber weight at harvest.
 - **Class:** `CropEnv`
 - **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
-- **Instances:** 30 seasons, indices `0` to `29`: the 22 gap-free years at the usual sowing date, then eight the generator drew
+- **Instances:** 100 seasons, indices `0` to `99`: the 22 gap-free years at the usual sowing date, then 78 the generator drew
 - **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
   by PCSE itself, so a season runs offline.
@@ -107,7 +107,7 @@ reached. It is a fixed calendar of 2 cm on days 20, 40, 60 and 80, ignoring the 
 which makes it a baseline worth beating as well: in a wet year it spends the whole budget for
 nothing.
 
-Indices `22` to `29` were drawn by `generate_instance` at the seeds recorded beside them in
+Indices `22` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`: a bundled year with the sowing date moved by up to two weeks, with the rainfed and
 reference yields measured the same way.
 

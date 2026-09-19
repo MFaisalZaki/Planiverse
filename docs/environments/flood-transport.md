@@ -21,7 +21,7 @@ depth a storm leaves, which is a ramp rather than the output of a hydrodynamic m
 - **Class:** `FloodTransportEnv`
 - **Import:** `from planiverse.environments.flood_transport.environment import FloodTransportEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/flood_transport/environment.py)
-- **Instances:** 15 scenarios, indices `0` to `14`
+- **Instances:** 100 scenarios, indices `0` to `99`: 15 chosen, then 85 drawn over a grid of options
 - **Generator:** `generate_instance(seed, zones=12, years=40, period=5, rain="klimaatlas", ...)`;
   see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** none beyond NumPy and SciPy, which the library already requires
@@ -178,7 +178,7 @@ doing nothing would pass is not an instance: the generator redraws it.
 
 ## Scenarios
 
-`set_index(i)` selects one of fifteen scenarios. Each is a fixed draw of the generator, the way
+`set_index(i)` selects one of a hundred scenarios. Each is a fixed draw of the generator, the way
 Flipull's stages are, so the table gives the draw's options rather than a layout:
 
 | Index | Zones | Years | Storms | Measures |
@@ -199,8 +199,12 @@ Flipull's stages are, so the table gives the draw's options rather than a layout
 | 13 | 24 | 60 | Klimaatlas, from 2042 | `elevate1`, `elevate2` |
 | 14 | 36 | 60 | design | all four |
 
-All but one scenario are five years to a decision, so the horizons are six to twelve decisions
-deep; scenario 12 decides every two years and is twenty deep.
+All but one of these fifteen are five years to a decision, so the horizons are six to twelve
+decisions deep; scenario 12 decides every two years and is twenty deep. Indices `15` to `99`
+were drawn over a grid of the same options (8 to 36 zones, 30 to 60 years, either storm
+series, the four measure sets above), one draw in six with a twist (two years to a decision,
+a later start in the Klimaatlas series, or six zones in ten flooding), at the seeds recorded
+beside them in the module, and accepted by the same test as the fifteen.
 Under the design storm the reference protects most of the flooding zones and doing nothing
 costs half as much again; under Klimaatlas storms, which are shallower, it protects one or
 two, and the margin over doing nothing is a few percent, which makes those the harder

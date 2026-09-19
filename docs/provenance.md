@@ -8,7 +8,7 @@ Nothing here restates the licence. It records method.
 
 ## 1. Method
 
-Every rule the five game environments implement was established by running the original title
+Every rule the four game environments implement was established by running the original title
 under emulation, driving it with scripted input, recording its memory frame by frame and
 matching what changed against what was on the screen at the time; never by reading a published
 disassembly or a leaked source listing. The emulator-backed environments and the memory maps
@@ -30,8 +30,6 @@ with the original rather than smoothing it over:
   where the cursor starts and in how eagerly matches are cleared.
 - [`amazing_tater.py`](../planiverse/environments/games/amazing_tater.py) records none
   found, after a lockstep comparison across all 105 rooms.
-- [`super_mario_land.py`](../planiverse/environments/games/super_mario_land.py) claims
-  only the measured movement constants; its levels are original.
 
 ## 2. The reimplementations
 
@@ -51,9 +49,8 @@ from the original titles, and they differ title by title:
 | Amazing Tater | 105 rooms | Yes | Dumped from the board the running game composes in work RAM. Nothing transcribed by hand. The 41 PUZZLE rooms and 64 BEGINNER/ACTION rooms; the 96 PRACTICE rooms are deliberately absent |
 | Puzznic | 128 rounds | Yes | The first 50 transcribed by hand, the rest read out of the running game's grid memory |
 | Flipull | 32 stages | **No: contract only** | Only the board size and CLEAR target match the original's 32-entry stage table. The arrangements are this project's own: the original draws each stage from an RNG seeded by boot timing, so there is no canonical layout to copy |
-| Super Mario Land | 12 levels | **No** | Original levels. Only the count matches the cartridge's four worlds of three |
 
-So three environments ship layouts taken from the original titles and two do not. Every
+So three environments ship layouts taken from the original titles and one does not. Every
 environment also generates instances of its own (`generate_instance`), and those are this
 project's work throughout: a generated level, room, stage or season derives from nothing but
 the seed.
@@ -78,6 +75,6 @@ integrations, not here.
 
 The copyright status of the derived layouts in section 3 is under review by the author's
 institution. When that review reports, this document will record whether section 29A is the
-right basis for the three environments that ship derived layouts, and whether the Flipull and
-Super Mario Land instances, which are this project's own work throughout, need any
+right basis for the three environments that ship derived layouts, and whether the Flipull
+instances, which are this project's own work throughout, need any
 acknowledgement beyond the trade mark notice.

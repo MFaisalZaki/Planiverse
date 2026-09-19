@@ -19,16 +19,15 @@ season or city, so a benchmark is not limited to what ships.
 
 | Environment | `make()` name | Bundled instances | `generate_instance` draws | Tags | Docs |
 |---|---|---|---|---|---|
-| Water distribution | `water_network` | 15 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
-| Power grid | `power_grid` | 15 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
-| Crop management | `crop_management` | 30 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
-| Flood adaptation | `flood_transport` | 15 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
-| Network attack | `network_attack` | 24 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
+| Water distribution | `water_network` | 100 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
+| Power grid | `power_grid` | 100 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
+| Crop management | `crop_management` | 100 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
+| Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
+| Network attack | `network_attack` | 100 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
 | Puzznic | `puzznic` | 152 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
-| Flipull | `flipull` | 48 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
+| Flipull | `flipull` | 100 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
 | Adventures of Lolo | `lolo` | 183 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
 | Amazing Tater | `amazing_tater` | 121 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
-| Super Mario Land | `super_mario_land` | 24 levels | level length, gaps, platforms, hazards and enemies | game, platformer | [docs](docs/environments/super-mario-land.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
 | Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
 
@@ -48,7 +47,7 @@ package trees: `game`, `operational` (an agent running a system it is responsibl
 as a power grid or a city's roads) and `security`, where the agent probes a network rather
 than operates it. See [Architecture](#architecture).
 
-The five games are commercially published Game Boy titles reimplemented in pure Python, from
+The four games are commercially published Game Boy titles reimplemented in pure Python, from
 rules established by observing the originals. Nothing here runs the original programs, and no
 ROM is needed or accepted; see [Studied titles](#studied-titles).
 
@@ -80,7 +79,7 @@ poetry install --extras dev
 ```
 
 One install gets you every environment, on every supported Python, and nothing has to be
-supplied: the five games and the flood environment are self-contained, the water, power grid
+supplied: the four games and the flood environment are self-contained, the water, power grid
 and crop environments ship their benchmark data inside their dependencies, so they run
 offline, and Stable-Retro ships Airstriker. The one exception is a Game Boy cartridge for
 `game_boy`, which is copyrighted and comes from you. `tests/test_packaging.py` walks the import
@@ -161,14 +160,13 @@ instances were, because a random board is usually unsolvable and an unsolvable i
 not an instance: a planner cannot tell "no plan" from "not yet". The generators reuse the
 checks the shipped instances passed. Flipull's stages were drawn at random and explored
 exhaustively, with the fewest blocks reachable as the target, and the generator does the
-same; Super Mario Land's levels were each searched with BFWS(w=2) and ranked by what that
-cost, and the generator runs the same search; Amazing Tater's stored solutions came from its
+same; Amazing Tater's stored solutions came from its
 `solve`, which the generator checks a drawn room with; the simulator environments draw by the
 tests their bundled scenarios were chosen by and then search the draw; the crop season's
 reference schedule and the flood scenario's reference policy are solutions by construction.
 Everywhere, the plan is left in `env.witness` and what the search spent in
-`env.witness_expansions`, and `min_plan_length` and `min_expansions` turn those into
-difficulty knobs. The check is a bias, since it favours instances a small search can solve,
+`env.witness_expansions`, and `min_plan_length` turns the first into a difficulty knob.
+The check is a bias, since it favours instances a small search can solve,
 and it is a knob too: `solvable=False` hands out the raw draw.
 
 What each generator varies is in the catalogue above, and the options are in each
@@ -181,10 +179,10 @@ came from recorded beside it and the plan it was accepted on in the tests, so th
 re-derived. The techniques are the standard ones, and each environment's doc gives the
 references: generate-and-test with a solvability check is search-based procedural content
 generation ([Togelius et al., 2011](https://doi.org/10.1109/TCIAIG.2011.2148116);
-[Shaker et al., 2016](https://pcgbook.com/)), and the checks are breadth-first search or
-[BFWS](https://ojs.aaai.org/index.php/AAAI/article/view/11027). The shared machinery is
+[Shaker et al., 2016](https://pcgbook.com/)), and the check is breadth-first search. The
+shared machinery is
 [`planiverse/environments/generation.py`](planiverse/environments/generation.py): the seeded
-draw, the bounded breadth-first and BFWS searches, the retry loop, and the board helpers the
+draw, the bounded breadth-first search, the retry loop, and the board helpers the
 four grid games draw with.
 
 ## The environment interface
@@ -216,7 +214,6 @@ What is actually there today:
 | `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `AmazingTaterGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `SuperMarioLandGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -226,7 +223,7 @@ What is actually there today:
 | `RetroEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in the network attack: it has no dead ends, or
-detecting them is left to the planner. Puzznic, Flipull and Super Mario Land compute a
+detecting them is left to the planner. Puzznic and Flipull compute a
 positional dead end, and Flipull's is exact, because the rules are known in Python and it can
 ask outright whether any throw would connect. The simulator environments compute real ones
 too: a water network whose service has collapsed, a blacked-out grid, a growing season whose
@@ -388,7 +385,7 @@ planiverse/environments/
 ├── base.py          # Environment: the eight-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
-├── games/           # the five games, reimplemented in pure Python
+├── games/           # the four games, reimplemented in pure Python
 ├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
 └── <one subpackage per simulator-backed environment>
 ```
@@ -437,12 +434,11 @@ planiverse/
 │   ├── base.py                         # Environment, the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── generation.py                   # rng, bounded_search, draw_until, solvable_draw
-│   ├── games/                          # the five games in pure Python, nothing to supply
+│   ├── games/                          # the four games in pure Python, nothing to supply
 │   │   ├── puzznic.py                  # PuzznicGame
 │   │   ├── flipull.py                  # FlipullGame
 │   │   ├── lolo.py                     # LoloGame
-│   │   ├── amazing_tater.py            # AmazingTaterGame
-│   │   └── super_mario_land.py         # SuperMarioLandGame: measured physics, original levels
+│   │   └── amazing_tater.py            # AmazingTaterGame
 │   ├── emulated/                       # any game, nothing shipped
 │   │   ├── game_boy.py                 # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
 │   │   └── stable_retro.py             # RetroEnv: a Stable-Retro integration from its save states
@@ -489,7 +485,7 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 
 ### Studied titles
 
-The five game environments reimplement commercially published titles in Python. This
+The four game environments reimplement commercially published titles in Python. This
 repository ships no ROM image, no original code and no original graphics, and runs none of
 the original programs. *Adventures of Lolo* (HAL Laboratory / Nintendo), *Puzznic* and
 *Flipull* (Taito), *Amazing Tater* (Atlus) and *Super Mario Land* (Nintendo) are the copyright
@@ -501,8 +497,8 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Twelve environments: four simulator-backed operational ones (water distribution, power
-  grid, crop management, flood adaptation), the NASim network attack, five games reimplemented
+- Eleven environments: four simulator-backed operational ones (water distribution, power
+  grid, crop management, flood adaptation), the NASim network attack, four games reimplemented
   in pure Python, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
@@ -517,7 +513,7 @@ Open:
 
 - [ ] The benchmark arrays for Rollout IW and π-IW, and the paper edits that go with them. The
       pipeline has been run end to end on a pilot and the planner paragraphs are drafted; the
-      4,980 runs need the cluster. See
+      9,560 runs need the cluster. See
       [Bringing the paper up to date](docs/benchmark.md#bringing-the-paper-up-to-date).
 - [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
       one dependency list and a `dev` extra.
