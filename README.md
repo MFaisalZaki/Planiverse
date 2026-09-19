@@ -301,7 +301,10 @@ env.render_trace(trace, "plan.gif")        # an animated GIF, one frame per stat
 env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 ```
 
-Rendering a trace is one image per state and nothing more: the state's own text, typeset. See
+Rendering a trace is one image per state: a board's own text, typeset, or, for an environment
+whose state is a handful of readings (the city, the factory, the crop, the grid, the water
+network, the flood city, the tower defence), a chart of those readings over the plan so far,
+one panel per quantity, with the actions along the bottom. See
 [docs/rendering.md](docs/rendering.md).
 
 ## Planners
@@ -478,7 +481,7 @@ planiverse/
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
 │   ├── mcts.py                         # MCTSPlanner (UCT)
 │   └── tree_search.py                  # TreeSearchPlanner, Heuristic, CostFunction
-├── rendering/                          # traces to GIF or PNG frames (env.render_trace delegates here)
+├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the paper's evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
     └── measures.py                     # per-environment progress measures for SIW and BFWS

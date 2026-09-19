@@ -25,21 +25,35 @@ captions keep the real step numbers, so a thinned sheet still says which step is
 
 Rendered plans for the first instance of each environment live in [`docs/renders/`](renders/).
 
-- **Dependencies:** Pillow, which the library already requires. Not matplotlib, though the
-  monospace font is borrowed from it so that there is always one.
+- **Dependencies:** Pillow for the text frames and the files, and matplotlib for the readings
+  charts; the library already requires both.
 
 ## Where the pixels come from
 
-Every frame is **the state's own text**: `str(state)`, typeset in a monospace font. That is not
-a fallback, since an ASCII board is what most of these environments were designed to be read as,
-and the simulator environments describe themselves in a few lines of numbers. A GIF is pixels,
-and typesetting is the one step that turns a text board into them, which is the only reason a
-font appears in the module at all.
+For a board, a frame is **the state's own text**: `str(state)`, typeset in a monospace font.
+That is not a fallback, since an ASCII board is what most of the games were designed to be read
+as. A GIF is pixels, and typesetting is the one step that turns a text board into them, which
+is the only reason a font appears in the module at all.
+
+For an environment whose state is a handful of readings (a city's population and funds, a
+factory's plates and coal, a crop's biomass, a grid's line loadings, a water network's
+contamination, a flood city's costs, a tower defence's lives and gold) a line of numbers per
+frame is read better as a chart of those numbers over the plan, so a frame there is **a chart
+of the readings of every state up to the one shown**: one panel per quantity, the series that
+share a unit on one axis and never two scales on one panel, the action that produced each state
+along the bottom, a target as a dashed line, and the goal or dead end marked where the plan
+ends. The GIF grows the chart a state at a time; the sheet is the whole plan on one figure.
+Which readings an environment charts, and the panels they go on, is written down once in
+[`readings.py`](../planiverse/rendering/readings.py), keyed by the state's class, so
+`render_trace` needs no telling; `charts=False` asks for the text anyway. matplotlib draws it
+through its object API, so no display is involved.
 
 ## Files
 
 | Path | What |
 |---|---|
 | [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state` |
+| [`charts.py`](../planiverse/rendering/charts.py) | `chart_image`, `chart_frames`: the readings charts |
+| [`readings.py`](../planiverse/rendering/readings.py) | what each numeric environment charts, and its panels |
 | [`tests/test_rendering.py`](../tests/test_rendering.py) | Tests |
 | [`renders/`](renders/) | Rendered plans, one per environment |

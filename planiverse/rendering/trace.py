@@ -117,6 +117,17 @@ def _caption(image, title, subtitle=None, colour=_INK):
     return canvas
 
 
+def kept_indices(count, max_states=None):
+    """Which states of a trace of `count` to show: all of them, or the first, the last and
+    an even spread between when `max_states` is fewer."""
+    if max_states is None or count <= max_states:
+        return list(range(count))
+    if max_states < 2:
+        return [0]
+    step = (count - 1) / (max_states - 1)
+    return sorted({int(round(i * step)) for i in range(max_states)})
+
+
 def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
                  captions=True):
     """Every state of a trace as an image, captioned unless you ask otherwise.
@@ -133,14 +144,7 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
     states = list(trace)
     if not states:
         raise ValueError("nothing to render: the trace is empty")
-
-    indices = list(range(len(states)))
-    if max_states is not None and len(states) > max_states:
-        if max_states < 2:
-            indices = [0]
-        else:
-            step = (len(states) - 1) / (max_states - 1)
-            indices = sorted({int(round(i * step)) for i in range(max_states)})
+    indices = kept_indices(len(states), max_states)
 
     frames = []
     for index in indices:
@@ -193,7 +197,8 @@ def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
 
 
 def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_size=14,
-                 max_states=None, columns=DEFAULT_COLUMNS, per_page=None, captions=None):
+                 max_states=None, columns=DEFAULT_COLUMNS, per_page=None, captions=None,
+                 charts=None):
     """Write every state of a trace to `target`. The extension decides the format.
 
     - `<name>.png` (or any other single-image extension): a **contact sheet**, `columns`
@@ -208,8 +213,20 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
     `captions` defaults to on for the sheet and the PDF, where a frame without its step
     number is not much use, and off for the GIF and the directory unless you passed
     `actions` or `env`, which is a fair sign you want them labelled.
+
+    `charts` picks the frame: the state's text, or, for an environment whose state is a
+    handful of readings (`rendering.readings` says which), a chart of those readings over
+    the steps so far. It defaults to the chart wherever one is registered; `False` asks
+    for the text anyway, `True` for the chart and an error where there is none. A chart
+    trace ignores `columns` and `per_page`: its sheet is one figure, not tiles.
     """
+    from planiverse.rendering.readings import readings_of
+
     extension = os.path.splitext(str(target))[1].lower()
+    if charts is None:
+        charts = bool(trace) and readings_of(trace[0]) is not None
+    if charts:
+        return _render_charts(trace, target, extension, actions, env, duration_ms, max_states)
     if captions is None:
         captions = extension in (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff") \
             or actions is not None or env is not None
@@ -247,3 +264,33 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
         frame.save(path)
         paths.append(path)
     return paths
+
+
+def _render_charts(trace, target, extension, actions, env, duration_ms, max_states):
+    """The chart forms of `render_trace`: a growing GIF, one figure for the sheet and the
+    PDF, or a directory of the growing frames."""
+    from planiverse.rendering.charts import chart_frames, chart_image
+
+    states = list(trace)
+    if not states:
+        raise ValueError("nothing to render: the trace is empty")
+    if extension in (".gif", ""):
+        frames = chart_frames(states, actions, env, indices=kept_indices(len(states), max_states))
+        if extension == ".gif":
+            first, *rest = _uniform(frames)
+            first.save(target, save_all=True, append_images=rest, duration=duration_ms, loop=0)
+            return target
+        os.makedirs(target, exist_ok=True)
+        digits = max(3, len(str(len(frames) - 1)))
+        paths = []
+        for index, frame in enumerate(frames):
+            path = os.path.join(str(target), f"state-{index:0{digits}d}.png")
+            frame.save(path)
+            paths.append(path)
+        return paths
+    sheet = chart_image(states, actions, env)
+    if extension == ".pdf":
+        sheet.convert("RGB").save(target, "PDF", resolution=150.0)
+        return target
+    sheet.save(target)
+    return target

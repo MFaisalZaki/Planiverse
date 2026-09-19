@@ -37,10 +37,12 @@ was worth taking; only the total at the end of the horizon does.
 
 ![BFWS solving flood_transport instance 0](../renders/flood_transport.gif)
 
-BFWS's plan for instance `0`, one frame per period, is also a
-[contact sheet](../renders/flood_transport.png) captioned with the step, the action that
-produced it, and a note on the goal state. Both were produced by solving the instance and
-handing the trace to `render_trace`:
+BFWS's plan for instance `0`, drawn as the readings of each state over the plan: the cost and its
+parts (damage, delays and measures) against the target, the worst storm so far, and the measures
+in place. A frame is the chart up to its state, so the GIF grows a step at a time. The same plan
+is also a [sheet](../renders/flood_transport.png), the whole plan on one figure, with the action
+that produced each state along the bottom, the target as a dashed line, and the goal marked where
+the plan ends. Both were produced by solving the instance and handing the trace to `render_trace`:
 
 ```python
 from planiverse.environments import make
@@ -58,7 +60,10 @@ env.render_trace(trace, "flood_transport.gif")
 env.render_trace(trace, "flood_transport.png", actions=result.plan, env=env)
 ```
 
-Frames are the state's own text, typeset; see [docs/rendering.md](../rendering.md).
+The readings each environment charts, and the panels they go on, are in
+[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False` asks
+`render_trace` for the state's text instead. See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Quickstart
 

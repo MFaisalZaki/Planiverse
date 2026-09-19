@@ -88,3 +88,89 @@ def test_the_environment_offers_render_trace_as_a_convenience(tmp_path, env, tra
     with Image.open(path) as gif:
         assert gif.format == "GIF"
         assert gif.n_frames == len(trace)
+
+
+# ---------------------------------------------------------------------------- charts
+
+def tower_trace():
+    """A short tower defence trace: a pure-Python environment whose state is readings."""
+    from planiverse.environments.tower_defence.environment import TowerDefenceEnv
+
+    game = TowerDefenceEnv()
+    game.set_index(0)
+    state, _ = game.reset()
+    actions = [action for action, _ in game.successors(state)][:2]
+    return game, actions, game.simulate(actions)
+
+
+def test_a_readings_state_is_charted_and_a_board_is_not(env):
+    from planiverse.rendering import readings_of
+
+    board, _ = env.reset()
+    assert readings_of(board) is None, "a board renders as its own text"
+    game, _, trace = tower_trace()
+    readings = readings_of(trace[0])
+    assert readings is not None
+    for panel in readings.panels:
+        row = readings.values(trace[-1])
+        assert all(isinstance(row[name], (int, float)) for name in panel.series), panel.title
+        assert panel.target is None or panel.target in row
+
+
+def test_every_registered_reading_names_a_state_class_that_exists():
+    """The registry is keyed by class, so a rename would silently drop a chart."""
+    import importlib
+
+    from planiverse.rendering import READINGS
+
+    checked = 0
+    for module, name in READINGS:
+        try:
+            loaded = importlib.import_module(module)
+        except ImportError:
+            continue                      # a simulator not installed here
+        assert hasattr(loaded, name), f"{module} has no {name}"
+        checked += 1
+    assert checked >= 1
+
+
+def test_a_charted_gif_grows_one_frame_per_state(tmp_path):
+    game, actions, trace = tower_trace()
+    path = render_trace(trace, tmp_path / "plan.gif", actions=actions, env=game)
+    with Image.open(path) as gif:
+        assert gif.format == "GIF" and gif.n_frames == len(trace)
+        sizes = set()
+        for index in range(gif.n_frames):
+            gif.seek(index)
+            sizes.add(gif.size)
+        assert len(sizes) == 1, "the axes are sized for the whole trace, so frames agree"
+
+
+def test_a_charted_sheet_is_one_figure_with_ink_in_it(tmp_path):
+    game, actions, trace = tower_trace()
+    path = render_trace(trace, tmp_path / "plan.png", actions=actions, env=game)
+    with Image.open(path) as sheet:
+        assert sheet.format == "PNG"
+        colours = sheet.convert("RGB").getcolors(maxcolors=1000000)
+        assert len(colours) > 10, "a chart has lines, markers and text in it"
+        assert sheet.width < 1400, "one figure, not a strip of tiles"
+
+
+def test_the_text_can_still_be_asked_for(tmp_path):
+    from planiverse.rendering import trace_frames
+
+    game, actions, trace = tower_trace()
+    path = render_trace(trace, tmp_path / "text.png", actions=actions, env=game, charts=False)
+    frames = trace_frames(trace, actions=actions, env=game)
+    with Image.open(path) as sheet:
+        assert sheet.height >= frames[0].height, "tiles of the typeset text"
+    with pytest.raises(ValueError, match="no readings"):
+        render_trace([object()], tmp_path / "none.png", charts=True)
+
+
+def test_kept_indices_thin_a_trace_but_keep_its_ends():
+    from planiverse.rendering import kept_indices
+
+    assert kept_indices(5) == [0, 1, 2, 3, 4]
+    assert kept_indices(11, max_states=3) == [0, 5, 10]
+    assert kept_indices(11, max_states=1) == [0]
