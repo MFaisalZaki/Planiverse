@@ -113,6 +113,14 @@ SCENARIOS = (
     Scenario("Net1.inp", "12", 0.408, 4),
     Scenario("Net1.inp", "22", 0.287, 4),
     Scenario("Net1.inp", "11", 0.801, 7),
+    # Drawn by `generate_instance` at the seed each line records, the same test the
+    # nine above were chosen by.
+    Scenario("Net1.inp", "13", 0.123, 2),   # seed 6000
+    Scenario("Net3.inp", "119", 0.562, 3),   # seed 6001
+    Scenario("Net1.inp", "13", 0.123, 2),   # seed 6002
+    Scenario("Net3.inp", "123", 0.619, 2),   # seed 6003
+    Scenario("Net3.inp", "10", 0.171, 1),   # seed 6004
+    Scenario("Net1.inp", "31", 0.113, 2),   # seed 6005
 )
 
 

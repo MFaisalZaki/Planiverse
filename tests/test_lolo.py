@@ -7,8 +7,9 @@ on top.
 """
 import pytest
 
-from planiverse.environments.gameboy_py.lolo import (
-    DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, MEDUSA_SHIELDS, PUSHABLE_ONTO, RIVER, ROOMS,
+from planiverse.environments.games.lolo import (
+    DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, GENERATED_ROOMS, INSTANCES, MEDUSA_SHIELDS,
+    PROFILES, PUSHABLE_ONTO, RIVER, ROOMS,
     SHOOT, SHOTS_PER_MAGIC_HEART, WALKABLE, LoloAction, LoloGame, Room, blocked_by_medusa,
     move, one_way_allows, parse_room, render, room_label, shoot,
 )
@@ -85,6 +86,7 @@ def test_the_room_labels_follow_the_cartridges_own_grouping():
     assert room_label(107) == "int 5-14"
     assert room_label(108) == "adv 1-1"
     assert room_label(157) == "adv 10-5"
+    assert room_label(len(ROOMS)) == "generated 1"
     assert room_label(158) == "pro 1"
     assert room_label(162) == "pro 5"
 
@@ -427,7 +429,7 @@ def test_reset_reports_what_the_room_is():
 def test_set_index_refuses_a_room_that_does_not_exist():
     instance = LoloGame()
     with pytest.raises(IndexError):
-        instance.set_index(len(ROOMS))
+        instance.set_index(len(INSTANCES))
 
 
 def test_successors_are_pairs_and_never_the_state_itself():

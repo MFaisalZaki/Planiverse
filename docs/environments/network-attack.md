@@ -8,7 +8,7 @@ make it deterministic, so a planner can reason about it rather than sampling it.
 - **Class:** `EnvNASim`
 - **Import:** `from planiverse.environments.network_attack.network_attack import EnvNASim`
 - **Source:** [`network_attack.py`](../../planiverse/environments/network_attack/network_attack.py)
-- **Instances:** 18 NASim benchmark scenarios, indices `0` to `17`
+- **Instances:** 24 scenarios, indices `0` to `23`: NASim's 18 benchmarks, then six networks its generator drew
 - **Generator:** `generate_instance(seed, hosts=5, services=3, **options)`; see [Generating networks](#generating-networks)
 - **Dependencies:** `nasim`, the `MFaisalZaki/NetworkAttackSimulator` fork pinned in
   `pyproject.toml`. Upstream `nasim` will not work: `generative_step` and the patched internals
@@ -88,6 +88,10 @@ The `-gen` scenarios are procedurally generated, and the rest are hand-authored.
 raises unless an instance has been selected with `set_index`, `set_instance` or
 `generate_instance`, or named in the constructor.
 
+Indices `18` to `23` are networks NASim's own generator drew (`GENERATED`), from five hosts and
+three services up to sixteen and five, each with its seed recorded so NASim rebuilds the same
+network, and the depth the check solved it at.
+
 ## Generating networks
 
 `generate_instance` hands the drawing to NASim's own scenario generator, selects the result,
@@ -114,6 +118,10 @@ from the next seed, up to `attempts` (20) times.
 
 An instance is one of three dicts: `{"scenario": name}` (what `set_index` selects),
 `{"yaml": path}` (a scenario file of your own), or the generated shape above.
+
+The draw is NASim's own scenario generator (https://networkattacksimulator.readthedocs.io/),
+which is how nine of its eighteen benchmarks are made, so a generated network is the same kind
+of thing; the test is breadth-first search.
 
 ## Determinism
 

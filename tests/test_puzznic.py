@@ -1,8 +1,9 @@
 """Tests for the Puzznic environment."""
 import pytest
 
-from planiverse.environments.gameboy_py.puzznic import (
-    Box, Cursor, EmptySpace, Level, PuzznicGame, PuzznicState, Wall,
+from planiverse.environments.games.puzznic import (
+    CARTRIDGE_LEVELS, GENERATED_LEVELS, PROFILES, Box, Cursor, EmptySpace, Level, PuzznicGame,
+    PuzznicState, Wall, profile,
 )
 
 from conftest import assert_state_contract
@@ -29,11 +30,24 @@ def build(levelstr):
 
 def test_every_cartridge_round_has_a_level():
     """One level per Game Boy round. The first 50 were transcribed by hand; the rest were
-    read out of the cartridge, which is also how the hand-typed ones were checked."""
-    assert len(PuzznicGame().levelsstr) == 128
+    read out of the cartridge, which is also how the hand-typed ones were checked. The
+    generated levels come after them."""
+    assert len(CARTRIDGE_LEVELS) == 128
+    assert PuzznicGame().levelsstr == list(CARTRIDGE_LEVELS) + list(GENERATED_LEVELS)
 
 
-@pytest.mark.parametrize("index", range(128))
+def test_the_profiles_are_the_cartridges_shapes():
+    """A generated level is drawn to the shape of a real round: `PROFILES` measures every
+    round, and a level drawn from a profile measures back to it."""
+    assert len(PROFILES) == 128
+    assert profile(CARTRIDGE_LEVELS[0]) == {"width": 4, "height": 5, "colours": 2,
+                                            "walls": 0.2, "blocks_per_colour": (3, 3)}
+    assert {p["colours"] for p in PROFILES} >= {2, 3, 4, 5}
+    for level in GENERATED_LEVELS:
+        assert profile(level)["colours"] in {p["colours"] for p in PROFILES}
+
+
+@pytest.mark.parametrize("index", range(len(CARTRIDGE_LEVELS) + len(GENERATED_LEVELS)))
 def test_every_level_parses_and_resets(index):
     env = PuzznicGame()
     env.set_index(index)

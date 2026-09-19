@@ -13,7 +13,7 @@ from conftest import assert_string_literals, assert_successors_contract
 
 
 def puzznic():
-    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
+    from planiverse.environments.games.puzznic import PuzznicGame
 
     env = PuzznicGame()
     env.set_index(0)
@@ -21,7 +21,7 @@ def puzznic():
 
 
 def flipull():
-    from planiverse.environments.gameboy_py.flipull import FlipullGame
+    from planiverse.environments.games.flipull import FlipullGame
 
     env = FlipullGame()
     env.set_index(0)
@@ -29,7 +29,7 @@ def flipull():
 
 
 def lolo():
-    from planiverse.environments.gameboy_py.lolo import LoloGame
+    from planiverse.environments.games.lolo import LoloGame
 
     env = LoloGame()
     env.set_index(0)
@@ -37,7 +37,7 @@ def lolo():
 
 
 def amazing_tater():
-    from planiverse.environments.gameboy_py.amazing_tater import AmazingTaterGame
+    from planiverse.environments.games.amazing_tater import AmazingTaterGame
 
     env = AmazingTaterGame()
     env.set_index(0)
@@ -45,7 +45,7 @@ def amazing_tater():
 
 
 def super_mario_land():
-    from planiverse.environments.gameboy_py.super_mario_land import SuperMarioLandGame
+    from planiverse.environments.games.super_mario_land import SuperMarioLandGame
 
     env = SuperMarioLandGame()
     env.set_index(0)
@@ -339,7 +339,7 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     assert not Environment.provides("generate_instance"), "required, and only explained here"
     assert not Environment.provides("set_instance")
 
-    from planiverse.environments.gameboy_py.flipull import FlipullGame
+    from planiverse.environments.games.flipull import FlipullGame
 
     assert FlipullGame.validate is Environment.validate, "inherited, not rewritten"
     assert "validate" in FlipullGame.capabilities(), "and still offered"

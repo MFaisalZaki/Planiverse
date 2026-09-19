@@ -70,7 +70,7 @@ REFERENCE_SCHEDULE = ((20, 2.0), (40, 2.0), (60, 2.0), (80, 2.0))
 #: different (or cheaper) schedule of the same quality also succeeds.
 TARGET_FRACTION = 0.98
 
-Scenario = namedtuple("Scenario", ["year", "rainfed", "reference"])
+Scenario = namedtuple("Scenario", ["year", "rainfed", "reference", "sow"], defaults=(tuple(SOW_MONTH_DAY),))
 
 #: How far, in days either way, a generated season may move the sowing date.
 SOW_SHIFT_DAYS = 14
@@ -106,6 +106,16 @@ SCENARIOS = (
     Scenario(1997, 11063.9, 12134.9),
     Scenario(1998, 13411.9, 14052.6),
     Scenario(1999, 10661.8, 12810.9),
+    # Drawn by `generate_instance` at the seed each line records: a bundled year with the
+    # sowing date moved, measured the same way.
+    Scenario(1986, 6706.2, 8462.0, sow=(4, 2)),   # seed 7000
+    Scenario(1979, 12925.7, 14691.0, sow=(4, 23)),   # seed 7001
+    Scenario(1995, 5336.9, 6745.9, sow=(4, 28)),   # seed 7002
+    Scenario(1999, 10898.7, 12662.5, sow=(4, 4)),   # seed 7003
+    Scenario(1980, 13220.5, 13220.5, sow=(4, 20)),   # seed 7004
+    Scenario(1989, 9352.9, 11449.1, sow=(4, 17)),   # seed 7005
+    Scenario(1987, 12826.0, 12927.7, sow=(4, 26)),   # seed 7006
+    Scenario(1997, 11135.1, 12182.9, sow=(4, 18)),   # seed 7007
 )
 
 AGROMANAGEMENT = """
@@ -253,7 +263,7 @@ class CropEnv(Environment):
                 f"Invalid index: {index}. There are {len(SCENARIOS)} seasons, so the index "
                 f"must be 0-{len(SCENARIOS) - 1}.")
         scenario = SCENARIOS[index]
-        self.set_instance({"year": scenario.year, "sow": list(SOW_MONTH_DAY),
+        self.set_instance({"year": scenario.year, "sow": list(scenario.sow),
                            "rainfed": scenario.rainfed, "reference": scenario.reference})
         self.scenario_index = index
 

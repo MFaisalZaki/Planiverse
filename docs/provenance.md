@@ -18,24 +18,24 @@ what was written from them: the reimplementations, and the level data described 
 Deriving rules that way leaves confidence uneven, and each module says where it stops agreeing
 with the original rather than smoothing it over:
 
-- [`lolo.py`](../planiverse/environments/gameboy_py/lolo.py)'s "Where this differs from the
+- [`lolo.py`](../planiverse/environments/games/lolo.py)'s "Where this differs from the
   cartridge" is the model the others follow: six of the eight enemies are frozen, `EXACT_ROOMS`
   names the 26 of 163 rooms the model is therefore faithful for, and the divergence is shown
   to run in both directions rather than being presented as a relaxation.
-- [`flipull.py`](../planiverse/environments/gameboy_py/flipull.py) is the most explicit: it
+- [`flipull.py`](../planiverse/environments/games/flipull.py) is the most explicit: it
   calls itself "a Flipull-*like* environment with a stated rule set, not a clone", because over
   an automated comparison it agreed with the original on about half of the level throws and
   four in five of the throws from above the wall.
-- [`puzznic.py`](../planiverse/environments/gameboy_py/puzznic.py) records two known gaps, in
+- [`puzznic.py`](../planiverse/environments/games/puzznic.py) records two known gaps, in
   where the cursor starts and in how eagerly matches are cleared.
-- [`amazing_tater.py`](../planiverse/environments/gameboy_py/amazing_tater.py) records none
+- [`amazing_tater.py`](../planiverse/environments/games/amazing_tater.py) records none
   found, after a lockstep comparison across all 105 rooms.
-- [`super_mario_land.py`](../planiverse/environments/gameboy_py/super_mario_land.py) claims
+- [`super_mario_land.py`](../planiverse/environments/games/super_mario_land.py) claims
   only the measured movement constants; its levels are original.
 
 ## 2. The reimplementations
 
-The pure-Python environments in [`gameboy_py/`](../planiverse/environments/gameboy_py/) were
+The pure-Python environments in [`games/`](../planiverse/environments/games/) were
 written from the behaviour observed above. They are not ports, translations or adaptations of
 the original programs: no original code was disassembled into them, and none of them shares
 the original's structure, only its observable rules.

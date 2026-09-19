@@ -7,8 +7,9 @@ reachable; a benchmark whose goals cannot be met is worse than no benchmark.
 """
 import pytest
 
-from planiverse.environments.gameboy_py.flipull import (
-    BLOCK_TYPES, EMPTY, FlipullAction, FlipullGame, FlipullState, STAGES, WALL,
+from planiverse.environments.games.flipull import (
+    BLOCK_TYPES, EMPTY, GENERATED_STAGES, INSTANCES, PROFILES, FlipullAction, FlipullGame,
+    FlipullState, STAGES, WALL, profile,
     collapse, count_blocks, parse_stage, playable_rows, throw,
 )
 from planiverse.planners.width import BFWSSearch, Budget
@@ -191,7 +192,7 @@ def test_the_stages_match_the_cartridge_contract():
 
 def test_set_index_rejects_a_stage_that_does_not_exist(env):
     with pytest.raises(IndexError, match="Invalid index"):
-        env.set_index(len(STAGES))
+        env.set_index(len(INSTANCES))
     with pytest.raises(IndexError):
         env.set_index(-1)
 

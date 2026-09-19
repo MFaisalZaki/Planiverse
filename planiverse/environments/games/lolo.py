@@ -95,7 +95,7 @@ has a plan within the stated budget; see `generate_room` and
 `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import place, rng, scatter, solvable_draw
+from planiverse.environments.generation import from_profile, place, rng, scatter, solvable_draw
 
 # ------------------------------------------------------------------------- the alphabet
 # The names are the cartridge's own: the object list at `$2CA9` is plain ASCII and reads
@@ -130,6 +130,8 @@ def room_label(index):
     """
     if index is None:
         return "generated"
+    if index >= len(ROOMS):
+        return f"generated {index - len(ROOMS) + 1}"
     if index < TUTORIAL_END:
         pair, half = divmod(index, 2)
         return f"tutorial {pair + 1}{'a' if half == 0 else 'b'}"
@@ -676,6 +678,74 @@ class Room:
 #: cannot fall out of step with `ROOMS`.
 EXACT_ROOMS = tuple(index for index, text in enumerate(ROOMS) if Room(index, text).exact)
 
+#: Rooms the generator drew, kept after the cartridge's so that `set_index` offers them too.
+#: Each is `generate_instance(seed)` for the seed in its comment, with the inventory of one
+#: of the cartridge's exactly modelled rooms; `tests/data/lolo_solutions.json` holds the
+#: plan it was accepted on.
+GENERATED_ROOMS = (
+    # seed 3000, defaults; 2222 expansions, 19-move plan
+    "O....#..|.#S..h#.|##h#....|.@.O#..D|......#.|.#.#.##.|.....h..|.#O...#.",
+    # seed 3001, defaults; 23922 expansions, 25-move plan
+    "#..#...T|...h.T.#|.T...HS#|h#.S#H.S|..#....T|..#.@...|....H###|...H...D",
+    # seed 3002, defaults; 2779 expansions, 16-move plan
+    ".#hD.O.#|..#...#.|#..hO...|..##.##S|..#...h.|...#....|.#.....#|..@.O..#",
+    # seed 3003, defaults; 2454 expansions, 24-move plan
+    ".....#..|#..#....|H....S.@|.T....HD|S..##.#T|h....#..|...#....|...#....",
+    # seed 3004, defaults; 9148 expansions, 17-move plan
+    ".......M|.....H..|........|........|O....h.O|...S....|....H...|.@..H.D.",
+    # seed 3005, defaults; 1524 expansions, 17-move plan
+    ".#.....#|...#.D..|.....#.H|.....S..|@...##..|.T....#.|hS..T...|.#..#...",
+    # seed 3006, defaults; 12543 expansions, 24-move plan
+    ".H......|H.DS..##|..#.#...|h.T.H.h.|#S..#.T.|..T.H#@.|.##.#..T|S.#.....",
+    # seed 3007, defaults; 86 expansions, 10-move plan
+    "..O.#...|T......M|.H.HSh..|@#..D..#|#...#..#|.T##....|...#....|.....S..",
+    # seed 3008, defaults; 4508 expansions, 17-move plan
+    "...##S#.|.#h..#.#|.#O..h@.|.##.....|..h...#.|....#OO.|........|....##D#",
+    # seed 3009, defaults; 14715 expansions, 28-move plan
+    "..#...H.|.....#..|#....##.|T.#.....|HS..@...|T...D...|#.......|#...hS.#",
+    # seed 3010, defaults; 9113 expansions, 28-move plan
+    "...#....|.#....S.|.....@O#|.###O.O.|.#..#...|...h###h|......#.|#.h...D#",
+    # seed 3011, defaults; 6466 expansions, 25-move plan
+    "T...#...|#......H|T##.T.T#|#.H.H.H@|#H..T.#D|........|.##...#H|##T.#...",
+    # seed 3012, defaults; 1814 expansions, 31-move plan
+    "H..H...#|.@.H#.DH|####..H.|H#...#.#|...#.##.|..#.####|###..##.|##.##..#",
+    # seed 3013, defaults; 20288 expansions, 20-move plan
+    "........|.H..h..D|...SO...|......H.|..@.....|........|.......H|O...M...",
+    # seed 3014, defaults; 1143 expansions, 26-move plan
+    "#S.MS..#|........|.H..H#..|@#.TO##.|T.......|..#...#.|.h.D....|#.......",
+    # seed 3015, defaults; 389 expansions, 18-move plan
+    "..##....|.#..##.#|HH##..T#|D.......|..T#.#..|##.H#H..|.T.H...#|..@TT..T",
+    # seed 3016, defaults; 24163 expansions, 20-move plan
+    "..#..#..|T...S..#|...#Dh.H|.##T#...|....#.#.|H..S...T|H.THhS.#|.@.....#",
+    # seed 3017, defaults; 615 expansions, 23-move plan
+    "...##...|#...T.#h|@..S...H|#..##...|.......T|........|.D......|..#...#S",
+    # seed 3018, defaults; 279 expansions, 12-move plan
+    ".T#.#..#|...#..@.|..H...#.|........|..ShT##.|..#..S..|.D..#...|........",
+    # seed 3019, defaults; 489 expansions, 15-move plan
+    ".@T...h.|...H##O.|......D.|.#H.....|..S..T.#|........|.#.#.M..|.#.#.S.#",
+)
+
+#: Everything `set_index` selects between: the cartridge's rooms, then the generated ones.
+INSTANCES = ROOMS + GENERATED_ROOMS
+
+
+def profile(text):
+    """The inventory of a room, as the options `generate_room` takes to draw one like it:
+    hearts (and how many are magic), Emerald Framers, Snakeys, Medusas, and the shares of
+    the board that are rock and tree."""
+    cells = text.replace("|", "")
+    return {"hearts": cells.count(HEART) + cells.count(MAGIC_HEART),
+            "magic_hearts": cells.count(MAGIC_HEART), "framers": cells.count(FRAMER),
+            "snakeys": cells.count(SNAKEY), "medusas": cells.count(MEDUSA),
+            "rocks": round(cells.count(ROCK) / (SIZE * SIZE), 3),
+            "trees": round(cells.count(TREE) / (SIZE * SIZE), 3)}
+
+
+#: The inventory of each cartridge room this module is exact for (only Snakeys and Medusas
+#: among its enemies): what `generate_instance` draws a room's options from when the caller
+#: leaves them unset.
+PROFILES = tuple(profile(ROOMS[index]) for index in EXACT_ROOMS)
+
 
 def blocked_by_medusa(room, framers, eggs, hearts, alive, cell):
     """Is `cell` in a Medusa's clear line?
@@ -952,12 +1022,12 @@ class LoloGame(Environment):
         self._rooms = {}
 
     def set_index(self, index):
-        if not 0 <= index < len(ROOMS):
+        if not 0 <= index < len(INSTANCES):
             raise IndexError(
-                f"Invalid index: {index}. There are {len(ROOMS)} rooms, so the index must be "
-                f"0-{len(ROOMS) - 1}.")
+                f"Invalid index: {index}. There are {len(INSTANCES)} rooms, so the index must "
+                f"be 0-{len(INSTANCES) - 1}.")
         self.index = index
-        self.instance = ROOMS[index]
+        self.instance = INSTANCES[index]
         self.witness = None
 
     def set_instance(self, instance):
@@ -970,18 +1040,29 @@ class LoloGame(Environment):
         self.index = None
         self.witness = None
 
-    def generate_instance(self, seed=None, hearts=3, magic_hearts=0, framers=2, snakeys=1,
-                          medusas=0, rocks=0.12, trees=0.05, solvable=True, min_plan_length=8,
-                          search_limit=50_000, attempts=200):
+    def generate_instance(self, seed=None, hearts=None, magic_hearts=None, framers=None,
+                          snakeys=None, medusas=None, rocks=None, trees=None, solvable=True,
+                          min_plan_length=8, search_limit=50_000, attempts=200):
         """Draw a fresh room, select it, and return it as a room text.
 
-        The layout options are `generate_room`'s. With `solvable` each draw is searched
-        breadth-first for up to `search_limit` expansions and kept only if a plan of at least
-        `min_plan_length` actions was found, which is then left in `self.witness`.
+        The layout options are `generate_room`'s; each draw takes the ones left unset from
+        the inventory of a cartridge room chosen at random among those this module is exact
+        for (`PROFILES`), so a generated room is stocked like a real one. With `solvable`
+        each draw is searched breadth-first for up to `search_limit` expansions and kept
+        only if a plan of at least `min_plan_length` actions was found, which is then left
+        in `self.witness`.
         """
+        if hearts is not None and magic_hearts is not None and magic_hearts > hearts:
+            raise ValueError("magic_hearts cannot exceed hearts")
         random_, _ = rng(seed)
-        draw = lambda attempt: generate_room(random_, hearts, magic_hearts, framers,  # noqa: E731
-                                             snakeys, medusas, rocks, trees)
+
+        def draw(attempt):
+            options = from_profile(random_, PROFILES, hearts=hearts, magic_hearts=magic_hearts,
+                                   framers=framers, snakeys=snakeys, medusas=medusas,
+                                   rocks=rocks, trees=trees)
+            if options["magic_hearts"] > options["hearts"]:     # a profile's count against
+                options["magic_hearts"] = options["hearts"]     # a caller's smaller `hearts`
+            return generate_room(random_, **options)
         if not solvable:
             instance = draw(0)
             self.set_instance(instance)

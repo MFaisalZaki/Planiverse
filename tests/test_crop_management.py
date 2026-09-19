@@ -8,6 +8,7 @@ import pytest
 pytest.importorskip("pcse", reason="pcse is not installed")
 
 from planiverse.environments.crop_management.environment import (  # noqa: E402
+    SOW_MONTH_DAY,
     DECISION_COUNT, IRRIGATION_AMOUNTS, SCENARIOS, CropAction, CropEnv, CropState, Scenario,
     decision_days,
 )
@@ -73,14 +74,17 @@ def test_every_season_has_a_witness():
     measured off it, so no scenario ships whose goal nobody has reached."""
     assert all(isinstance(s, Scenario) for s in SCENARIOS)
     assert all(s.reference >= s.rainfed for s in SCENARIOS), "irrigation never hurts here"
-    assert len(SCENARIOS) == 22, "1990 and 1991 have gaps in the bundled weather"
+    usual = [s for s in SCENARIOS if tuple(s.sow) == tuple(SOW_MONTH_DAY)]
+    assert len(usual) == 22, "1990 and 1991 have gaps in the bundled weather"
+    assert len({s.year for s in usual}) == 22
 
 
 def test_the_seasons_span_wet_and_dry():
     """The spread is the point. In some years irrigation is worth thousands of kg/ha and in
     others it is worth nothing, and the states look identical when the first decision is
     taken."""
-    gains = {s.year: s.reference - s.rainfed for s in SCENARIOS}
+    gains = {s.year: s.reference - s.rainfed for s in SCENARIOS
+             if tuple(s.sow) == tuple(SOW_MONTH_DAY)}
     assert gains[1980] == pytest.approx(0.0, abs=1.0), "1980 was wet enough on its own"
     assert gains[1986] > 2500, "1986 needed the water badly"
     assert min(gains.values()) < 100 and max(gains.values()) > 2500

@@ -19,16 +19,16 @@ season or city, so a benchmark is not limited to what ships.
 
 | Environment | `make()` name | Bundled instances | `generate_instance` draws | Tags | Docs |
 |---|---|---|---|---|---|
-| Water distribution | `water_network` | 9 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
-| Power grid | `power_grid` | 9 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
-| Crop management | `crop_management` | 22 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
-| Flood adaptation | `flood_transport` | 9 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
-| Network attack | `network_attack` | 18 NASim benchmarks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
-| Puzznic | `puzznic` | 128 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
-| Flipull | `flipull` | 32 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
-| Adventures of Lolo | `lolo` | 163 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
-| Amazing Tater | `amazing_tater` | 105 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
-| Super Mario Land | `super_mario_land` | 12 levels | level length, gaps, platforms, hazards and enemies | game, platformer | [docs](docs/environments/super-mario-land.md) |
+| Water distribution | `water_network` | 15 contamination scenarios | the network, and the junction the contaminant enters at | operational, infrastructure | [docs](docs/environments/water-distribution.md) |
+| Power grid | `power_grid` | 15 contingencies | the time series, its starting step, and the line that trips | operational, infrastructure | [docs](docs/environments/power-grid.md) |
+| Crop management | `crop_management` | 30 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
+| Flood adaptation | `flood_transport` | 15 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
+| Network attack | `network_attack` | 24 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
+| Puzznic | `puzznic` | 152 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
+| Flipull | `flipull` | 48 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
+| Adventures of Lolo | `lolo` | 183 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
+| Amazing Tater | `amazing_tater` | 121 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
+| Super Mario Land | `super_mario_land` | 24 levels | level length, gaps, platforms, hazards and enemies | game, platformer | [docs](docs/environments/super-mario-land.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
 | Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
 
@@ -108,7 +108,7 @@ involved.
 Puzznic is the smallest environment, so it is the fastest way to see the interface:
 
 ```python
-from planiverse.environments.gameboy_py.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic import PuzznicGame
 
 env = PuzznicGame()
 env.set_index(0)              # choose the instance before reset
@@ -172,7 +172,17 @@ difficulty knobs. The check is a bias, since it favours instances a small search
 and it is a knob too: `solvable=False` hands out the raw draw.
 
 What each generator varies is in the catalogue above, and the options are in each
-environment's doc. The shared machinery is
+environment's doc. A generator draws to the shape of the originals: a game takes the layout
+options a caller leaves unset from the profile of one of its bundled instances (its size, its
+counts of blocks or hearts, its share of scenery), and a simulator draws on the simulator's own
+data (WNTR's networks, grid2op's time series, PCSE's weather, NASim's scenario generator). Each
+bundled set also carries instances the generator drew, after the originals, with the seed each
+came from recorded beside it and the plan it was accepted on in the tests, so they can be
+re-derived. The techniques are the standard ones, and each environment's doc gives the
+references: generate-and-test with a solvability check is search-based procedural content
+generation ([Togelius et al., 2011](https://doi.org/10.1109/TCIAIG.2011.2148116);
+[Shaker et al., 2016](https://pcgbook.com/)), and the checks are breadth-first search or
+[BFWS](https://ojs.aaai.org/index.php/AAAI/article/view/11027). The shared machinery is
 [`planiverse/environments/generation.py`](planiverse/environments/generation.py): the seeded
 draw, the bounded breadth-first and BFWS searches, the retry loop, and the board helpers the
 four grid games draw with.
@@ -378,7 +388,7 @@ planiverse/environments/
 ├── base.py          # Environment: the eight-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
-├── gameboy_py/      # the five games, reimplemented in pure Python
+├── games/           # the five games, reimplemented in pure Python
 ├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
 └── <one subpackage per simulator-backed environment>
 ```
@@ -427,7 +437,7 @@ planiverse/
 │   ├── base.py                         # Environment, the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── generation.py                   # rng, bounded_search, draw_until, solvable_draw
-│   ├── gameboy_py/                     # the five games in pure Python, nothing to supply
+│   ├── games/                          # the five games in pure Python, nothing to supply
 │   │   ├── puzznic.py                  # PuzznicGame
 │   │   ├── flipull.py                  # FlipullGame
 │   │   ├── lolo.py                     # LoloGame

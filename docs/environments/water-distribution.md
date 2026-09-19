@@ -12,7 +12,7 @@ the problem: every closed pipe contains a little more and costs a little more se
 - **Class:** `WaterNetworkEnv`
 - **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
-- **Instances:** 9 scenarios, indices `0`–`8`
+- **Instances:** 15 scenarios, indices `0` to `14`: nine chosen by hand from the source ranking, then six the generator drew
 - **Generator:** `generate_instance(seed, network=None, min_baseline=0.1)`; see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** `wntr`. The benchmark networks ship inside it, so there is nothing to supply.
 
@@ -122,6 +122,10 @@ finding exactly three feasible closures at depth 7, one of which reaches zero co
 100% service. A width-16 beam search to depth 8 does not find it. It is also where the obvious
 heuristic fails, since ranking states by contamination alone marches straight into "close
 everything", giving contamination zero, service zero, and the goal failed.
+
+Indices `9` to `14` were drawn by `generate_instance` at the seeds recorded beside them in
+`SCENARIOS`, by the same two tests the nine above were chosen by, and carry their measured
+baseline and the depth they were solved at.
 
 ## Determinism
 
@@ -249,6 +253,10 @@ a source that needs a deeper plan, like bundled scenario 8, is rejected unless t
 raised. `Net2` is not drawn on by default because no source on it has been solved (see
 [Scenarios](#scenarios)); `set_instance({"network": "Net2.inp", "source": ...})` still
 loads one.
+
+The draw is on the networks WNTR ships and its own water quality simulation
+(https://wntr.readthedocs.io/), so a generated scenario is a real network with a real
+source; the test is breadth-first search over closures.
 
 ## Attribution
 

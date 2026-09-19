@@ -71,7 +71,7 @@ def assert_successors_contract(successors):
 
 @pytest.fixture
 def puzznic_env():
-    from planiverse.environments.gameboy_py.puzznic import PuzznicGame
+    from planiverse.environments.games.puzznic import PuzznicGame
 
     env = PuzznicGame()
     env.set_index(0)

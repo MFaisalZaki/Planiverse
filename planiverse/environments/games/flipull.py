@@ -65,7 +65,7 @@ the stage's CLEAR target unless the caller names one, so a generated stage is al
 clearable and never clearable by accident.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import draw_until, rng
+from planiverse.environments.generation import draw_until, from_profile, rng
 
 #: `1`-`4` are block types, `#` is wall, and a space is empty. There is no staircase: the
 #: cartridge has a fixed diagonal one at the left of some stages, and since it is not clear
@@ -118,6 +118,58 @@ STAGES = (
     ("#######\n#     #\n#13113#\n#24124#\n#14213#\n#42444#\n#42433#\n#######", 6),
     ("#######\n#     #\n#21422#\n#31342#\n#42134#\n#11441#\n#21123#\n#######", 6),
 )
+
+
+#: Stages the generator drew, kept after the cartridge's so that `set_index` offers them
+#: too: `(stage, clear_target)` pairs like `STAGES`, each `generate_instance(seed)` for the
+#: seed in its comment, with the size and target of one of the cartridge's stages.
+GENERATED_STAGES = (
+    # seed 2000, defaults; 8703 positions explored
+    ("########\n#      #\n#344234#\n#414223#\n#424234#\n#144243#\n#242242#\n#422214#\n########", 7),
+    # seed 2001, defaults; 4005 positions explored
+    ("########\n#      #\n#313424#\n#222112#\n#224242#\n#442211#\n#433132#\n#441114#\n########", 7),
+    # seed 2002, defaults; 11375 positions explored
+    ("########\n#      #\n#114214#\n#122244#\n#134214#\n#311131#\n#422442#\n#142112#\n########", 7),
+    # seed 2003, defaults; 364 positions explored
+    ("#######\n#     #\n#31242#\n#22244#\n#21331#\n#43422#\n#11322#\n#13143#\n#######", 7),
+    # seed 2004, defaults; 1953 positions explored
+    ("#######\n#     #\n#21121#\n#42413#\n#14111#\n#23442#\n#14114#\n#14214#\n#######", 6),
+    # seed 2005, defaults; 2541 positions explored
+    ("########\n#      #\n#343113#\n#324223#\n#131114#\n#412444#\n#123344#\n#311112#\n########", 6),
+    # seed 2006, defaults; 6083 positions explored
+    ("########\n#      #\n#423433#\n#134341#\n#211324#\n#414432#\n#213334#\n#121333#\n########", 7),
+    # seed 2007, defaults; 1443 positions explored
+    ("########\n#      #\n#213243#\n#222324#\n#412322#\n#121344#\n#144444#\n#434444#\n########", 6),
+    # seed 2008, defaults; 557 positions explored
+    ("#######\n#     #\n#24411#\n#11341#\n#13342#\n#41413#\n#11312#\n#33414#\n#######", 7),
+    # seed 2009, defaults; 1047 positions explored
+    ("#######\n#     #\n#44231#\n#31121#\n#43442#\n#44333#\n#44434#\n#31131#\n#######", 7),
+    # seed 2010, defaults; 266 positions explored
+    ("#######\n#     #\n#42334#\n#43314#\n#11332#\n#23223#\n#32223#\n#######", 6),
+    # seed 2011, defaults; 2724 positions explored
+    ("#######\n#     #\n#33131#\n#32114#\n#24322#\n#21313#\n#13333#\n#31121#\n#######", 7),
+    # seed 2012, defaults; 1081 positions explored
+    ("#######\n#     #\n#23321#\n#12211#\n#13221#\n#14113#\n#44224#\n#42333#\n#######", 7),
+    # seed 2013, defaults; 223 positions explored
+    ("#######\n#     #\n#31131#\n#22411#\n#41313#\n#23113#\n#33134#\n#######", 6),
+    # seed 2014, defaults; 859 positions explored
+    ("########\n#      #\n#234344#\n#244441#\n#121442#\n#133334#\n#224344#\n#312444#\n########", 8),
+    # seed 2015, defaults; 3006 positions explored
+    ("#######\n#     #\n#31321#\n#33234#\n#13342#\n#43332#\n#33112#\n#44311#\n#######", 7),
+)
+
+#: Everything `set_index` selects between: the cartridge's stages, then the generated ones.
+INSTANCES = STAGES + GENERATED_STAGES
+
+
+def profile(stage):
+    """The contract of a stage, as the options `generate_instance` takes to draw one like
+    it: the wall's width and height in blocks, and its CLEAR target."""
+    text, target = stage
+    grid = parse_stage(text)
+    rows = block_rows(grid)
+    width = sum(1 for cell in grid[rows[0]] if cell in BLOCK_TYPES)
+    return {"width": width, "height": len(rows), "clear_target": target}
 
 
 def parse_stage(text):
@@ -243,6 +295,11 @@ def collapse(grid, row, col):
     grid[top][col] = EMPTY
 
 
+
+#: The contract of each cartridge stage: what `generate_instance` draws a stage's size and
+#: target from when the caller leaves them unset.
+PROFILES = tuple(profile(stage) for stage in STAGES)
+
 class FlipullAction:
     """`up`, `down`, or `throw`."""
 
@@ -339,12 +396,12 @@ class FlipullGame(Environment):
         self.state_history = []
 
     def set_index(self, index):
-        if not 0 <= index < len(STAGES):
+        if not 0 <= index < len(INSTANCES):
             raise IndexError(
-                f"Invalid index: {index}. There are {len(STAGES)} stages, so the index must "
-                f"be 0-{len(STAGES) - 1}.")
+                f"Invalid index: {index}. There are {len(INSTANCES)} stages, so the index "
+                f"must be 0-{len(INSTANCES) - 1}.")
         self.index = index
-        self.instance = STAGES[index]
+        self.instance = INSTANCES[index]
         self.witness = self.witness_expansions = None
 
     def set_instance(self, instance):
@@ -356,38 +413,52 @@ class FlipullGame(Environment):
         self.index = None
         self.witness = self.witness_expansions = None
 
-    def generate_instance(self, seed=None, width=5, height=5, types=4, clear_target=None,
-                          max_target_fraction=0.4, search_limit=200_000, attempts=100):
+    def generate_instance(self, seed=None, width=None, height=None, types=4,
+                          clear_target=None, max_target_fraction=None, search_limit=200_000,
+                          attempts=100):
         """Draw a fresh stage, select it, and return it as a `[stage_text, clear_target]` pair.
 
         Each draw is a random `width` by `height` wall of `types` block types, explored
-        exhaustively (up to `search_limit` positions). With `clear_target` unset, the fewest
-        blocks the wall can be reduced to becomes its target, provided that is no more than
-        `max_target_fraction` of the wall; a draw that cannot be worn down that far is
-        rejected as not worth playing. With a target given, a draw is kept exactly when it can
-        be reduced to it.
+        exhaustively (up to `search_limit` positions). With nothing set, a draw takes the
+        size and the CLEAR target of one of the cartridge's 32 stages at random and is kept
+        exactly when the fewest blocks it can be reduced to is that target, which is how the
+        bundled stages were made. With a `width` and `height` of the caller's own and no
+        target, the fewest blocks reachable becomes the target, provided that is no more
+        than `max_target_fraction` (0.4) of the wall; with a `clear_target` given, a draw is
+        kept when it can be reduced that far.
         """
         random_, _ = rng(seed)
-        blocks = width * height
         found = {}
+
+        def draw(attempt):
+            if width is None and height is None:
+                options = from_profile(random_, PROFILES, clear_target=clear_target)
+                found["exact"] = clear_target is None
+            else:
+                options = {"width": width or 5, "height": height or 5,
+                           "clear_target": clear_target}
+                found["exact"] = False
+            found["options"] = options
+            return generate_stage(random_, options["width"], options["height"], types)
 
         def accept(text):
             fewest, exhausted, plan, explored = fewest_blocks_reachable(text, search_limit)
             if not exhausted:
                 return False              # undecided within the budget: not this one
-            if clear_target is None:
-                if fewest > max_target_fraction * blocks:
+            options = found["options"]
+            target = options["clear_target"]
+            if target is None:
+                blocks = options["width"] * options["height"]
+                if fewest > (0.4 if max_target_fraction is None else max_target_fraction) * blocks:
                     return False
-                found["target"] = fewest
-            elif fewest > clear_target:
+                target = fewest
+            elif fewest != target if found["exact"] else fewest > target:
                 return False
-            else:
-                found["target"] = int(clear_target)
+            found["target"] = int(target)
             found["plan"], found["explored"] = plan, explored
             return True
 
-        text = draw_until(lambda attempt: generate_stage(random_, width, height, types),
-                          accept, attempts, "Flipull stage")
+        text = draw_until(draw, accept, attempts, "Flipull stage")
         instance = [text, found["target"]]
         self.set_instance(instance)
         self.witness, self.witness_expansions = found["plan"], found["explored"]

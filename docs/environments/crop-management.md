@@ -10,7 +10,7 @@ the tuber weight at harvest.
 - **Class:** `CropEnv`
 - **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
-- **Instances:** 22 seasons, indices `0` to `21`
+- **Instances:** 30 seasons, indices `0` to `29`: the 22 gap-free years at the usual sowing date, then eight the generator drew
 - **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
   by PCSE itself, so a season runs offline.
@@ -107,6 +107,10 @@ reached. It is a fixed calendar of 2 cm on days 20, 40, 60 and 80, ignoring the 
 which makes it a baseline worth beating as well: in a wet year it spends the whole budget for
 nothing.
 
+Indices `22` to `29` were drawn by `generate_instance` at the seeds recorded beside them in
+`SCENARIOS`: a bundled year with the sowing date moved by up to two weeks, with the rainfed and
+reference yields measured the same way.
+
 ## State
 
 The schedule tuple is the whole state. We verified rather than assumed the determinism this rests
@@ -171,6 +175,10 @@ way as for a bundled season: 98% of what the reference schedule achieves. That s
 solution by construction, so every generated season is solvable, and it is what `witness`
 holds; nothing is searched for. An instance written by hand may leave `rainfed` and
 `reference` out; `reset` measures them.
+
+The draw is on the weather PCSE ships and its WOFOST crop model (https://pcse.readthedocs.io/),
+so a generated season is a real year's weather met at a different growth stage; the witness is
+the reference schedule, a solution by construction.
 
 ## Attribution
 

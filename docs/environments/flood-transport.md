@@ -21,7 +21,7 @@ depth a storm leaves, which is a ramp rather than the output of a hydrodynamic m
 - **Class:** `FloodTransportEnv`
 - **Import:** `from planiverse.environments.flood_transport.environment import FloodTransportEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/flood_transport/environment.py)
-- **Instances:** 9 scenarios, indices `0` to `8`
+- **Instances:** 15 scenarios, indices `0` to `14`
 - **Generator:** `generate_instance(seed, zones=12, years=40, period=5, rain="klimaatlas", ...)`;
   see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** none beyond NumPy and SciPy, which the library already requires
@@ -178,7 +178,7 @@ doing nothing would pass is not an instance: the generator redraws it.
 
 ## Scenarios
 
-`set_index(i)` selects one of nine scenarios. Each is a fixed draw of the generator, the way
+`set_index(i)` selects one of fifteen scenarios. Each is a fixed draw of the generator, the way
 Flipull's stages are, so the table gives the draw's options rather than a layout:
 
 | Index | Zones | Years | Storms | Measures |
@@ -192,8 +192,15 @@ Flipull's stages are, so the table gives the draw's options rather than a layout
 | 6 | 24 | 50 | design | `elevate1` |
 | 7 | 24 | 50 | Klimaatlas | `elevate1` |
 | 8 | 30 | 60 | Klimaatlas | `elevate1`, `elevate2` |
+| 9 | 10 | 30 | design | `elevate1`, `resist50` |
+| 10 | 12 | 40 | Klimaatlas, from 2052 | `elevate1` |
+| 11 | 16 | 50 | Klimaatlas, six zones in ten flooding | `elevate1` |
+| 12 | 20 | 40 | design, two years to a decision | `elevate1` |
+| 13 | 24 | 60 | Klimaatlas, from 2042 | `elevate1`, `elevate2` |
+| 14 | 36 | 60 | design | all four |
 
-Every scenario is five years to a decision, so the horizons are six to twelve decisions deep.
+All but one scenario are five years to a decision, so the horizons are six to twelve decisions
+deep; scenario 12 decides every two years and is twenty deep.
 Under the design storm the reference protects most of the flooding zones and doing nothing
 costs half as much again; under Klimaatlas storms, which are shallower, it protects one or
 two, and the margin over doing nothing is a few percent, which makes those the harder
@@ -234,6 +241,14 @@ runs inside a checkout of MAAT, with its dependencies, and writes its zones, roa
 graph and design-storm depths as an instance of this shape, to which the storms, horizon and
 period are added. The exporter is not run by this repository's tests, since it needs MAAT's
 data.
+
+The city is a draw of this environment's own, and the rest of the model is MAAT's
+(https://github.com/MLSM-at-DTU/floods_transport_rl, https://arxiv.org/abs/2409.18574): trips
+are distributed by iterative proportional fitting (Deming and Stephan, 1940,
+https://doi.org/10.1214/aoms/1177731829), storms by inverse transform sampling
+(https://en.wikipedia.org/wiki/Inverse_transform_sampling) from the Klimaatlas return periods
+(https://www.dmi.dk/klimaatlas), and damage by the curves of van Ginkel et al.
+(https://doi.org/10.5194/nhess-21-1011-2021).
 
 ## Attribution
 

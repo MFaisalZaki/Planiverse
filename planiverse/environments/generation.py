@@ -22,9 +22,25 @@ season) but agree on three things, which live here so they are written once:
 3. **The instance is plain data.** Strings, tuples, lists and dicts, the same shape as the
    bundled instances, so it can be written to a file and given back to `set_instance` later.
 
+4. **A draw is shaped like the originals.** Each game's generator draws the layout options a
+   caller leaves unset from the *profile* of one of the bundled instances (its size, its
+   block or heart counts, its share of scenery), so a generated level is the shape of one
+   the cartridge ships and not a shape of the generator's own; `from_profile` does the
+   filling. The simulator generators draw on the simulators' own data (WNTR's networks,
+   grid2op's time series, PCSE's weather, NASim's scenario generator), which is the same
+   thing.
+
 The grid helpers at the end are the drawing half of the same story: the four board games
 each put a ring of walls round a rectangle, scatter some scenery over it and drop objects
 onto whatever floor is left, and that is written once here too.
+
+The techniques are the standard ones, and the references are: generate-and-test with a
+solvability check is search-based procedural content generation (Togelius, Yannakakis,
+Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and
+Nelson, *Procedural Content Generation in Games*, 2016, https://pcgbook.com/); the check is
+breadth-first search, or best-first width search (BFWS: Lipovetzky and Geffner, 2017,
+https://ojs.aaai.org/index.php/AAAI/article/view/11027) where breadth-first would drown; the
+seed drives Python's own Mersenne Twister (https://docs.python.org/3/library/random.html).
 """
 import random
 from collections import deque, namedtuple
@@ -43,6 +59,18 @@ def rng(seed):
     if seed is None:
         seed = random.SystemRandom().randrange(2 ** 32)
     return random.Random(seed), seed
+
+
+def from_profile(random_, profiles, **given):
+    """The layout options for one draw: one of `profiles` at random, with whatever the
+    caller set (anything in `given` that is not None) winning over it.
+
+    A profile is a dict of the options a game's drawing function takes, measured off one of
+    its bundled instances, so a draw filled from it has the shape of a real level.
+    """
+    chosen = dict(random_.choice(profiles))
+    chosen.update({key: value for key, value in given.items() if value is not None})
+    return chosen
 
 
 SearchOutcome = namedtuple("SearchOutcome", ["plan", "exhausted", "expansions"])

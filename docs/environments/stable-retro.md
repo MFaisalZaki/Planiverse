@@ -118,7 +118,10 @@ instance = env.generate_instance(seed=3, solvable=True, search_limit=500)
   the plan in `env.witness`. Off by default: a survival goal is deep, and an emulator
   expansion is not free.
 
-The instance records its `seed` too.
+The opening is random play from the game's own start, the no-op and random starts the Atari
+evaluation protocol uses to vary a deterministic game (Mnih et al., 2015,
+https://doi.org/10.1038/nature14236), and the instance is one of the game's own stages or save
+states. The instance records its `seed` too.
 
 ## Rendering
 

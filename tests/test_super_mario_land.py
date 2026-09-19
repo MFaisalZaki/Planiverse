@@ -6,9 +6,9 @@ show it. The level tests then check that every shipped level can actually be fin
 """
 import pytest
 
-from planiverse.environments.gameboy_py.super_mario_land import (
-    ACCEL, ACTION_NAMES, BOUNCE, GRAVITY, JUMP_SPEED, LEVELS, MAX_FALL,
-    MEASURED_EXPANSIONS, SPEED, TILE,
+from planiverse.environments.games.super_mario_land import (
+    ACCEL, ACTION_NAMES, BOUNCE, GENERATED_EXPANSIONS, GENERATED_LEVELS, GRAVITY, JUMP_SPEED,
+    LEVELS, MAX_FALL, MEASURED_EXPANSIONS, PROFILES, SPEED, TILE,
     SuperMarioLandAction, SuperMarioLandGame, blocked, parse_level,
 )
 from planiverse.planners.width import BFWSSearch, Budget
@@ -311,7 +311,7 @@ def test_the_levels_are_a_ramp_and_the_ramp_is_recorded():
 
 def test_set_index_rejects_a_level_that_does_not_exist(env):
     with pytest.raises(IndexError, match="Invalid index"):
-        env.set_index(len(LEVELS))
+        env.set_index(len(LEVELS) + len(GENERATED_LEVELS))
     with pytest.raises(IndexError):
         env.set_index(-1)
 

@@ -26,11 +26,11 @@ pytestmark = pytest.mark.skipif(
 # One module per environment, plus the facade and the planner: whatever these reach is what
 # an install has to provide.
 ENTRY_POINTS = [
-    "planiverse.environments.gameboy_py.puzznic",
-    "planiverse.environments.gameboy_py.flipull",
-    "planiverse.environments.gameboy_py.lolo",
-    "planiverse.environments.gameboy_py.amazing_tater",
-    "planiverse.environments.gameboy_py.super_mario_land",
+    "planiverse.environments.games.puzznic",
+    "planiverse.environments.games.flipull",
+    "planiverse.environments.games.lolo",
+    "planiverse.environments.games.amazing_tater",
+    "planiverse.environments.games.super_mario_land",
     "planiverse.environments.water_network.environment",
     "planiverse.environments.power_grid.environment",
     "planiverse.environments.crop_management.environment",

@@ -96,7 +96,7 @@ handed out, so a generated room always has a plan within the stated budget; see
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import (
-    bounded_search, interior, place, rng, scatter, solvable_draw, walled_grid,
+    bounded_search, from_profile, interior, place, rng, scatter, solvable_draw, walled_grid,
 )
 
 # ------------------------------------------------------------------------- the alphabet
@@ -1460,10 +1460,212 @@ LEVELS = (
     ),
 )
 
-LEVEL_COUNT = len(LEVELS)
+#: Rooms the generator drew, kept after the cartridge's so that `set_index` offers them
+#: too. Each is `generate_instance(seed)` for the seed in its comment, with the size and
+#: inventory of one of the cartridge's rooms; `tests/test_amazing_tater.py` replays the plan
+#: it was accepted on.
+GENERATED_LEVELS = (
+    (   # seed 4000, defaults; 21 expansions, 7-move plan
+        "#########",
+        "#E..OO..#",
+        "##.....1#",
+        "#.#.a..##",
+        "#####.#.#",
+        "#.#..#.a#",
+        "#O...O..#",
+        "##..#.#.#",
+        "#########",
+    ),
+    (   # seed 4001, defaults; 30 expansions, 8-move plan
+        "##################",
+        "#.....#.^.##.#.#.#",
+        "##..#..E@#^#..^..#",
+        "#.1.##..v#@^.<@>.#",
+        "#........#v@>.v..#",
+        "#......#O.#....O.#",
+        "#.#......#...#...#",
+        "##################",
+    ),
+    (   # seed 4002, defaults; 108 expansions, 8-move plan
+        "##################",
+        "#..............###",
+        "##.#.c.1..##.....#",
+        "#....i....^.#...##",
+        "#^#....O.<@>....##",
+        "#@..#...#.v.###..#",
+        "#v.#.#.......E.#.#",
+        "##################",
+    ),
+    (   # seed 4003, defaults; 69 expansions, 9-move plan
+        "###########",
+        "#1......#.#",
+        "#dg#.c.a..#",
+        "#jm.ai..E.#",
+        "#.......#.#",
+        "#.O.be.be.#",
+        "##....O...#",
+        "##.##..dg.#",
+        "#.a...ajm.#",
+        "###########",
+    ),
+    (   # seed 4004, defaults; 43 expansions, 6-move plan
+        "################",
+        "#..####.a.#....#",
+        "#.##....#.#be.##",
+        "#....#.dgO.#...#",
+        "#..#..1jm.#..O.#",
+        "##^..#.#.E..#.##",
+        "#<@>.....#..##.#",
+        "##v.....#.#..O.#",
+        "#.#.##..##..#..#",
+        "#..O.##.^.##.#.#",
+        "#...#..O@>###..#",
+        "#.....O.v.a.#.##",
+        "################",
+    ),
+    (   # seed 4005, defaults; 23 expansions, 6-move plan
+        "####################",
+        "#.#........dg..#.#c#",
+        "#...#......jm#.##.i#",
+        "#a.#c.##.....E..#..#",
+        "#...i..a...O...#..##",
+        "#..##a#..#.........#",
+        "#....#.............#",
+        "#.#........1....a.a#",
+        "####################",
+    ),
+    (   # seed 4006, defaults; 2214 expansions, 11-move plan
+        "#############",
+        "#..2.#.#....#",
+        "#....##c#...#",
+        "#.#....i#...#",
+        "#Ea..##.....#",
+        "#......#c...#",
+        "##.#.a..i...#",
+        "#.#.1#.#..#.#",
+        "#be.........#",
+        "#..##....#..#",
+        "#.....be...##",
+        "#############",
+    ),
+    (   # seed 4007, defaults; 272 expansions, 11-move plan
+        "################",
+        "#..O^.OOO...##O#",
+        "##^.@..dgO#..O.#",
+        "#<@>v#.jmO.O.#O#",
+        "#.OO..c...O..#O#",
+        "#.#..^i..#..<@>#",
+        "#.#a<@>^.Ec.#v.#",
+        "#..^.v<@>.i.^.##",
+        "#.#@...v..#<@>.#",
+        "#..vOO..#.#.v..#",
+        "#...a....O#.be.#",
+        "#O.1........##O#",
+        "################",
+    ),
+    (   # seed 4008, defaults; 395 expansions, 12-move plan
+        "#############",
+        "###O....#...#",
+        "#...1..#.##.#",
+        "#.a.a##.#.aO#",
+        "#a..#....be.#",
+        "#.....#..E#c#",
+        "#.##...#.#.i#",
+        "#......bebe##",
+        "#############",
+    ),
+    (   # seed 4009, defaults; 55 expansions, 11-move plan
+        "############",
+        "###..c#...O#",
+        "#....i.#..##",
+        "#1......#..#",
+        "#.......#..#",
+        "#.........E#",
+        "#..##a..#..#",
+        "############",
+    ),
+    (   # seed 4010, defaults; 15 expansions, 7-move plan
+        "##########",
+        "#.O^.^..a#",
+        "#.<@<@>.O#",
+        "##.v.v.1.#",
+        "#.<@..^.a#",
+        "#O.v.<@>a#",
+        "#O...^.dg#",
+        "#c.a<@>jm#",
+        "#i.E.v...#",
+        "##########",
+    ),
+    (   # seed 4011, defaults; 22 expansions, 7-move plan
+        "##################",
+        "#.#..#E..^....1..#",
+        "#.....a..@>..^.#.#",
+        "#.#..#....O.<@...#",
+        "##################",
+    ),
+    (   # seed 4012, defaults; 26 expansions, 9-move plan
+        "#############",
+        "#.#dg###....#",
+        "#..jm..#.##a#",
+        "##....####..#",
+        "#.##.##....E#",
+        "#..#...a.#.##",
+        "#.#O1..###..#",
+        "#############",
+    ),
+    (   # seed 4013, defaults; 70 expansions, 16-move plan
+        "##########",
+        "#be..O.EO#",
+        "#dg....^.#",
+        "#jm..#<@.#",
+        "#.O##...##",
+        "#....#...#",
+        "#.#.#..O.#",
+        "#..be^##.#",
+        "#O#.<@>..#",
+        "###.#v##.#",
+        "#...#.O..#",
+        "#..^.O..##",
+        "##<@....O#",
+        "#.#v...1.#",
+        "#..be.O.##",
+        "##########",
+    ),
+    (   # seed 4014, defaults; 26 expansions, 9-move plan
+        "############",
+        "#...#.#.#..#",
+        "##..a..#.E.#",
+        "#...#^...###",
+        "#..##@>#.#.#",
+        "#.^..v...#a#",
+        "##@>...<@>.#",
+        "#...##.##..#",
+        "#...#.1..#.#",
+        "#..#.O.....#",
+        "#.##..#.##.#",
+        "############",
+    ),
+    (   # seed 4015, defaults; 143 expansions, 12-move plan
+        "###############",
+        "#..#.....#..E.#",
+        "##.dg###....#.#",
+        "#..jm...dg....#",
+        "##..##.#jm.#.##",
+        "#..#1...#.....#",
+        "#a....#...#...#",
+        "#..#..#O.#..#.#",
+        "#..#...a..#...#",
+        "###############",
+    ),
+)
+
+#: Everything `set_index` selects between: the cartridge's rooms, then the generated ones.
+INSTANCES = LEVELS + GENERATED_LEVELS
+LEVEL_COUNT = len(INSTANCES)
 
 #: `(letter, the menu entry that reaches the set, how many rooms)`, in index order.
-LEVEL_SETS = (("A", "PUZZLE MODE", 41), ("C", "BEGINNER / ACTION MODE", 64))
+LEVEL_SETS = (("A", "PUZZLE MODE", 41), ("C", "BEGINNER / ACTION MODE", 64),
+              ("G", "generated", len(GENERATED_LEVELS)))
 
 
 def label_for(index):
@@ -1988,7 +2190,7 @@ class AmazingTaterGame(Environment):
                 f"Invalid index: {index}. There are {LEVEL_COUNT} rooms, so the index must "
                 f"be 0-{LEVEL_COUNT - 1}.")
         self.index = index
-        self.instance = LEVELS[index]
+        self.instance = INSTANCES[index]
         self.witness = None
 
     def set_instance(self, instance):
@@ -2000,18 +2202,25 @@ class AmazingTaterGame(Environment):
         self.index = None
         self.witness = None
 
-    def generate_instance(self, seed=None, width=8, height=6, blocks=2, pits=2, turnstiles=1,
-                          taters=1, walls=0.08, solvable=True, min_plan_length=6,
-                          search_limit=50_000, attempts=200):
+    def generate_instance(self, seed=None, width=None, height=None, blocks=None, pits=None,
+                          turnstiles=None, taters=None, walls=None, solvable=True,
+                          min_plan_length=6, search_limit=50_000, attempts=200):
         """Draw a fresh room, select it, and return it as a tuple of row strings.
 
-        The layout options are `generate_room`'s. With `solvable` each draw is searched
-        breadth-first for up to `search_limit` expansions and kept only if a plan of at least
-        `min_plan_length` presses was found, which is then left in `self.witness`.
+        The layout options are `generate_room`'s; each draw takes the ones left unset from
+        the size and inventory of a cartridge room chosen at random (`PROFILES`), so a
+        generated room is shaped and stocked like a real one. With `solvable` each draw is
+        searched breadth-first for up to `search_limit` expansions and kept only if a plan
+        of at least `min_plan_length` presses was found, which is then left in
+        `self.witness`.
         """
         random_, _ = rng(seed)
-        draw = lambda attempt: generate_room(random_, width, height, blocks, pits,  # noqa: E731
-                                             turnstiles, taters, walls)
+
+        def draw(attempt):
+            options = from_profile(random_, PROFILES, width=width, height=height,
+                                   blocks=blocks, pits=pits, turnstiles=turnstiles,
+                                   taters=taters, walls=walls)
+            return generate_room(random_, **options)
         if not solvable:
             instance = next(filter(None, (draw(k) for k in range(attempts))), None)
             if instance is None:
@@ -2093,6 +2302,25 @@ class AmazingTaterGame(Environment):
             print(text)
             print("--------------")
         return rendered
+
+
+def profile(rows):
+    """The shape and inventory of a room, as the options `generate_room` takes to draw one
+    like it: the size of its bounding box inside the walls, its blocks, pits, turnstiles and
+    taters, and the share of that box that is wall."""
+    level = Level(None, rows)
+    state = initial_state(level)
+    height, width = level.shape
+    inside = [cell for row in rows[1:height - 1] for cell in row.ljust(width)[1:width - 1]]
+    return {"width": width - 2, "height": height - 2, "blocks": len(state.blocks),
+            "pits": len(level.pits), "turnstiles": len(state.turnstiles),
+            "taters": len(state.taters),
+            "walls": round(sum(1 for cell in inside if cell == WALL) / len(inside), 3)}
+
+
+#: The shape and inventory of each cartridge room: what `generate_instance` draws a room's
+#: options from when the caller leaves them unset.
+PROFILES = tuple(profile(rows) for rows in LEVELS)
 
 
 def solve(index, limit=2_000_000):

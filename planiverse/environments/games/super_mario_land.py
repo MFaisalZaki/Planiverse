@@ -57,7 +57,7 @@ to the flag, kept only if a route was found, and what that cost in expansions re
 `generate_level` and `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
-from planiverse.environments.generation import rng, solvable_draw, width_search
+from planiverse.environments.generation import from_profile, rng, solvable_draw, width_search
 
 #: Units to a tile: the Game Boy's own granularity. One unit is one pixel; one tick is
 #: four Game Boy frames, which is what lets the measured values below stay integral.
@@ -376,7 +376,7 @@ class SuperMarioLandGame(Environment):
         the right shape.
         """
         super().__init__("super_mario_land")
-        self.levels = tuple(levels) if levels is not None else LEVELS
+        self.levels = tuple(levels) if levels is not None else LEVELS + GENERATED_LEVELS
         self.index = 0
         #: The level `reset` builds: a bundled one after `set_index`, or whatever
         #: `set_instance` was given.
@@ -406,12 +406,15 @@ class SuperMarioLandGame(Environment):
         self.index = None
         self.witness = None
 
-    def generate_instance(self, seed=None, width=40, height=8, gaps=2, platforms=2, enemies=2,
-                          hazards=1, solvable=True, min_expansions=0, search_limit=20_000,
-                          attempts=50):
+    def generate_instance(self, seed=None, width=None, height=None, gaps=None, platforms=None,
+                          enemies=None, hazards=None, solvable=True, min_expansions=0,
+                          search_limit=20_000, attempts=50):
         """Draw a fresh level, select it, and return it as a level string.
 
-        The layout options are `generate_level`'s. With `solvable` each draw is searched with
+        The layout options are `generate_level`'s; each draw takes the ones left unset from
+        the profile of a shipped level chosen at random (`PROFILES`), so a generated level
+        has the length and the density of features of one on the ramp. With `solvable` each
+        draw is searched with
         BFWS(w=2) under the distance to the flag, the check the shipped levels passed, for up
         to `search_limit` expansions, and kept only if a route was found, which is then left
         in `self.witness` with what it cost in `self.witness_expansions`. That cost is the
@@ -420,8 +423,11 @@ class SuperMarioLandGame(Environment):
         the level can be finished, not a shortest one.
         """
         random_, _ = rng(seed)
-        draw = lambda attempt: generate_level(random_, width, height, gaps, platforms,  # noqa: E731
-                                              enemies, hazards)
+
+        def draw(attempt):
+            options = from_profile(random_, PROFILES, width=width, height=height, gaps=gaps,
+                                   platforms=platforms, enemies=enemies, hazards=hazards)
+            return generate_level(random_, **options)
         if not solvable:
             instance = next(filter(None, (draw(k) for k in range(attempts))), None)
             if instance is None:
@@ -730,3 +736,52 @@ M              E  ######  E       #######      E     G
 #: Re-measured when the physics were refitted to the cartridge, which is also when the
 #: levels were re-ordered: one horizontal speed and one jump arc redistributed the search.
 MEASURED_EXPANSIONS = (5, 6, 7, 15, 16, 17, 92, 406, 750, 1564, 2552, 7356)
+
+#: Levels the generator drew, kept after the shipped ramp so that `set_index` offers them
+#: too, and what each cost BFWS(w=2) when it was accepted, in the same currency as
+#: `MEASURED_EXPANSIONS`. Each is `generate_instance(seed)` for the seed in its comment.
+GENERATED_LEVELS = (
+    # seed 5000, defaults; 11 BFWS expansions
+    "\n\n           ######\n    ######\n\nM            E E   E          G\n#########   ##########   #######\n#########   ##########   #######",
+    # seed 5001, defaults; 12 BFWS expansions
+    "\n\n                      ####                 ####\n              ###            ######                 #####\n\nM    E                                     E          E               G\n#######^###^###^###^####   ######^#######^###^####^######^####^#########\n########################   #############################################",
+    # seed 5002, defaults; 9 BFWS expansions
+    "\n\n     ######                 ####       ######\n              ######\n\nM            E              E                E     G\n#################   #################################\n#################   #################################",
+    # seed 5003, defaults; 7 BFWS expansions
+    "\n\n                    #####  ######\n                                    ###\n\nM      E                                  G\n########################   ######  #########\n########################   ######  #########",
+    # seed 5004, defaults; 36 BFWS expansions
+    "\n\n                    #####\n            ####\n\nM      E                    E E           G\n#########   ##   #######   #####  ##  ######\n#########   ##   #######   #####  ##  ######",
+    # seed 5005, defaults; 15 BFWS expansions
+    "\n\n        ####  #####\n\n\nM          E     E      E     G\n#######   ###########  #########\n#######   ###########  #########",
+    # seed 5006, defaults; 8 BFWS expansions
+    "\n\n      ###\n                ####         ###\n\nM                         E               G\n######   ###  ##############################\n######   ###  ##############################",
+    # seed 5007, defaults; 39 BFWS expansions
+    "\n\n                     ###      ####\n             #####\n\nM           E                             G\n######   ######   ##########################\n######   ######   ##########################",
+    # seed 5008, defaults; 8 BFWS expansions
+    "\n\n\n        ####\n\nM    E E E        G\n###########  #######\n###########  #######",
+    # seed 5009, defaults; 26 BFWS expansions
+    "\n\n                                       ######\n          ####\n\nM              E   E              E      E         G\n#########################   #########################\n#########################   #########################",
+    # seed 5010, defaults; 6 BFWS expansions
+    "\n\n\n\n\nM                E  E        E      G\n#######   ##  ########^##  ####^######\n#######   ##  ###########  ###########",
+    # seed 5011, defaults; 9 BFWS expansions
+    "\n\n                         #####   ###\n       ##### #####\n\nM        E                         E          E    G\n###############  ####################################\n###############  ####################################",
+)
+GENERATED_EXPANSIONS = (11, 12, 9, 7, 36, 15, 8, 39, 8, 26, 6, 9,)
+
+
+def profile(level):
+    """The shape of a level, as the options `generate_level` takes to draw one like it: its
+    size and how many gaps, platforms, enemies and hazards it holds."""
+    tiles, _start, enemies, _goal = parse_level(level)
+    height, width = len(tiles), len(tiles[0])
+    floor = tiles[height - 2]
+    gaps = sum(1 for x in range(1, width) if floor[x] == AIR and floor[x - 1] != AIR)
+    platforms = sum(1 for y in range(height - 3) for x in range(width)
+                    if tiles[y][x] == SOLID and (x == 0 or tiles[y][x - 1] != SOLID))
+    return {"width": width, "height": height, "gaps": gaps, "platforms": platforms,
+            "enemies": len(enemies), "hazards": sum(1 for cell in floor if cell == HAZARD)}
+
+
+#: The shape of each shipped level: what `generate_instance` draws a level's options from
+#: when the caller leaves them unset.
+PROFILES = tuple(profile(level) for level in LEVELS)

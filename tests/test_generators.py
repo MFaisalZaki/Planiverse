@@ -191,7 +191,7 @@ def test_draw_until_refuses_to_hand_out_an_unchecked_draw():
 
 def test_flipull_targets_are_the_fewest_blocks_a_stage_reaches():
     """The bundled stages were made the way the generator makes them, so the two agree."""
-    from planiverse.environments.gameboy_py.flipull import STAGES, fewest_blocks_reachable
+    from planiverse.environments.games.flipull import STAGES, fewest_blocks_reachable
 
     for index in (0, 7, 31):
         fewest, exhausted, plan, _ = fewest_blocks_reachable(STAGES[index][0])
@@ -224,7 +224,7 @@ def test_mario_levels_are_checked_the_way_the_shipped_ones_were():
     """BFWS(w=2) under the distance to the flag accepted the shipped levels and recorded what
     it spent as `MEASURED_EXPANSIONS`; a generated level gets the same check and the same
     number, so `min_expansions` is a floor on that ramp."""
-    from planiverse.environments.gameboy_py.super_mario_land import MEASURED_EXPANSIONS
+    from planiverse.environments.games.super_mario_land import MEASURED_EXPANSIONS
 
     env, _ = fresh("super_mario_land", seed=1)
     assert env.witness_expansions >= 1
@@ -239,7 +239,7 @@ def test_mario_levels_are_checked_the_way_the_shipped_ones_were():
 def test_amazing_tater_solve_and_the_generator_share_one_search():
     """`solve` found the stored solutions; the generator checks a drawn room with the same
     breadth-first search, so an accepted room passes exactly the test the bundled ones did."""
-    from planiverse.environments.gameboy_py.amazing_tater import solve
+    from planiverse.environments.games.amazing_tater import solve
 
     assert len(solve(0)) == 38 and solve(0, limit=3) is None
     env, _ = fresh("amazing_tater", seed=4)

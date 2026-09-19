@@ -157,6 +157,18 @@ BENCHMARKS = ("tiny", "tiny-hard", "tiny-small", "small", "small-honeypot", "sma
               "small-gen", "small-gen-rgoal", "medium-gen", "large-gen", "huge-gen",
               "pocp-1-gen", "pocp-2-gen")
 
+#: Networks the generator drew, offered by `set_index` after the benchmarks. Each is
+#: `generate_instance(seed, hosts, services)` as recorded, and NASim rebuilds the same
+#: network from the seed; `solved_at` is the depth the check solved it at.
+GENERATED = (
+    {"hosts": 5, "services": 3, "seed": 8000, "solved_at": 6},
+    {"hosts": 8, "services": 3, "seed": 8001, "solved_at": 7},
+    {"hosts": 8, "services": 4, "seed": 8002, "solved_at": 8},
+    {"hosts": 12, "services": 4, "seed": 8003, "solved_at": 6},
+    {"hosts": 12, "services": 5, "seed": 8004, "solved_at": 7},
+    {"hosts": 16, "services": 5, "seed": 8005, "solved_at": 7},
+)
+
 
 class EnvNASim(Environment):
     """Penetration testing against a NASim network.
@@ -193,11 +205,15 @@ class EnvNASim(Environment):
         return self.instance.get("yaml") if self.instance else None
 
     def set_index(self, index):
-        if not 0 <= index < len(BENCHMARKS):
+        count = len(BENCHMARKS) + len(GENERATED)
+        if not 0 <= index < count:
             raise IndexError(
-                f"Invalid index: {index}. There are {len(BENCHMARKS)} scenarios, so the "
-                f"index must be 0-{len(BENCHMARKS) - 1}.")
-        self.set_instance({"scenario": BENCHMARKS[index]})
+                f"Invalid index: {index}. There are {count} scenarios, so the "
+                f"index must be 0-{count - 1}.")
+        if index < len(BENCHMARKS):
+            self.set_instance({"scenario": BENCHMARKS[index]})
+        else:
+            self.set_instance(dict(GENERATED[index - len(BENCHMARKS)]))
         self.scenario_index = index
 
     def set_instance(self, instance):

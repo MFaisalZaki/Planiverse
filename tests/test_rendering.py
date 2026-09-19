@@ -5,7 +5,7 @@ pytest.importorskip("PIL", reason="Pillow is not installed")
 
 from PIL import Image  # noqa: E402
 
-from planiverse.environments.gameboy_py.puzznic import PuzznicGame  # noqa: E402
+from planiverse.environments.games.puzznic import PuzznicGame  # noqa: E402
 from planiverse.rendering import render_state, render_trace  # noqa: E402
 
 

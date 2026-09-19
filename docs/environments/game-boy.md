@@ -170,7 +170,10 @@ instance = env.generate_instance(seed=3, solvable=True, search_limit=500)
   This is off by default, because an emulator expansion is milliseconds and a search of a
   real level is minutes.
 
-The instance records the `seed` it came from as well, so a file of generated instances is
+The opening is random play from the game's own start, the no-op and random starts the Atari
+evaluation protocol uses to vary a deterministic game (Mnih et al., 2015,
+https://doi.org/10.1038/nature14236), and the instance is one of the game's own stages or save
+states. The instance records the `seed` it came from as well, so a file of generated instances is
 also a file of seeds.
 
 ## Rendering

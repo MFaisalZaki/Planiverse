@@ -119,6 +119,12 @@ SCENARIOS = (
     (6, dict(zones=24, years=50, rain="design")),
     (7, dict(zones=24, years=50, rain="klimaatlas")),
     (8, dict(zones=30, years=60, rain="klimaatlas", measures=("elevate1", "elevate2"))),
+    (9, dict(zones=10, years=30, rain="design", measures=("elevate1", "resist50"))),
+    (10, dict(zones=12, years=40, rain="klimaatlas", start_year=30)),
+    (11, dict(zones=16, years=50, rain="klimaatlas", flood_share=0.6)),
+    (12, dict(zones=20, years=40, rain="design", period=2)),
+    (13, dict(zones=24, years=60, rain="klimaatlas", start_year=20, measures=("elevate1", "elevate2"))),
+    (14, dict(zones=36, years=60, rain="design", measures=("elevate1", "elevate2", "resist25", "resist50"))),
 )
 
 

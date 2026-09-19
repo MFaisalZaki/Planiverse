@@ -7,7 +7,7 @@ the novelty table at every committed action can be seen to matter.
 import numpy as np
 import pytest
 
-from planiverse.environments.gameboy_py.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic import PuzznicGame
 from planiverse.planners.width import (
     Budget, DepthNoveltyTable, IWSearch, PiIW, PolicyNetwork, RolloutIW,
 )

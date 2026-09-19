@@ -55,7 +55,7 @@ SECURE_RHO = 1.0
 HORIZON = 10
 
 Scenario = namedtuple("Scenario", ["chronic", "line", "rho_after_trip",
-                                   "blackout_in", "solved_at"])
+                                   "blackout_in", "solved_at", "offset"], defaults=(0,))
 
 #: How far into a time series a generated contingency may start, and how soon the untended
 #: grid has to black out for the draw to count as doomed rather than self-healing.
@@ -94,6 +94,14 @@ SCENARIOS = (
     Scenario(1, 3, 1.266, 4, 1),
     Scenario(1, 17, 1.914, 2, 1),
     Scenario(2, 9, 1.664, 2, 1),
+    # Drawn by `generate_instance` at the seed each line records: the same N-1 test,
+    # at a step into the series rather than at its start.
+    Scenario(1, 8, 1.027, 2, 1, offset=50),   # seed 9000
+    Scenario(2, 19, 1.059, 4, 1, offset=131),   # seed 9001
+    Scenario(0, 9, 1.647, 2, 1, offset=151),   # seed 9002
+    Scenario(2, 8, 1.198, 2, 1, offset=147),   # seed 9003
+    Scenario(0, 9, 1.61, 2, 1, offset=125),   # seed 9004
+    Scenario(2, 9, 1.638, 2, 1, offset=132),   # seed 9005
 )
 
 
@@ -232,7 +240,8 @@ class PowerGridEnv(Environment):
                 f"Invalid index: {index}. There are {len(SCENARIOS)} scenarios, so the "
                 f"index must be 0-{len(SCENARIOS) - 1}.")
         scenario = SCENARIOS[index]
-        self.set_instance({"chronic": scenario.chronic, "line": scenario.line, "offset": 0,
+        self.set_instance({"chronic": scenario.chronic, "line": scenario.line,
+                           "offset": scenario.offset,
                            "rho_after_trip": scenario.rho_after_trip,
                            "blackout_in": scenario.blackout_in,
                            "solved_at": scenario.solved_at})

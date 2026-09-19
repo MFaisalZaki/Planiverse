@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("nasim", reason="nasim is not installed")
 
 from planiverse.environments.network_attack.network_attack import (  # noqa: E402
-    EnvNASim, NASimState,
+    BENCHMARKS, GENERATED, EnvNASim, NASimState,
 )
 
 from conftest import assert_state_contract  # noqa: E402
@@ -45,8 +45,9 @@ def test_set_index_maps_to_benchmark_names():
 
 
 def test_set_index_rejects_unknown_index():
-    with pytest.raises(IndexError, match="18 scenarios"):
-        EnvNASim().set_index(18)
+    count = len(BENCHMARKS) + len(GENERATED)
+    with pytest.raises(IndexError, match=f"{count} scenarios"):
+        EnvNASim().set_index(count)
 
 
 def test_scenario_name_can_be_given_directly():

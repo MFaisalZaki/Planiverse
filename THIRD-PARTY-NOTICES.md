@@ -56,7 +56,7 @@ not affiliated with, endorsed by, or sponsored by any of the above.
 
 ## Game mechanics and level data
 
-The environments in `planiverse/environments/gameboy_py/` were written independently
+The environments in `planiverse/environments/games/` were written independently
 from behaviour observed while the original titles were played. They are not ports,
 translations or adaptations of the original programs.
 
