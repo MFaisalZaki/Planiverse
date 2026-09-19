@@ -1,14 +1,14 @@
 """Tests for the pure-Python Adventures of Lolo environment.
 
 The rules are pure functions of a room and a position, so pushing, one-way passes, magic
-shots and Medusa's line of sight are all tested directly on hand-written rooms; the 163
+shots and Medusa's line of sight are all tested directly on hand-written rooms; the 100
 shipped rooms are checked for shape and labelling; and the environment contract is checked
 on top.
 """
 import pytest
 
 from planiverse.environments.games.lolo import (
-    DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, GENERATED_ROOMS, INSTANCES, MEDUSA_SHIELDS,
+    DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, MEDUSA_SHIELDS,
     PROFILES, PUSHABLE_ONTO, RIVER, ROOMS,
     SHOOT, SHOTS_PER_MAGIC_HEART, WALKABLE, LoloAction, LoloGame, Room, blocked_by_medusa,
     move, one_way_allows, parse_room, render, room_label, shoot,
@@ -59,8 +59,8 @@ def room_with(**cells):
 
 # ------------------------------------------------------------------------ the catalogue
 
-def test_the_cartridges_163_rooms_are_all_here():
-    assert len(ROOMS) == 163
+def test_the_first_100_of_the_cartridges_163_rooms_are_here():
+    assert len(ROOMS) == 100
 
 
 def test_every_room_has_exactly_one_lolo_and_one_door():
@@ -78,17 +78,13 @@ def test_every_room_is_eight_by_eight():
 
 
 def test_the_room_labels_follow_the_cartridges_own_grouping():
-    """19 tutorial puzzles stored twice, then 5x14, then 10x5, then 5 Pro rooms."""
+    """19 tutorial puzzles stored twice, then intermediate floors of 14: the cartridge goes on
+    to ten advanced floors of 5 and five Pro rooms, which are past the hundred that ship."""
     assert room_label(0) == "tutorial 1a"
     assert room_label(1) == "tutorial 1b"
     assert room_label(37) == "tutorial 19b"
     assert room_label(38) == "int 1-1"
-    assert room_label(107) == "int 5-14"
-    assert room_label(108) == "adv 1-1"
-    assert room_label(157) == "adv 10-5"
-    assert room_label(len(ROOMS)) == "generated 1"
-    assert room_label(158) == "pro 1"
-    assert room_label(162) == "pro 5"
+    assert room_label(99) == "int 5-6"
 
 
 def test_the_tutorial_stores_each_puzzle_twice_but_not_identically():
@@ -105,8 +101,9 @@ def test_the_tutorial_stores_each_puzzle_twice_but_not_identically():
 
 
 def test_exact_rooms_are_the_ones_with_only_the_two_immobile_enemies():
-    """26 of them. The rest hold an enemy this module leaves standing still (see the docs)."""
-    assert len(EXACT_ROOMS) == 26
+    """21 of the hundred that ship (26 of the cartridge's 163). The rest hold an enemy this
+    module leaves standing still (see the docs)."""
+    assert len(EXACT_ROOMS) == 21
     for index in EXACT_ROOMS:
         assert Room(index, ROOMS[index]).exact
         assert not (set(ROOMS[index]) & set("LRAGKN"))
@@ -429,7 +426,7 @@ def test_reset_reports_what_the_room_is():
 def test_set_index_refuses_a_room_that_does_not_exist():
     instance = LoloGame()
     with pytest.raises(IndexError):
-        instance.set_index(len(INSTANCES))
+        instance.set_index(len(ROOMS))
 
 
 def test_successors_are_pairs_and_never_the_state_itself():

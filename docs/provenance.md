@@ -20,7 +20,7 @@ with the original rather than smoothing it over:
 
 - [`lolo.py`](../planiverse/environments/games/lolo.py)'s "Where this differs from the
   cartridge" is the model the others follow: six of the eight enemies are frozen, `EXACT_ROOMS`
-  names the 26 of 163 rooms the model is therefore faithful for, and the divergence is shown
+  names the 21 of the 100 shipped rooms the model is therefore faithful for, and the divergence is shown
   to run in both directions rather than being presented as a relaxation.
 - [`flipull.py`](../planiverse/environments/games/flipull.py) is the most explicit: it
   calls itself "a Flipull-*like* environment with a stated rule set, not a clone", because over
@@ -45,9 +45,9 @@ from the original titles, and they differ title by title:
 
 | Environment | Shipped | Derived from the original? | How |
 |---|---|---|---|
-| Lolo | 163 rooms | Yes | Decoded out of the cartridge's room table. Nothing transcribed by hand |
-| Amazing Tater | 105 rooms | Yes | Dumped from the board the running game composes in work RAM. Nothing transcribed by hand. The 41 PUZZLE rooms and 64 BEGINNER/ACTION rooms; the 96 PRACTICE rooms are deliberately absent |
-| Puzznic | 128 rounds | Yes | The first 50 transcribed by hand, the rest read out of the running game's grid memory |
+| Lolo | 100 rooms, the cartridge's first 100 of 163 | Yes | Decoded out of the cartridge's room table. Nothing transcribed by hand |
+| Amazing Tater | 100 rooms, of the cartridge's 105 | Yes | Dumped from the board the running game composes in work RAM. Nothing transcribed by hand. The 41 PUZZLE rooms and 64 BEGINNER/ACTION rooms; the 96 PRACTICE rooms are deliberately absent |
+| Puzznic | 100 rounds, the cartridge's first 100 of 128 | Yes | The first 50 transcribed by hand, the rest read out of the running game's grid memory |
 | Flipull | 32 stages | **No: contract only** | Only the board size and CLEAR target match the original's 32-entry stage table. The arrangements are this project's own: the original draws each stage from an RNG seeded by boot timing, so there is no canonical layout to copy |
 
 So three environments ship layouts taken from the original titles and one does not. Every

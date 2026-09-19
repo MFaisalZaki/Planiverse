@@ -1,7 +1,7 @@
 # Adventures of Lolo
 
 This environment implements Adventures of Lolo's puzzle in Python rather than emulating the
-cartridge, over the cartridge's own 163 rooms. It needs no ROM, no emulator, and no dependencies.
+cartridge, over the first 100 of the cartridge's own 163 rooms. It needs no ROM, no emulator, and no dependencies.
 
 Lolo walks the four directions, one cell at a time, on an 8 × 8 board. He has to collect every
 heart framer (i.e., the collectible hearts that open the door), and then stand on the open door.
@@ -11,7 +11,7 @@ We measured every rule below on the cartridge rather than taking it from a manua
 - **Class:** `LoloGame`
 - **Import:** `from planiverse.environments.games.lolo import LoloGame, LoloAction`
 - **Source:** [`planiverse/environments/games/lolo.py`](../../planiverse/environments/games/lolo.py)
-- **Instances:** 183 rooms, indices `0` to `182`: the cartridge's 163, then 20 the generator drew
+- **Instances:** 100 rooms, indices `0` to `99`: the first 100 of the cartridge's 163
 - **Generator:** `generate_instance(seed, hearts=None, framers=None, snakeys=None, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
 
@@ -93,7 +93,7 @@ cartridge has six river codes and they do not behave alike; we measured each one
 
 | Code | Push an egg into it | Lolo steps on |
 |---|---|---|
-| `$82` | refused | n/a, and it appears in none of the 163 rooms |
+| `$82` | refused | n/a, and it appears in none of the cartridge's 163 rooms |
 | `$84`, `$86`, `$87` | accepted | rides, and the raft stays put |
 | `$83` | accepted | rides, and the raft drifts **up** |
 | `$85` | accepted | rides, and the raft drifts **down** |
@@ -142,7 +142,7 @@ makes BFWS clear it here too. Until somebody probes it, `tutorial 13a` is an ope
 than a room with no plan.
 
 We measured what these approximations cost. Breadth-first search over this module found a plan for
-32 of the 163 rooms, and we replayed every one of those plans on the real cartridge:
+32 of the cartridge's 163 rooms, and we replayed every one of those plans on the real cartridge:
 
 | | plans found | cleared the room on the cartridge |
 |---|---|---|
@@ -202,15 +202,17 @@ game = make("lolo", index=38)
 
 ## Rooms
 
-The environment ships 163 rooms at indices `0` to `162`, the cartridge's own order. They are
-decoded out of the cartridge's room table rather than transcribed by hand.
+The environment ships the first 100 of the cartridge's 163 rooms at indices `0` to `99`, the
+cartridge's own order. They are decoded out of the cartridge's room table rather than transcribed
+by hand.
 
 | Indices | `label` | What |
 |---|---|---|
 | 0 to 37 | `tutorial 1a` … `tutorial 19b` | 19 puzzles, each stored twice |
-| 38 to 107 | `int 1-1` … `int 5-14` | 5 intermediate floors of 14 |
-| 108 to 157 | `adv 1-1` … `adv 10-5` | 10 advanced floors of 5 |
-| 158 to 162 | `pro 1` … `pro 5` | the Pro rooms |
+| 38 to 99 | `int 1-1` … `int 5-6` | 4 intermediate floors of 14 and the first 6 of the fifth |
+
+The cartridge goes on to the rest of that floor, ten advanced floors of 5 and five Pro rooms,
+which are past the hundred that ship.
 
 Print any of them:
 
@@ -226,10 +228,6 @@ $ python -m planiverse.environments.games.lolo --room 0
   |#.h..@.#|
   |########|
 ```
-
-Indices `163` to `182` are rooms the generator drew (`GENERATED_ROOMS`), labelled `generated 1`
-onward, each stocked like one of the cartridge's exactly modelled rooms, with the seed beside
-it in the module and the plan it was accepted on in `tests/data/lolo_solutions.json`.
 
 ## Generating rooms
 

@@ -3,13 +3,13 @@
 Four parts. The first pins the *rules* down on hand-made rooms, because a rule set only ever
 exercised through the shipped levels is a rule set nobody can argue with, and four of these
 rules exist in the form they do only because the cartridge disagreed with a simpler guess.
-The second checks the 105 rooms themselves. The third checks the environment contract. The
+The second checks the 100 rooms themselves. The third checks the environment contract. The
 fourth replays stored solutions.
 """
 import pytest
 
 from planiverse.environments.games.amazing_tater import (
-    ACTIONS, ARM_GLYPHS, BLOCK_GLYPHS, GENERATED_LEVELS, INSTANCES, LEVELS, LEVEL_COUNT,
+    ACTIONS, ARM_GLYPHS, BLOCK_GLYPHS, LEVELS, LEVEL_COUNT,
     LEVEL_SETS, PROFILES, SETTLED_GLYPHS,
     SWITCH, AmazingTaterAction, AmazingTaterGame, AmazingTaterState, Level, advance, board,
     friendly, group_blocks, initial_state, label_for, parse_level, solve,
@@ -327,20 +327,18 @@ def test_the_controls_pass_on_when_a_tater_goes_home():
 
 def test_every_room_parses_and_has_a_tater_and_a_flag():
     for index in range(LEVEL_COUNT):
-        level = Level(index, INSTANCES[index])
+        level = Level(index, LEVELS[index])
         assert level.exit is not None, level.label
         assert level.start_taters, level.label
 
 
 def test_the_sets_add_up():
     assert LEVEL_COUNT == sum(size for _letter, _mode, size in LEVEL_SETS)
-    assert len(LEVELS) == 105 and LEVEL_COUNT == 105 + len(GENERATED_LEVELS)
+    assert len(LEVELS) == LEVEL_COUNT == 100
     assert label_for(0) == "A-01"
     assert label_for(40) == "A-41"
     assert label_for(41) == "C-01"
-    assert label_for(104) == "C-64"
-    if GENERATED_LEVELS:
-        assert label_for(105) == "G-01"
+    assert label_for(99) == "C-59"
 
 
 def test_every_room_round_trips_through_its_own_renderer():
@@ -350,14 +348,14 @@ def test_every_room_round_trips_through_its_own_renderer():
     directions and turnstile shapes all have to survive the trip.
     """
     for index in range(LEVEL_COUNT):
-        level = Level(index, INSTANCES[index])
+        level = Level(index, LEVELS[index])
         printed = board(level, initial_state(level))
-        assert printed == tuple(row.rstrip() for row in INSTANCES[index]), label_for(index)
+        assert printed == tuple(row.rstrip() for row in LEVELS[index]), label_for(index)
 
 
 def test_every_arm_belongs_to_a_pivot_and_every_pivot_has_its_arms():
     for index in range(LEVEL_COUNT):
-        level = Level(index, INSTANCES[index])
+        level = Level(index, LEVELS[index])
         for pivot, mask in level.start_turnstiles:
             assert 1 <= mask <= 15, label_for(index)
             assert pivot not in level.walls
@@ -367,7 +365,7 @@ def test_no_block_square_claims_a_neighbour_that_is_not_one():
     """Every square's link mask agrees with its neighbours'. True on the cartridge for all
     201 rooms, and the reason blocks can be recovered from the glyphs at all."""
     for index in range(LEVEL_COUNT):
-        level = Level(index, INSTANCES[index])
+        level = Level(index, LEVELS[index])
         squares = {cell for block in level.start_blocks for cell in block}
         for block in level.start_blocks:
             for row, col in block:
@@ -381,10 +379,10 @@ def test_a_room_is_the_size_the_cartridge_says_it_is():
     """Every stored room is its width and height plus a one-cell border, which is what
     `LoadLevel` writes to `$C2BD` and `$C2BE`."""
     game = AmazingTaterGame()
-    for index in (0, 3, 40, 41, 104):
+    for index in (0, 3, 40, 41, 99):
         game.set_index(index)
         _, info = game.reset()
-        height, width = Level(index, INSTANCES[index]).shape
+        height, width = Level(index, LEVELS[index]).shape
         assert info["size"] == (width - 2, height - 2)
 
 

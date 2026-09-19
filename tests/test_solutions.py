@@ -20,12 +20,8 @@ import os
 
 import pytest
 
-from planiverse.environments.games.amazing_tater import INSTANCES as TATER_INSTANCES
-from planiverse.environments.games.amazing_tater import LEVELS as TATER_LEVELS
-from planiverse.environments.games.amazing_tater import AmazingTaterGame
 from planiverse.environments.games.flipull import INSTANCES as FLIPULL_INSTANCES
 from planiverse.environments.games.flipull import FlipullGame
-from planiverse.environments.games.lolo import INSTANCES as LOLO_INSTANCES
 from planiverse.environments.games.lolo import EXACT_ROOMS, ROOMS, LoloGame
 from planiverse.environments.games.puzznic import PuzznicGame
 
@@ -74,31 +70,10 @@ def test_puzznic_solution_coverage_does_not_shrink():
     unsolved = sorted(set(range(50)) - set(PUZZNIC_SOLUTIONS))
     assert unsolved == [15, 17, 28, 34, 35, 42, 46, 47, 49], \
         "the set of Puzznic levels without a stored solution changed"
-    # Levels 50-127 were added from the cartridge after the benchmark ran, so none of them
+    # Levels 50-99 were added from the cartridge after the benchmark ran, so none of them
     # has been solved yet. They are listed here rather than silently uncovered.
-    assert not set(range(50, 128)) & set(PUZZNIC_SOLUTIONS), \
-        "levels 50-127 now have solutions; record them and update this test"
-
-
-# ---------------------------------------------------------------------- Amazing Tater
-
-#: The cartridge rooms' plans are re-found by `solve` in `test_amazing_tater.py`; these are
-#: the generated rooms', stored when each was accepted.
-TATER_SOLUTIONS = solutions("amazing_tater")
-
-
-@pytest.mark.parametrize("index", sorted(TATER_SOLUTIONS))
-def test_the_stored_amazing_tater_solution_still_clears_its_room(index):
-    game = AmazingTaterGame()
-    game.set_index(index)
-    game.reset()
-    plan = TATER_SOLUTIONS[index]
-    assert game.validate(plan), \
-        f"amazing tater room {index} is no longer cleared by its stored {len(plan)}-action plan"
-
-
-def test_every_generated_amazing_tater_room_has_a_solution():
-    assert sorted(TATER_SOLUTIONS) == list(range(len(TATER_LEVELS), len(TATER_INSTANCES)))
+    assert not set(range(50, 100)) & set(PUZZNIC_SOLUTIONS), \
+        "levels 50-99 now have solutions; record them and update this test"
 
 
 # ------------------------------------------------------------------------------- Lolo
@@ -110,7 +85,7 @@ LOLO_SOLUTIONS = solutions("lolo")
 #: than the unsolved one: it is much the shorter list, and it is the one that must not shrink.
 LOLO_SOLVED = [
     0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 38, 39, 41, 45, 54, 56,
-    57, 66, 75, 81, 120, 158, 160,
+    57, 66, 75, 81,
 ]
 
 #: The plans that also cleared their room on the original game, recorded when they were
@@ -139,10 +114,8 @@ def test_lolo_solution_coverage_does_not_shrink():
     *losing* its plan fails here rather than quietly widening the gap, which is the failure
     that matters: it means the room changed.
     """
-    assert sorted(index for index in LOLO_SOLUTIONS if index < len(ROOMS)) == LOLO_SOLVED, \
+    assert sorted(LOLO_SOLUTIONS) == LOLO_SOLVED, \
         "the set of Lolo rooms with a stored solution changed"
-    assert all(index in LOLO_SOLUTIONS for index in range(len(ROOMS), len(LOLO_INSTANCES))), \
-        "every generated room ships with the plan it was accepted on"
 
 
 def test_every_lolo_plan_for_an_exactly_modelled_room_was_validated_on_the_original():
@@ -162,18 +135,18 @@ def test_most_lolo_plans_for_approximated_rooms_do_not_survive_the_original():
     """The other half of the same claim, and the reason `EXACT_ROOMS` exists.
 
     For a room whose enemies the model freezes, a plan found here is a plan against a strictly
-    easier puzzle. Three of the twenty-five happen to work anyway; the rest walk Lolo into an
+    easier puzzle. Three of the twenty-two happen to work anyway; the rest walk Lolo into an
     enemy that was not standing still. This is pinned so that the size of the gap is a number
     somebody has to look at rather than a caveat in a docstring.
     """
-    approximated = {index for index in LOLO_SOLUTIONS if index < len(ROOMS)} - set(EXACT_ROOMS)
+    approximated = set(LOLO_SOLUTIONS) - set(EXACT_ROOMS)
     survived = approximated & set(LOLO_CARTRIDGE_VALIDATED)
-    assert len(approximated) == 25 and sorted(survived) == [12, 13, 20]
+    assert len(approximated) == 22 and sorted(survived) == [12, 13, 20]
 
 
 @pytest.mark.parametrize("name,count", [
     ("puzznic", len(PuzznicGame().levelsstr)), ("flipull", len(FLIPULL_INSTANCES)),
-    ("lolo", len(LOLO_INSTANCES)),
+    ("lolo", len(ROOMS)),
 ])
 def test_solution_indices_are_in_range(name, count):
     for index in solutions(name):

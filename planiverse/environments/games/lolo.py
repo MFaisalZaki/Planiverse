@@ -63,7 +63,7 @@ in frames and not in moves: board the raft on tutorial 14a's channel and Lolo sl
 every 160 frames with no button held at all. This module has no notion of time and would have
 to invent one, so it declines the push and leaves those rooms alone.
 
-`$82` never appears in any of the 163 rooms, and 71 of the 111 river rooms have no current at
+`$82` never appears in any of the cartridge's 163 rooms, and 71 of the 111 river rooms have no current at
 all, so the rule this module keeps is the cartridge's own for all but the 40 rooms that drift.
 Rafts are on by default for that reason. int 1-3 is solved here in the cartridge's own twelve
 actions, and replaying that plan on the cartridge clears the room.
@@ -78,10 +78,10 @@ here, which was never tested on the cartridge and is refused rather than guessed
 
 ## Where the rooms came from
 
-All 163 of them were decoded out of the cartridge's room table, at matching indices. Nothing
-was transcribed by hand.
+The cartridge has 163 rooms and the first 100 ship here, decoded out of its room table at
+matching indices. Nothing was transcribed by hand.
 
-The 163 slots hold 144 distinct puzzles: the tutorial's 19 are each stored twice, once as the
+The cartridge's 163 slots hold 144 distinct puzzles: the tutorial's 19 are each stored twice, once as the
 demonstration the game plays for you and once as the room to try, and the two halves of a
 pair are near-identical but not equal.
 
@@ -113,12 +113,10 @@ SNAKEY, LEEPER, GOL, ROCKY, ALMA, SKULL, MEDUSA, DON_MEDUSA = "S", "L", "G", "R"
 ENEMY_GLYPHS = frozenset({SNAKEY, LEEPER, GOL, ROCKY, ALMA, SKULL, MEDUSA, DON_MEDUSA})
 HEART_GLYPHS = frozenset({HEART, MAGIC_HEART})
 
-#: How the 163 slots are grouped. `$26AA` computes `floor = (room - 38) // 14` from the room
+#: How the cartridge's slots are grouped. `$26AA` computes `floor = (room - 38) // 14` from the room
 #: number, which is what fixes 38 as the end of the tutorial.
 TUTORIAL_END = 38                # 19 puzzles, each stored twice
 INTERMEDIATE_START, INTERMEDIATE_PER_FLOOR = 38, 14
-ADVANCED_START, ADVANCED_PER_FLOOR = 108, 5
-PRO_START = 158
 
 
 def room_label(index):
@@ -130,18 +128,11 @@ def room_label(index):
     """
     if index is None:
         return "generated"
-    if index >= len(ROOMS):
-        return f"generated {index - len(ROOMS) + 1}"
     if index < TUTORIAL_END:
         pair, half = divmod(index, 2)
         return f"tutorial {pair + 1}{'a' if half == 0 else 'b'}"
-    if index < ADVANCED_START:
-        floor, level = divmod(index - INTERMEDIATE_START, INTERMEDIATE_PER_FLOOR)
-        return f"int {floor + 1}-{level + 1}"
-    if index < PRO_START:
-        floor, level = divmod(index - ADVANCED_START, ADVANCED_PER_FLOOR)
-        return f"adv {floor + 1}-{level + 1}"
-    return f"pro {index - PRO_START + 1}"
+    floor, level = divmod(index - INTERMEDIATE_START, INTERMEDIATE_PER_FLOOR)
+    return f"int {floor + 1}-{level + 1}"
 
 
 #: An enemy that has been shot. Not a cell code (the cartridge draws it as a sprite), but it
@@ -174,8 +165,8 @@ SHOOT = "shoot"
 
 SIZE = 8
 
-#: The cartridge's 163 rooms, decoded from bank 13 and stored at matching indices, rows
-#: separated by `|`. See the module docstring.
+#: The first 100 of the cartridge's 163 rooms, decoded from bank 13 and stored at matching
+#: indices, rows separated by `|`. See the module docstring.
 ROOMS = (
     #   0  tutorial 1a
     "##D#####|#......#|#....TTT|#....SH#|#....###|#......#|#.h..@.#|########",
@@ -377,132 +368,6 @@ ROOMS = (
     "#~~~.h..|...O.S.#|ho.~.@~~|#O.~.~~h|#..#~#~~|#..~~~o#|#..~oOD.|#~~#.###",
     #  99  int 5-6
     "Dh..>.#M|~x~~#.H~|...A#...|..S.~#..|.#H#.~#.|.#..@.~.|H~~#~**.|........",
-    # 100  int 5-7
-    "..M.D.oM|###v.*v#|@..*.TO.|.Tv..o*.|h*T....H|AO<vS~~#|.**.~~##|....####",
-    # 101  int 5-8
-    "##H***#D|#.......|h.M..#HH|....G...|O.H..G.H|......*.|.######.|@h.....A",
-    # 102  int 5-9
-    "~A##H..M|~v~~hG#.|#~A*.**M|G~~~#...|h@<#*..D|.S#H***h|..<*....|H.###..M",
-    # 103  int 5-10
-    "@.....>~|..O<hS#~|.S~^.~#~|.~~=~~H~|h~hGM~S~|.#G.S~~~|~~~~~~=.|~~~~~~~D",
-    # 104  int 5-11
-    "hG.>@*.K|..T#.*,D|..MTh.*~|^.MT~~v~|..T##..~|...^.S.~|...#.<..|h~~~~.#M",
-    # 105  int 5-12
-    "~~~~~~~D|..#####T|=~##.##M|hG@....T|h,>#^Gv#|*O>~.O.~|.T>~~~GS|NT....H.",
-    # 106  int 5-13
-    "#H.~h..#|##.~.o.G|M.T~...D|#..O#~~~|#...#H~=|#.S.##~.|...hS...|h@......",
-    # 107  int 5-14
-    "#.h=<..H|.@.~##..|DS<~H#..|G~=~~~=~|#~v#o~^#|#....~<H|#.S..~..|#h.~~~#M",
-    # 108  adv 1-1
-    "N...T~h~|.T.h<~~~|.^>O..o@|...ST..#|...~<..*|...T^.O.|~~~~T~v.|HD~TH~o<",
-    # 109  adv 1-2
-    "Gh~~~~~#|~S~~~GM~|Hh~~hh~~|..~~~~~~|.@~.S..~|oS~.###~|~.~=~~~M|D.....M.",
-    # 110  adv 1-3
-    "Moh<vD.H|#..T~.TH|.#H.~TT.|.ooO~T.T|....~..T|#...~.O@|T#.#=.Sh|T~~~~...",
-    # 111  adv 1-4
-    "#hh...*H|##..##^#|#..#@S.~|#..v....|#~~^O^.#|~~~~~G^H|~#~#~.oT|#~~D#H.M",
-    # 112  adv 1-5
-    "H..#~~~M|..HT~.~.|LvvO~A~.|#.H*~~~T|##,..G<h|.@..*~~~|D..G~A.~|...h~~~~",
-    # 113  adv 2-1
-    "H....M..|N...H#.D|#..O#oGH|...S@#H.|......H.|....hO..|#S..OH.N|.h.#..M#",
-    # 114  adv 2-2
-    "@...D###|.^H...^.|<T...NT>|.N####.H|..#MM#..|H.####N.|<TN...T>|.v...Hv.",
-    # 115  adv 2-3
-    "~~~~~~~~|~~G~~~#~|H###Hhh~|G~G~@~~#|~~~~ShG~|#~DG~~~~|hS~~#~~~|~~~~~GhS",
-    # 116  adv 2-4
-    "D~o#MMM.|,~v#...@|,,*..~~.|*v.*HHH.|.#SH....|.#A<*..O|.~~~...*|A...h..*",
-    # 117  adv 2-5
-    "H@.....#|oT#v^~~#|M.#Gh...|.....T#.|H.#.S.h.|...S.O..|o......#|~D.#~..M",
-    # 118  adv 3-1
-    "GDG##.@#|~K~KHKOh|~H~h#..#|~#~#.#..|~o#.#...|#.##~K..|H.<vG.<#|#.H.##.h",
-    # 119  adv 3-2
-    ".M.M~~.H|H.#.~T..|...T~.*~|..#v.h@~|..G>...T|..#H^.v.|.D~~K#S.|NTh..*..",
-    # 120  adv 3-3
-    ".=..NT~~|.~...TO.|.~..o>.S|.=.h.>..|.~.D.Th.|N~.#.T@.|H=S#~~~=|#~......",
-    # 121  adv 3-4
-    "H#D#.H=M|~.<>*..~|v<.S*>*~|~T*h#@~.|~#AT#*#.|H#*#*.o.|~#..h..#|~T.<..*H",
-    # 122  adv 3-5
-    ".....x..|.#~^~#Sv|.~~D~~Sv|.~~####*|.~.@#L*.|.=**O<o*|T*O*h<HH|H#.hN...",
-    # 123  adv 4-1
-    "D#~~~~#h|.#~h~S~~|.#~O.O~S|~~~N.S~h|.S~~o~~.|.~~~#=O.|~~.S^~S<|##.H.~.@",
-    # 124  adv 4-2
-    "###HD<H~|.@h^o#^~|.O#N...~|..H...H.|.S..M.Hv|..H..N..|~O....#~|~==~~~~~",
-    # 125  adv 4-3
-    "#HTH<D<H|Tv#<#~~~|#.#Sv~h~|^.#~~~~~|T^##S#Tx|...@hT#x|#~~.Sxxo|~H~.xx..",
-    # 126  adv 4-4
-    "D.#.#H#H|.O>#.v>x|.>..<x#<|S#>v#^.H|..>o<OH#|v<#^#>v<|~#v#<oOv|HOh<>Oo@",
-    # 127  adv 4-5
-    "M~~##o.H|##~~~~~D|~~~~#.#~|~~H~~~~G|o~h~~~hH|~SS~#~OS|~@hO~~~~|~~~~~~##",
-    # 128  adv 5-1
-    "M.~.DH.M|.O.~#<S~|.^#S#@h~|..H.##.~|..##.h~~|*O#.^*v~|.....*.~|H.#..*LM",
-    # 129  adv 5-2
-    "...#.#~H|...##.o#|.Sh*..*D|HhS@*.#.|**HHO##*|HAA*o<..|~HhH*~~~|H~~H**TH",
-    # 130  adv 5-3
-    "T~~~.H.h|.D.H#.S#|~~~#.@.~|~L..*#.~|#~~*##.~|#~~.o..~|...H.hS~|H#~###MT",
-    # 131  adv 5-4
-    "DH~L*#H.|###TH#o.|..~~.>>.|.K#vT#..|.><hhH*.|~G*@.H*N|.*....*.|*..####.",
-    # 132  adv 5-5
-    "TD<HH.#M|~v~<.o..|~OS~#T#.|T~~#~HT.|...hh~T.|..o..~#.|.Oo..=..|SOoT@~#.",
-    # 133  adv 6-1
-    "Thh.##M#|T......T|#...#vH~|~#H#T,,~|LS<.GD*M|T*hG#~.T|*....~.#|.T@..~h#",
-    # 134  adv 6-2
-    "#H###.<h|HAH.>O~<|HAH....~|HAH..#<.|hAh.@...|Hhh..***|...S*Ko.|###..*KD",
-    # 135  adv 6-3
-    "~~##...*|G~~ov##T|D.*~~h@.|.~###.#.|.~*h....|MS...*.#|.h.G*L*#|TT>.**T#",
-    # 136  adv 6-4
-    "M.~~~~.D|........|.KKOKK.~|.KO@OK.~|.O.H.O.~|.KO.OK.~|.KKOKK..|.......M",
-    # 137  adv 6-5
-    "M.h~oM.h|..A.~TO.|*H~.*~.~|~~~*.<~.|h~..~.O.|......S.|~~.TTT.h|D.~#G>.@",
-    # 138  adv 7-1
-    "H.##.MoD|~S...#..|...v.<..|.ThS~~=~|^#hO.~..|.*A*@#..|..*<*T..|#~#*.#.T",
-    # 139  adv 7-2
-    "#H....T.|M~~S....|M~TvH...|o~.@H...|H~..H...|##HOHhSv|D..ohh.N|SO..TNh.",
-    # 140  adv 7-3
-    "h~~~~#*M|.~....o*|h~h~=~~D|@~GG..~~|.~~*..v#|.O*.**.#|#.*.*L*.|H^*..*.M",
-    # 141  adv 7-4
-    ".#~~h<H#|D#h#~S..|~#~Sv~~~|~#~~~h#~|~~Ho>~#~|~GS#~#.^|G#~=S..S|#~#~#.h@",
-    # 142  adv 7-5
-    "M.~###.H|#*D...*.|#.#T.~.N|#.#Kh..T|.*h.xS.@|^^~.^^Gh|~oh.h~G*|H....N*.",
-    # 143  adv 8-1
-    "....##DH|.ST#H#H.|~.##~#..|.S@h.<..|..T.....|..THHT..|.>.^^.#.|H>h...NN",
-    # 144  adv 8-2
-    "******~h|~v*h@<~#|~SS<.<~#|.#~*#h~.|.>>R..~.|.DT*.o~M|..#THH#T|......NH",
-    # 145  adv 8-3
-    "H.h.M#.D|.K^.#M.H|M...*...|.K..*.*.|~...K.*.|~v^.ML..|.^*O#hhh|H.^h*..@",
-    # 146  adv 8-4
-    "M*.H.MM.|.AH*<<.o|x.*H*hh*|**#~~*TT|A>>*.^>.|o*h~..S@|~~##OTTh|D.#.....",
-    # 147  adv 8-5
-    "T~M#A~A*|hO.T.>.H|**h~~~~~|.AH~~##~|~#~#~~#~|~S*#~A..|h#*~~.TD|.^>H~h@T",
-    # 148  adv 9-1
-    "M##oh.~M|~.......|..S~Sh@.|h.~..<##|..~.Sh..|.S#...~.|..T...~.|M~##H#~D",
-    # 149  adv 9-2
-    "~~Sxh..@|.Oo.*SH#|M.~~=~Gh|#.~.A..h|#.~##D~#|..~~~~~#|..o..>O.|M##.#..H",
-    # 150  adv 9-3
-    "#.Oo...D|h.#..o.o|#.#..MMo|NT......|......oO|O.Oh.OO.|.#......|G.@oG.##",
-    # 151  adv 9-4
-    "D*.***..|.*.*H..*|.*.**M..|.*.M....|.*.T.hAh|M*A**.M.|.OATh..h|h*.M.LO@",
-    # 152  adv 9-5
-    "D.~h..**|..~..#*A|.O~~~~~~|..~.T>h~|..~MTS<~|.S~..><~|@h#H.<S~|..>....M",
-    # 153  adv 10-1
-    "T.##..*.|h*...*A*|*K#^.*.H|T*H*##**|vv#*T#*.|*^**#*O#|*****@H#|D*#####M",
-    # 154  adv 10-2
-    "##M~A..*|HS.~**.h|**H~G#~~|.AH~#G~A|~~##~~~*|~S~#~A..|H.~~~.TD|.^#h~h@~",
-    # 155  adv 10-3
-    "MT#h#**M|o#h~*H<*|D.^#o*#~|##^T*AHH|...T>hGv|>###>*.#|H~~<>S.#|H..>..@H",
-    # 156  adv 10-4
-    "D...~h~h|....S*~,|HN...*~#|N~.H.###|~~*h....|~N*.STh.|~.*..*A*|~h.~~~*@",
-    # 157  adv 10-5
-    "#.....#h|#^^xxx..|#..##H.#|#.K.<S#o|#~~~#~#M|#D^*L*#.|##hh*G..|#H@.....",
-    # 158  pro 1
-    "#A.....H|#.*####.|..*...#.|H#.@DH*H|.#..#.HA|.#.##.HA|A#..#A#.|A.H.HA#.",
-    # 159  pro 2
-    ",,,...HA|,,,...#,|,,,,,,.H|,,,OO@..|...ODO,,|H..,,,,,|,#...,,,|AH...,,,",
-    # 160  pro 3
-    "@..##GG#|H..##..#|...#G.D.|...##..#|...##..#|.......#|.......#|GGG....G",
-    # 161  pro 4
-    "##~S...@|.H~...O.|..~.hhh.|..~.hAh.|..~.HAHG|D.=.HAH.|..~##AH#|GG~AAAH#",
-    # 162  pro 5
-    "DH.NN.H.|.O....O.|.OLAALO.|..HHHH..|..HHHH..|.OLAALO.|.O....O.|@H.NN.H.",
 )
 
 #: River cells whose current carries a raft, keyed by room. The room texts spell all six of
@@ -533,31 +398,6 @@ DRIFTING_RIVERS = {
      84: ((4, 1), (5, 1)),                                                                      # int 4-5
      85: ((7, 1),),                                                                             # int 4-6
      98: ((2, 6), (3, 6), (4, 6)),                                                              # int 5-5
-    103: ((0, 7), (1, 7), (2, 5), (2, 7), (3, 1), (3, 5), (3, 7), (4, 1), (4, 5), (4, 7), (5, 5), (5, 7), (6, 0)),# int 5-10
-    105: ((5, 3), (6, 3)),                                                                      # int 5-12
-    106: ((0, 3), (1, 3), (2, 3)),                                                              # int 5-13
-    107: ((2, 3), (3, 3), (4, 5), (5, 5), (6, 5), (7, 5)),                                      # int 5-14
-    108: ((0, 5), (1, 5), (6, 5), (7, 5)),                                                      # adv 1-1
-    109: ((0, 2), (1, 2), (2, 2), (2, 6), (3, 2), (3, 7), (4, 2), (4, 7)),                      # adv 1-2
-    110: ((1, 4), (2, 4), (3, 4)),                                                              # adv 1-3
-    111: ((5, 2), (5, 4), (6, 2), (6, 4), (7, 2)),                                              # adv 1-4
-    112: ((0, 4), (1, 4), (2, 4), (6, 4), (6, 7)),                                              # adv 1-5
-    115: ((0, 0), (1, 0), (1, 7), (2, 7), (4, 7), (5, 7), (6, 7)),                              # adv 2-3
-    122: ((2, 2), (3, 2)),                                                                      # adv 3-5
-    123: ((0, 2), (1, 2), (1, 6), (2, 2), (2, 6), (3, 2), (3, 6), (4, 2), (4, 6), (5, 2)),      # adv 4-1
-    125: ((1, 7), (2, 7), (3, 7)),                                                              # adv 4-3
-    127: ((2, 3), (3, 0), (4, 1), (5, 0), (5, 5), (6, 0), (6, 4), (6, 5), (7, 4)),              # adv 4-5
-    128: ((1, 7), (2, 7), (3, 7), (5, 7)),                                                      # adv 5-1
-    130: ((3, 0),),                                                                             # adv 5-3
-    139: ((1, 1), (2, 1), (3, 1), (4, 1)),                                                      # adv 7-2
-    140: ((2, 6), (3, 6)),                                                                      # adv 7-3
-    141: ((2, 0), (2, 2), (2, 7), (3, 0), (3, 2), (3, 7), (4, 0), (4, 7)),                      # adv 7-4
-    144: ((0, 6), (1, 0), (1, 6), (2, 0), (2, 6), (3, 6), (4, 6), (5, 6)),                      # adv 8-2
-    147: ((2, 7), (3, 3), (3, 7), (4, 0), (4, 4), (4, 7), (5, 0)),                              # adv 8-5
-    149: ((2, 2), (3, 2), (4, 2), (4, 6), (5, 6)),                                              # adv 9-2
-    152: ((0, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2)),                                      # adv 9-5
-    154: ((0, 3), (1, 3), (2, 3), (3, 3), (4, 0), (5, 0), (5, 2), (5, 4), (6, 4)),              # adv 10-2
-    161: ((0, 2), (1, 2)),                                                                      # pro 4
 }
 
 
@@ -677,57 +517,6 @@ class Room:
 #: model here is faithful rather than an approximation. Computed rather than typed, so it
 #: cannot fall out of step with `ROOMS`.
 EXACT_ROOMS = tuple(index for index, text in enumerate(ROOMS) if Room(index, text).exact)
-
-#: Rooms the generator drew, kept after the cartridge's so that `set_index` offers them too.
-#: Each is `generate_instance(seed)` for the seed in its comment, with the inventory of one
-#: of the cartridge's exactly modelled rooms; `tests/data/lolo_solutions.json` holds the
-#: plan it was accepted on.
-GENERATED_ROOMS = (
-    # seed 3000, defaults; 2222 expansions, 19-move plan
-    "O....#..|.#S..h#.|##h#....|.@.O#..D|......#.|.#.#.##.|.....h..|.#O...#.",
-    # seed 3001, defaults; 23922 expansions, 25-move plan
-    "#..#...T|...h.T.#|.T...HS#|h#.S#H.S|..#....T|..#.@...|....H###|...H...D",
-    # seed 3002, defaults; 2779 expansions, 16-move plan
-    ".#hD.O.#|..#...#.|#..hO...|..##.##S|..#...h.|...#....|.#.....#|..@.O..#",
-    # seed 3003, defaults; 2454 expansions, 24-move plan
-    ".....#..|#..#....|H....S.@|.T....HD|S..##.#T|h....#..|...#....|...#....",
-    # seed 3004, defaults; 9148 expansions, 17-move plan
-    ".......M|.....H..|........|........|O....h.O|...S....|....H...|.@..H.D.",
-    # seed 3005, defaults; 1524 expansions, 17-move plan
-    ".#.....#|...#.D..|.....#.H|.....S..|@...##..|.T....#.|hS..T...|.#..#...",
-    # seed 3006, defaults; 12543 expansions, 24-move plan
-    ".H......|H.DS..##|..#.#...|h.T.H.h.|#S..#.T.|..T.H#@.|.##.#..T|S.#.....",
-    # seed 3007, defaults; 86 expansions, 10-move plan
-    "..O.#...|T......M|.H.HSh..|@#..D..#|#...#..#|.T##....|...#....|.....S..",
-    # seed 3008, defaults; 4508 expansions, 17-move plan
-    "...##S#.|.#h..#.#|.#O..h@.|.##.....|..h...#.|....#OO.|........|....##D#",
-    # seed 3009, defaults; 14715 expansions, 28-move plan
-    "..#...H.|.....#..|#....##.|T.#.....|HS..@...|T...D...|#.......|#...hS.#",
-    # seed 3010, defaults; 9113 expansions, 28-move plan
-    "...#....|.#....S.|.....@O#|.###O.O.|.#..#...|...h###h|......#.|#.h...D#",
-    # seed 3011, defaults; 6466 expansions, 25-move plan
-    "T...#...|#......H|T##.T.T#|#.H.H.H@|#H..T.#D|........|.##...#H|##T.#...",
-    # seed 3012, defaults; 1814 expansions, 31-move plan
-    "H..H...#|.@.H#.DH|####..H.|H#...#.#|...#.##.|..#.####|###..##.|##.##..#",
-    # seed 3013, defaults; 20288 expansions, 20-move plan
-    "........|.H..h..D|...SO...|......H.|..@.....|........|.......H|O...M...",
-    # seed 3014, defaults; 1143 expansions, 26-move plan
-    "#S.MS..#|........|.H..H#..|@#.TO##.|T.......|..#...#.|.h.D....|#.......",
-    # seed 3015, defaults; 389 expansions, 18-move plan
-    "..##....|.#..##.#|HH##..T#|D.......|..T#.#..|##.H#H..|.T.H...#|..@TT..T",
-    # seed 3016, defaults; 24163 expansions, 20-move plan
-    "..#..#..|T...S..#|...#Dh.H|.##T#...|....#.#.|H..S...T|H.THhS.#|.@.....#",
-    # seed 3017, defaults; 615 expansions, 23-move plan
-    "...##...|#...T.#h|@..S...H|#..##...|.......T|........|.D......|..#...#S",
-    # seed 3018, defaults; 279 expansions, 12-move plan
-    ".T#.#..#|...#..@.|..H...#.|........|..ShT##.|..#..S..|.D..#...|........",
-    # seed 3019, defaults; 489 expansions, 15-move plan
-    ".@T...h.|...H##O.|......D.|.#H.....|..S..T.#|........|.#.#.M..|.#.#.S.#",
-)
-
-#: Everything `set_index` selects between: the cartridge's rooms, then the generated ones.
-INSTANCES = ROOMS + GENERATED_ROOMS
-
 
 def profile(text):
     """The inventory of a room, as the options `generate_room` takes to draw one like it:
@@ -1022,12 +811,12 @@ class LoloGame(Environment):
         self._rooms = {}
 
     def set_index(self, index):
-        if not 0 <= index < len(INSTANCES):
+        if not 0 <= index < len(ROOMS):
             raise IndexError(
-                f"Invalid index: {index}. There are {len(INSTANCES)} rooms, so the index must "
-                f"be 0-{len(INSTANCES) - 1}.")
+                f"Invalid index: {index}. There are {len(ROOMS)} rooms, so the index must "
+                f"be 0-{len(ROOMS) - 1}.")
         self.index = index
-        self.instance = INSTANCES[index]
+        self.instance = ROOMS[index]
         self.witness = None
 
     def set_instance(self, instance):

@@ -13,7 +13,7 @@ It is the smallest environment in the library, which is why the README's example
 - **Class:** `PuzznicGame`
 - **Import:** `from planiverse.environments.games.puzznic import PuzznicGame`
 - **Source:** [`planiverse/environments/games/puzznic.py`](../../planiverse/environments/games/puzznic.py)
-- **Instances:** 152 levels, indices `0` to `151`: the original game's 128 rounds, then 24 the generator drew
+- **Instances:** 100 levels, indices `0` to `99`: the first 100 of the original game's 128 rounds
 - **Generator:** `generate_instance(seed, width=None, height=None, colours=None, ...)`; see [Generating levels](#generating-levels)
 - **Dependencies:** none
 
@@ -81,8 +81,8 @@ env.render()          # prints the de-duplicated state history
 
 ## Levels
 
-`set_index(i)` selects level `i` from `PuzznicGame.levelsstr`, a list of 128 ASCII level strings
-embedded in the module. Indices run from `0` to `127` and match the cartridge's rounds.
+`set_index(i)` selects level `i` from `PuzznicGame.levelsstr`, a list of 100 ASCII level strings
+embedded in the module. Indices run from `0` to `99` and match the cartridge's first 100 rounds.
 
 Level strings use this alphabet:
 
@@ -102,10 +102,6 @@ rather than on a block, because a `c` marks an empty cell and cannot be written 
 plans found here do not transfer to the cartridge move for move. Second,
 `_check_and_remove_matches_` rescans the whole board after every step and clears every adjacent
 same-type pair, whereas the cartridge leaves some such pairs untouched.
-
-Indices `128` to `151` are levels the generator drew (`GENERATED_LEVELS`), each with the seed it
-came from beside it in the module and the plan it was accepted on in
-`tests/data/puzznic_solutions.json`. `set_index` offers them after the cartridge's rounds.
 
 ## Generating levels
 
@@ -144,7 +140,7 @@ Left unset, the layout options come from the profile of a cartridge round drawn 
 colour has and how much of it is wall, so a generated level is the shape of a real one rather
 than a shape of the generator's own. Only rounds of at most `max_blocks` blocks (10) are drawn
 from, because a breadth-first check cannot decide the shapes of the larger rounds within its
-budget; `max_blocks=None` draws from all 128, and any option given explicitly wins over the
+budget; `max_blocks=None` draws from all 100, and any option given explicitly wins over the
 profile. The method is generate-and-test, which the procedural content generation literature
 calls search-based PCG (Togelius, Yannakakis, Stanley and Browne, 2011,
 https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content

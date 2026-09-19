@@ -4,7 +4,7 @@ The rules are implemented directly, so this is the dependency-free way to plan i
 
 ## Where the levels came from
 
-All 128 of them are the original game's 128 rounds, at matching indices. The first 50 were
+They are the first 100 of the original game's 128 rounds, at matching indices. The first 50 were
 transcribed by hand; the rest were read out of the running game's grid memory, one round at
 a time.
 
@@ -277,8 +277,8 @@ class Level:
     def reset(self):
         return PuzznicState(self.grid, self.cursor, []), {}
     
-#: The cartridge's 128 rounds, in the level alphabet, at matching indices: the first 50
-#: transcribed by hand and checked against the cartridge, the rest read out of it.
+#: The first 100 of the cartridge's 128 rounds, in the level alphabet, at matching indices:
+#: the first 50 transcribed by hand and checked against the cartridge, the rest read out of it.
 CARTRIDGE_LEVELS = (
     """######\n#12c #\n###  #\n#    #\n#2  1#\n##21##\n######""",
     """#######\n#  c ##\n#  1  #\n#  2  #\n# 13  #\n# 24  #\n#243 3#\n#######""",
@@ -380,91 +380,7 @@ CARTRIDGE_LEVELS = (
     """##########\n#   57c  #\n#34364 56#\n####73####\n# 4 47 3 #\n# #7## # #\n# 4####3 #\n##########""",
     """########\n####5#c#\n####6#4#\n####3#2#\n#63 183#\n### ####\n##5 ####\n### ####\n###7   #\n####1#7#\n####248#\n########""",
     """##########\n#87  c7###\n###  24###\n#1   813##\n#2   3723#\n#42878184#\n#74#13417#\n##########""",
-    """#########\n##c1#####\n##2## ###\n##6   ###\n##2 6 ###\n##7 7  ##\n##8 8  6#\n#87 #718#\n#########""",
-    """########\n#5# 4c5#\n#4  3 4#\n#5 4# 5#\n## #4 4#\n#5 #345#\n## #####\n########""",
-    """##########\n#67 5c6 ##\n#5# # # ##\n#6# # # 5#\n#7    # ##\n###7# # ##\n###8 8  ##\n##########""",
-    """##########\n## 2#1c###\n## ##3 ###\n##6 5#5###\n### 6 3###\n### 5 6 ##\n##  # 3 2#\n##1 # 5 6#\n##### 36##\n##########""",
-    """##########\n##4 ##c3##\n#2# ## #2#\n#1  34  1#\n##  ##  ##\n##########""",
-    """########\n###c1###\n##  41##\n#   345#\n#   532#\n##  21##\n### 5###\n########""",
-    """#########\n#c54#####\n# #### 5#\n# #585 7#\n# #678 6#\n#7#### ##\n#6   5  #\n#8  7857#\n#6 765#4#\n#########""",
-    """#########\n###c7####\n#3# #####\n#4#   7 #\n#65 5 5 #\n####4 #4#\n#5763  6#\n######4##\n#########""",
-    """#######\n#254c3#\n#425 5#\n#6## 2#\n#3 3 ##\n#### ##\n###6 ##\n#######""",
-    """########\n#7c8416#\n## #####\n#  6 ###\n# 678 ##\n# 356  #\n#82841 #\n#76#186#\n#2###75#\n######3#\n########""",
-    """########\n## ##c4#\n#  #5 7#\n#6  4 8#\n#756# 5#\n#54##8##\n########""",
-    """########\n#7   c5#\n#6   54#\n#75 ##6#\n##7   5#\n### 4 6#\n###4####\n########""",
-    """##########\n####4# c2#\n####3#  5#\n####7# 34#\n## 56# 43#\n## ##  65#\n#6  3  #2#\n#7  5  ###\n##  3   ##\n#  5#34 ##\n#3 ##4# ##\n##########""",
-    """#######\n#4  c8#\n#3   4#\n#2   8#\n#1   ##\n##    #\n#  3 4#\n#  2 3#\n#  1 2#\n#  8 1#\n#  #48#\n#######""",
-    """#########\n####3 c2#\n##  4  5#\n##  6  ##\n#5  # 4##\n#3 43 56#\n#42#5232#\n#########""",
-    """##########\n#  ####c6#\n#6 6##861#\n##6## 71##\n#### 18###\n###  8####\n##1  ##8##\n# 7 ## 78#\n# 6####87#\n##########""",
-    """#########\n####3c###\n##2#45###\n##3#1####\n##4#2#12#\n# 1#3#45#\n# # 2 23#\n#   #####\n#   1####\n#########""",
-    """##########\n#######81#\n### 4c#12#\n##  1 #25#\n#   3 ##6#\n# 214  45#\n#8### ####\n##      ##\n#8      3#\n#186   1##\n#21#   3##\n##########""",
-    """##########\n# #613c#1#\n#8#542 #5#\n#4#### #4#\n#5 4 1 #2#\n#3## 4 #3#\n#65  3  2#\n###  2 #1#\n###  # #8#\n##########""",
-    """##########\n#4343582c#\n#######1 #\n#8  6  # #\n#7  7   5#\n#1  6  83#\n#8  7653##\n#212######\n###1######\n##########""",
-    """##########\n####  ####\n##51 c7 ##\n# 76 16 8#\n#7##16##6#\n#6 8587 7#\n##15##87##\n##8#  #6##\n# ###### #\n##########""",
-    """########\n###c6###\n### ####\n#6#7 7 #\n#7#6 86#\n#685 5##\n#### 8##\n#### ###\n########""",
-    """##########\n####87 c7#\n####76  5#\n# 5#65  6#\n# 6#58  8#\n# 7#171 ##\n# ##### ##\n#  4    ##\n#  67 4 ##\n#  7# 6 ##\n#5 5#4#4##\n##########""",
-    """##########\n#4#78145c#\n#3###### #\n#2    87 #\n#6168 7# #\n#52#7 #3 #\n#65#8 6# #\n##########""",
-    """########\n#6#c87##\n#1# ####\n#2#  2##\n#1 8 1##\n#3 # 26#\n#7 #####\n#1 6 ###\n#7613###\n########""",
-    """#########\n##   ####\n## 2c1###\n#8 1 382#\n## 3 231#\n## 1 ####\n## # ####\n#########""",
-    """##########\n#45 c3   #\n#56  7   #\n#64  #   #\n###     8#\n###     1#\n###     8#\n###     1#\n#6#  3 12#\n#5#  # 27#\n#43 ##171#\n##########""",
-    """#######\n###c2##\n#1# #3#\n#8#  4#\n#4  13#\n####31#\n### 2##\n### 8##\n#######"""
 )
-
-#: Levels the generator drew, kept after the cartridge's so that `set_index` offers them
-#: too. Each is `generate_instance(seed, **PROFILE)` for the seed and profile in its comment,
-#: so it can be re-derived; `tests/data/puzznic_solutions.json` holds the plan it was
-#: accepted on.
-GENERATED_LEVELS = (
-    # seed 1000, defaults; 725 expansions, 15-move plan
-    "#######\n#     #\n#c    #\n#    ##\n#4    #\n#3 4 2#\n#14321#\n#######",
-    # seed 1001, defaults; 2344 expansions, 16-move plan
-    "########\n#     c#\n# #  ###\n# #   4#\n#    4##\n#2 3 21#\n#1 131##\n########",
-    # seed 1002, defaults; 2187 expansions, 16-move plan
-    "#######\n#2 4c4#\n## 3 3#\n##123##\n####1##\n#######",
-    # seed 1003, defaults; 1082 expansions, 17-move plan
-    "#######\n##### #\n##c#4##\n## #3##\n#2  2##\n##  ###\n#1341 #\n#######",
-    # seed 1004, defaults; 1030 expansions, 14-move plan
-    "#######\n# ###4#\n## # 3#\n#### ##\n###3c##\n## 2 ##\n# 2141#\n#######",
-    # seed 1005, defaults; 337 expansions, 13-move plan
-    "#####\n# c##\n#   #\n# #4#\n#4 3#\n#2 2#\n#131#\n#####",
-    # seed 1006, defaults; 1052 expansions, 12-move plan
-    "#####\n#   #\n#4  #\n#3c3#\n#2 ##\n#1 2#\n##41#\n#####",
-    # seed 1007, defaults; 1458 expansions, 14-move plan
-    "#######\n# # #3#\n#2## 2#\n#1 3c##\n## 1 ##\n#######",
-    # seed 1008, defaults; 143 expansions, 9-move plan
-    "######\n#    #\n#   3#\n#2c 2#\n#1321#\n######",
-    # seed 1009, defaults; 920 expansions, 13-move plan
-    "#####\n#   #\n#4 ##\n#3  #\n#2 4#\n##c3#\n#121#\n#####",
-    # seed 1010, defaults; 8597 expansions, 21-move plan
-    "########\n#  ##  #\n##   # #\n## c  3#\n#     ##\n# 4  42#\n# 1 321#\n########",
-    # seed 1011, defaults; 4190 expansions, 24-move plan
-    "########\n#  #   #\n#     ##\n#     c#\n#423   #\n##12   #\n####134#\n########",
-    # seed 1012, defaults; 7015 expansions, 23-move plan
-    "#######\n#c    #\n#     #\n#4    #\n#3   4#\n#2   1#\n#1423##\n#######",
-    # seed 1013, defaults; 4618 expansions, 27-move plan
-    "########\n#  c   #\n#  #   #\n# 4    #\n#3# #  #\n#2#  12#\n#134 ###\n########",
-    # seed 2000, defaults; 134 expansions, 9-move plan
-    "#######\n# ## ##\n#c 3  #\n##321 #\n##2##1#\n#######",
-    # seed 2001, defaults; 1604 expansions, 23-move plan
-    "#######\n## 3 c#\n# ###3#\n#2 231#\n## #1##\n#######",
-    # seed 2002, defaults; 201 expansions, 16-move plan
-    "######\n#2  ##\n#1  c#\n## # #\n#1 2 #\n##21 #\n######",
-    # seed 2003, defaults; 993 expansions, 14-move plan
-    "#######\n#     #\n#    c#\n#   # #\n#4 3  #\n#3 2  #\n#1214 #\n#######",
-    # seed 2004, defaults; 9246 expansions, 18-move plan
-    "########\n#  #   #\n#   #  #\n#   ##2#\n#3    1#\n#14 3 ##\n##142c1#\n########",
-    # seed 2005, defaults; 167 expansions, 14-move plan
-    "######\n#c   #\n#   3#\n#2  2#\n#1231#\n######",
-    # seed 2006, defaults; 1217 expansions, 11-move plan
-    "#########\n## # 3# #\n#1 2c2  #\n##2131 2#\n###### 1#\n#########",
-    # seed 3000, defaults; 113 expansions, 14-move plan
-    "#####\n#c ##\n##  #\n#   #\n#34 #\n#234#\n#121#\n#####",
-    # seed 3001, defaults; 207 expansions, 13-move plan
-    "#####\n# c #\n#  4#\n#4 3#\n#3 2#\n#14##\n##12#\n#####",
-    # seed 3002, defaults; 2155 expansions, 15-move plan
-    "#######\n##  3##\n## 42##\n#c 2###\n# 4####\n# 31###\n# 1####\n#######",
-)
-
 
 def profile(level):
     """The shape of a level, as the options `generate_level` takes to draw one like it:
@@ -497,7 +413,7 @@ class PuzznicGame(Environment):
         self.index     = 0
         #: The plan `generate_instance` accepted the current instance on, when it was checked.
         self.witness   = None
-        self.levelsstr = list(CARTRIDGE_LEVELS) + list(GENERATED_LEVELS)
+        self.levelsstr = list(CARTRIDGE_LEVELS)
         #: The level `reset` builds: a bundled one after `set_index`, or whatever
         #: `set_instance` was given.
         self.instance  = self.levelsstr[0]

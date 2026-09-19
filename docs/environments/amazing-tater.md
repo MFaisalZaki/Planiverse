@@ -2,7 +2,7 @@
 
 This environment implements Amazing Tater's rules in Python rather than emulating the cartridge.
 It needs no ROM, no emulator, and no dependencies beyond the standard library: the environment is
-one module, and the 105 rooms it ships are in it.
+one module, and the 100 rooms it ships are in it.
 
 A tater (i.e., a potato with legs) walks the four directions one cell at a time and has to reach
 the exit flag. Some rooms hold more than one tater, and `switch` hands the controls to the next
@@ -12,7 +12,7 @@ reversible: a block shoved into the wrong pit is gone, and so is the room.
 - **Class:** `AmazingTaterGame`
 - **Import:** `from planiverse.environments.games.amazing_tater import AmazingTaterGame`
 - **Source:** [`planiverse/environments/games/amazing_tater.py`](../../planiverse/environments/games/amazing_tater.py)
-- **Instances:** 121 rooms, indices `0` to `120`: the cartridge's 105, then 16 the generator drew
+- **Instances:** 100 rooms, indices `0` to `99`: the cartridge's 41 puzzle-mode rooms and the first 59 of its 64 beginner and action-mode rooms
 - **Generator:** `generate_instance(seed, width=None, height=None, blocks=None, pits=None, turnstiles=None, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
 
@@ -115,8 +115,8 @@ checks a drawn room with.
 
 ## Rooms
 
-The environment ships 105 rooms: 41 behind the cartridge's PUZZLE MODE (`A-01` to `A-41`) and 64
-behind BEGINNER and ACTION MODE (`C-01` to `C-64`). We left out the 96 rooms behind
+The environment ships 100 rooms: 41 behind the cartridge's PUZZLE MODE (`A-01` to `A-41`) and the
+first 59 of the 64 behind BEGINNER and ACTION MODE (`C-01` to `C-59`). We left out the 96 rooms behind
 PRACTICE MODE. That mode is a timed climb through ten floors, its board buffer holds the corridors
 of the neighbouring floors as well as the room, and the tater starts outside the room, which makes
 it a different game rather than a different level.
@@ -124,8 +124,8 @@ it a different game rather than a different level.
 The rooms range from a 15×5 with three turnstiles and nothing else to an 18×16 with four taters, a
 dozen blocks and forty pits. Note that difficulty is not uniform in index order.
 
-We dumped all 105 off the running cartridge, reading the board the game composes in work RAM
-for each room, so nothing was transcribed by hand.
+We dumped all 105 of the cartridge's rooms off the running game, reading the board it composes
+in work RAM for each room, so nothing was transcribed by hand.
 
 ### The alphabet
 
@@ -152,10 +152,6 @@ against each other in half of these rooms. A single glyph for all of them would 
 into one piece the cartridge would never move as one. Arms carry a direction so that an arm names
 its own pivot, which is needed because thirty-six arms across these rooms are orthogonally
 adjacent to two pivots, and adjacency alone cannot say which one they belong to.
-
-Indices `105` to `120` are rooms the generator drew (`GENERATED_LEVELS`), labelled `G-01` onward,
-each to the size and inventory of one of the cartridge's rooms, with the seed beside it in the
-module and the plan it was accepted on in `tests/data/amazing_tater_solutions.json`.
 
 ## Generating rooms
 

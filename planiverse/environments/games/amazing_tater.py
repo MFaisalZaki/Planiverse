@@ -41,7 +41,7 @@ board, and the controls pass to whoever is left.
 
 Nowhere that has been found, and the search was not casual: the rules above were established
 by walking this module and the cartridge forward in lockstep (the same random press, then a
-cell-by-cell comparison of the board) across every one of the 105 rooms below.
+cell-by-cell comparison of the board) across every one of the cartridge's 105 rooms.
 `tests/test_amazing_tater.py` replays the stored solutions here; every one of them was also
 replayed on the cartridge when it was found.
 
@@ -56,11 +56,13 @@ over the top of a cleared one. Here a solved room is simply terminal.
 
 ## Where the levels came from
 
-All 105 were read out of the running game by dumping the board the cartridge itself composes
-in work RAM, at matching indices. Nothing was transcribed by hand.
+All 105 of the cartridge's rooms were read out of the running game by dumping the board it
+composes in work RAM; the first 100 ship here, at matching indices. Nothing was transcribed
+by hand.
 
 They are the cartridge's two puzzle sets: 41 rooms behind PUZZLE MODE (`A-01` to `A-41`) and
-64 behind BEGINNER and ACTION MODE (`C-01` to `C-64`). The third set on the cartridge, the 96
+64 behind BEGINNER and ACTION MODE (`C-01` to `C-64`, of which `C-01` to `C-59` ship). The
+third set on the cartridge, the 96
 rooms behind PRACTICE MODE, is deliberately absent: that mode is a timed climb through ten
 floors, its board buffer holds the corridors of the neighbouring floors as well as the room,
 and the tater starts outside the room. It is a different game, not a different level.
@@ -152,7 +154,7 @@ def rotate_ccw(offset):
     return (-offset[1], offset[0])
 
 
-#: Every room on the cartridge that is a room: 41 from PUZZLE MODE, then 64 from
+#: The cartridge's rooms that ship: 41 from PUZZLE MODE, then the first 59 of the 64 from
 #: BEGINNER / ACTION MODE. Dumped off the cartridge, not typed.
 LEVELS = (
     # --------------------------------------------------------------- set A
@@ -1382,290 +1384,12 @@ LEVELS = (
         "#....jm..#",
         " ########",
     ),
-    (   # C-60   12 x 11
-        "       ######",
-        "      #.^.^.1#",
-        " ######.@.@>.#",
-        "#..dg...v.v..#",
-        "#..jmdg.dhhg.#",
-        "#.^.aloajnnm.#",
-        "#c@>.jm..####",
-        "#iv..be.#",
-        "#...^..#",
-        "#..<@.#",
-        "#O.dg.#",
-        "#EOjm.#",
-        " #####",
-    ),
-    (   # C-61   8 x 8
-        " ########",
-        "#.....c..#",
-        "#c.be.kc.#",
-        "#kcc..kk.#",
-        "#ikka1kk.#",
-        "#.kk.akkc#",
-        "#.kk..iik#",
-        "#.ik.be.i#",
-        "#EOK.....#",
-        " ########",
-    ),
-    (   # C-62   10 x 10
-        " ###",
-        "#...#",
-        "#.1..####",
-        "#..@>....#",
-        " #.v.be..#",
-        "  #.c..c.#",
-        "  #.i..i.#",
-        "  #..be@>O#",
-        "  #....vOOO#",
-        "   ####OOOO#",
-        "       #OOE#",
-        "        ###",
-    ),
-    (   # C-63   13 x 13
-        " #############",
-        "#.............#",
-        "#...c.........#",
-        "#...k.1..dg...#",
-        "#...i..O.jm...#",
-        "#...OOOOOOO...#",
-        "#...O.OaO.O...#",
-        "#..OOOOOOOOO..#",
-        "#..OOOOEOOOO..#",
-        "#...O..O..O...#",
-        "#...OO.a.OO...#",
-        "#...OOOOOOO...#",
-        "#......O......#",
-        "#.............#",
-        " #############",
-    ),
-    (   # C-64   8 x 14
-        "  #####",
-        " #.....#",
-        "#..aaa.#",
-        "#..a1a.#",
-        "#..aaa.##",
-        " #.......#",
-        " #bfffe..#",
-        "#......##",
-        "#......#",
-        "#......#",
-        " #.....#",
-        "  #....#",
-        "   ##O#",
-        "    #O#",
-        "    #E#",
-        "     #",
-    ),
 )
 
-#: Rooms the generator drew, kept after the cartridge's so that `set_index` offers them
-#: too. Each is `generate_instance(seed)` for the seed in its comment, with the size and
-#: inventory of one of the cartridge's rooms; `tests/test_amazing_tater.py` replays the plan
-#: it was accepted on.
-GENERATED_LEVELS = (
-    (   # seed 4000, defaults; 21 expansions, 7-move plan
-        "#########",
-        "#E..OO..#",
-        "##.....1#",
-        "#.#.a..##",
-        "#####.#.#",
-        "#.#..#.a#",
-        "#O...O..#",
-        "##..#.#.#",
-        "#########",
-    ),
-    (   # seed 4001, defaults; 30 expansions, 8-move plan
-        "##################",
-        "#.....#.^.##.#.#.#",
-        "##..#..E@#^#..^..#",
-        "#.1.##..v#@^.<@>.#",
-        "#........#v@>.v..#",
-        "#......#O.#....O.#",
-        "#.#......#...#...#",
-        "##################",
-    ),
-    (   # seed 4002, defaults; 108 expansions, 8-move plan
-        "##################",
-        "#..............###",
-        "##.#.c.1..##.....#",
-        "#....i....^.#...##",
-        "#^#....O.<@>....##",
-        "#@..#...#.v.###..#",
-        "#v.#.#.......E.#.#",
-        "##################",
-    ),
-    (   # seed 4003, defaults; 69 expansions, 9-move plan
-        "###########",
-        "#1......#.#",
-        "#dg#.c.a..#",
-        "#jm.ai..E.#",
-        "#.......#.#",
-        "#.O.be.be.#",
-        "##....O...#",
-        "##.##..dg.#",
-        "#.a...ajm.#",
-        "###########",
-    ),
-    (   # seed 4004, defaults; 43 expansions, 6-move plan
-        "################",
-        "#..####.a.#....#",
-        "#.##....#.#be.##",
-        "#....#.dgO.#...#",
-        "#..#..1jm.#..O.#",
-        "##^..#.#.E..#.##",
-        "#<@>.....#..##.#",
-        "##v.....#.#..O.#",
-        "#.#.##..##..#..#",
-        "#..O.##.^.##.#.#",
-        "#...#..O@>###..#",
-        "#.....O.v.a.#.##",
-        "################",
-    ),
-    (   # seed 4005, defaults; 23 expansions, 6-move plan
-        "####################",
-        "#.#........dg..#.#c#",
-        "#...#......jm#.##.i#",
-        "#a.#c.##.....E..#..#",
-        "#...i..a...O...#..##",
-        "#..##a#..#.........#",
-        "#....#.............#",
-        "#.#........1....a.a#",
-        "####################",
-    ),
-    (   # seed 4006, defaults; 2214 expansions, 11-move plan
-        "#############",
-        "#..2.#.#....#",
-        "#....##c#...#",
-        "#.#....i#...#",
-        "#Ea..##.....#",
-        "#......#c...#",
-        "##.#.a..i...#",
-        "#.#.1#.#..#.#",
-        "#be.........#",
-        "#..##....#..#",
-        "#.....be...##",
-        "#############",
-    ),
-    (   # seed 4007, defaults; 272 expansions, 11-move plan
-        "################",
-        "#..O^.OOO...##O#",
-        "##^.@..dgO#..O.#",
-        "#<@>v#.jmO.O.#O#",
-        "#.OO..c...O..#O#",
-        "#.#..^i..#..<@>#",
-        "#.#a<@>^.Ec.#v.#",
-        "#..^.v<@>.i.^.##",
-        "#.#@...v..#<@>.#",
-        "#..vOO..#.#.v..#",
-        "#...a....O#.be.#",
-        "#O.1........##O#",
-        "################",
-    ),
-    (   # seed 4008, defaults; 395 expansions, 12-move plan
-        "#############",
-        "###O....#...#",
-        "#...1..#.##.#",
-        "#.a.a##.#.aO#",
-        "#a..#....be.#",
-        "#.....#..E#c#",
-        "#.##...#.#.i#",
-        "#......bebe##",
-        "#############",
-    ),
-    (   # seed 4009, defaults; 55 expansions, 11-move plan
-        "############",
-        "###..c#...O#",
-        "#....i.#..##",
-        "#1......#..#",
-        "#.......#..#",
-        "#.........E#",
-        "#..##a..#..#",
-        "############",
-    ),
-    (   # seed 4010, defaults; 15 expansions, 7-move plan
-        "##########",
-        "#.O^.^..a#",
-        "#.<@<@>.O#",
-        "##.v.v.1.#",
-        "#.<@..^.a#",
-        "#O.v.<@>a#",
-        "#O...^.dg#",
-        "#c.a<@>jm#",
-        "#i.E.v...#",
-        "##########",
-    ),
-    (   # seed 4011, defaults; 22 expansions, 7-move plan
-        "##################",
-        "#.#..#E..^....1..#",
-        "#.....a..@>..^.#.#",
-        "#.#..#....O.<@...#",
-        "##################",
-    ),
-    (   # seed 4012, defaults; 26 expansions, 9-move plan
-        "#############",
-        "#.#dg###....#",
-        "#..jm..#.##a#",
-        "##....####..#",
-        "#.##.##....E#",
-        "#..#...a.#.##",
-        "#.#O1..###..#",
-        "#############",
-    ),
-    (   # seed 4013, defaults; 70 expansions, 16-move plan
-        "##########",
-        "#be..O.EO#",
-        "#dg....^.#",
-        "#jm..#<@.#",
-        "#.O##...##",
-        "#....#...#",
-        "#.#.#..O.#",
-        "#..be^##.#",
-        "#O#.<@>..#",
-        "###.#v##.#",
-        "#...#.O..#",
-        "#..^.O..##",
-        "##<@....O#",
-        "#.#v...1.#",
-        "#..be.O.##",
-        "##########",
-    ),
-    (   # seed 4014, defaults; 26 expansions, 9-move plan
-        "############",
-        "#...#.#.#..#",
-        "##..a..#.E.#",
-        "#...#^...###",
-        "#..##@>#.#.#",
-        "#.^..v...#a#",
-        "##@>...<@>.#",
-        "#...##.##..#",
-        "#...#.1..#.#",
-        "#..#.O.....#",
-        "#.##..#.##.#",
-        "############",
-    ),
-    (   # seed 4015, defaults; 143 expansions, 12-move plan
-        "###############",
-        "#..#.....#..E.#",
-        "##.dg###....#.#",
-        "#..jm...dg....#",
-        "##..##.#jm.#.##",
-        "#..#1...#.....#",
-        "#a....#...#...#",
-        "#..#..#O.#..#.#",
-        "#..#...a..#...#",
-        "###############",
-    ),
-)
-
-#: Everything `set_index` selects between: the cartridge's rooms, then the generated ones.
-INSTANCES = LEVELS + GENERATED_LEVELS
-LEVEL_COUNT = len(INSTANCES)
+LEVEL_COUNT = len(LEVELS)
 
 #: `(letter, the menu entry that reaches the set, how many rooms)`, in index order.
-LEVEL_SETS = (("A", "PUZZLE MODE", 41), ("C", "BEGINNER / ACTION MODE", 64),
-              ("G", "generated", len(GENERATED_LEVELS)))
+LEVEL_SETS = (("A", "PUZZLE MODE", 41), ("C", "BEGINNER / ACTION MODE", 59))
 
 
 def label_for(index):
@@ -2190,7 +1914,7 @@ class AmazingTaterGame(Environment):
                 f"Invalid index: {index}. There are {LEVEL_COUNT} rooms, so the index must "
                 f"be 0-{LEVEL_COUNT - 1}.")
         self.index = index
-        self.instance = INSTANCES[index]
+        self.instance = LEVELS[index]
         self.witness = None
 
     def set_instance(self, instance):

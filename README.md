@@ -24,10 +24,10 @@ season or city, so a benchmark is not limited to what ships.
 | Crop management | `crop_management` | 100 growing seasons | the year's weather and the sowing date | operational, agriculture | [docs](docs/environments/crop-management.md) |
 | Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
 | Network attack | `network_attack` | 100 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
-| Puzznic | `puzznic` | 152 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
+| Puzznic | `puzznic` | 100 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
 | Flipull | `flipull` | 100 stages | wall size, block types, arrangement and clear target | game | [docs](docs/environments/flipull.md) |
-| Adventures of Lolo | `lolo` | 183 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
-| Amazing Tater | `amazing_tater` | 121 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
+| Adventures of Lolo | `lolo` | 100 rooms | terrain, hearts, Emerald Framers, Snakeys and Medusas | game | [docs](docs/environments/lolo.md) |
+| Amazing Tater | `amazing_tater` | 100 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
 | Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
 
@@ -173,10 +173,12 @@ What each generator varies is in the catalogue above, and the options are in eac
 environment's doc. A generator draws to the shape of the originals: a game takes the layout
 options a caller leaves unset from the profile of one of its bundled instances (its size, its
 counts of blocks or hearts, its share of scenery), and a simulator draws on the simulator's own
-data (WNTR's networks, grid2op's time series, PCSE's weather, NASim's scenario generator). Each
-bundled set also carries instances the generator drew, after the originals, with the seed each
-came from recorded beside it and the plan it was accepted on in the tests, so they can be
-re-derived. The techniques are the standard ones, and each environment's doc gives the
+data (WNTR's networks, grid2op's time series, PCSE's weather, NASim's scenario generator).
+Every environment ships a hundred instances. Where the originals fall short of that (Flipull
+and the five simulator environments) the set is made up with instances the generator drew,
+after the originals, with the seed each came from recorded with it and the plan it was
+accepted on in the tests, so they can be re-derived. The techniques are the standard ones,
+and each environment's doc gives the
 references: generate-and-test with a solvability check is search-based procedural content
 generation ([Togelius et al., 2011](https://doi.org/10.1109/TCIAIG.2011.2148116);
 [Shaker et al., 2016](https://pcgbook.com/)), and the check is breadth-first search. The
@@ -504,20 +506,14 @@ What is in the tree:
   generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
   latter with a policy it learns from its own lookaheads; MCTS; and Future State Maximization.
-- `planiverse-bench`, the paper's protocol as code: seven planner configurations, five seeds for
-  the four that take one, and a report that regenerates the paper's tables, figures and quoted
-  numbers from the results.
+- `planiverse-bench`, the evaluation protocol as code: seven planner configurations, five seeds
+  for the four that take one, and a report that builds the tables and figures from the results.
 - A test suite that skips what it cannot build.
 
 Open:
 
-- [ ] The benchmark arrays for Rollout IW and π-IW, and the paper edits that go with them. The
-      pipeline has been run end to end on a pilot and the planner paragraphs are drafted; the
-      9,560 runs need the cluster. See
-      [Bringing the paper up to date](docs/benchmark.md#bringing-the-paper-up-to-date).
 - [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
       one dependency list and a `dev` extra.
-- [ ] `is_terminal` for the network attack, the one environment that still hard-codes `False`.
 - [ ] What a Flipull throw actually hits. Every row connects, so it is not simply the first block
       in the player's row, and until it is settled `FlipullGame` is a Flipull-*like* environment
       with a stated rule set rather than a clone of the original.
