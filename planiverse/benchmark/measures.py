@@ -50,6 +50,14 @@ def fluid(state):
     return max(0, state.need - state.filled)
 
 
+def pipe_dream(state):
+    """Segments still to carry, less the pipe already laid ahead of the flow; a spill that
+    falls short is pinned above any live count."""
+    if state.spilled and state.carried < state.distance:
+        return 99
+    return max(0, state.distance - state.carried - state.ahead)
+
+
 def billiards(state):
     """Object balls still on the table; a sunk cue ball is pinned above any live count."""
     if state.scratched:
@@ -149,6 +157,7 @@ MEASURES = {
     "slingshot": slingshot,
     "tower_defence": tower_defence,
     "fluid": fluid,
+    "pipe_dream": pipe_dream,
     "billiards": billiards,
     "lemmings": lemmings,
     "micropolis": micropolis,

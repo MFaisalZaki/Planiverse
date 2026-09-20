@@ -71,7 +71,7 @@ NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
          "puzznic": "Puzznic", "flipull": "Flipull", "lolo": "Adventures of Lolo",
          "amazing_tater": "Amazing Tater", "slingshot": "Slingshot",
          "tower_defence": "Tower defence",
-         "fluid": "Fluid", "billiards": "Billiards",
+         "fluid": "Fluid", "pipe_dream": "Pipe Dream", "billiards": "Billiards",
          "lemmings": "Lemmings", "micropolis": "Micropolis", "factory": "Factory",
          "epidemic": "Epidemic", "traffic": "Traffic signals", "airspace": "Airspace",
          "reservoir": "Reservoir"}

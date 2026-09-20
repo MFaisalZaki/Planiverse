@@ -33,7 +33,8 @@ with the original rather than smoothing it over:
 
 ## 2. The reimplementations
 
-The pure-Python environments in [`games/`](../planiverse/environments/games/) were
+The pure-Python environments in [`games/`](../planiverse/environments/games/), and the
+Pipe Dream-like in [`pipe_dream/`](../planiverse/environments/pipe_dream/), were
 written from the behaviour observed above. They are not ports, translations or adaptations of
 the original programs: no original code was disassembled into them, and none of them shares
 the original's structure, only its observable rules.
@@ -48,6 +49,7 @@ from the original titles, and they differ title by title:
 | Lolo | 100 rooms, the cartridge's first 100 of 163 | Yes | Decoded out of the cartridge's room table. Nothing transcribed by hand |
 | Amazing Tater | 100 rooms, of the cartridge's 105 | Yes | Dumped from the board the running game composes in work RAM. Nothing transcribed by hand. The 41 PUZZLE rooms and 64 BEGINNER/ACTION rooms; the 96 PRACTICE rooms are deliberately absent |
 | Puzznic | 100 rounds, the cartridge's first 100 of 128 | Yes | The first 50 transcribed by hand, the rest read out of the running game's grid memory |
+| Pipe Dream | 100 levels | **No** | Drawn from a seed: the board, its walls, the start, the queue and the distance are all this project's own. The original deals its queue at random and stores no layouts to copy |
 | Flipull | 32 stages | **No: contract only** | Only the board size and CLEAR target match the original's 32-entry stage table. The arrangements are this project's own: the original draws each stage from an RNG seeded by boot timing, so there is no canonical layout to copy |
 
 So three environments ship layouts taken from the original titles and one does not. Every

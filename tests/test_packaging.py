@@ -40,6 +40,7 @@ ENTRY_POINTS = [
     "planiverse.environments.slingshot.environment",
     "planiverse.environments.tower_defence.environment",
     "planiverse.environments.fluid.environment",
+    "planiverse.environments.pipe_dream.environment",
     "planiverse.environments.billiards.environment",
     "planiverse.environments.lemmings.environment",
     "planiverse.environments.micropolis.environment",

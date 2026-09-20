@@ -118,6 +118,14 @@ def fluid():
     return env
 
 
+def pipe_dream():
+    from planiverse.environments.pipe_dream.environment import PipeDreamEnv
+
+    env = PipeDreamEnv()
+    env.set_index(0)
+    return env
+
+
 def billiards():
     pytest.importorskip("pooltool", reason="pooltool is not installed")
     from planiverse.environments.billiards.environment import BilliardsEnv
@@ -220,6 +228,7 @@ ENVIRONMENTS = {
     "slingshot": slingshot,
     "tower_defence": tower_defence,
     "fluid": fluid,
+    "pipe_dream": pipe_dream,
     "billiards": billiards,
     "lemmings": lemmings,
     "micropolis": micropolis,
@@ -292,7 +301,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     registered = {spec.name for spec in list_environments()}
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
-            "flood_transport", "slingshot", "tower_defence", "fluid", "billiards",
+            "flood_transport", "slingshot", "tower_defence", "fluid", "pipe_dream", "billiards",
             "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir",
             "game_boy", "retro"} == registered
 

@@ -31,6 +31,7 @@ FAST = {
     "slingshot": dict(structures=2, targets=2, shots=3, min_plan_length=2, search_limit=120),
     "tower_defence": dict(waves=3, slots=6, search_limit=300),
     "fluid": dict(need=8, search_limit=150),
+    "pipe_dream": dict(width=5, height=5, distance=6, min_plan_length=4, search_limit=300),
     "billiards": dict(balls=2, shots=3, min_plan_length=2, search_limit=20),
     "lemmings": dict(search_limit=300),
     "micropolis": dict(years=10, search_limit=20),

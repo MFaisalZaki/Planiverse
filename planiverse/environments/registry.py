@@ -151,6 +151,17 @@ REGISTRY = (
         tags=frozenset({"game", "dependency-free"}),
     ),
     EnvironmentSpec(
+        name="pipe_dream",
+        factory="planiverse.environments.pipe_dream.environment:PipeDreamEnv",
+        summary="A Pipe Dream-like: lay the queue's pieces ahead of the flow so it runs the level's distance",
+        instances="100 levels, generated",
+        generates="the board and its walls, the start, the queue of pieces, the distance, the countdown and the pace",
+        deterministic=True,
+        state_identity="value",
+        docs="docs/environments/pipe-dream.md",
+        tags=frozenset({"game", "dependency-free"}),
+    ),
+    EnvironmentSpec(
         name="billiards",
         factory="planiverse.environments.billiards.environment:BilliardsEnv",
         summary="Billiards on pooltool: pot every ball within the shots given without sinking the cue ball",

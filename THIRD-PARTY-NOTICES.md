@@ -121,6 +121,8 @@ flood maps stay with it, and the cities here are drawn from a seed.
 - *Puzznic*: © Taito Corporation
 - *Flipull* / *Plotting*: © Taito Corporation
 - *Amazing Tater*: © Atlus Co., Ltd.
+- *Pipe Mania* / *Pipe Dream*: © The Assembly Line; published as *Pipe Dream* by Lucasfilm
+  Games, and on the Game Boy by Bullet-Proof Software
 - *Super Mario Land*: © Nintendo Co., Ltd.
 - *Factorio*: © Wube Software Ltd.
 
@@ -130,13 +132,15 @@ not affiliated with, endorsed by, or sponsored by any of the above.
 
 ## Game mechanics and level data
 
-The environments in `planiverse/environments/games/` were written independently
-from behaviour observed while the original titles were played. They are not ports,
-translations or adaptations of the original programs.
+The environments in `planiverse/environments/games/`, and the Pipe Dream-like in
+`planiverse/environments/pipe_dream/`, were written independently from behaviour observed
+while the original titles were played. They are not ports, translations or adaptations of
+the original programs.
 
 The level and room layouts used as benchmark instances in three of them (the first 100 of
 Puzznic's 128 rounds, the first 100 of Adventures of Lolo's 163 rooms and 100 of Amazing
 Tater's 105 rooms) are derived from the original titles. They are included for
 non-commercial research use under section 29A of the Copyright, Designs and Patents Act
 1988, with the sources acknowledged above.
-Flipull's stages are this project's own work throughout, as are all generated instances. See [docs/provenance.md](docs/provenance.md).
+Flipull's stages and every Pipe Dream level are this project's own work throughout, as are all
+generated instances. See [docs/provenance.md](docs/provenance.md).

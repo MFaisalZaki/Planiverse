@@ -36,6 +36,7 @@ season or city, so a benchmark is not limited to what ships.
 | Slingshot | `slingshot` | 100 levels | the structures, their materials, where the targets sit, and the shots | game, physics | [docs](docs/environments/slingshot.md) |
 | Tower defence | `tower_defence` | 100 maps | the path, the building slots, the waves, the gold and the lives | game | [docs](docs/environments/tower-defence.md) |
 | Fluid | `fluid` | 100 caves | the cave, the spring, the basin, the drain, the water needed and the digs allowed | game | [docs](docs/environments/fluid.md) |
+| Pipe Dream | `pipe_dream` | 100 levels | the board and its walls, the start, the queue of pieces, the distance, the countdown and the pace | game | [docs](docs/environments/pipe-dream.md) |
 | Billiards | `billiards` | 100 tables | where the balls lie, how many there are, and the shots | game, physics | [docs](docs/environments/billiards.md) |
 | Lemmings | `lemmings` | 100 levels | the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills | game | [docs](docs/environments/lemmings.md) |
 | Amazing Tater | `amazing_tater` | 100 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
@@ -405,6 +406,7 @@ planiverse/environments/
 ├── slingshot/       # a physics puzzle on pymunk
 ├── tower_defence/   # waves fought by simulation, pure Python
 ├── fluid/           # a cellular automaton of water, pure Python
+├── pipe_dream/      # a Pipe Dream-like, pure Python
 ├── billiards/       # pool on pooltool
 ├── lemmings/        # a crowd of walkers, pure Python
 ├── micropolis/      # a city on the Micropolis engine, built from source
@@ -472,6 +474,7 @@ planiverse/
 │   ├── slingshot/                      # SlingshotEnv: a physics puzzle on pymunk
 │   ├── tower_defence/                  # TowerDefenceEnv: waves fought by simulation
 │   ├── fluid/                          # FluidEnv: a cellular automaton of water
+│   ├── pipe_dream/                     # PipeDreamEnv: pipe laid from a queue ahead of a flow
 │   ├── billiards/                      # BilliardsEnv: pool on pooltool
 │   ├── lemmings/                       # LemmingsEnv: a crowd of walkers steered with skills
 │   ├── micropolis/                     # MicropolisEnv: a city on the Micropolis engine
@@ -546,12 +549,12 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Twenty-two environments: nine simulator-backed operational ones (water distribution, power
+- Twenty-three environments: nine simulator-backed operational ones (water distribution, power
   grid, crop management, flood adaptation, a city on the Micropolis engine, an epidemic on
   Covasim, traffic signals on SUMO, crossing aircraft on BlueSky, reservoirs on pywr), the NASim network attack, four games reimplemented
   in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, a tower
-  defence, a cellular fluid puzzle, a Lemmings-like, an early-game factory on
-  factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
+  defence, a cellular fluid puzzle, a Pipe Dream-like, a Lemmings-like, an early-game
+  factory on factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
 - Nine planners: IW(k), Iterated Width, SIW, BFWS and Iterated BFWS; Rollout IW and π-IW, the
