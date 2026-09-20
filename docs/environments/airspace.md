@@ -7,8 +7,8 @@ a direct-to that puts an aircraft back on course for its exit, or nothing. The g
 out before the horizon, never closer than the separation standard on the way, and without
 dawdling.
 
-- **Import:** `from planiverse.environments.airspace.environment import AirspaceEnv`
-- **Source:** [`planiverse/environments/airspace/environment.py`](../../planiverse/environments/airspace/environment.py)
+- **Import:** `from planiverse.environments.operational.airspace.environment import AirspaceEnv`
+- **Source:** [`planiverse/environments/operational/airspace/environment.py`](../../planiverse/environments/operational/airspace/environment.py)
 - **Instances:** 100 sectors, indices `0` to `99`, all drawn by the generator at recorded seeds
 - **Generator:** `generate_instance(seed, count=None, horizon=None, ...)`; see [Generating sectors](#generating-sectors)
 - **Dependency:** `bluesky-simulator`, installed by `scripts/install_bluesky.sh`
@@ -163,7 +163,7 @@ target is a dashed line, and the goal is marked where the plan ends. Both were g
 solving the instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.airspace.environment import AirspaceEnv
+from planiverse.environments.operational.airspace.environment import AirspaceEnv
 from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
@@ -225,7 +225,7 @@ its instructions are the witness. The same seed and options always give the same
 
 | File | Contents |
 |---|---|
-| [`environment.py`](../../planiverse/environments/airspace/environment.py) | `AirspaceAction`, `AirspaceState`, the geometry, `AirspaceEnv` with the scripted controller, `SECTORS` |
+| [`environment.py`](../../planiverse/environments/operational/airspace/environment.py) | `AirspaceAction`, `AirspaceState`, the geometry, `AirspaceEnv` with the scripted controller, `SECTORS` |
 | [`scripts/install_bluesky.sh`](../../scripts/install_bluesky.sh) | Installs BlueSky and its data |
 | [`tests/test_operational_four.py`](../../tests/test_operational_four.py) | Tests |
 | [`tests/data/airspace_solutions.json`](../../tests/data/airspace_solutions.json) | The instructions each sector was accepted on |

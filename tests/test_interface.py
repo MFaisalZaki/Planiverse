@@ -46,7 +46,7 @@ def amazing_tater():
 
 def water_network():
     pytest.importorskip("wntr", reason="wntr is not installed")
-    from planiverse.environments.water_network.environment import WaterNetworkEnv
+    from planiverse.environments.operational.water_network.environment import WaterNetworkEnv
 
     env = WaterNetworkEnv()
     env.set_index(0)
@@ -55,7 +55,7 @@ def water_network():
 
 def power_grid():
     pytest.importorskip("grid2op", reason="grid2op is not installed")
-    from planiverse.environments.power_grid.environment import PowerGridEnv
+    from planiverse.environments.operational.power_grid.environment import PowerGridEnv
 
     env = PowerGridEnv()
     env.set_index(4)
@@ -64,7 +64,7 @@ def power_grid():
 
 def crop_management():
     pytest.importorskip("pcse", reason="pcse is not installed")
-    from planiverse.environments.crop_management.environment import CropEnv
+    from planiverse.environments.operational.crop_management.environment import CropEnv
 
     env = CropEnv()
     env.set_index(10)
@@ -74,7 +74,7 @@ def crop_management():
 
 def network_attack():
     pytest.importorskip("nasim", reason="nasim is not installed")
-    from planiverse.environments.network_attack.network_attack import EnvNASim
+    from planiverse.environments.operational.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
     env.set_index(0)
@@ -82,7 +82,7 @@ def network_attack():
 
 
 def flood_transport():
-    from planiverse.environments.flood_transport.environment import FloodTransportEnv
+    from planiverse.environments.operational.flood_transport.environment import FloodTransportEnv
 
     env = FloodTransportEnv()
     env.set_index(0)
@@ -92,7 +92,7 @@ def flood_transport():
 def game_boy():
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from counter_rom import COUNTER, counter_rom
-    from planiverse.environments.emulated.game_boy import GameBoyEnv
+    from planiverse.environments.games.emulated.game_boy import GameBoyEnv
 
     env = GameBoyEnv(counter_rom(), watch={"counter": COUNTER},
                      goal={"memory": COUNTER, "at_least": 3}, actions=("right", "left", "a"),
@@ -103,7 +103,7 @@ def game_boy():
 
 
 def tower_defence():
-    from planiverse.environments.tower_defence.environment import TowerDefenceEnv
+    from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv
 
     env = TowerDefenceEnv()
     env.set_index(0)
@@ -111,7 +111,7 @@ def tower_defence():
 
 
 def fluid():
-    from planiverse.environments.fluid.environment import FluidEnv
+    from planiverse.environments.games.fluid.environment import FluidEnv
 
     env = FluidEnv()
     env.set_index(0)
@@ -119,7 +119,7 @@ def fluid():
 
 
 def pipe_dream():
-    from planiverse.environments.pipe_dream.environment import PipeDreamEnv
+    from planiverse.environments.games.pipe_dream.environment import PipeDreamEnv
 
     env = PipeDreamEnv()
     env.set_index(0)
@@ -128,7 +128,7 @@ def pipe_dream():
 
 def billiards():
     pytest.importorskip("pooltool", reason="pooltool is not installed")
-    from planiverse.environments.billiards.environment import BilliardsEnv
+    from planiverse.environments.games.billiards.environment import BilliardsEnv
 
     env = BilliardsEnv()
     env.set_index(0)
@@ -136,7 +136,7 @@ def billiards():
 
 
 def lemmings():
-    from planiverse.environments.lemmings.environment import LemmingsEnv
+    from planiverse.environments.games.lemmings.environment import LemmingsEnv
 
     env = LemmingsEnv()
     env.set_index(0)
@@ -145,7 +145,7 @@ def lemmings():
 
 def micropolis():
     pytest.importorskip("micropolisengine", reason="the Micropolis engine is not built")
-    from planiverse.environments.micropolis.environment import MicropolisEnv
+    from planiverse.environments.operational.micropolis.environment import MicropolisEnv
 
     env = MicropolisEnv()
     env.set_index(0)
@@ -154,7 +154,7 @@ def micropolis():
 
 def epidemic():
     pytest.importorskip("covasim", reason="covasim is not installed")
-    from planiverse.environments.epidemic.environment import EpidemicEnv
+    from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 
     env = EpidemicEnv()
     env.set_index(0)
@@ -163,7 +163,7 @@ def epidemic():
 
 def traffic():
     pytest.importorskip("libsumo", reason="libsumo is not installed")
-    from planiverse.environments.traffic.environment import TrafficEnv
+    from planiverse.environments.operational.traffic.environment import TrafficEnv
 
     env = TrafficEnv()
     env.set_index(0)
@@ -172,7 +172,7 @@ def traffic():
 
 def airspace():
     pytest.importorskip("bluesky", reason="bluesky is not installed")
-    from planiverse.environments.airspace.environment import AirspaceEnv
+    from planiverse.environments.operational.airspace.environment import AirspaceEnv
 
     env = AirspaceEnv()
     env.set_index(0)
@@ -181,7 +181,7 @@ def airspace():
 
 def reservoir():
     pytest.importorskip("pywr", reason="pywr is not installed")
-    from planiverse.environments.reservoir.environment import ReservoirEnv
+    from planiverse.environments.operational.reservoir.environment import ReservoirEnv
 
     env = ReservoirEnv()
     env.set_index(0)
@@ -190,7 +190,7 @@ def reservoir():
 
 def factory_env():
     pytest.importorskip("fsim", reason="factory-sim is not built")
-    from planiverse.environments.factory.environment import FactoryEnv
+    from planiverse.environments.operational.factory.environment import FactoryEnv
 
     env = FactoryEnv()
     env.set_index(0)
@@ -199,7 +199,7 @@ def factory_env():
 
 def slingshot():
     pytest.importorskip("pymunk", reason="pymunk is not installed")
-    from planiverse.environments.slingshot.environment import SlingshotEnv
+    from planiverse.environments.games.slingshot.environment import SlingshotEnv
 
     env = SlingshotEnv()
     env.set_index(0)
@@ -208,7 +208,7 @@ def slingshot():
 
 def retro():
     pytest.importorskip("stable_retro", reason="stable-retro is not installed")
-    from planiverse.environments.emulated.stable_retro import RetroEnv
+    from planiverse.environments.games.emulated.stable_retro import RetroEnv
 
     env = RetroEnv(goal={"survive": 5})
     env.set_index(0)

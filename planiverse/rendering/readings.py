@@ -87,48 +87,48 @@ def reservoir(state):
 
 
 READINGS = {
-    ("planiverse.environments.epidemic.environment", "EpidemicState"): Readings(
+    ("planiverse.environments.operational.epidemic.environment", "EpidemicState"): Readings(
         epidemic, (Panel("people", ("infectious",), None),
                    Panel("in hospital", ("in hospital",), "beds"),
                    Panel("deaths", ("deaths",), "allowed"),
                    Panel("disruption points", ("points spent",), "budget"))),
-    ("planiverse.environments.traffic.environment", "TrafficState"): Readings(
+    ("planiverse.environments.operational.traffic.environment", "TrafficState"): Readings(
         traffic, (Panel("vehicles", ("on the road", "halted", "arrived", "to come"), None),
                   Panel("travel, vehicle-seconds", ("vehicle-seconds",), "target"))),
-    ("planiverse.environments.airspace.environment", "AirspaceState"): Readings(
+    ("planiverse.environments.operational.airspace.environment", "AirspaceState"): Readings(
         airspace, (Panel("aircraft in the sector", ("in the sector",), None),
                    Panel("closest pair, nautical miles", ("closest, nm",), "standard"),
                    Panel("miles still to fly", ("miles to go",), None),
                    Panel("exit times, seconds", ("exit times, s",), "target"))),
-    ("planiverse.environments.reservoir.environment", "ReservoirState"): Readings(
+    ("planiverse.environments.operational.reservoir.environment", "ReservoirState"): Readings(
         reservoir, (Panel("volume", ("upper", "lower"), None),
                     Panel("flows a month", ("released", "city", "farm", "river"), None),
                     Panel("farm shortfall", ("farm shortfall",), "allowed"))),
-    ("planiverse.environments.micropolis.environment", "MicropolisState"): Readings(
+    ("planiverse.environments.operational.micropolis.environment", "MicropolisState"): Readings(
         micropolis, (Panel("people", ("population", "residents", "commerce", "industry"), "target"),
                      Panel("funds", ("funds",), None),
                      Panel("score", ("score",), None))),
-    ("planiverse.environments.factory.environment", "FactoryState"): Readings(
+    ("planiverse.environments.operational.factory.environment", "FactoryState"): Readings(
         factory, (Panel("plates", ("brought back", "made", "in furnaces"), "target"),
                   Panel("held", ("coal", "ore"), None),
                   Panel("machines working", ("drills", "furnaces"), None),
                   Panel("game time, seconds", ("seconds",), None))),
-    ("planiverse.environments.tower_defence.environment", "TowerState"): Readings(
+    ("planiverse.environments.games.tower_defence.environment", "TowerState"): Readings(
         tower_defence, (Panel("lives", ("lives",), None),
                         Panel("gold", ("gold",), None),
                         Panel("towers built", ("arrow", "cannon"), None),
                         Panel("waves fought", ("wave",), None))),
-    ("planiverse.environments.crop_management.environment", "CropState"): Readings(
+    ("planiverse.environments.operational.crop_management.environment", "CropState"): Readings(
         crop_management, (Panel("biomass and yield, kg/ha", ("biomass", "yield"), None),
                           Panel("water used, cm", ("water used",), None))),
-    ("planiverse.environments.power_grid.environment", "PowerGridState"): Readings(
+    ("planiverse.environments.operational.power_grid.environment", "PowerGridState"): Readings(
         power_grid, (Panel("worst line loading, share of capacity", ("worst line loading",), "limit"),
                      Panel("lines overloaded", ("overloaded",), None))),
-    ("planiverse.environments.water_network.environment", "WaterNetworkState"): Readings(
+    ("planiverse.environments.operational.water_network.environment", "WaterNetworkState"): Readings(
         water_network, (Panel("contaminated water delivered, %", ("contaminated",), None),
                         Panel("service, %", ("service",), None),
                         Panel("pipes closed", ("closed",), None))),
-    ("planiverse.environments.flood_transport.environment", "FloodState"): Readings(
+    ("planiverse.environments.operational.flood_transport.environment", "FloodState"): Readings(
         flood_transport, (Panel("cost, M DKK", ("total", "damage", "delays", "measures"), "target"),
                           Panel("worst storm so far, mm", ("storm",), None),
                           Panel("measures in place", ("in place",), None))),

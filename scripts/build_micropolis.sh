@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the Micropolis engine's Python binding and install it, for `planiverse.environments.micropolis`.
+# Build the Micropolis engine's Python binding and install it, for `planiverse.environments.operational.micropolis`.
 #
 # Fetches MicropolisCore from https://github.com/SimHacker/micropolis (GPL-3.0 with Electronic
 # Arts' additional terms; see THIRD-PARTY-NOTICES.md), patches two Python 2 names in its SWIG

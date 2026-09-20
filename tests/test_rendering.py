@@ -94,7 +94,7 @@ def test_the_environment_offers_render_trace_as_a_convenience(tmp_path, env, tra
 
 def tower_trace():
     """A short tower defence trace: a pure-Python environment whose state is readings."""
-    from planiverse.environments.tower_defence.environment import TowerDefenceEnv
+    from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv
 
     game = TowerDefenceEnv()
     game.set_index(0)

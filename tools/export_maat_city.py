@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 
-from planiverse.environments.flood_transport.environment import DESIGN_STORM, sample_rain
+from planiverse.environments.operational.flood_transport.environment import DESIGN_STORM, sample_rain
 from planiverse.environments.generation import rng
 
 

@@ -25,7 +25,7 @@ from conftest import assert_string_literals, assert_successors_contract
 def counter_env(**overrides):
     pytest.importorskip("pyboy", reason="pyboy is not installed")
     from counter_rom import COUNTER, PRESSES, counter_rom
-    from planiverse.environments.emulated.game_boy import GameBoyEnv
+    from planiverse.environments.games.emulated.game_boy import GameBoyEnv
 
     options = dict(watch={"counter": COUNTER, "presses": PRESSES},
                    goal={"memory": COUNTER, "at_least": 3}, actions=("right", "left", "a"),
@@ -46,7 +46,7 @@ def names(plan):
 
 def test_a_cartridge_is_required_and_cannot_come_from_the_repository(monkeypatch, tmp_path):
     pytest.importorskip("pyboy", reason="pyboy is not installed")
-    from planiverse.environments.emulated.game_boy import ROM_VARIABLE, GameBoyEnv
+    from planiverse.environments.games.emulated.game_boy import ROM_VARIABLE, GameBoyEnv
 
     monkeypatch.delenv(ROM_VARIABLE, raising=False)
     with pytest.raises(FileNotFoundError, match=ROM_VARIABLE):
@@ -197,7 +197,7 @@ def test_the_registry_builds_it_from_the_environment_variable():
 
 def test_the_profiles_map_indices_to_start_arguments():
     """The per-wrapper knowledge is data; it can be checked without a cartridge."""
-    from planiverse.environments.emulated.game_boy import GENERIC, PROFILES
+    from planiverse.environments.games.emulated.game_boy import GENERIC, PROFILES
 
     assert PROFILES["GameWrapperSuperMarioLand"].select(4) == {"world_level": (2, 2)}
     assert PROFILES["GameWrapperFlipull"].select(0) == {"stage": 1}
@@ -210,7 +210,7 @@ def test_the_profiles_map_indices_to_start_arguments():
 
 
 def test_goal_specs_read_the_wrapper_and_the_fields():
-    from planiverse.environments.emulated.game_boy import _holds
+    from planiverse.environments.games.emulated.game_boy import _holds
 
     class Wrapper:
         def stage_cleared(self):
@@ -237,7 +237,7 @@ def test_goal_specs_read_the_wrapper_and_the_fields():
 
 def airstriker_env(**overrides):
     pytest.importorskip("stable_retro", reason="stable-retro is not installed")
-    from planiverse.environments.emulated.stable_retro import RetroEnv
+    from planiverse.environments.games.emulated.stable_retro import RetroEnv
 
     return RetroEnv(**{"goal": {"survive": 5}, **overrides})
 
@@ -407,7 +407,7 @@ def test_airstriker_registers_a_hit_the_frame_it_lands(airstriker):
 
 def test_retro_goal_specs_read_the_variables():
     pytest.importorskip("stable_retro", reason="stable-retro is not installed")
-    from planiverse.environments.emulated.stable_retro import _holds
+    from planiverse.environments.games.emulated.stable_retro import _holds
 
     variables, start = {"lives": 2, "score": 150}, {"lives": 3, "score": 100}
     assert _holds({"variable": "score", "delta": 50}, variables, start, False, 0)

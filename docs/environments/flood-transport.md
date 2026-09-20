@@ -9,8 +9,8 @@ a horizon of decades, under storms drawn from a climate projection, so that dama
 adaptation together stay within a target.
 
 - **Class:** `FloodTransportEnv`
-- **Import:** `from planiverse.environments.flood_transport.environment import FloodTransportEnv`
-- **Source:** [`environment.py`](../../planiverse/environments/flood_transport/environment.py)
+- **Import:** `from planiverse.environments.operational.flood_transport.environment import FloodTransportEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/operational/flood_transport/environment.py)
 - **Instances:** 100 scenarios, indices `0` to `99`: 15 chosen, then 85 drawn over a grid of options
 - **Generator:** `generate_instance(seed, zones=12, years=40, period=5, rain="klimaatlas", ...)`;
   see [Generating scenarios](#generating-scenarios)
@@ -346,6 +346,6 @@ Danish Klimaatlas; see [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md).
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/environments/flood_transport/environment.py) | `FloodTransportEnv`, `FloodState`, `FloodAction`, `draw_city`, the model's constants |
+| [`environment.py`](../../planiverse/environments/operational/flood_transport/environment.py) | `FloodTransportEnv`, `FloodState`, `FloodAction`, `draw_city`, the model's constants |
 | [`tools/export_maat_city.py`](../../tools/export_maat_city.py) | Exports a MAAT city as an instance |
 | [`tests/test_flood_transport.py`](../../tests/test_flood_transport.py) | Tests |

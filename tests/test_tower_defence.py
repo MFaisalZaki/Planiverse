@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from planiverse.environments.tower_defence.environment import (
+from planiverse.environments.games.tower_defence.environment import (
     MAPS, START, TOWERS, TowerAction, TowerDefenceEnv, TowerState, draw_map, run_wave,
 )
 

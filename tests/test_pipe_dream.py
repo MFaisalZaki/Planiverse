@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-from planiverse.environments.pipe_dream.environment import (
+from planiverse.environments.games.pipe_dream.environment import (
     DISCARD, FLUSH, KINDS, LEVELS, DISCARD as _DISCARD, PipeAction, PipeDreamEnv, PipeState,
     advance, advances_due, draw_level, end_of_pipe, run_ahead,
 )

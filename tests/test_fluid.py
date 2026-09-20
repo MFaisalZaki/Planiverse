@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from planiverse.environments.fluid.environment import (
+from planiverse.environments.games.fluid.environment import (
     AIR, CAVES, EARTH, MAX_TICKS, PERIOD, WATER, FluidAction, FluidEnv, FluidState, WAIT,
     diggable, distance_to_basin, run, tick,
 )

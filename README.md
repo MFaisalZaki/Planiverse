@@ -395,28 +395,30 @@ themselves, which is why state and action classes define `__lt__`.
 
 ## Architecture
 
-One flat package, one base class, and a registry:
+One package, one base class, a registry, and two families of subpackages:
 
 ```
 planiverse/environments/
 ├── base.py          # Environment: the eight-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
-├── games/           # the four games, reimplemented in pure Python
-├── slingshot/       # a physics puzzle on pymunk
-├── tower_defence/   # waves fought by simulation, pure Python
-├── fluid/           # a cellular automaton of water, pure Python
-├── pipe_dream/      # a Pipe Dream-like, pure Python
-├── billiards/       # pool on pooltool
-├── lemmings/        # a crowd of walkers, pure Python
-├── micropolis/      # a city on the Micropolis engine, built from source
-├── factory/         # an early-game factory on factory-sim, built from source
-├── epidemic/        # an outbreak on Covasim
-├── traffic/         # signals on a SUMO grid
-├── airspace/        # crossing aircraft on BlueSky
-├── reservoir/       # reservoir operations on pywr
-├── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
-└── <one subpackage per simulator-backed environment>
+├── games/           # every game: the four cartridge puzzles as modules, the rest as subpackages
+│   ├── puzznic.py, flipull.py, lolo.py, amazing_tater.py   # reimplemented in pure Python
+│   ├── slingshot/       # a physics puzzle on pymunk
+│   ├── tower_defence/   # waves fought by simulation, pure Python
+│   ├── fluid/           # a cellular automaton of water, pure Python
+│   ├── pipe_dream/      # a Pipe Dream-like, pure Python
+│   ├── billiards/       # pool on pooltool
+│   ├── lemmings/        # a crowd of walkers, pure Python
+│   └── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
+└── operational/     # every simulator-backed environment, one subpackage each
+    ├── micropolis/      # a city on the Micropolis engine, built from source
+    ├── factory/         # an early-game factory on factory-sim, built from source
+    ├── epidemic/        # an outbreak on Covasim
+    ├── traffic/         # signals on a SUMO grid
+    ├── airspace/        # crossing aircraft on BlueSky
+    ├── reservoir/       # reservoir operations on pywr
+    └── water_network/, power_grid/, crop_management/, flood_transport/, network_attack/
 ```
 
 The taxonomy is data. `EnvironmentSpec` carries what a planner might select on:
@@ -463,31 +465,32 @@ planiverse/
 │   ├── base.py                         # Environment, the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── generation.py                   # rng, bounded_search, draw_until, solvable_draw
-│   ├── games/                          # the four games in pure Python, nothing to supply
-│   │   ├── puzznic.py                  # PuzznicGame
+│   ├── games/                          # every game
+│   │   ├── puzznic.py                  # PuzznicGame, in pure Python, nothing to supply
 │   │   ├── flipull.py                  # FlipullGame
 │   │   ├── lolo.py                     # LoloGame
-│   │   └── amazing_tater.py            # AmazingTaterGame
-│   ├── emulated/                       # any game, nothing shipped
-│   │   ├── game_boy.py                 # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
-│   │   └── stable_retro.py             # RetroEnv: a Stable-Retro integration from its save states
-│   ├── slingshot/                      # SlingshotEnv: a physics puzzle on pymunk
-│   ├── tower_defence/                  # TowerDefenceEnv: waves fought by simulation
-│   ├── fluid/                          # FluidEnv: a cellular automaton of water
-│   ├── pipe_dream/                     # PipeDreamEnv: pipe laid from a queue ahead of a flow
-│   ├── billiards/                      # BilliardsEnv: pool on pooltool
-│   ├── lemmings/                       # LemmingsEnv: a crowd of walkers steered with skills
-│   ├── micropolis/                     # MicropolisEnv: a city on the Micropolis engine
-│   ├── factory/                        # FactoryEnv: an early-game factory on factory-sim
-│   ├── epidemic/                       # EpidemicEnv: an outbreak on Covasim
-│   ├── traffic/                        # TrafficEnv: signals on a SUMO grid
-│   ├── airspace/                       # AirspaceEnv: crossing aircraft on BlueSky
-│   ├── reservoir/                      # ReservoirEnv: reservoir operations on pywr
-│   ├── flood_transport/                # FloodTransportEnv (after MAAT), a city drawn from a seed
-│   ├── network_attack/                 # EnvNASim (wraps NASim)
-│   ├── water_network/                  # WaterNetworkEnv (WNTR/EPANET)
-│   ├── power_grid/                     # PowerGridEnv (Grid2Op)
-│   └── crop_management/                # CropEnv (PCSE/WOFOST)
+│   │   ├── amazing_tater.py            # AmazingTaterGame
+│   │   ├── slingshot/                  # SlingshotEnv: a physics puzzle on pymunk
+│   │   ├── tower_defence/              # TowerDefenceEnv: waves fought by simulation
+│   │   ├── fluid/                      # FluidEnv: a cellular automaton of water
+│   │   ├── pipe_dream/                 # PipeDreamEnv: pipe laid from a queue ahead of a flow
+│   │   ├── billiards/                  # BilliardsEnv: pool on pooltool
+│   │   ├── lemmings/                   # LemmingsEnv: a crowd of walkers steered with skills
+│   │   └── emulated/                   # any game, nothing shipped
+│   │       ├── game_boy.py             # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
+│   │       └── stable_retro.py         # RetroEnv: a Stable-Retro integration from its save states
+│   └── operational/                    # every simulator-backed environment
+│       ├── micropolis/                 # MicropolisEnv: a city on the Micropolis engine
+│       ├── factory/                    # FactoryEnv: an early-game factory on factory-sim
+│       ├── epidemic/                   # EpidemicEnv: an outbreak on Covasim
+│       ├── traffic/                    # TrafficEnv: signals on a SUMO grid
+│       ├── airspace/                   # AirspaceEnv: crossing aircraft on BlueSky
+│       ├── reservoir/                  # ReservoirEnv: reservoir operations on pywr
+│       ├── flood_transport/            # FloodTransportEnv (after MAAT), a city drawn from a seed
+│       ├── network_attack/             # EnvNASim (wraps NASim)
+│       ├── water_network/              # WaterNetworkEnv (WNTR/EPANET)
+│       ├── power_grid/                 # PowerGridEnv (Grid2Op)
+│       └── crop_management/            # CropEnv (PCSE/WOFOST)
 ├── planners/
 │   ├── width/                          # IW, Iterated Width, SIW, BFWS, Rollout IW, π-IW
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)

@@ -33,9 +33,8 @@ with the original rather than smoothing it over:
 
 ## 2. The reimplementations
 
-The pure-Python environments in [`games/`](../planiverse/environments/games/), and the
-Pipe Dream-like in [`pipe_dream/`](../planiverse/environments/pipe_dream/), were
-written from the behaviour observed above. They are not ports, translations or adaptations of
+The reimplemented games in [`games/`](../planiverse/environments/games/), the four cartridge
+puzzles and the Pipe Dream-like, were written from the behaviour observed above. They are not ports, translations or adaptations of
 the original programs: no original code was disassembled into them, and none of them shares
 the original's structure, only its observable rules.
 
@@ -69,7 +68,7 @@ audio**. The renders under [`docs/renders/`](renders/) are drawn from this repos
 reimplementations, with two exceptions the directory's README names: the Game Boy render
 shows the test suite's own cartridge, and the Stable-Retro render shows *Airstriker*, the game
 Stable-Retro ships and redistributes. The two emulator environments
-([`emulated/`](../planiverse/environments/emulated/)) run a cartridge the user supplies and
+([`emulated/`](../planiverse/environments/games/emulated/)) run a cartridge the user supplies and
 supply none; the cartridge their tests run on is an original program written for this
 repository ([`tests/counter_rom.py`](../tests/counter_rom.py)), and the knowledge of any
 commercial game's memory they rely on lives in PyBoy's wrappers and Stable-Retro's

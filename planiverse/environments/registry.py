@@ -118,7 +118,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="slingshot",
-        factory="planiverse.environments.slingshot.environment:SlingshotEnv",
+        factory="planiverse.environments.games.slingshot.environment:SlingshotEnv",
         summary="A slingshot physics puzzle: knock every target down within the shots given",
         instances="100 levels, generated",
         generates="the structures, their materials, where the targets sit, and the shots",
@@ -130,7 +130,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="tower_defence",
-        factory="planiverse.environments.tower_defence.environment:TowerDefenceEnv",
+        factory="planiverse.environments.games.tower_defence.environment:TowerDefenceEnv",
         summary="Tower defence: build between waves so that the last wave leaves you alive",
         instances="100 maps, generated",
         generates="the path, the building slots, the waves, the gold and the lives",
@@ -141,7 +141,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="fluid",
-        factory="planiverse.environments.fluid.environment:FluidEnv",
+        factory="planiverse.environments.games.fluid.environment:FluidEnv",
         summary="A cellular fluid puzzle: dig channels so that enough water reaches the basin",
         instances="100 caves, generated",
         generates="the cave, the spring, the basin, the drain, the water needed and the digs allowed",
@@ -152,7 +152,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="pipe_dream",
-        factory="planiverse.environments.pipe_dream.environment:PipeDreamEnv",
+        factory="planiverse.environments.games.pipe_dream.environment:PipeDreamEnv",
         summary="A Pipe Dream-like: lay the queue's pieces ahead of the flow so it runs the level's distance",
         instances="100 levels, generated",
         generates="the board and its walls, the start, the queue of pieces, the distance, the countdown and the pace",
@@ -163,7 +163,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="billiards",
-        factory="planiverse.environments.billiards.environment:BilliardsEnv",
+        factory="planiverse.environments.games.billiards.environment:BilliardsEnv",
         summary="Billiards on pooltool: pot every ball within the shots given without sinking the cue ball",
         instances="100 tables, generated",
         generates="where the balls lie, how many there are, and the shots",
@@ -175,7 +175,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="lemmings",
-        factory="planiverse.environments.lemmings.environment:LemmingsEnv",
+        factory="planiverse.environments.games.lemmings.environment:LemmingsEnv",
         summary="A Lemmings-like: steer a crowd of walkers to the exit with a few skills, in time",
         instances="100 levels, generated",
         generates="the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills",
@@ -186,7 +186,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="micropolis",
-        factory="planiverse.environments.micropolis.environment:MicropolisEnv",
+        factory="planiverse.environments.operational.micropolis.environment:MicropolisEnv",
         summary="A city on the Micropolis engine: zone a site a year and reach the population by the horizon",
         instances="100 cities, generated",
         generates="the map, the layout, the horizon and the population target",
@@ -198,7 +198,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="epidemic",
-        factory="planiverse.environments.epidemic.environment:EpidemicEnv",
+        factory="planiverse.environments.operational.epidemic.environment:EpidemicEnv",
         summary="An epidemic on Covasim: open, distance or lock down a week at a time, with the hospitals never over capacity and the deaths under the target",
         instances="100 outbreaks, generated",
         generates="the population, the seed infections, the beds, the disruption budget, the horizon and the death target",
@@ -210,7 +210,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="traffic",
-        factory="planiverse.environments.traffic.environment:TrafficEnv",
+        factory="planiverse.environments.operational.traffic.environment:TrafficEnv",
         summary="Traffic signals on SUMO: switch the grid's lights and get every trip through before the horizon under a travel-time target",
         instances="100 mornings, generated",
         generates="the trips, their spacing, the horizon and the travel-time target",
@@ -222,7 +222,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="airspace",
-        factory="planiverse.environments.airspace.environment:AirspaceEnv",
+        factory="planiverse.environments.operational.airspace.environment:AirspaceEnv",
         summary="Air traffic on BlueSky: turn and direct a few crossing aircraft to their exits, never closer than the separation standard",
         instances="100 sectors, generated",
         generates="the aircraft, their entries, speeds and exits, the horizon and the exit-time target",
@@ -234,7 +234,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="reservoir",
-        factory="planiverse.environments.reservoir.environment:ReservoirEnv",
+        factory="planiverse.environments.operational.reservoir.environment:ReservoirEnv",
         summary="Reservoir operations on pywr: set the release and the farm's share each month, keep the city and the river supplied, and end the year above the reserves",
         instances="100 years, generated",
         generates="the inflows, the demands, the capacities, the reserves and the shortfall target",
@@ -246,7 +246,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="factory",
-        factory="planiverse.environments.factory.environment:FactoryEnv",
+        factory="planiverse.environments.operational.factory.environment:FactoryEnv",
         summary="An early-game factory on factory-sim: drills, furnaces and coal on an ore patch, and plates to bring back by the deadline",
         instances="100 patches, generated",
         generates="the patch, the walls, the start, what is carried, the horizon and the plate target",
@@ -258,7 +258,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="game_boy",
-        factory="planiverse.environments.emulated.game_boy:GameBoyEnv",
+        factory="planiverse.environments.games.emulated.game_boy:GameBoyEnv",
         summary="Any Game Boy cartridge, through PyBoy and its game wrappers",
         instances="one per stage, level or room the cartridge's wrapper reaches",
         generates="the stage, the timer seed, and an opening played from its first frame",
@@ -270,7 +270,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="retro",
-        factory="planiverse.environments.emulated.stable_retro:RetroEnv",
+        factory="planiverse.environments.games.emulated.stable_retro:RetroEnv",
         summary="Any Stable-Retro integration, from a save state to a goal on its variables",
         instances="one per save state the integration ships (Airstriker: 1)",
         generates="the save state, an opening played from it, and the goal",
@@ -282,7 +282,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="network_attack",
-        factory="planiverse.environments.network_attack.network_attack:EnvNASim",
+        factory="planiverse.environments.operational.network_attack.network_attack:EnvNASim",
         summary="Penetration testing against a simulated enterprise network",
         instances="100 networks: NASim's 18 benchmarks, then 82 generated",
         generates="network topology, hosts, services, OSs and exploits",
@@ -294,7 +294,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="water_network",
-        factory="planiverse.environments.water_network.environment:WaterNetworkEnv",
+        factory="planiverse.environments.operational.water_network.environment:WaterNetworkEnv",
         summary="Containing a contaminant in a water network without cutting off supply",
         instances="100 scenarios: 9 chosen, then 91 generated",
         generates="the network, and the junction the contaminant enters at",
@@ -306,7 +306,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="power_grid",
-        factory="planiverse.environments.power_grid.environment:PowerGridEnv",
+        factory="planiverse.environments.operational.power_grid.environment:PowerGridEnv",
         summary="Restoring grid security by substation topology after a line trips",
         instances="100 contingencies: 9 chosen, then 91 generated",
         generates="the time series, its starting step, and the line that trips",
@@ -318,7 +318,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="flood_transport",
-        factory="planiverse.environments.flood_transport.environment:FloodTransportEnv",
+        factory="planiverse.environments.operational.flood_transport.environment:FloodTransportEnv",
         summary="Protecting a flooding city's roads: which zones to adapt, and when",
         instances="100 scenarios: 15 chosen, then 85 generated",
         generates="the city, its storms, the horizon and the measures on offer",
@@ -329,7 +329,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="crop_management",
-        factory="planiverse.environments.crop_management.environment:CropEnv",
+        factory="planiverse.environments.operational.crop_management.environment:CropEnv",
         summary="Scheduling irrigation across a growing season",
         instances="100 seasons: 22 years, then 78 with the sowing moved",
         generates="the year's weather and the sowing date",

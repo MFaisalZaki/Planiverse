@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build factory-sim and install it, for `planiverse.environments.factory`.
+# Build factory-sim and install it, for `planiverse.environments.operational.factory`.
 #
 # Fetches factory-sim from https://github.com/divagr18/factory-sim (MIT; see THIRD-PARTY-NOTICES.md)
 # at the commit the environment's patches were drawn on, compiles its C core into the cffi

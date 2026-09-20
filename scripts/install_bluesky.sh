@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install BlueSky and what the airspace environment needs of it, for `planiverse.environments.airspace`.
+# Install BlueSky and what the airspace environment needs of it, for `planiverse.environments.operational.airspace`.
 #
 # BlueSky (https://github.com/TUDelft-CNS-ATM/bluesky, MIT) declares a dependency on `zmq`, a
 # placeholder package that no longer builds; the binding it wants is `pyzmq`. So the simulator is

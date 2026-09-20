@@ -8,8 +8,8 @@ contamination without cutting off the customers, and that tension is the problem
 pipe contains a little more and costs a little more service.
 
 - **Class:** `WaterNetworkEnv`
-- **Import:** `from planiverse.environments.water_network.environment import WaterNetworkEnv`
-- **Source:** [`environment.py`](../../planiverse/environments/water_network/environment.py)
+- **Import:** `from planiverse.environments.operational.water_network.environment import WaterNetworkEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/operational/water_network/environment.py)
 - **Instances:** 100 scenarios, indices `0` to `99`: nine chosen by hand from the source ranking, then 91 the generator drew
 - **Generator:** `generate_instance(seed, network=None, min_baseline=0.1)`; see [Generating scenarios](#generating-scenarios)
 - **Dependencies:** `wntr`. The benchmark networks ship inside it, so there is nothing to supply.
@@ -172,7 +172,7 @@ the three panels carries a target, so no dashed line is drawn. Both were generat
 the instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.water_network.environment import WaterNetworkEnv
+from planiverse.environments.operational.water_network.environment import WaterNetworkEnv
 from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
@@ -329,5 +329,5 @@ install with a newer setuptools, pin `setuptools<81`.
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/environments/water_network/environment.py) | `WaterNetworkEnv`, `WaterNetworkState`, `WaterNetworkAction`, `rank_sources` |
+| [`environment.py`](../../planiverse/environments/operational/water_network/environment.py) | `WaterNetworkEnv`, `WaterNetworkState`, `WaterNetworkAction`, `rank_sources` |
 | [`tests/test_water_distribution.py`](../../tests/test_water_distribution.py) | Tests |

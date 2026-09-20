@@ -13,7 +13,7 @@ import pytest
 
 pytest.importorskip("pooltool", reason="pooltool is not installed")
 
-from planiverse.environments.billiards.environment import (  # noqa: E402
+from planiverse.environments.games.billiards.environment import (  # noqa: E402
     CUTS, SPEEDS, TABLES, BilliardsAction, BilliardsEnv, BilliardsState, draw_table, strike,
 )
 
@@ -133,7 +133,7 @@ def test_a_generated_table_reproduces_from_its_seed():
 
 def test_a_shot_the_physics_cannot_resolve_is_not_offered(monkeypatch):
     """pooltool's cushion model asserts on the odd geometry; such a shot is no successor."""
-    import planiverse.environments.billiards.environment as module
+    import planiverse.environments.games.billiards.environment as module
 
     pt = module._pooltool()
 

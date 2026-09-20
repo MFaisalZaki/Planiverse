@@ -8,8 +8,8 @@ operator's move is to change the topology at a substation, rerouting the power w
 anything off, in the two to four steps before the cascade.
 
 - **Class:** `PowerGridEnv`
-- **Import:** `from planiverse.environments.power_grid.environment import PowerGridEnv`
-- **Source:** [`environment.py`](../../planiverse/environments/power_grid/environment.py)
+- **Import:** `from planiverse.environments.operational.power_grid.environment import PowerGridEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/operational/power_grid/environment.py)
 - **Instances:** 100 scenarios, indices `0` to `99`: nine from N-1 analysis at the start of the series, then 91 the generator drew further into them
 - **Generator:** `generate_instance(seed, chronic=None, line=None, max_offset=200, ...)`; see [Generating contingencies](#generating-contingencies)
 - **Dependencies:** `grid2op`. The case and its time series ship inside it, so there is nothing to
@@ -299,5 +299,5 @@ system operator, uses for the L2RPN competitions.
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/environments/power_grid/environment.py) | `PowerGridEnv`, `PowerGridState`, `PowerGridAction` |
+| [`environment.py`](../../planiverse/environments/operational/power_grid/environment.py) | `PowerGridEnv`, `PowerGridState`, `PowerGridAction` |
 | [`tests/test_power_grid.py`](../../tests/test_power_grid.py) | Tests; the expensive ones are marked `slow` |

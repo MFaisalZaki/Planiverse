@@ -12,7 +12,7 @@ import pytest
 
 pytest.importorskip("micropolisengine", reason="the Micropolis engine is not built")
 
-from planiverse.environments.micropolis.environment import (  # noqa: E402
+from planiverse.environments.operational.micropolis.environment import (  # noqa: E402
     BASELINES, CITIES, KINDS, SITES, MicropolisAction, MicropolisEnv, MicropolisState, WAIT,
     find_patch, replay,
 )

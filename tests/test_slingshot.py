@@ -12,7 +12,7 @@ import pytest
 
 pytest.importorskip("pymunk", reason="pymunk is not installed")
 
-from planiverse.environments.slingshot.environment import (  # noqa: E402
+from planiverse.environments.games.slingshot.environment import (  # noqa: E402
     ACTIONS, ANGLES, LEVELS, POWERS, SlingshotAction, SlingshotEnv, SlingshotState, shoot,
 )
 

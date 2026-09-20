@@ -24,7 +24,7 @@ def a_cartridge_for_the_game_boy():
         yield
         return
     from counter_rom import counter_rom
-    from planiverse.environments.emulated.game_boy import ROM_VARIABLE
+    from planiverse.environments.games.emulated.game_boy import ROM_VARIABLE
 
     already = os.environ.get(ROM_VARIABLE)
     if not already:

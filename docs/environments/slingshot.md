@@ -6,8 +6,8 @@ shots from a slingshot on the left, each an angle and a power from a small set. 
 target down before the shots run out. What a shot does is decided by a rigid-body simulation:
 the bird flies under gravity, strikes the wall, and blocks topple, slide and break.
 
-- **Import:** `from planiverse.environments.slingshot.environment import SlingshotEnv`
-- **Source:** [`planiverse/environments/slingshot/environment.py`](../../planiverse/environments/slingshot/environment.py)
+- **Import:** `from planiverse.environments.games.slingshot.environment import SlingshotEnv`
+- **Source:** [`planiverse/environments/games/slingshot/environment.py`](../../planiverse/environments/games/slingshot/environment.py)
 - **Instances:** 100 levels, indices `0` to `99`, all drawn by the generator at recorded seeds
 - **Generator:** `generate_instance(seed, structures=None, targets=None, shots=None, ...)`; see [Generating levels](#generating-levels)
 - **Dependency:** `pymunk`
@@ -168,7 +168,7 @@ number, the action that produced it, and a note on the goal state. Both were gen
 solving the instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.slingshot.environment import SlingshotEnv, SlingshotAction
+from planiverse.environments.games.slingshot.environment import SlingshotEnv, SlingshotAction
 from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
@@ -247,6 +247,6 @@ whether it still holds; `tests/test_slingshot.py` replays one level in ten.
 
 | File | Contents |
 |---|---|
-| [`environment.py`](../../planiverse/environments/slingshot/environment.py) | `SlingshotAction`, `SlingshotState`, the physics (`build_space`, `shoot`), `draw_level`, `SlingshotEnv`, `LEVELS` |
+| [`environment.py`](../../planiverse/environments/games/slingshot/environment.py) | `SlingshotAction`, `SlingshotState`, the physics (`build_space`, `shoot`), `draw_level`, `SlingshotEnv`, `LEVELS` |
 | [`tests/test_slingshot.py`](../../tests/test_slingshot.py) | Tests |
 | [`tests/data/slingshot_solutions.json`](../../tests/data/slingshot_solutions.json) | The plan each level was accepted on |

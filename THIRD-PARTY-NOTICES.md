@@ -12,9 +12,9 @@ emulator environments run whatever cartridge the user supplies, and supply none.
 ## Emulators
 
 Two environments drive an emulator rather than a Python reimplementation:
-`planiverse/environments/emulated/game_boy.py` runs a cartridge under
+`planiverse/environments/games/emulated/game_boy.py` runs a cartridge under
 [PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), and
-`planiverse/environments/emulated/stable_retro.py` runs a console under
+`planiverse/environments/games/emulated/stable_retro.py` runs a console under
 [Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (MIT, a fork of OpenAI's
 Gym Retro). Both are dependencies, installed from PyPI, and neither is included here.
 
@@ -33,20 +33,20 @@ imports into Stable-Retro; none is here.
 
 ## Physics engines
 
-`planiverse/environments/slingshot/` simulates its world with
+`planiverse/environments/games/slingshot/` simulates its world with
 [pymunk](https://www.pymunk.org/) (MIT), the Python binding of
 [Chipmunk2D](https://chipmunk-physics.net/) (MIT). Both are dependencies installed from PyPI
 and neither is included here. The game the environment plays is the genre's own; its
 structures, materials, rules of breaking and levels are this repository's work.
 
-`planiverse/environments/billiards/` plays on [pooltool](https://github.com/ekiefl/pooltool)
+`planiverse/environments/games/billiards/` plays on [pooltool](https://github.com/ekiefl/pooltool)
 (Apache-2.0; Kiefl, JOSS 2024), an event-based billiards simulator, installed from PyPI as
 `pooltool-billiards` and not included here. The environment places the balls itself and
 keeps only the physics; its tables and rules are this repository's work.
 
 ## The Micropolis engine
 
-`planiverse/environments/micropolis/` drives MicropolisCore, the C++ simulation engine of
+`planiverse/environments/operational/micropolis/` drives MicropolisCore, the C++ simulation engine of
 [Micropolis](https://github.com/SimHacker/micropolis), the GPL-3.0 release of the original
 SimCity's source by Electronic Arts (2008). It is not included here: `scripts/build_micropolis.sh`
 fetches it, builds its SWIG binding for Python 3 and installs it, and the environment imports it
@@ -66,7 +66,7 @@ License* that accompanies the source, which asks for this attribution wherever t
 
 ## The factory simulator
 
-`planiverse/environments/factory/` drives [factory-sim](https://github.com/divagr18/factory-sim)
+`planiverse/environments/operational/factory/` drives [factory-sim](https://github.com/divagr18/factory-sim)
 (MIT License, Copyright (c) 2026 factory-sim contributors), a C simulator of a small slice of
 Factorio's early game with a Python binding. It is not included here: `scripts/build_factory_sim.sh`
 fetches it at a pinned commit, compiles it, and installs it with its LICENSE and NOTICE files
@@ -85,18 +85,18 @@ this repository is affiliated with, sponsored by or endorsed by Wube Software Lt
 
 Four environments drive simulators installed from PyPI, none of them included here:
 
-- `planiverse/environments/epidemic/` runs [Covasim](https://github.com/institutefordiseasemodeling/covasim)
+- `planiverse/environments/operational/epidemic/` runs [Covasim](https://github.com/institutefordiseasemodeling/covasim)
   (MIT), the Institute for Disease Modeling's agent-based model of COVID-19.
-- `planiverse/environments/traffic/` runs [SUMO](https://eclipse.dev/sumo/), the Eclipse
+- `planiverse/environments/operational/traffic/` runs [SUMO](https://eclipse.dev/sumo/), the Eclipse
   Foundation's traffic simulator, under the Eclipse Public License 2.0 with the GNU GPL version 2
   or later as a secondary licence, through the `eclipse-sumo` binaries and the `libsumo` binding;
   the grid is drawn by its `netgenerate` on the user's machine.
-- `planiverse/environments/airspace/` runs [BlueSky](https://github.com/TUDelft-CNS-ATM/bluesky)
+- `planiverse/environments/operational/airspace/` runs [BlueSky](https://github.com/TUDelft-CNS-ATM/bluesky)
   (TU Delft, MIT), which flies aircraft on the [OpenAP](https://github.com/junzis/openap)
   performance model (LGPL-3.0) over BlueSky's navigation data package (GPL-3.0);
   `scripts/install_bluesky.sh` installs the three, since the simulator's own dependency list names
   a package that no longer builds.
-- `planiverse/environments/reservoir/` runs [pywr](https://github.com/pywr/pywr) (University of
+- `planiverse/environments/operational/reservoir/` runs [pywr](https://github.com/pywr/pywr) (University of
   Manchester, GPL-3.0-or-later), the water resource system simulator, through a network this
   repository builds in code.
 
@@ -105,7 +105,7 @@ and targets are this repository's work.
 
 ## The flood adaptation model
 
-`planiverse/environments/flood_transport/` follows the MAAT environment of
+`planiverse/environments/operational/flood_transport/` follows the MAAT environment of
 [floods_transport_rl](https://github.com/MLSM-at-DTU/floods_transport_rl) (MLSM-at-DTU, MIT):
 Costa, Petersen, Vandervoort, Drews, Morrissey and Pereira, *Climate Adaptation with
 Reinforcement Learning: Experiments with Flooding and Transportation in Copenhagen*, 2024.
@@ -132,9 +132,9 @@ not affiliated with, endorsed by, or sponsored by any of the above.
 
 ## Game mechanics and level data
 
-The environments in `planiverse/environments/games/`, and the Pipe Dream-like in
-`planiverse/environments/pipe_dream/`, were written independently from behaviour observed
-while the original titles were played. They are not ports, translations or adaptations of
+The reimplemented games in `planiverse/environments/games/` (the four cartridge puzzles and
+the Pipe Dream-like) were written independently from behaviour observed while the original
+titles were played. They are not ports, translations or adaptations of
 the original programs.
 
 The level and room layouts used as benchmark instances in three of them (the first 100 of

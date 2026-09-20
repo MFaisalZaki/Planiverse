@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-from planiverse.environments.lemmings.environment import (
+from planiverse.environments.games.lemmings.environment import (
     DECISION, FATAL_FALL, LEVELS, MAX_TICKS, SKILLS, LemmingsAction, LemmingsEnv,
     LemmingsState, WAIT, draw_level, run_ticks,
 )

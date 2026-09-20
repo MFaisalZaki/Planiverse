@@ -7,8 +7,8 @@ a fixed calendar. The yield is not the sum of those decisions but the integral o
 model driven by the actual weather, so what a decision was worth is only known at harvest.
 
 - **Class:** `CropEnv`
-- **Import:** `from planiverse.environments.crop_management.environment import CropEnv`
-- **Source:** [`environment.py`](../../planiverse/environments/crop_management/environment.py)
+- **Import:** `from planiverse.environments.operational.crop_management.environment import CropEnv`
+- **Source:** [`environment.py`](../../planiverse/environments/operational/crop_management/environment.py)
 - **Instances:** 100 seasons, indices `0` to `99`: the 22 gap-free years at the usual sowing date, then 78 the generator drew
 - **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
@@ -293,5 +293,5 @@ of the WOFOST crop model, with the CABO weather files it ships (Netherlands, 197
 
 | Path | What |
 |---|---|
-| [`environment.py`](../../planiverse/environments/crop_management/environment.py) | `CropEnv`, `CropState`, `CropAction` |
+| [`environment.py`](../../planiverse/environments/operational/crop_management/environment.py) | `CropEnv`, `CropState`, `CropAction` |
 | [`tests/test_crop_management.py`](../../tests/test_crop_management.py) | Tests |

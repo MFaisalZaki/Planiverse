@@ -27,7 +27,7 @@ def solutions(name):
 @pytest.fixture(scope="module")
 def epidemic():
     pytest.importorskip("covasim", reason="covasim is not installed")
-    from planiverse.environments.epidemic.environment import EpidemicEnv
+    from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 
     env = EpidemicEnv()
     env.set_index(0)
@@ -35,7 +35,7 @@ def epidemic():
 
 
 def test_an_epidemic_replays_exactly_and_a_state_is_its_schedule(epidemic):
-    from planiverse.environments.epidemic.environment import EpidemicState, replay
+    from planiverse.environments.operational.epidemic.environment import EpidemicState, replay
 
     first = replay(epidemic.instance, ("open", "lockdown", "open"))
     second = replay(epidemic.instance, ("open", "lockdown", "open"))
@@ -48,7 +48,7 @@ def test_an_epidemic_replays_exactly_and_a_state_is_its_schedule(epidemic):
 
 
 def test_the_hospital_constraint_and_the_budget_are_dead_ends(epidemic):
-    from planiverse.environments.epidemic.environment import EpidemicState
+    from planiverse.environments.operational.epidemic.environment import EpidemicState
 
     inst = epidemic.instance
     over = EpidemicState(("open",) * 3, 21, 0, 0, inst["capacity"] + 1, 0, 0, 0, weeks=inst["weeks"])
@@ -64,7 +64,7 @@ def test_the_hospital_constraint_and_the_budget_are_dead_ends(epidemic):
 
 
 def test_epidemic_successors_and_the_bundled_outbreaks(epidemic):
-    from planiverse.environments.epidemic.environment import OUTBREAKS, EpidemicAction, EpidemicEnv
+    from planiverse.environments.operational.epidemic.environment import OUTBREAKS, EpidemicAction, EpidemicEnv
 
     state, info = epidemic.reset()
     children = epidemic.successors(state)
@@ -85,7 +85,7 @@ def test_epidemic_successors_and_the_bundled_outbreaks(epidemic):
 @pytest.fixture(scope="module")
 def traffic():
     pytest.importorskip("libsumo", reason="libsumo is not installed")
-    from planiverse.environments.traffic.environment import TrafficEnv
+    from planiverse.environments.operational.traffic.environment import TrafficEnv
 
     env = TrafficEnv()
     env.set_index(0)
@@ -94,7 +94,7 @@ def traffic():
 
 
 def test_a_morning_replays_exactly_and_switches_take_effect(traffic):
-    from planiverse.environments.traffic.environment import DECISION, HOLD, TrafficAction
+    from planiverse.environments.operational.traffic.environment import DECISION, HOLD, TrafficAction
 
     state, _ = traffic.reset()
     held = traffic.__advance__(state, HOLD)
@@ -109,7 +109,7 @@ def test_a_morning_replays_exactly_and_switches_take_effect(traffic):
 
 
 def test_traffic_goal_and_dead_ends(traffic):
-    from planiverse.environments.traffic.environment import TrafficState
+    from planiverse.environments.operational.traffic.environment import TrafficState
 
     inst = traffic.instance
     done = TrafficState((), inst["horizon"] - 15, inst["vehicles"], 0, 0, inst["target"], ("A",) * 9,
@@ -122,7 +122,7 @@ def test_traffic_goal_and_dead_ends(traffic):
 
 
 def test_traffic_successors_and_the_bundled_mornings(traffic):
-    from planiverse.environments.traffic.environment import ACTIONS, MORNINGS, TrafficAction, TrafficEnv
+    from planiverse.environments.operational.traffic.environment import ACTIONS, MORNINGS, TrafficAction, TrafficEnv
 
     state, _ = traffic.reset()
     children = traffic.successors(state)
@@ -143,7 +143,7 @@ def test_traffic_successors_and_the_bundled_mornings(traffic):
 @pytest.fixture(scope="module")
 def airspace():
     pytest.importorskip("bluesky", reason="bluesky is not installed")
-    from planiverse.environments.airspace.environment import AirspaceEnv
+    from planiverse.environments.operational.airspace.environment import AirspaceEnv
 
     env = AirspaceEnv()
     env.set_index(0)
@@ -152,7 +152,7 @@ def airspace():
 
 @pytest.mark.slow
 def test_a_sector_replays_exactly_and_separation_is_a_dead_end(airspace):
-    from planiverse.environments.airspace.environment import HOLD, AirspaceAction
+    from planiverse.environments.operational.airspace.environment import HOLD, AirspaceAction
 
     state, _ = airspace.reset()
     first = airspace.__advance__(state, HOLD)
@@ -170,7 +170,7 @@ def test_a_sector_replays_exactly_and_separation_is_a_dead_end(airspace):
 
 @pytest.mark.slow
 def test_airspace_bundled_sectors_and_actions(airspace):
-    from planiverse.environments.airspace.environment import SECTORS, AirspaceAction, AirspaceEnv
+    from planiverse.environments.operational.airspace.environment import SECTORS, AirspaceAction, AirspaceEnv
 
     assert AirspaceAction.parse("direct(AC2)") == AirspaceAction("direct", "AC2")
     assert AirspaceAction.parse("hold").cost() == 1
@@ -188,7 +188,7 @@ def test_airspace_bundled_sectors_and_actions(airspace):
 @pytest.fixture(scope="module")
 def reservoir():
     pytest.importorskip("pywr", reason="pywr is not installed")
-    from planiverse.environments.reservoir.environment import ReservoirEnv
+    from planiverse.environments.operational.reservoir.environment import ReservoirEnv
 
     env = ReservoirEnv()
     env.set_index(0)
@@ -196,7 +196,7 @@ def reservoir():
 
 
 def test_a_year_is_a_value_state_and_the_river_and_city_are_dead_ends(reservoir):
-    from planiverse.environments.reservoir.environment import MONTHS, ReservoirAction, ReservoirState
+    from planiverse.environments.operational.reservoir.environment import MONTHS, ReservoirAction, ReservoirState
 
     state, _ = reservoir.reset()
     a = reservoir.__advance__(reservoir.__advance__(state, ReservoirAction(2, "full")), ReservoirAction(4, "full"))
@@ -215,7 +215,7 @@ def test_a_year_is_a_value_state_and_the_river_and_city_are_dead_ends(reservoir)
 
 
 def test_reservoir_successors_and_the_bundled_years(reservoir):
-    from planiverse.environments.reservoir.environment import ACTIONS, YEARS, ReservoirAction, ReservoirEnv, reference_plans
+    from planiverse.environments.operational.reservoir.environment import ACTIONS, YEARS, ReservoirAction, ReservoirEnv, reference_plans
 
     state, _ = reservoir.reset()
     children = reservoir.successors(state)

@@ -7,8 +7,8 @@ wave. A map is a path of cells with a few building slots beside it, two kinds of
 offer, and a wave runs to its end once started. Nothing is taken from any published title, and the
 environment needs no dependency.
 
-- **Import:** `from planiverse.environments.tower_defence.environment import TowerDefenceEnv`
-- **Source:** [`planiverse/environments/tower_defence/environment.py`](../../planiverse/environments/tower_defence/environment.py)
+- **Import:** `from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv`
+- **Source:** [`planiverse/environments/games/tower_defence/environment.py`](../../planiverse/environments/games/tower_defence/environment.py)
 - **Instances:** 100 maps, indices `0` to `99`, all drawn by the generator at recorded seeds
 - **Generator:** `generate_instance(seed, waves=None, slots=None, ...)`; see [Generating maps](#generating-maps)
 
@@ -152,7 +152,7 @@ target line here, since none of these readings has a target. Both were generated
 instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.tower_defence.environment import TowerDefenceEnv, TowerAction, START
+from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv, TowerAction, START
 from planiverse.benchmark import measures
 from planiverse.planners.width import IteratedBFWS
 
@@ -216,6 +216,6 @@ Generation in Games*, 2016, https://pcgbook.com/).
 
 | File | Contents |
 |---|---|
-| [`environment.py`](../../planiverse/environments/tower_defence/environment.py) | `TowerAction`, `TowerState`, the wave (`run_wave`), `draw_map`, `TowerDefenceEnv`, `MAPS` |
+| [`environment.py`](../../planiverse/environments/games/tower_defence/environment.py) | `TowerAction`, `TowerState`, the wave (`run_wave`), `draw_map`, `TowerDefenceEnv`, `MAPS` |
 | [`tests/test_tower_defence.py`](../../tests/test_tower_defence.py) | Tests |
 | [`tests/data/tower_defence_solutions.json`](../../tests/data/tower_defence_solutions.json) | The plan each map was accepted on |

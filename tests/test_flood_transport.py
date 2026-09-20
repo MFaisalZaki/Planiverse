@@ -10,7 +10,7 @@ import json
 import pytest
 
 from planiverse.environments import make
-from planiverse.environments.flood_transport.environment import (
+from planiverse.environments.operational.flood_transport.environment import (
     DESIGN_STORM, IMPASSABLE, MEASURES, SCENARIOS, FloodAction, FloodTransportEnv,
     damage_ratio, draw_city, sample_rain, speed, storm_depth, trip_distribution,
 )
