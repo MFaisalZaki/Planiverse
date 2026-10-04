@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-pytest.importorskip("fsim", reason="factory-sim is not built")
+pytest.importorskip("fsim", reason="factory-sim is not installed")
 
 from planiverse.environments.operational.factory.environment import (  # noqa: E402
     AMOUNTS, DECISION, DIRECTIONS, MINE_COUNT, PATCHES, WAITS, FactoryAction, FactoryEnv,

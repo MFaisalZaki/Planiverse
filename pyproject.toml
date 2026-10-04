@@ -42,6 +42,7 @@ dependencies = [
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
     # pooltool (the billiards table) is installed by scripts/install_pooltool.py: on Linux and
     # Windows its dependency list pins a Panda3D development build that PyPI does not carry.
+    "factory-sim (>=0.3)",          # a tick-exact C simulator of Factorio's early game, for the factory
     "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers
     # Farama's fork of Gym Retro: Genesis, NES, SNES and more. It publishes no Windows wheels
     # and supports Windows through WSL2, so a Windows install leaves it out.

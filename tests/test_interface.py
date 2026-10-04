@@ -189,7 +189,7 @@ def reservoir():
 
 
 def factory_env():
-    pytest.importorskip("fsim", reason="factory-sim is not built")
+    pytest.importorskip("fsim", reason="factory-sim is not installed")
     from planiverse.environments.operational.factory.environment import FactoryEnv
 
     env = FactoryEnv()

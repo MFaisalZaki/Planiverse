@@ -7,8 +7,8 @@ from the game itself (Factorio 2.0.60, through its FactorioRL harness). It has n
 game in it: every rule and number was measured on the running game and written down, and no
 code, data, art or sound of Factorio's is copied. Factorio is a game by Wube Software Ltd and
 "Factorio" is Wube's trademark; neither factory-sim nor this environment is affiliated with or
-endorsed by Wube. The simulator has to be built from its source (`scripts/build_factory_sim.sh`)
-and nothing of it is included here.
+endorsed by Wube. The simulator is installed from PyPI as `factory-sim` and nothing of it is
+included here.
 
 The game is the simulator's. A character stands near a patch of iron ore with a few burner
 mining drills, stone furnaces and some coal. A decision is thirty ticks (half a second of the

@@ -122,11 +122,10 @@ not declared the plain way, because their publishers do not cover every platform
 - **Stable-Retro** publishes no Windows wheels and supports Windows through WSL2, so the
   dependency list leaves it out on Windows. The Game Boy environment under PyBoy is unaffected.
 
-Three simulators are built or installed by the scripts under `scripts/` rather than from PyPI:
-the Micropolis engine (`build_micropolis.sh`, needs a C++ compiler, the Python headers and
-`swig`), factory-sim (`build_factory_sim.sh`, needs a C compiler and the Python headers) and
-BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows run them from WSL2 or
-Git Bash. An environment whose dependency is missing is skipped by the tests and recorded as
+Two simulators are built or installed by the scripts under `scripts/` rather than from PyPI:
+the Micropolis engine (`build_micropolis.sh`, needs a C++ compiler, the Python headers,
+`perl` and `swig`) and BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows
+run them from WSL2 or Git Bash. An environment whose dependency is missing is skipped by the tests and recorded as
 `UNSUPPORTED` by the benchmark; everything else runs.
 
 ## Tests
@@ -577,7 +576,7 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Slingshot | [pymunk](https://www.pymunk.org/) (MIT), the Python binding of Chipmunk2D (MIT) |
 | Billiards | [pooltool](https://github.com/ekiefl/pooltool) (Apache-2.0) |
 | Micropolis city | [MicropolisCore](https://github.com/SimHacker/micropolis) (GPL-3.0 with Electronic Arts' additional terms), built from source by `scripts/build_micropolis.sh` |
-| Factory | [factory-sim](https://github.com/divagr18/factory-sim) (MIT), a tick-exact C simulator of Factorio's early game measured on the game itself, built from source by `scripts/build_factory_sim.sh` |
+| Factory | [factory-sim](https://github.com/divagr18/factory-sim) (MIT), a tick-exact C simulator of Factorio's early game measured on the game itself, from PyPI as `factory-sim` |
 | Epidemic | [Covasim](https://github.com/institutefordiseasemodeling/covasim) (Institute for Disease Modeling, MIT) |
 | Traffic signals | [SUMO](https://eclipse.dev/sumo/) (Eclipse Foundation, EPL-2.0 or GPL-2.0-or-later), through `eclipse-sumo` and `libsumo` |
 | Airspace | [BlueSky](https://github.com/TUDelft-CNS-ATM/bluesky) (TU Delft, MIT), with OpenAP (LGPL-3.0) and its navigation data (GPL-3.0), installed by `scripts/install_bluesky.sh` |

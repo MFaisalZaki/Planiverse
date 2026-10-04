@@ -20,14 +20,15 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "sklearn": "scikit-learn", "cv2": "opencv-python",
                    "retro": "stable-retro",    # its import name before 1.0, kept as a fallback
                    "pooltool": "pooltool-billiards",
+                   "fsim": "factory-sim",
                    "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
                    "bluesky": "bluesky-simulator"}
 
 #: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
-#: asked for them: the Micropolis engine and factory-sim are built from source
-#: (`build_micropolis.sh`, `build_factory_sim.sh`); BlueSky and pooltool each publish a
-#: dependency list that pip cannot satisfy (`install_bluesky.sh`, `install_pooltool.py`).
-INSTALLED_BY_SCRIPT = {"micropolisengine", "fsim", "bluesky", "pooltool"}
+#: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), and
+#: BlueSky and pooltool each publish a dependency list that pip cannot satisfy
+#: (`install_bluesky.sh`, `install_pooltool.py`).
+INSTALLED_BY_SCRIPT = {"micropolisengine", "bluesky", "pooltool"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")

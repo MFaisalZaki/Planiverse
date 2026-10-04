@@ -11,7 +11,7 @@ waits.
 - **Source:** [`planiverse/environments/operational/factory/environment.py`](../../planiverse/environments/operational/factory/environment.py)
 - **Instances:** 100 patches, indices `0` to `99`, all drawn by the generator at recorded seeds
 - **Generator:** `generate_instance(seed, drills=None, furnaces=None, coal=None, horizon=None, ...)`; see [Generating patches](#generating-patches)
-- **Dependency:** `fsim`, built by [`scripts/build_factory_sim.sh`](../../scripts/build_factory_sim.sh)
+- **Dependency:** `factory-sim` from PyPI, imported as `fsim`; wheels for Linux, macOS and Windows
 
 ## Context
 
@@ -43,19 +43,13 @@ whose headless server takes console commands but has no simulation interface wit
 our own. factory-sim needs a C compiler and nothing else, runs a decision in microseconds, is
 deterministic to the byte, and is measured against the game rather than imagined. It covers the
 early game only (drills, furnaces, coal, walking and hand mining; no belts, inserters or
-assemblers yet), and it is young, so the build script pins the commit the patches were drawn on.
-We took it, and the other two are noted in case the slice ever proves too small.
+assemblers yet), and it is young: the patches were drawn on an early commit, and the 0.3
+release on PyPI, which the dependency list names, reproduces every one of them. We took it,
+and the other two are noted in case the slice ever proves too small.
 
-The simulator is built by a script:
-
-```console
-$ pip install cffi numpy                 # what the binding needs
-$ bash scripts/build_factory_sim.sh      # git, a C compiler and the Python headers
-```
-
-The script fetches factory-sim at the pinned commit, compiles its C core into the cffi extension
-`fsim._fsim` and copies the `fsim` package into the running Python's site-packages. A decision
-of thirty ticks takes about four microseconds, and expanding a state a millisecond or two.
+The simulator installs with the library, as the wheel `factory-sim`, whose C core is the cffi
+extension `fsim._fsim`. A decision of thirty ticks takes about four microseconds, and
+expanding a state a millisecond or two.
 
 The rules are seven. First, the scene is a rectangle of iron ore, ten thousand ore a tile, with
 walls in some families, in an arena sixty tiles square about the origin. The character starts
@@ -285,6 +279,5 @@ never give a machine coal twice.
 | File | Contents |
 |---|---|
 | [`environment.py`](../../planiverse/environments/operational/factory/environment.py) | `FactoryAction`, `FactoryState`, the scene (`scene_instance`, `blueprint_of`), `FactoryEnv` with the scripted lines (`lines`, `reference_plan`, `reference_plans`), `PATCHES` |
-| [`scripts/build_factory_sim.sh`](../../scripts/build_factory_sim.sh) | Builds and installs the simulator's Python binding |
 | [`tests/test_factory.py`](../../tests/test_factory.py) | Tests |
 | [`tests/data/factory_solutions.json`](../../tests/data/factory_solutions.json) | The plan each patch was accepted on |

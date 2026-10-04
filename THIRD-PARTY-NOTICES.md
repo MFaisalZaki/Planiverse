@@ -69,9 +69,9 @@ License* that accompanies the source, which asks for this attribution wherever t
 
 `planiverse/environments/operational/factory/` drives [factory-sim](https://github.com/divagr18/factory-sim)
 (MIT License, Copyright (c) 2026 factory-sim contributors), a C simulator of a small slice of
-Factorio's early game with a Python binding. It is not included here: `scripts/build_factory_sim.sh`
-fetches it at a pinned commit, compiles it, and installs it with its LICENSE and NOTICE files
-beside the package, and the environment imports it as `fsim`. factory-sim's own notice is explicit about
+Factorio's early game with a Python binding. It is not included here: it is a dependency,
+installed from PyPI as `factory-sim` with its LICENSE and NOTICE files, and the environment
+imports it as `fsim`. factory-sim's own notice is explicit about
 what it holds: every rule and number in it was measured on the running game and written down,
 and no code, data file, prototype definition, art, sound or font of Factorio's was copied or is
 included. This repository adds nothing of Factorio's either; the environment's decisions, rules,
