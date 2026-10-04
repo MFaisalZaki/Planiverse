@@ -124,7 +124,7 @@ shots left: 3, balls to pot: 3
   cue at (0.437, 1.829)
 ```
 
-Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width bound of
+Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
 1000), solved it in 3 expansions and 2.0 seconds. That is one expansion per shot, so the search
 never had to back up. Its three-shot plan is
 
@@ -150,7 +150,7 @@ and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.billiards.environment import BilliardsEnv, BilliardsAction
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = BilliardsEnv()
 env.set_index(0)
@@ -159,7 +159,7 @@ print(state)                       # where every ball lies, and the shots left
 for action, child in env.successors(state):
     print(action, len(child.object_balls), "balls left")
 
-result = IteratedBFWS(max_width=1000, progress=measures.billiards).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.billiards).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "billiards.gif")                                   # animated

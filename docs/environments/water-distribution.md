@@ -146,7 +146,7 @@ containment, and relies on the dead end to keep it from closing everything. Note
 Instance `0` is `Net1`, a network of 12 pipes, with the contaminant entering at junction 23.
 With nothing closed, 13.6 per cent of the water delivered over the twelve hours came from the
 source, and service is 100 per cent. Of the 12 pipes, 11 lie within two hops of the source and
-are on offer. Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a
+are on offer. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a
 width bound of 1000), solved it in 3 expansions and half a second. Its three-closure plan is
 
 ```
@@ -174,14 +174,14 @@ the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.water_network.environment import WaterNetworkEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = WaterNetworkEnv()
 env.set_index(0)                   # Net1, contaminant at junction 23
 state, info = env.reset()          # info: network, source, pipes, candidates, contaminated, service, ...
 print(state)                       # closed: nothing / contaminated delivered: 13.6% / service: 100.0%
 
-result = IteratedBFWS(max_width=1000, progress=measures.water_network).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.water_network).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "water_network_chart.gif")                                 # animated

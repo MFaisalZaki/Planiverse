@@ -152,7 +152,7 @@ opens with a legal throw:
 held: 4   blocks: 25/9
 ```
 
-Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width bound of
+Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
 1000), solved it in 163 expansions and under a tenth of a second. Its thirty-five-move plan is
 
 ```
@@ -179,7 +179,7 @@ by solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.flipull import FlipullGame
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = FlipullGame()
 env.set_index(0)
@@ -188,7 +188,7 @@ print(state)                       # the board above
 print(info)                        # {'stage': 0, 'generated': False, 'blocks': 25,
                                    #  'clear_target': 9, 'rows': 6}
 
-result = IteratedBFWS(max_width=1000, progress=measures.flipull).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.flipull).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "flipull.gif")                                   # animated

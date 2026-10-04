@@ -113,8 +113,8 @@ horizon and away from schedules that have already lost.
 ## An example
 
 Instance `0` is a town of 8,000 people with 22 infected on day one, a horizon of 12 weeks, a
-hospital of 144 beds, a budget of 12 points and a target of 14 deaths. Iterated BFWS, run as the
-benchmark runs it (i.e., with the measure above and a width bound of 1000), solved it in 278
+hospital of 144 beds, a budget of 12 points and a target of 14 deaths. Dual BFWS, run as the
+benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), solved it in 278
 expansions and 134 seconds. Its twelve-week schedule is
 
 ```
@@ -140,14 +140,14 @@ trace to `render_trace`:
 ```python
 from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = EpidemicEnv()
 env.set_index(0)
 state, info = env.reset()          # info: outbreak, weeks, capacity, budget, target, generated
 print(state)                       # week 0 of 12: 0 infectious, 0 in hospital (peak 0 of 144 beds), ...
 
-result = IteratedBFWS(max_width=1000, progress=measures.epidemic).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.epidemic).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "epidemic_chart.gif")                                   # animated

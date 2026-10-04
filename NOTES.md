@@ -58,9 +58,10 @@ Two things the reduction does not hide:
   the month. That is what keeps the branching and depth inside what width-based search can
   do; it is the same choice Micropolis makes with a zone a year.
 
-The online planners in the tree (Rollout IW and π-IW) see the same environments as a reward
-stream and plan a lookahead per decision, which is the other natural framing of a trajectory
-problem; both run in the benchmark without any change.
+An online planner that sees the same environments as a reward stream and plans a lookahead
+per decision is the other natural framing of a trajectory problem. The tree had two (Rollout
+IW and π-IW) and has removed them: this is a planning library, and neither planned from the
+goal test alone.
 
 ## 2. The four environments, and how each maps
 
@@ -84,7 +85,7 @@ minutes.
 
 ## 3. Things to check
 
-- **The shot family.** Iterated BFWS over the bundled instances as they first stood:
+- **The shot family.** Dual BFWS over the bundled instances as they first stood:
   artillery, all hundred solved in 1.1 s, median six expansions, plans of two to five shots;
   slingshot (every fourth level), all solved, median two expansions; billiards (every tenth
   table), all solved in at most four expansions. Artillery had too little coupling to keep and
@@ -144,8 +145,8 @@ target; a potted ball leaves the cue somewhere new). What changed in the generat
 - **Billiards guards pooltool's cushion model**, which asserts on a ball resting against a
   pocket jaw with no closing speed; a shot the physics cannot resolve is not offered.
 
-Iterated BFWS over the hundred instances of each, as the benchmark runs it (the unit
-progress measures, a width bound of 1000, 200,000 expansions):
+Dual BFWS over the hundred instances of each, as the benchmark's `dual` candidate runs it (the
+unit progress measures, a width bound of 1000, 200,000 expansions):
 
 | Environment | Solved | Expansions, median (max) | Seconds, median (max) | Plan lengths |
 |---|---|---|---|---|

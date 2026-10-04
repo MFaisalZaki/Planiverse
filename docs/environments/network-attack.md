@@ -148,7 +148,7 @@ action space holds 24 ground actions, eight per host, and the initial state's te
 host (1, 0): discovered, reachable
 ```
 
-Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width bound of
+Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
 1000), solved it in 8 expansions and under a tenth of a second. Its six-action plan is
 
 ```
@@ -184,14 +184,14 @@ the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.network_attack.network_attack import EnvNASim
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = EnvNASim()
 env.set_index(0)                   # 'tiny'
 state, info = env.reset()          # info: instance, scenario, generated
 print(state)                       # host (1, 0): discovered, reachable
 
-result = IteratedBFWS(max_width=1000, progress=measures.network_attack).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)
 env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
 ```

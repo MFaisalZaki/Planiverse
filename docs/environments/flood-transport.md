@@ -205,7 +205,7 @@ elevating `z03` and then `z07` and waiting out the rest, and the target is 162.8
 successors of the initial state show the first period's bill: waiting costs 41.1 M, and
 protecting `z07` costs 50.6 M, `z03` 52.9 M, `z01` 59.8 M and `z06` 188.9 M. The last is so dear
 because `z06` holds the city's only motorway and a trunk road, and elevating them costs 22% of
-their value. Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a
+their value. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a
 width bound of 1000), solved it in 36 expansions and no measurable time (the record rounds to
 0.0 s). Its six-decision plan is
 
@@ -232,14 +232,14 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments import make
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = make("flood_transport")
 env.set_index(0)                   # eight zones, thirty years, the design storm every year
 state, info = env.reset()          # info["target"], info["reference"], info["do_nothing"]: 162.8e6, 159.6e6, 246.5e6 kroner
 print(state)                       # year 0 of 30 / protected: nothing / cost 0.00 M of 162.84 M DKK: ...
 
-result = IteratedBFWS(max_width=1000, progress=measures.flood_transport).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "flood_transport_chart.gif")                                   # animated

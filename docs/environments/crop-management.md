@@ -157,8 +157,8 @@ is thus pulled towards the harvest and told nothing about the yield until it get
 
 Instance `0` is the 1976 season, a drought year. The crop yields 4241 kg/ha rainfed, the
 reference schedule reaches 5678 kg/ha on its 8 cm, and the target is 98 per cent of that, 5564
-kg/ha. The decisions fall on days 10 to 100 after the sowing on 15 April. Iterated BFWS, run as
-the benchmark runs it (i.e., with the measure above and a width bound of 1000), solved it in 10
+kg/ha. The decisions fall on days 10 to 100 after the sowing on 15 April. Dual BFWS, run as
+the benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), solved it in 10
 expansions and 3.4 seconds. Its ten-decision plan is
 
 ```
@@ -186,14 +186,14 @@ the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments import make
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = make("crop_management")
 env.set_index(0)                   # the 1976 season
 state, info = env.reset()          # info: year, sow, rainfed, reference, target, budget_cm, decision_days, ...
 print(state)                       # growing: 60 kg/ha of biomass so far / water used: 0 cm / nothing applied
 
-result = IteratedBFWS(max_width=1000, progress=measures.crop_management).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.crop_management).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "crop_management_chart.gif")                                   # animated

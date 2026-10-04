@@ -144,7 +144,7 @@ shots left: 3, targets standing: 3
   target at (91.8, 1.4)
 ```
 
-Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width bound of
+Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
 1000), solved it in 6 expansions and 1.6 seconds. Its three-shot plan is
 
 ```
@@ -170,7 +170,7 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.slingshot.environment import SlingshotEnv, SlingshotAction
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = SlingshotEnv()
 env.set_index(0)
@@ -179,7 +179,7 @@ print(state)                       # what stands, where, and the shots left
 for action, child in env.successors(state):
     print(action, child.targets_left, "targets left")
 
-result = IteratedBFWS(max_width=1000, progress=measures.slingshot).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.slingshot).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "slingshot.gif")                                   # animated

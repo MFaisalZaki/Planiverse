@@ -125,7 +125,7 @@ E..=======7.
 
 The waves are `(6, 13, 12, 10)`, `(8, 19, 14, 10)`, `(9, 28, 14, 10)` and `(10, 43, 17, 18)`. That
 is six enemies of 13 hit points at first and ten of 43 at the last, each wave walking as fast as
-the one before or faster. Iterated BFWS, run as the benchmark runs it (i.e., with the measure above
+the one before or faster. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above
 and a width bound of 1000), solved it in 10 expansions and under a tenth of a second. Its
 seven-decision plan is
 
@@ -154,14 +154,14 @@ instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv, TowerAction, START
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = TowerDefenceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: map, waves, slots, gold, lives, generated
 print(state)                       # wave 0 fought, 4 lives, 100 gold; nothing built
 
-result = IteratedBFWS(max_width=1000, progress=measures.tower_defence).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.tower_defence).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "tower_defence_chart.gif")                                   # animated

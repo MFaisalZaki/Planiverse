@@ -1,7 +1,7 @@
-# Sampling-based planners: FSX and MCTS
+# Future State Maximization
 
-These two planners sample futures instead of enumerating them. They sit at opposite ends of how
-much they need to be told: MCTS wants a reward, whereas FSX wants nothing at all.
+A planner that samples futures instead of enumerating them, and that is told nothing at all:
+no goal, no heuristic, no reward.
 
 ## Future State Maximization (FSX)
 
@@ -51,59 +51,12 @@ target, since a goal down a corridor is by construction in a place with few futu
 
 `option_count(env, state)` exposes the measure on its own: a goal-free signal saying how close a state is to being stuck.
 
-## Monte Carlo Tree Search (UCT)
-
-- **Class:** `MCTSPlanner`, in [`planiverse/planners/mcts.py`](../../planiverse/planners/mcts.py)
-- **References:** Kocsis & Szepesvári, *Bandit Based Monte-Carlo Planning* (ECML 2006) for UCT and
-  UCB1; Browne et al., *A Survey of Monte Carlo Tree Search Methods* (IEEE TCIAIG 4(1), 2012) for
-  the select / expand / simulate / backpropagate loop.
-
-```python
-from planiverse.planners.mcts import MCTSPlanner
-
-result = MCTSPlanner(iterations=3000, seed=0,
-                     reward=lambda s: 1 - blocks_left(s) / 6).solve(env)
-```
-
-MCTS was built for adversarial games with a natural terminal score. Planiverse gives it neither,
-so four adaptations follow, each of which is measurable on Puzznic level 1.
-
-**There is no score, only `is_goal`.** The default reward is 1 for a goal, 0 otherwise, less a
-small length penalty. A `reward` callback supplies something denser:
-
-| Reward | Result | Plan |
-|---|---|---|
-| sparse (goal or nothing) | solved | 32 actions |
-| dense (blocks cleared) | solved | 16 actions |
-
-**The transition is deterministic**, so the averaging that makes UCT work in stochastic games does
-nothing. This keeps the best value seen through a node as well as the mean:
-
-| Backup | Result |
-|---|---|
-| `"max"` (default) | solved, 16 actions |
-| `"mean"` (classical) | out of budget |
-
-**Dead ends are real and absorbing** (i.e., no action leads out of them). Terminal states are
-marked in the tree and never selected again, which stops UCT re-exploring a branch it has already
-proved is over.
-
-**The rollout keeps the best reward it saw anywhere along the way**, rather than the reward where
-it stopped. This one is easy to miss and worth more than the rest put together. Random rollouts in
-a domain with dead ends nearly always end in one, so scoring only the final state throws away
-everything the rollout learned: the tree sees 0 for every branch and UCT has no gradient to climb.
-Without it, MCTS does not solve Puzznic level 1 at all.
-
-The plan returned is the best goal-reaching path found rather than the tree's principal variation.
-In a single-agent problem with no opponent, a solution seen once during a rollout is a solution,
-and there is no reason to discard it because the averages have not caught up.
-
 ## Choosing between them
 
 | | needs a goal | needs a heuristic | backtracks | good at |
 |---|---|---|---|---|
 | [IW / BFWS](width-based.md) | yes | helps a lot | yes | finding short plans |
-| MCTS | yes | helps a lot | yes | long horizons, no model of the goal |
+| [the sampling planners](more-planners.md) | yes | helps a lot | some | long horizons under a receding horizon |
 | FSX | no | no | no | staying alive; scoring how stuck a state is |
 
 ## Files
@@ -111,5 +64,4 @@ and there is no reason to discard it because the averages have not caught up.
 | Path | What |
 |---|---|
 | [`fsx.py`](../../planiverse/planners/fsx.py) | `FSXPlanner`, `option_count` |
-| [`mcts.py`](../../planiverse/planners/mcts.py) | `MCTSPlanner` |
 | [`tests/test_sampling_planners.py`](../../tests/test_sampling_planners.py) | Tests |

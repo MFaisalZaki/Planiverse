@@ -189,7 +189,7 @@ claims, so instance `0` is the generic profile's. That is 120 frames of boot, th
 every button and `nop` held for eight frames, a goal of surviving twenty actions, and
 `game_over()` as the dead end. The generic wrapper exposes no number and `make("game_boy")`
 names no `watch=`, so the state is the 32-by-32 background map and the step count, 1,025
-literals. Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width
+literals. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width
 bound of 1000), solved it in 20 expansions and seven seconds. Its twenty-move plan is
 
 ```
@@ -214,13 +214,13 @@ trace to `render_trace`:
 ```python
 from planiverse.environments.games.emulated.game_boy import GameBoyEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = GameBoyEnv("/path/to/counter.gb")      # or any cartridge, see above
 env.set_index(0)
 env.reset()
 
-result = IteratedBFWS(max_width=1000, progress=measures.emulated).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.emulated).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "game_boy.gif")                                                # animated

@@ -133,7 +133,7 @@ hundreds.
 Instance `0` is a sector of three aircraft with a horizon of 15 decisions and a target of 1,267
 seconds of exit time. `AC1` enters from the east on heading 272 at 270 knots, `AC2` from the
 south on heading 356 at 230 knots and `AC3` from the south-west on heading 26 at 250 knots.
-Each is about 38 nautical miles from its exit. Iterated BFWS, run as the benchmark runs it (i.e.,
+Each is about 38 nautical miles from its exit. Dual BFWS, run as the benchmark runs `dual` (i.e.,
 with the measure above and a width bound of 1000), solved it in 18 expansions and 44.3
 seconds. Its nine-instruction plan is
 
@@ -165,14 +165,14 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.airspace.environment import AirspaceEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = AirspaceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: sector, aircraft, horizon, target, generated
 print(state)                       # t=0s, closest 99.0 nm; AC1 hdg 272 FL300 38.3 nm to go on course; ...
 
-result = IteratedBFWS(max_width=1000, progress=measures.airspace).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.airspace).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "airspace_chart.gif")                                   # animated

@@ -1,4 +1,4 @@
-"""`planiverse-bench`: the tool paper's evaluation protocol, as code.
+"""`planiverse-bench`: the library's evaluation protocol, as code.
 
     planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A]
     bash sandbox/submit.sh                       # or: bash sandbox/run_local.sh 8
@@ -8,10 +8,10 @@
 per (planner, instance, seed), plus a SLURM job array for each planner, or for each of a seeded
 planner's seeds, that runs them. `solve` is what one array element runs: one planner on one
 instance under the limits, written out as one JSON file whatever happens. `report` reads those
-files back and writes the paper's tables, its figures, and the numbers its prose quotes.
+files back and writes the tables, the figures, and the numbers a write-up would quote.
 
 The protocol is the constants below. There is no configuration file: a run that changed a limit
-would not be the paper's experiment, and one that did not has nothing to configure.
+would not be the same experiment, and one that did not has nothing to configure.
 """
 import argparse
 import inspect
@@ -27,45 +27,42 @@ import sys
 import time
 import traceback
 
+from planiverse.benchmark.candidates import CANDIDATES
 from planiverse.benchmark.measures import MEASURES
 from planiverse.environments import REGISTRY, get_spec
 from planiverse.planners.fsx import FSXPlanner
-from planiverse.planners.mcts import MCTSPlanner
-from planiverse.planners.width import (
-    Budget, IteratedBFWS, IteratedWidth, PiIW, RolloutIW, SIWSearch,
-)
+from planiverse.planners.width import BFWS, Budget, IW, SIW
 
 #: Per run: 30 minutes of wall clock, 8 GB of address space, 500,000 expansions.
 LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
 
-#: The paper's five configurations in its order, then the two rollout planners. Anything not
-#: named is the class's own default, which is where MCTS's exploration constant, rollout
-#: depth, backup rule and length penalty come from, FSX's measure, temperature and step cap,
-#: and the rollout planners' discount, 200-step episodes and dead-end avoidance. Rollout IW
-#: gets the larger per-decision budget and π-IW the smaller, as in their papers: π-IW's
-#: point is that a learned policy makes a small lookahead go a long way, and its network
-#: (2048 hashed inputs, 64 hidden units, τ = 0.5) is the class default too.
+#: The reference configurations: the three width planners and FSX. Anything not named is
+#: the class's own default, which is where FSX's measure, temperature and step cap come from.
+#: This is a planning library: nothing here takes a reward, and nothing learns before it
+#: plans.
 PLANNERS = {
-    "bfws": (IteratedBFWS, {"max_width": 1000}),
-    "iw": (IteratedWidth, {"max_width": 1000, "strict": False}),
-    "siw": (SIWSearch, {"width": 1, "max_width": 1000, "strict": False}),
-    "mcts": (MCTSPlanner, {"iterations": 2000}),
+    "bfws": (BFWS, {"width": 1}),
+    "iw": (IW, {"max_width": 1000, "strict": False}),
+    "siw": (SIW, {"width": 1, "max_width": 1000, "strict": False}),
     "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
-    "riw": (RolloutIW, {"width": 1, "expansions_per_step": 1000}),
-    "piiw": (PiIW, {"width": 1, "expansions_per_step": 100}),
 }
+
+#: Every planner `solve` can run: the reference ones, then the surveyed candidates, which
+#: `generate` and `report` include only with `--candidates`. A candidate's results sit in
+#: their own directory and never enter the reference tables unless asked for.
+ALL = {**PLANNERS, **CANDIDATES}
 
 #: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
 #: full run under the same limits, and the report averages over them; the environments are
-#: deterministic, so the seed is the only source of variance. The three breadth-first width
-#: planners have no seed and run once; the rollout planners draw their rollouts from one.
+#: deterministic, so the seed is the only source of variance. The three width planners have
+#: no seed and run once.
 SEEDS = range(5)
 
 #: The deterministic width family, and what the overlap and runtime figures compare.
 WIDTH = ("bfws", "iw", "siw")
 
-#: The paper's environment names, in its table order; the family itself comes from the
-#: registry's tags.
+#: The environment names, in table order; the family itself comes from the registry's
+#: tags.
 NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
          "crop_management": "Crop management", "network_attack": "Network attack",
          "puzznic": "Puzznic", "flipull": "Flipull", "lolo": "Adventures of Lolo",
@@ -98,15 +95,16 @@ eval "$(sed -n "$((${{SLURM_ARRAY_TASK_ID:-0}} + 1))p" {cmds})"
 
 def _seeds(tag):
     """The seeds a planner runs under: SEEDS if its constructor takes one, else a single None."""
-    return list(SEEDS) if "seed" in inspect.signature(PLANNERS[tag][0]).parameters else [None]
+    return list(SEEDS) if "seed" in inspect.signature(ALL[tag][0]).parameters else [None]
 
 
 def _filename(environment, index, seed):
     return f"{environment}__{index}" + ("" if seed is None else f"__s{seed}") + ".json"
 
 
-def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
+def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candidates=False):
     """Count every environment's instances, then write the commands and the arrays to run them."""
+    planners = ALL if candidates else PLANNERS
     sandbox = os.path.abspath(sandbox)
     counts = {}
     for spec in REGISTRY:
@@ -129,7 +127,7 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
     # One job array per planner, or per seed of a seeded planner: each is one instance long,
     # which keeps every array under a site's MaxArraySize and finishes seed 0 first.
     groups = {tag if seed is None else f"{tag}-s{seed}": (tag, seed)
-              for tag in PLANNERS for seed in _seeds(tag)}
+              for tag in planners for seed in _seeds(tag)}
     for name in ("cmds", "slurm", *(f"logs/{group}" for group in groups)):
         os.makedirs(f"{sandbox}/{name}", exist_ok=True)
     with open(f"{sandbox}/tasks.json", "w") as handle:
@@ -162,7 +160,7 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50):
             handle.write(body)
         os.chmod(f"{sandbox}/{name}", 0o755)
     print(f"{len(tasks)} instances x {len(groups)} arrays "
-          f"({', '.join(f'{tag} x{len(_seeds(tag))}' for tag in PLANNERS)}) "
+          f"({', '.join(f'{tag} x{len(_seeds(tag))}' for tag in planners)}) "
           f"= {len(tasks) * len(groups)} runs\n"
           f"  submit:  bash {sandbox}/submit.sh\n  or here: bash {sandbox}/run_local.sh 8")
 
@@ -180,7 +178,7 @@ def solve(sandbox, tag, task, seed=None):
     name, index = task.rsplit("@", 1)
     seed = _seeds(tag)[0] if seed is None else seed   # a seeded planner run by hand gets its first
     record = {"task": task, "environment": name, "index": int(index), "planner": tag,
-              "seed": seed, "params": PLANNERS[tag][1], "limits": LIMITS,
+              "seed": seed, "params": ALL[tag][1], "limits": LIMITS,
               "host": platform.node(), "started": time.time()}
     # An address-space cap turns an overrun into a MemoryError the run can record, instead of
     # an OOM kill that leaves no file. macOS refuses the call; the cap is for the Linux cluster.
@@ -196,7 +194,7 @@ def solve(sandbox, tag, task, seed=None):
             env.set_index(int(index))
         except Exception as exc:
             return _write(sandbox, record, "UNSUPPORTED", note=f"{type(exc).__name__}: {exc}")
-        cls, params = PLANNERS[tag]
+        cls, params = ALL[tag]
         if seed is not None:
             params = {**params, "seed": seed}
         if "progress" in inspect.signature(cls).parameters:
@@ -226,8 +224,8 @@ def solve(sandbox, tag, task, seed=None):
                         "generated": out.statistics.generated,
                         "search_seconds": out.statistics.elapsed,
                         "widths_tried": list(out.statistics.widths_tried),
-                        # Zero for every planner but Rollout IW and π-IW, whose episode count
-                        # is how much they relearned before they succeeded.
+                        # Zero for the width planners; the sampling planners count what
+                        # they ran before they succeeded.
                         "rollouts": out.statistics.rollouts,
                         "episodes": out.statistics.episodes})
         if out.solved:
@@ -280,16 +278,25 @@ def _write(sandbox, record, status, seconds=None, note=None):
     return record
 
 
-def report(sandbox):
-    """Read every expected result back and write the paper's tables, figures and numbers."""
+def report(sandbox, candidates=False):
+    """Read every expected result back and write the tables, figures and numbers.
+
+    With `candidates`, every candidate planner that left a results directory joins the
+    tables and the cactus plot; the overlap and runtime figures stay over the three width
+    planners.
+    """
     import matplotlib
     import pandas as pd
     matplotlib.use("Agg")
+    planners = dict(PLANNERS)
+    if candidates:
+        planners.update({tag: CANDIDATES[tag] for tag in CANDIDATES
+                         if pathlib.Path(sandbox, "results", tag).is_dir()})
 
     manifest = json.loads(pathlib.Path(sandbox, "tasks.json").read_text())
     counts = {entry["environment"]: entry["instances"] for entry in manifest["environments"]}
     rows = []
-    for tag in PLANNERS:
+    for tag in planners:
         for seed in _seeds(tag):
             for env, n in counts.items():
                 for index in range(n):
@@ -325,9 +332,9 @@ def report(sandbox):
 
     out = pathlib.Path(sandbox, "report")
     out.mkdir(exist_ok=True)
-    (out / "coverage.tex").write_text(_coverage_tex(df, counts))
-    (out / "statuses.tex").write_text(_statuses_tex(df, solved))
-    (out / "facts.txt").write_text(_facts(df, counts))
+    (out / "coverage.tex").write_text(_coverage_tex(df, counts, planners))
+    (out / "statuses.tex").write_text(_statuses_tex(df, solved, planners))
+    (out / "facts.txt").write_text(_facts(df, counts, planners))
     _cactus(df, out / "cactus.pdf")
     _overlap(df, counts, out / "overlap_bfws_iw_siw.pdf")
     _runtime(df, out / "runtime_bfws_iw_siw.pdf")
@@ -336,7 +343,7 @@ def report(sandbox):
 
 
 def _families(counts):
-    """The paper's table rows: (family, environments) in its order."""
+    """The coverage table's rows: (family, environments) in order."""
     groups = {}
     for env in NAMES:
         if env in counts:
@@ -359,15 +366,16 @@ def _solved_per_seed(df):
     return df.assign(ok=df.status == "SOLVED").groupby(["planner", "seed"]).ok.sum()
 
 
-def _coverage_tex(df, counts):
-    """Table 2: instances solved per environment and planner, in the paper's families."""
+def _coverage_tex(df, counts, planners=None):
+    """The coverage table: instances solved per environment and planner, by family."""
+    planners = planners or PLANNERS
     solved = (df.assign(ok=df.status == "SOLVED")
               .groupby(["planner", "seed", "environment"]).ok.sum()
               .unstack("environment").reindex(columns=list(counts), fill_value=0))
     totals = solved.sum(axis=1)
     means = totals.groupby(level="planner").mean()
-    lines = ["\\begin{tabular}{ll" + "r" * (len(PLANNERS) + 1) + "}", "\\toprule",
-             "Family & Environment & Inst. & " + " & ".join(p.upper() for p in PLANNERS)
+    lines = ["\\begin{tabular}{ll" + "r" * (len(planners) + 1) + "}", "\\toprule",
+             "Family & Environment & Inst. & " + " & ".join(p.upper() for p in planners)
              + " \\\\", "\\midrule"]
     for family, envs in _families(counts):
         if len(envs) > 1:
@@ -375,29 +383,30 @@ def _coverage_tex(df, counts):
         for env in envs:
             lines.append(f"{family if len(envs) == 1 else ''} & {NAMES[env]}"
                          f" & {counts[env]} & "
-                         + " & ".join(_fmt(solved.loc[p][env]) for p in PLANNERS) + " \\\\")
+                         + " & ".join(_fmt(solved.loc[p][env]) for p in planners) + " \\\\")
         lines.append("\\midrule")
     lines += [f"& Total & {sum(counts.values())} & " + " & ".join(
         f"\\textbf{{{_fmt(totals.loc[p])}}}" if means[p] == means.max() else _fmt(totals.loc[p])
-        for p in PLANNERS) + " \\\\", "\\bottomrule", "\\end{tabular}", ""]
+        for p in planners) + " \\\\", "\\bottomrule", "\\end{tabular}", ""]
     return "\n".join(lines)
 
 
-def _statuses_tex(df, solved):
-    """Table 3: how every run ended, one row per planner, every status that occurred.
+def _statuses_tex(df, solved, planners=None):
+    planners = planners or PLANNERS
+    """The status table: how every run ended, one row per planner, every status that occurred.
 
     The columns come from the data, so a status cannot be left out without the row totals
     showing it. A seeded planner's counts are means per seed, so its row still sums to the
     instance count, and its Solved cell carries the standard deviation. A run that never
-    happened is counted as unsolved, as the paper does; it never credits a planner, and
-    `facts.txt` still lists it.
+    happened is counted as unsolved; it never credits a planner, and `facts.txt` still lists
+    it.
     """
     import pandas as pd
     # Divided before reindexing: aligning against the seed counts sorts the planners, and the
-    # reindex is what puts them back in the paper's order.
+    # reindex is what puts them back in registry order.
     n = (df.groupby(["planner", "status"]).size().unstack(fill_value=0)
          .div(df.groupby("planner").seed.nunique(), axis=0)
-         .reindex(index=list(PLANNERS), columns=STATUSES, fill_value=0))
+         .reindex(index=list(planners), columns=STATUSES, fill_value=0))
     n["UNSOLVED"] += n.pop("MISSING")
     n = n.loc[:, n.any()].round(1)
     n["Median (s)"] = solved.groupby("planner").seconds.median().round(1)
@@ -425,30 +434,31 @@ def _statuses_tex(df, solved):
     return "\n".join(lines + ["\\bottomrule", "\\end{tabular}", ""])
 
 
-def _facts(df, counts):
-    """The numbers the paper's prose quotes, read off here rather than worked out by hand."""
+def _facts(df, counts, planners=None):
+    planners = planners or PLANNERS
+    """The numbers a write-up would quote, read off here rather than worked out by hand."""
     import pandas as pd
     from scipy.stats import binomtest
     solved = df[df.status == "SOLVED"]
     per_seed = _solved_per_seed(df)
-    seeds = {p: sorted(df.seed[df.planner == p].unique()) for p in PLANNERS}
+    seeds = {p: sorted(df.seed[df.planner == p].unique()) for p in planners}
     by_seed = solved.groupby(["planner", "seed"]).task.agg(set).to_dict()
-    sets = {p: [by_seed.get((p, s), set()) for s in seeds[p]] for p in PLANNERS}
-    union = {p: set.union(*sets[p]) for p in PLANNERS}
-    every = {p: set.intersection(*sets[p]) for p in PLANNERS}
+    sets = {p: [by_seed.get((p, s), set()) for s in seeds[p]] for p in planners}
+    union = {p: set.union(*sets[p]) for p in planners}
+    every = {p: set.intersection(*sets[p]) for p in planners}
     env = df.drop_duplicates("task").set_index("task").environment
     family = {e: f.split(" (")[0] for f, envs in _families(counts) for e in envs}
     medians = solved.groupby("planner").seconds.median()
-    lines = ["solved per seed: " + ", ".join(f"{p} {_fmt(per_seed.loc[p])}" for p in PLANNERS),
+    lines = ["solved per seed: " + ", ".join(f"{p} {_fmt(per_seed.loc[p])}" for p in planners),
              "solved in some seed / in every seed: " + ", ".join(
-                 f"{p} {len(union[p])} / {len(every[p])}" for p in PLANNERS
+                 f"{p} {len(union[p])} / {len(every[p])}" for p in planners
                  if len(seeds[p]) > 1),
              "solved in some seed but never by bfws: " + ", ".join(
-                 f"{p} {len(union[p] - union['bfws'])}" for p in PLANNERS if p != "bfws"),
+                 f"{p} {len(union[p] - union['bfws'])}" for p in planners if p != "bfws"),
              "solved by bfws and by no seed of: " + ", ".join(
-                 f"{p} {len(union['bfws'] - union[p])}" for p in PLANNERS if p != "bfws"),
+                 f"{p} {len(union['bfws'] - union[p])}" for p in planners if p != "bfws"),
              "median solve time over all solved runs (s): " + ", ".join(
-                 f"{p} {medians.get(p, float('nan')):.1f}" for p in PLANNERS)]
+                 f"{p} {medians.get(p, float('nan')):.1f}" for p in planners)]
     times = (solved[solved.planner.isin(WIDTH)]
              .pivot(index="task", columns="planner", values="seconds")
              .reindex(columns=list(WIDTH)))
@@ -476,7 +486,7 @@ def _facts(df, counts):
     lines.append(f"bfws mean plan length: "
                  f"{solved.plan_length[solved.planner == 'bfws'].mean():.1f}")
     per_family = pd.Series(counts).groupby(pd.Series(counts).index.map(family)).sum()
-    for p in (p for p in PLANNERS if len(seeds[p]) > 1):
+    for p in (p for p in planners if len(seeds[p]) > 1):
         runs = df[df.planner == p]
         by_family = (runs.assign(ok=runs.status == "SOLVED")
                      .groupby([runs.environment.map(family), "seed"]).ok.sum())
@@ -496,15 +506,15 @@ def _facts(df, counts):
                .reindex(columns=list(counts), fill_value=0))
     fraction = (per_env / pd.Series(counts)).mean(axis=1) * 100
     lines.append("mean fraction solved over the environments (%): " + ", ".join(
-        f"{p} {mean_sd([fraction.get((p, s), 0.0) for s in seeds[p]])}" for p in PLANNERS))
+        f"{p} {mean_sd([fraction.get((p, s), 0.0) for s in seeds[p]])}" for p in planners))
     best = solved.groupby("task").plan_length.min()
     score = (solved.assign(q=best.reindex(solved.task).values / solved.plan_length.values)
              .groupby(["planner", "seed"]).q.sum())
     lines.append(f"ipc quality score over the {len(best)} instances solved by any planner: "
                  + ", ".join(f"{p} {mean_sd([score.get((p, s), 0.0) for s in seeds[p]])}"
-                             for p in PLANNERS))
+                             for p in planners))
     bfws_length = solved[solved.planner == "bfws"].set_index("task").plan_length
-    for p in (p for p in PLANNERS if p != "bfws"):
+    for p in (p for p in planners if p != "bfws"):
         runs = solved[solved.planner == p]
         pair = runs.assign(b=bfws_length.reindex(runs.task).values).dropna(subset=["b"])
         lines.append(f"{p} plan length against bfws on the {len(pair)} runs both solved: "
@@ -513,51 +523,22 @@ def _facts(df, counts):
                      f"{(pair.plan_length > pair.b).sum()}, medians "
                      f"{pair.plan_length.median():g} and {pair.b.median():g}")
 
-    # What the rollout planners reached, against IW's width and against each other.
-    iw_width = iw.set_index("task").width
-    for p in (p for p in ("riw", "piiw") if p in seeds):
-        need = iw_width.reindex(sorted(union[p]))
-        lines.append(f"{p} solved in some seed, by the width iw needed: " + ", ".join(
-            f"w{w:.0f} {k}" for w, k in need.value_counts().sort_index().items())
-            + f", unsolved by iw {int(need.isna().sum())}")
-    if "riw" in seeds:
-        gave_up = df[(df.planner == "riw") & (df.status == "UNSOLVED")]
-        lines.append(f"riw unsolved runs: {len(gave_up)}, median {gave_up.seconds.median():.1f} s")
-    if "riw" in seeds and "piiw" in seeds:
-        a = solved[solved.planner == "riw"].set_index(["task", "seed"])
-        b = solved[solved.planner == "piiw"].set_index(["task", "seed"])
-        both = a.join(b, lsuffix="_riw", rsuffix="_piiw", how="inner")
-        lines.append(f"piiw against riw on the {len(both)} (instance, seed) pairs both solved: "
-                     f"plan length medians {both.plan_length_piiw.median():g} and "
-                     f"{both.plan_length_riw.median():g}, piiw shorter on "
-                     f"{(both.plan_length_piiw < both.plan_length_riw).sum()} and longer on "
-                     f"{(both.plan_length_piiw > both.plan_length_riw).sum()}; expansions "
-                     f"medians {both.expansions_piiw.median():g} and "
-                     f"{both.expansions_riw.median():g}, piiw fewer on "
-                     f"{(both.expansions_piiw < both.expansions_riw).sum()}")
-    if "piiw" in seeds:
-        pi = solved[solved.planner == "piiw"]
-        lines.append(f"piiw solved runs: {len(pi)}, needing more than one episode "
-                     f"{(pi.episodes > 1).sum()}")
-        lines += [f"piiw episodes on {e}: {len(r)} solved runs, more than one episode on "
-                  f"{(r.episodes > 1).sum()}, median {r.episodes.median():g}"
-                  for e, r in pi.groupby("environment") if (r.episodes > 1).any()]
-        for p in (p for p in PLANNERS if len(seeds[p]) > 1):
-            failed = df[(df.planner == p) & (df.status == "ERROR")].groupby("task").size()
-            if len(failed):
-                lines.append(f"{p} errors: {int(failed.sum())} runs, on {len(failed)} "
-                             f"instances in some seed and {int((failed == len(seeds[p])).sum())}"
-                             f" in every seed, of which bfws solved "
-                             f"{len(set(failed.index) & union['bfws'])}")
+    for p in (p for p in planners if len(seeds[p]) > 1):
+        failed = df[(df.planner == p) & (df.status == "ERROR")].groupby("task").size()
+        if len(failed):
+            lines.append(f"{p} errors: {int(failed.sum())} runs, on {len(failed)} "
+                         f"instances in some seed and {int((failed == len(seeds[p])).sum())}"
+                         f" in every seed, of which bfws solved "
+                         f"{len(set(failed.index) & union['bfws'])}")
 
     # Where each planner's runs ended, per environment, and what an expansion cost on each.
-    for p in PLANNERS:
+    for p in planners:
         runs = df[df.planner == p]
         lines.append(f"{p} statuses by environment: " + "; ".join(
             f"{e} " + " ".join(f"{s} {k}" for s, k in r.status.value_counts().items())
             for e, r in runs.groupby("environment")))
     ran = df[df.expansions > 0].assign(ms=lambda r: r.search_seconds / r.expansions * 1000)
-    for p in PLANNERS:
+    for p in planners:
         mine = ran[ran.planner == p]
         lines.append(f"{p} milliseconds per expansion at the median: " + ", ".join(
             f"{k} {v:.1f}" for k, v in mine.groupby("environment").ms.median().items()))
@@ -691,21 +672,26 @@ def main(argv=None):
                                     help="write the commands and the SLURM arrays")
     for option in ("partition", "qos", "account"):
         generate_.add_argument(f"--{option}", help=f"SLURM {option}")
+    generate_.add_argument("--candidates", action="store_true",
+                           help="also run the surveyed planners")
     generate_.add_argument("--parallel", type=int, default=50,
                            help="array elements running at once (default: 50)")
     solve_ = commands.add_parser("solve", parents=[common],
                                  help="run one planner on one instance")
-    solve_.add_argument("planner", choices=list(PLANNERS))
+    solve_.add_argument("planner", choices=list(ALL))
     solve_.add_argument("task", help="environment@index")
     solve_.add_argument("--seed", type=int,
                         help="for the seeded planners; the generated commands set it")
-    commands.add_parser("report", parents=[common],
-                        help="the paper's tables, figures and numbers")
+    report_ = commands.add_parser("report", parents=[common],
+                                  help="the tables, figures and numbers")
+    report_.add_argument("--candidates", action="store_true",
+                         help="include the surveyed planners that left results")
     args = parser.parse_args(argv)
     if args.command == "generate":
-        generate(args.sandbox_dir, args.partition, args.qos, args.account, args.parallel)
+        generate(args.sandbox_dir, args.partition, args.qos, args.account, args.parallel,
+                 args.candidates)
     elif args.command == "solve":
         solve(args.sandbox_dir, args.planner, args.task, args.seed)
     else:
-        report(args.sandbox_dir)
+        report(args.sandbox_dir, args.candidates)
     return 0

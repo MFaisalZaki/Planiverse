@@ -146,7 +146,7 @@ nothing else. The flag `E` is at the left end, and the one tater starts at the r
       #####
 ```
 
-Iterated BFWS, run as the benchmark runs it (i.e., with the measure above and a width bound of
+Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
 1000), solved it in 215 expansions and under a tenth of a second. Its thirty-eight-move plan is
 
 ```
@@ -171,7 +171,7 @@ the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.amazing_tater import AmazingTaterGame
 from planiverse.benchmark import measures
-from planiverse.planners.width import IteratedBFWS
+from planiverse.planners.width import DualBFWS
 
 env = AmazingTaterGame()
 env.set_index(0)                   # choose the room before reset
@@ -181,7 +181,7 @@ print(info)                        # {'level_index': 0, 'level': 'A-01', 'genera
                                    #  'size': (15, 5), 'taters': 1, 'blocks': 0,
                                    #  'turnstiles': 3, 'pits': 0}
 
-result = IteratedBFWS(max_width=1000, progress=measures.amazing_tater).solve(env)
+result = DualBFWS(max_width=1000, progress=measures.amazing_tater).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "amazing_tater.gif")                                   # animated

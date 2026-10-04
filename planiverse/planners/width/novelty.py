@@ -45,7 +45,7 @@ class NoveltyTable:
         self.width = width
         # `{size: set of tuples}`, filled on demand. A list of `width` sets would allocate
         # one per level whether or not any state has that many atoms, so a width of 1000
-        # (what `IteratedWidth` is given as a bound) cost a thousand allocations per level
+        # (what `IW` is given as a bound) cost a thousand allocations per level
         # tried, for nine atoms' worth of work.
         self.seen = {}
         self.evaluations = 0
@@ -60,7 +60,7 @@ class NoveltyTable:
         self.evaluations += 1
         atoms = sorted(literals)
         # A tuple longer than the state has atoms does not exist, so widths above that add
-        # nothing. Capping here is what lets `IteratedWidth` take a bound of 1000 without
+        # nothing. Capping here is what lets `IW` take a bound of 1000 without
         # spinning through 990 empty combination ranges per state.
         for size in range(1, self.__ceiling__(atoms) + 1):
             seen = self.seen.get(size, ())
@@ -153,61 +153,3 @@ def path_novelty(literals, seen_on_path):
     """
     return len(frozenset(literals) - frozenset(seen_on_path))
 
-
-class DepthNoveltyTable:
-    """Novelty measured against the *depth* at which each tuple was first seen.
-
-    This is the table Rollout IW keeps (Bandres, Bonet and Geffner, *Planning with Pixels in
-    (Almost) Real Time*, AAAI 2018). `NoveltyTable` asks "has this tuple been seen at all?",
-    which is the right question for breadth-first search, where every state is generated in
-    depth order. Rollouts do not come in depth order: a rollout can find an atom at depth 12
-    before another finds it at depth 3, and the second discovery is the one worth keeping.
-    So the table records the **shallowest depth** each tuple has been seen at, and a node at
-    depth `d` is novel when one of its tuples has never been seen that shallow.
-
-    The test differs by whether the node is being assessed for the first time:
-
-    * a **new** node is novel when some tuple has depth `> d`, or has never been seen;
-    * a node **already in the tree** is novel when some tuple has depth `>= d`, because the
-      node itself may be the one that put that depth in the table, and it must not be pruned
-      for its own discovery.
-
-    Either way the table is updated to the minimum, so a shallower rediscovery of a tuple
-    tightens the bar for everything deeper, which is what makes nodes already in the tree
-    worth re-checking as later rollouts pass through them.
-    """
-
-    def __init__(self, width=1, strict=True):
-        if width < 1:
-            raise ValueError(f"width must be at least 1, got {width}")
-        if strict and width > MAX_PRACTICAL_WIDTH:
-            raise ValueError(
-                f"width {width} enumerates every {width}-tuple of every state's atoms, "
-                f"which is rarely worth it against a simulator whose successors are already "
-                f"expensive. Pass strict=False if you mean it.")
-        self.width = width
-        self.depths = {}            # tuple -> shallowest depth seen
-        self.evaluations = 0
-        self.tuples_enumerated = 0
-
-    def check(self, literals, depth, new=True):
-        """Is a node with `literals` at `depth` novel? Records the depths either way."""
-        self.evaluations += 1
-        atoms = sorted(literals)
-        novel = False
-        for size in range(1, min(self.width, len(atoms)) + 1):
-            for combo in combinations(atoms, size):
-                self.tuples_enumerated += 1
-                seen = self.depths.get(combo)
-                if seen is None or depth < seen:
-                    self.depths[combo] = depth
-                    novel = True
-                elif depth == seen and not new:
-                    novel = True
-        return novel
-
-    def __len__(self):
-        return len(self.depths)
-
-    def __repr__(self):
-        return f"<DepthNoveltyTable(width={self.width}, tuples={len(self)})>"
