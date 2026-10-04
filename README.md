@@ -1,5 +1,7 @@
 # Planiverse
 
+[![CI](https://github.com/MFaisalZaki/Planiverse/actions/workflows/ci.yml/badge.svg)](https://github.com/MFaisalZaki/Planiverse/actions/workflows/ci.yml)
+
 A Python library for **planning with simulators**.
 
 Classical planners need a declarative model of the world (i.e., a description of the actions
@@ -75,12 +77,14 @@ themselves.
 ## Installation
 
 Requires Python 3.11, 3.12 or 3.13: numba and scipy have no 3.14 wheels yet, and building them
-from source needs a system OpenBLAS.
+from source needs a system OpenBLAS. Linux, macOS and Windows are all supported, and the
+[CI workflow](.github/workflows/ci.yml) installs and tests on each of them.
 
 ```bash
 git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
-pip install -e ".[dev]"      # the dev extra adds pytest
+pip install -e ".[dev]"              # the dev extra adds pytest
+python scripts/install_pooltool.py   # the billiards table; see below
 ```
 
 Or, with poetry:
@@ -88,16 +92,42 @@ Or, with poetry:
 ```bash
 poetry env use python3.12
 poetry install --extras dev
+poetry run python scripts/install_pooltool.py
 ```
 
 One install gets you every environment, on every supported Python, and nothing has to be
-supplied: the four games and the flood environment are self-contained, the water, power grid
-and crop environments ship their benchmark data inside their dependencies, so they run
-offline, and Stable-Retro ships Airstriker. The one exception is a Game Boy cartridge for
-`game_boy`, which is copyrighted and comes from you. `tests/test_packaging.py` walks the import
-graph from each environment's entry point and fails if anything it reaches is undeclared, so a
-dependency that only works because another package happens to pull it in cannot go missing
-silently.
+supplied: the games and the flood environment are self-contained, the water, power grid,
+crop, epidemic, traffic and reservoir environments ship their benchmark data inside their
+dependencies, so they run offline, and Stable-Retro ships Airstriker. The one exception is a
+Game Boy cartridge for `game_boy`, which is copyrighted and comes from you.
+`tests/test_packaging.py` walks the import graph from each environment's entry point and fails
+if anything it reaches is undeclared, so a dependency that only works because another package
+happens to pull it in cannot go missing silently.
+
+One system package may be missing on Linux: NASim imports `tkinter` for a viewer the
+environment never opens, and Debian and Ubuntu ship it separately, so if `network_attack`
+reports `No module named 'tkinter'`, `sudo apt install python3-tk`. Three dependencies are
+not declared the plain way, because their publishers do not cover every platform.
+`tools/check_install.py` prints what the install in front of you covers and what is missing.
+
+- **pooltool** (billiards) is installed by `scripts/install_pooltool.py`. On Linux and Windows its
+  own dependency list pins a Panda3D development build that PyPI does not carry, so a plain
+  `pip install` of it fails there with "No matching distribution found for panda3d". The
+  script installs its dependencies with the released Panda3D 1.10 from PyPI and then pooltool
+  without its list. Panda3D is pooltool's renderer; the physics is unaffected.
+- **pywr** (reservoirs) publishes wheels for Linux and Windows only, so the dependency list
+  leaves it out on macOS. To have the reservoir environment there, build it from source:
+  `brew install glpk`, then
+  `CFLAGS="-I$(brew --prefix glpk)/include" LDFLAGS="-L$(brew --prefix glpk)/lib" PYWR_BUILD_LPSOLVE=false pip install pywr`.
+- **Stable-Retro** publishes no Windows wheels and supports Windows through WSL2, so the
+  dependency list leaves it out on Windows. The Game Boy environment under PyBoy is unaffected.
+
+Three simulators are built or installed by the scripts under `scripts/` rather than from PyPI:
+the Micropolis engine (`build_micropolis.sh`, needs a C++ compiler, the Python headers and
+`swig`), factory-sim (`build_factory_sim.sh`, needs a C compiler and the Python headers) and
+BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows run them from WSL2 or
+Git Bash. An environment whose dependency is missing is skipped by the tests and recorded as
+`UNSUPPORTED` by the benchmark; everything else runs.
 
 ## Tests
 

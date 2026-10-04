@@ -23,9 +23,11 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
                    "bluesky": "bluesky-simulator"}
 
-#: Built from source rather than installed from PyPI, so not declarable: the Micropolis engine
-#: (see `scripts/build_micropolis.sh`) and factory-sim (`scripts/build_factory_sim.sh`).
-BUILT_FROM_SOURCE = {"micropolisengine", "fsim", "bluesky"}   # bluesky: scripts/install_bluesky.sh
+#: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
+#: asked for them: the Micropolis engine and factory-sim are built from source
+#: (`build_micropolis.sh`, `build_factory_sim.sh`); BlueSky and pooltool each publish a
+#: dependency list that pip cannot satisfy (`install_bluesky.sh`, `install_pooltool.py`).
+INSTALLED_BY_SCRIPT = {"micropolisengine", "fsim", "bluesky", "pooltool"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -147,7 +149,7 @@ def test_the_import_closure_is_fully_declared(declared):
     """Everything the environments import has to be in `dependencies`."""
     undeclared = {}
     for root, importer in import_closure().items():
-        if root in BUILT_FROM_SOURCE:
+        if root in INSTALLED_BY_SCRIPT:
             continue
         name = root.lower().replace("_", "-")
         if DISTRIBUTION_OF.get(name, name) not in declared:

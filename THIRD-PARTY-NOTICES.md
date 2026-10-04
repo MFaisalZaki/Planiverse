@@ -41,7 +41,8 @@ structures, materials, rules of breaking and levels are this repository's work.
 
 `planiverse/environments/games/billiards/` plays on [pooltool](https://github.com/ekiefl/pooltool)
 (Apache-2.0; Kiefl, JOSS 2024), an event-based billiards simulator, installed from PyPI as
-`pooltool-billiards` and not included here. The environment places the balls itself and
+`pooltool-billiards` by `scripts/install_pooltool.py` and not included here. The environment
+places the balls itself and
 keeps only the physics; its tables and rules are this repository's work.
 
 ## The Micropolis engine

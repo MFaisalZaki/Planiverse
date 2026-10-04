@@ -22,6 +22,8 @@ done
 
 [ -d "$VENV" ] || "$PYTHON" -m venv "$VENV"
 "$VENV/bin/python" -m pip install --quiet -e "$REPO"
+# The billiards table: pooltool is installed by its script rather than declared (see pyproject.toml).
+"$VENV/bin/python" "$REPO/scripts/install_pooltool.py" --quiet
 # The venv's interpreter by absolute path: the generated jobs call the same one, so they need
 # no activation and cannot pick up a different install off PATH.
 "$VENV/bin/python" -m planiverse.benchmark generate "$@"

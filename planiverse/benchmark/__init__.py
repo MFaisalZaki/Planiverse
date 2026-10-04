@@ -19,13 +19,17 @@ import json
 import os
 import pathlib
 import platform
-import resource
 import shlex
 import signal
 import statistics
 import sys
 import time
 import traceback
+
+try:
+    import resource
+except ImportError:     # Windows: no address-space cap, the Budget alone bounds a run
+    resource = None
 
 from planiverse.benchmark.candidates import CANDIDATES
 from planiverse.benchmark.measures import MEASURES
@@ -165,6 +169,10 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candi
           f"  submit:  bash {sandbox}/submit.sh\n  or here: bash {sandbox}/run_local.sh 8")
 
 
+#: Whether this platform has the interval timer the per-run alarm is set on.
+ALARM = hasattr(signal, "setitimer") and hasattr(signal, "SIGALRM")
+
+
 def _alarm(*_):
     raise TimeoutError
 
@@ -181,12 +189,14 @@ def solve(sandbox, tag, task, seed=None):
               "seed": seed, "params": ALL[tag][1], "limits": LIMITS,
               "host": platform.node(), "started": time.time()}
     # An address-space cap turns an overrun into a MemoryError the run can record, instead of
-    # an OOM kill that leaves no file. macOS refuses the call; the cap is for the Linux cluster.
-    try:
-        resource.setrlimit(resource.RLIMIT_AS,
-                           (LIMITS["bytes"], resource.getrlimit(resource.RLIMIT_AS)[1]))
-    except (ValueError, OSError):
-        pass
+    # an OOM kill that leaves no file. macOS refuses the call and Windows has no `resource`
+    # module; the cap is for the Linux cluster.
+    if resource is not None:
+        try:
+            resource.setrlimit(resource.RLIMIT_AS,
+                               (LIMITS["bytes"], resource.getrlimit(resource.RLIMIT_AS)[1]))
+        except (ValueError, OSError):
+            pass
     env = None
     try:
         try:
@@ -202,9 +212,11 @@ def solve(sandbox, tag, task, seed=None):
         planner = cls(**params)
         # The Budget is checked between expansions; the alarm catches the one expansion that
         # itself overruns (a power-grid step can take twenty seconds), so the run records a
-        # TIMEOUT rather than being killed by SLURM and leaving no file.
-        signal.signal(signal.SIGALRM, _alarm)
-        signal.setitimer(signal.ITIMER_REAL, 1.02 * LIMITS["seconds"])
+        # TIMEOUT rather than being killed by SLURM and leaving no file. Windows has no
+        # interval timer, so there the Budget alone bounds the run.
+        if ALARM:
+            signal.signal(signal.SIGALRM, _alarm)
+            signal.setitimer(signal.ITIMER_REAL, 1.02 * LIMITS["seconds"])
         started = time.perf_counter()
         try:
             out = planner.solve(env, Budget(max_expansions=LIMITS["expansions"],
@@ -214,7 +226,8 @@ def solve(sandbox, tag, task, seed=None):
         except MemoryError:
             return _write(sandbox, record, "MEMOUT", time.perf_counter() - started)
         finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
+            if ALARM:
+                signal.setitimer(signal.ITIMER_REAL, 0)
         elapsed = time.perf_counter() - started
         record.update(
             search_status=out.status, width=out.width,
@@ -270,8 +283,9 @@ def _write(sandbox, record, status, seconds=None, note=None):
         # address space, and `open` has already truncated the file, so five runs of the
         # 2026-09 benchmark left empty files. The cap has done its job by then; lift it to the
         # hard limit and write again.
-        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-        resource.setrlimit(resource.RLIMIT_AS, (hard, hard))
+        if resource is not None:
+            soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+            resource.setrlimit(resource.RLIMIT_AS, (hard, hard))
         with open(path, "w") as handle:
             json.dump(record, handle, indent=1, default=str)
     print(f"{record['task']:24} {record['planner']:6} {status:12} {record['seconds']:.2f}s")

@@ -10,8 +10,10 @@ rolling, spinning, meeting cushions and dropping into pockets.
 - **Source:** [`planiverse/environments/games/billiards/environment.py`](../../planiverse/environments/games/billiards/environment.py)
 - **Instances:** 100 tables, indices `0` to `99`, all drawn by the generator at recorded seeds
 - **Generator:** `generate_instance(seed, balls=None, shots=None, ...)`; see [Generating tables](#generating-tables)
-- **Dependency:** `pooltool-billiards`, which pulls in panda3d and numba; the first shot in a
-  process compiles pooltool's numerics and takes a while, every shot after it a hundredth of a second
+- **Dependency:** `pooltool-billiards`, installed by `scripts/install_pooltool.py` (its own
+  dependency list pins a Panda3D build PyPI does not carry on Linux and Windows); it pulls in
+  panda3d and numba, the first shot in a process compiles pooltool's numerics and takes a
+  while, every shot after it a hundredth of a second
 
 ## Context
 

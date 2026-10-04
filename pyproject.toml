@@ -34,13 +34,18 @@ dependencies = [
     "covasim (>=3.1)",              # IDM's agent-based epidemic, for the epidemic environment
     "eclipse-sumo (>=1.20)",        # the SUMO binaries, for the traffic signals
     "libsumo (>=1.20)",             # SUMO's in-process binding
-    "pywr (>=1.20)",                # Manchester's water resource simulator, for the reservoirs
+    # Manchester's water resource simulator, for the reservoirs. It publishes wheels for Linux
+    # and Windows only; on macOS build it from source after `brew install glpk` (see the README).
+    "pywr (>=1.20) ; sys_platform != 'darwin'",
     # BlueSky (the airspace environment) is installed by scripts/install_bluesky.sh: its
     # published dependency list names a package that no longer builds.
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
-    "pooltool-billiards (>=0.6)",   # event-based billiards physics, for the billiards table
+    # pooltool (the billiards table) is installed by scripts/install_pooltool.py: on Linux and
+    # Windows its dependency list pins a Panda3D development build that PyPI does not carry.
     "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers
-    "stable-retro (>=0.9)",         # Farama's fork of Gym Retro: Genesis, NES, SNES and more
+    # Farama's fork of Gym Retro: Genesis, NES, SNES and more. It publishes no Windows wheels
+    # and supports Windows through WSL2, so a Windows install leaves it out.
+    "stable-retro (>=0.9) ; sys_platform != 'win32'",
 ]
 
 [project.optional-dependencies]
