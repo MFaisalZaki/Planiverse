@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-pytest.importorskip("pooltool", reason="pooltool is not installed")
+pytest.importorskip("pooltool", exc_type=ImportError, reason="pooltool is not installed")
 
 from planiverse.environments.games.billiards.environment import (  # noqa: E402
     CUTS, SPEEDS, TABLES, BilliardsAction, BilliardsEnv, BilliardsState, draw_table, strike,

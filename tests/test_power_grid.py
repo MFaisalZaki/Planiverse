@@ -6,7 +6,7 @@ the expensive ones are marked `slow`.
 """
 import pytest
 
-pytest.importorskip("grid2op", reason="grid2op is not installed")
+pytest.importorskip("grid2op", exc_type=ImportError, reason="grid2op is not installed")
 
 from planiverse.environments.operational.power_grid.environment import (  # noqa: E402
     SECURE_RHO, SCENARIOS, PowerGridAction, PowerGridEnv, PowerGridState, Scenario,

@@ -1,7 +1,7 @@
 """Tests for the trace renderer."""
 import pytest
 
-pytest.importorskip("PIL", reason="Pillow is not installed")
+pytest.importorskip("PIL", exc_type=ImportError, reason="Pillow is not installed")
 
 from PIL import Image  # noqa: E402
 

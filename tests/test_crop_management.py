@@ -5,7 +5,7 @@ a season runs offline and there is nothing to supply.
 """
 import pytest
 
-pytest.importorskip("pcse", reason="pcse is not installed")
+pytest.importorskip("pcse", exc_type=ImportError, reason="pcse is not installed")
 
 from planiverse.environments.operational.crop_management.environment import (  # noqa: E402
     SOW_MONTH_DAY,

@@ -4317,4 +4317,4 @@ dev = ["pytest"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "0a1deeca15016bd53036a34c1df9df2bda59a941a490817113d6e02be9cb5000"
+content-hash = "64eba66ae8cc38e241cfe4228636380aae6232e5530b9bcc857eb34a16a9fb44"

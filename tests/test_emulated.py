@@ -23,7 +23,7 @@ from conftest import assert_string_literals, assert_successors_contract
 # ================================================================================ Game Boy
 
 def counter_env(**overrides):
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    pytest.importorskip("pyboy", exc_type=ImportError, reason="pyboy is not installed")
     from counter_rom import COUNTER, PRESSES, counter_rom
     from planiverse.environments.games.emulated.game_boy import GameBoyEnv
 
@@ -45,7 +45,7 @@ def names(plan):
 
 
 def test_a_cartridge_is_required_and_cannot_come_from_the_repository(monkeypatch, tmp_path):
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    pytest.importorskip("pyboy", exc_type=ImportError, reason="pyboy is not installed")
     from planiverse.environments.games.emulated.game_boy import ROM_VARIABLE, GameBoyEnv
 
     monkeypatch.delenv(ROM_VARIABLE, raising=False)
@@ -186,7 +186,7 @@ def test_a_checked_draw_keeps_its_witness(counter):
 
 def test_the_registry_builds_it_from_the_environment_variable():
     """The session fixture points `PLANIVERSE_GB_ROM` at the synthetic cartridge."""
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    pytest.importorskip("pyboy", exc_type=ImportError, reason="pyboy is not installed")
     env = make("game_boy", index=0)
     state, info = env.reset()
     assert info["rom"] == "counter.gb" and info["goal"] == {"survive": 20}, \
@@ -236,7 +236,7 @@ def test_goal_specs_read_the_wrapper_and_the_fields():
 # ============================================================================ Stable-Retro
 
 def airstriker_env(**overrides):
-    pytest.importorskip("stable_retro", reason="stable-retro is not installed")
+    pytest.importorskip("stable_retro", exc_type=ImportError, reason="stable-retro is not installed")
     from planiverse.environments.games.emulated.stable_retro import RetroEnv
 
     return RetroEnv(**{"goal": {"survive": 5}, **overrides})
@@ -406,7 +406,7 @@ def test_airstriker_registers_a_hit_the_frame_it_lands(airstriker):
 
 
 def test_retro_goal_specs_read_the_variables():
-    pytest.importorskip("stable_retro", reason="stable-retro is not installed")
+    pytest.importorskip("stable_retro", exc_type=ImportError, reason="stable-retro is not installed")
     from planiverse.environments.games.emulated.stable_retro import _holds
 
     variables, start = {"lives": 2, "score": 150}, {"lives": 3, "score": 100}

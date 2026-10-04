@@ -461,7 +461,7 @@ def test_an_unsolved_result_is_falsey_and_explains_itself():
 
 def test_iw_solves_the_water_network():
     """A real simulator: every expansion is a hydraulic and transport solve."""
-    pytest.importorskip("wntr", reason="wntr is not installed")
+    pytest.importorskip("wntr", exc_type=ImportError, reason="wntr is not installed")
     from planiverse.environments.operational.water_network.environment import WaterNetworkEnv
 
     game = WaterNetworkEnv()
@@ -478,7 +478,7 @@ def test_iw_solves_the_water_network():
 @pytest.mark.slow
 def test_bfws_solves_a_growing_season():
     """Fixed depth 10 and the objective only observable at the leaves."""
-    pytest.importorskip("pcse", reason="pcse is not installed")
+    pytest.importorskip("pcse", exc_type=ImportError, reason="pcse is not installed")
     from planiverse.environments.operational.crop_management.environment import CropEnv
 
     game = CropEnv()

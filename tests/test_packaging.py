@@ -92,7 +92,7 @@ def module_path(module):
 def imported_names(path):
     """Every module named by a module-level import, relative ones resolved to absolute."""
     names = []
-    for node in ast.walk(ast.parse(path.read_text())):
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.Import):
             names += [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom):

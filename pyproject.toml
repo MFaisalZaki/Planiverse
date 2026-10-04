@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest (>=8.0)"]
+dev = ["pytest (>=8.2)"]      # 8.2 for importorskip's exc_type
 
 [project.scripts]
 # The benchmark harness; `python -m planiverse.benchmark` is the same entry point, and it

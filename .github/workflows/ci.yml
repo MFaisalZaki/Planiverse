@@ -56,11 +56,21 @@ jobs:
       # Everything an install is meant to cover on this platform has to import. The two
       # simulators built by the scripts are the other job's business; Stable-Retro (`retro`)
       # has no Windows wheels (see pyproject.toml).
-      # libsumo's Windows wheel fails to import on the runner ("DLL load failed while importing
-      # _libsumo: the specified procedure could not be found"), so the traffic environment is
-      # allowed to be missing there while this step says which SUMO library does not load.
-      - name: libsumo on Windows, which DLL fails
-        if: runner.os == 'Windows'
+      - name: What this install covers
+        shell: bash
+        run: |
+          expect="micropolis,airspace"
+          if [ "$RUNNER_OS" = "Windows" ]; then expect="$expect,retro"; fi
+          python tools/check_install.py --expect-missing "$expect"
+
+      - name: Test
+        run: python -m pytest -m "not slow" --durations=15
+
+      # libsumo's Windows wheel does not import on its own ("DLL load failed while importing
+      # _libsumo: the specified procedure could not be found"); planiverse.environments preloads
+      # the SUMO libraries to get round it. This says which library is shadowed, for the record.
+      - name: libsumo on Windows, which DLL is shadowed
+        if: always() && runner.os == 'Windows'
         continue-on-error: true
         shell: bash
         run: |
@@ -81,16 +91,6 @@ jobs:
           import libsumo
           print("libsumo imported", libsumo.__version__)
           EOF
-
-      - name: What this install covers
-        shell: bash
-        run: |
-          expect="micropolis,airspace"
-          if [ "$RUNNER_OS" = "Windows" ]; then expect="$expect,retro,traffic"; fi
-          python tools/check_install.py --expect-missing "$expect"
-
-      - name: Test
-        run: python -m pytest -m "not slow" --durations=15
 
   scripted-simulators:
     name: ${{ matrix.os }}, the scripted simulators

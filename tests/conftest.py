@@ -35,8 +35,12 @@ def a_cartridge_for_the_game_boy():
 
 
 def requires(module_name):
-    """Skip the test module unless `module_name` imports."""
-    return pytest.importorskip(module_name, reason=f"{module_name} is not installed")
+    """Skip the test module unless `module_name` imports.
+
+    Any ImportError counts, not only a missing module: a wheel whose extension does not load
+    (as libsumo's has on Windows) is a dependency the environment does not have either.
+    """
+    return pytest.importorskip(module_name, exc_type=ImportError, reason=f"{module_name} is not installed")
 
 
 def assert_state_contract(state):

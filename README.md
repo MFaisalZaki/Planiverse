@@ -121,12 +121,18 @@ not declared the plain way, because their publishers do not cover every platform
   `CFLAGS="-I$(brew --prefix glpk)/include" LDFLAGS="-L$(brew --prefix glpk)/lib" PYWR_BUILD_LPSOLVE=false pip install pywr`.
 - **Stable-Retro** publishes no Windows wheels and supports Windows through WSL2, so the
   dependency list leaves it out on Windows. The Game Boy environment under PyBoy is unaffected.
+- **libsumo**'s Windows wheel does not import on its own (a library of the same name earlier
+  on the system's search path shadows one of SUMO's), so `planiverse.environments` loads the
+  SUMO libraries by path first on Windows. Nothing to do; it is noted here in case the
+  message "DLL load failed while importing _libsumo" ever shows up anyway.
 
 Two simulators are built or installed by the scripts under `scripts/` rather than from PyPI:
 the Micropolis engine (`build_micropolis.sh`, needs a C++ compiler, the Python headers,
 `perl` and `swig`) and BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows
 run them from WSL2 or Git Bash. An environment whose dependency is missing is skipped by the tests and recorded as
-`UNSUPPORTED` by the benchmark; everything else runs.
+`UNSUPPORTED` by the benchmark; everything else runs. The Micropolis engine builds on macOS
+too, but its arithmetic there differs from Linux, where the bundled cities were drawn; see
+[its doc](docs/environments/micropolis.md).
 
 ## Tests
 

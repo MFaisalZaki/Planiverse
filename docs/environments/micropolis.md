@@ -49,6 +49,13 @@ instead. The script then builds the extension and copies `micropolisengine` into
 Python's site-packages. A city year is eight hundred engine
 ticks and takes a few milliseconds.
 
+The engine builds on Linux and macOS, and its arithmetic is not the same on both: the
+bundled cities were drawn on Linux, and on macOS (Apple silicon) a city's target can come
+out a few points different and a baseline can reach a target it does not reach on Linux.
+The engine runs and the environment works there; the bundled instances' witnesses and
+targets are Linux's, and the two tests that pin them are marked as expected to fail on
+macOS until the divergence is traced.
+
 The rules are three. First, the map is the engine's own for the instance's seed. The layout is
 a coal plant, a road between two rows of four sites and wires round them, on the first flat
 patch of twenty by nine tiles the map has. Second, a year is one decision: zone a free site

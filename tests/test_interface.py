@@ -45,7 +45,7 @@ def amazing_tater():
 
 
 def water_network():
-    pytest.importorskip("wntr", reason="wntr is not installed")
+    pytest.importorskip("wntr", exc_type=ImportError, reason="wntr is not installed")
     from planiverse.environments.operational.water_network.environment import WaterNetworkEnv
 
     env = WaterNetworkEnv()
@@ -54,7 +54,7 @@ def water_network():
 
 
 def power_grid():
-    pytest.importorskip("grid2op", reason="grid2op is not installed")
+    pytest.importorskip("grid2op", exc_type=ImportError, reason="grid2op is not installed")
     from planiverse.environments.operational.power_grid.environment import PowerGridEnv
 
     env = PowerGridEnv()
@@ -63,7 +63,7 @@ def power_grid():
 
 
 def crop_management():
-    pytest.importorskip("pcse", reason="pcse is not installed")
+    pytest.importorskip("pcse", exc_type=ImportError, reason="pcse is not installed")
     from planiverse.environments.operational.crop_management.environment import CropEnv
 
     env = CropEnv()
@@ -73,7 +73,7 @@ def crop_management():
 
 
 def network_attack():
-    pytest.importorskip("nasim", reason="nasim is not installed")
+    pytest.importorskip("nasim", exc_type=ImportError, reason="nasim is not installed")
     from planiverse.environments.operational.network_attack.network_attack import EnvNASim
 
     env = EnvNASim()
@@ -90,7 +90,7 @@ def flood_transport():
 
 
 def game_boy():
-    pytest.importorskip("pyboy", reason="pyboy is not installed")
+    pytest.importorskip("pyboy", exc_type=ImportError, reason="pyboy is not installed")
     from counter_rom import COUNTER, counter_rom
     from planiverse.environments.games.emulated.game_boy import GameBoyEnv
 
@@ -127,7 +127,7 @@ def pipe_dream():
 
 
 def billiards():
-    pytest.importorskip("pooltool", reason="pooltool is not installed")
+    pytest.importorskip("pooltool", exc_type=ImportError, reason="pooltool is not installed")
     from planiverse.environments.games.billiards.environment import BilliardsEnv
 
     env = BilliardsEnv()
@@ -144,7 +144,7 @@ def lemmings():
 
 
 def micropolis():
-    pytest.importorskip("micropolisengine", reason="the Micropolis engine is not built")
+    pytest.importorskip("micropolisengine", exc_type=ImportError, reason="the Micropolis engine is not built")
     from planiverse.environments.operational.micropolis.environment import MicropolisEnv
 
     env = MicropolisEnv()
@@ -153,7 +153,7 @@ def micropolis():
 
 
 def epidemic():
-    pytest.importorskip("covasim", reason="covasim is not installed")
+    pytest.importorskip("covasim", exc_type=ImportError, reason="covasim is not installed")
     from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 
     env = EpidemicEnv()
@@ -162,7 +162,7 @@ def epidemic():
 
 
 def traffic():
-    pytest.importorskip("libsumo", reason="libsumo is not installed")
+    pytest.importorskip("libsumo", exc_type=ImportError, reason="libsumo is not installed")
     from planiverse.environments.operational.traffic.environment import TrafficEnv
 
     env = TrafficEnv()
@@ -171,7 +171,7 @@ def traffic():
 
 
 def airspace():
-    pytest.importorskip("bluesky", reason="bluesky is not installed")
+    pytest.importorskip("bluesky", exc_type=ImportError, reason="bluesky is not installed")
     from planiverse.environments.operational.airspace.environment import AirspaceEnv
 
     env = AirspaceEnv()
@@ -180,7 +180,7 @@ def airspace():
 
 
 def reservoir():
-    pytest.importorskip("pywr", reason="pywr is not installed")
+    pytest.importorskip("pywr", exc_type=ImportError, reason="pywr is not installed")
     from planiverse.environments.operational.reservoir.environment import ReservoirEnv
 
     env = ReservoirEnv()
@@ -189,7 +189,7 @@ def reservoir():
 
 
 def factory_env():
-    pytest.importorskip("fsim", reason="factory-sim is not installed")
+    pytest.importorskip("fsim", exc_type=ImportError, reason="factory-sim is not installed")
     from planiverse.environments.operational.factory.environment import FactoryEnv
 
     env = FactoryEnv()
@@ -198,7 +198,7 @@ def factory_env():
 
 
 def slingshot():
-    pytest.importorskip("pymunk", reason="pymunk is not installed")
+    pytest.importorskip("pymunk", exc_type=ImportError, reason="pymunk is not installed")
     from planiverse.environments.games.slingshot.environment import SlingshotEnv
 
     env = SlingshotEnv()
@@ -207,7 +207,7 @@ def slingshot():
 
 
 def retro():
-    pytest.importorskip("stable_retro", reason="stable-retro is not installed")
+    pytest.importorskip("stable_retro", exc_type=ImportError, reason="stable-retro is not installed")
     from planiverse.environments.games.emulated.stable_retro import RetroEnv
 
     env = RetroEnv(goal={"survive": 5})

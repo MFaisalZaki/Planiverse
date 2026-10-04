@@ -6,7 +6,7 @@ already in the package.
 """
 import pytest
 
-pytest.importorskip("wntr", reason="wntr is not installed")
+pytest.importorskip("wntr", exc_type=ImportError, reason="wntr is not installed")
 
 from planiverse.environments.operational.water_network.environment import (  # noqa: E402
     CONTAMINATION_GOAL, SCENARIOS, SERVICE_FLOOR, SERVICE_GOAL, Scenario, WaterNetworkAction,

@@ -26,7 +26,7 @@ def solutions(name):
 
 @pytest.fixture(scope="module")
 def epidemic():
-    pytest.importorskip("covasim", reason="covasim is not installed")
+    pytest.importorskip("covasim", exc_type=ImportError, reason="covasim is not installed")
     from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 
     env = EpidemicEnv()
@@ -84,7 +84,7 @@ def test_epidemic_successors_and_the_bundled_outbreaks(epidemic):
 
 @pytest.fixture(scope="module")
 def traffic():
-    pytest.importorskip("libsumo", reason="libsumo is not installed")
+    pytest.importorskip("libsumo", exc_type=ImportError, reason="libsumo is not installed")
     from planiverse.environments.operational.traffic.environment import TrafficEnv
 
     env = TrafficEnv()
@@ -142,7 +142,7 @@ def test_traffic_successors_and_the_bundled_mornings(traffic):
 
 @pytest.fixture(scope="module")
 def airspace():
-    pytest.importorskip("bluesky", reason="bluesky is not installed")
+    pytest.importorskip("bluesky", exc_type=ImportError, reason="bluesky is not installed")
     from planiverse.environments.operational.airspace.environment import AirspaceEnv
 
     env = AirspaceEnv()
@@ -187,7 +187,7 @@ def test_airspace_bundled_sectors_and_actions(airspace):
 
 @pytest.fixture(scope="module")
 def reservoir():
-    pytest.importorskip("pywr", reason="pywr is not installed")
+    pytest.importorskip("pywr", exc_type=ImportError, reason="pywr is not installed")
     from planiverse.environments.operational.reservoir.environment import ReservoirEnv
 
     env = ReservoirEnv()
