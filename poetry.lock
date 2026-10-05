@@ -2035,7 +2035,7 @@ test = ["pytest (>=8.3.2)"]
 type = "git"
 url = "https://github.com/MFaisalZaki/NetworkAttackSimulator.git"
 reference = "HEAD"
-resolved_reference = "0ad490e6b8b1961d67bd7e226ecd859785f62e61"
+resolved_reference = "eb7ee49f14ffe47dc25896c9d02b28899cc421e4"
 
 [[package]]
 name = "ndindex"
