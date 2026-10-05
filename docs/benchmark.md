@@ -33,16 +33,20 @@ many instances it has. Then it writes:
   to expect, so a job that never ran is `MISSING` rather than silently absent.
 - `sandbox/cmds/<group>.txt`, one `solve` command per instance, where a group is a planner
   (`bfws`) or one seed of a seeded planner (`fsx-s3`). Line *n* is array element *n*, so a
-  failed element can be re-run by hand from its line.
-- `sandbox/slurm/<group>.sbatch`, a job array that reads that file by `$SLURM_ARRAY_TASK_ID`,
-  throttled to `--parallel` elements at a time (default 50), and given 35 minutes and 9 GB so the
-  benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps in. One array per group keeps
-  every array one instance set long, under a site's `MaxArraySize`, and finishes seed 0 first.
+  failed element can be re-run by hand from its line. SLURM caps an array at the site's
+  `MaxArraySize`, commonly 1001 elements and often less, so a group over more than 1,000
+  instances is cut into parts of 1,000, `<group>-p0.txt`, `<group>-p1.txt`, …, each with its
+  own array; with the suite's 2,000 instances every group is two parts.
+- `sandbox/slurm/<group>.sbatch` (or `<group>-p<k>.sbatch`), a job array that reads that file by
+  `$SLURM_ARRAY_TASK_ID`, throttled to `--parallel` elements at a time (default 50), and given
+  35 minutes and 9 GB so the benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps
+  in. The groups are written seed 0 first, so `submit.sh` submits it first.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
 The suite's 2,000 instances, a hundred in each of the twenty environments the report covers,
-make 8 arrays: three for the deterministic width planners and five for FSX, 16,000 runs;
-`--candidates` adds one array per unseeded candidate and five per seeded one. The commands
+make 8 groups: three for the deterministic width planners and five for FSX, 16,000 runs in
+16 arrays of 1,000; `--candidates` adds one group per unseeded candidate and five per seeded
+one. The commands
 call the interpreter that ran `generate` by absolute path, so the jobs need no activation and
 cannot pick up a different install. An environment that cannot be built here (a missing
 dependency) is skipped, and

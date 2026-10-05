@@ -65,6 +65,11 @@ SEEDS = range(5)
 #: The deterministic width family, and what the overlap and runtime figures compare.
 WIDTH = ("bfws", "iw", "siw")
 
+#: The most elements a job array may have. SLURM caps an array at the site's `MaxArraySize`,
+#: commonly 1001 (elements 0 to 1000) and often less, so a group with more instances than
+#: this is submitted as several arrays, each over its own slice of the command file.
+MAX_ARRAY = 1000
+
 #: The environment names, in table order; the family itself comes from the registry's
 #: tags.
 NAMES = {"water_network": "Water distribution", "power_grid": "Power grid",
@@ -128,8 +133,8 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candi
         counts[spec.name] = count
         print(f"  {spec.name:22} {count:>4} instances")
 
-    # One job array per planner, or per seed of a seeded planner: each is one instance long,
-    # which keeps every array under a site's MaxArraySize and finishes seed 0 first.
+    # One group per planner, or per seed of a seeded planner, so that seed 0 finishes first;
+    # a group becomes one job array per MAX_ARRAY instances.
     groups = {tag if seed is None else f"{tag}-s{seed}": (tag, seed)
               for tag in planners for seed in _seeds(tag)}
     for name in ("cmds", "slurm", *(f"logs/{group}" for group in groups)):
@@ -140,19 +145,26 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candi
     extra = "".join(f"#SBATCH --{key}={value}\n" for key, value in
                     (("partition", partition), ("qos", qos), ("account", account)) if value)
     tasks = [f"{env}@{index}" for env, n in counts.items() for index in range(n)]
+    arrays = []
     for group, (tag, seed) in groups.items():
-        with open(f"{sandbox}/cmds/{group}.txt", "w") as handle:
-            handle.writelines(
-                f"{shlex.quote(sys.executable)} -m planiverse.benchmark solve "
-                f"--sandbox-dir {shlex.quote(sandbox)} {tag} {task}"
-                + ("" if seed is None else f" --seed {seed}") + "\n" for task in tasks)
-        with open(f"{sandbox}/slurm/{group}.sbatch", "w") as handle:
-            handle.write(SBATCH.format(group=group, last=len(tasks) - 1, parallel=parallel,
-                                       sandbox=sandbox, extra=extra,
-                                       cmds=shlex.quote(f"{sandbox}/cmds/{group}.txt")))
+        # A group over more than MAX_ARRAY instances is cut into parts `<group>-p0`, `-p1`, …,
+        # each with its own command file and array, so that line n is still element n.
+        parts = [tasks[start:start + MAX_ARRAY] for start in range(0, len(tasks), MAX_ARRAY)]
+        for k, part in enumerate(parts):
+            array = group if len(parts) == 1 else f"{group}-p{k}"
+            arrays.append(array)
+            with open(f"{sandbox}/cmds/{array}.txt", "w") as handle:
+                handle.writelines(
+                    f"{shlex.quote(sys.executable)} -m planiverse.benchmark solve "
+                    f"--sandbox-dir {shlex.quote(sandbox)} {tag} {task}"
+                    + ("" if seed is None else f" --seed {seed}") + "\n" for task in part)
+            with open(f"{sandbox}/slurm/{array}.sbatch", "w") as handle:
+                handle.write(SBATCH.format(group=group, last=len(part) - 1, parallel=parallel,
+                                           sandbox=sandbox, extra=extra,
+                                           cmds=shlex.quote(f"{sandbox}/cmds/{array}.txt")))
     scripts = {
-        "submit.sh": "#!/bin/bash\n" + "".join(f"sbatch {sandbox}/slurm/{group}.sbatch\n"
-                                               for group in groups),
+        "submit.sh": "#!/bin/bash\n" + "".join(f"sbatch {sandbox}/slurm/{array}.sbatch\n"
+                                               for array in arrays),
         # `-L 1` hands each line to xargs as words, quotes honoured; `-I` would cap the line
         # at 255 bytes on BSD xargs, which a long sandbox path exceeds.
         "run_local.sh": "#!/bin/bash\n# bash run_local.sh [jobs-at-a-time]\n"
@@ -163,9 +175,9 @@ def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candi
         with open(f"{sandbox}/{name}", "w") as handle:
             handle.write(body)
         os.chmod(f"{sandbox}/{name}", 0o755)
-    print(f"{len(tasks)} instances x {len(groups)} arrays "
+    print(f"{len(tasks)} instances x {len(groups)} groups "
           f"({', '.join(f'{tag} x{len(_seeds(tag))}' for tag in planners)}) "
-          f"= {len(tasks) * len(groups)} runs\n"
+          f"= {len(tasks) * len(groups)} runs in {len(arrays)} arrays of at most {MAX_ARRAY}\n"
           f"  submit:  bash {sandbox}/submit.sh\n  or here: bash {sandbox}/run_local.sh 8")
 
 

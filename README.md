@@ -410,8 +410,9 @@ planiverse-bench report --sandbox-dir sandbox
 ```
 
 `generate` asks each registered environment how many instances it has and writes one command
-per planner, instance and seed, and one SLURM job array per planner or per seed of a seeded
-planner. Every run ends in exactly one status, written to a result file whatever happened, and
+per planner, instance and seed, and SLURM job arrays of at most 1,000 elements per planner or
+per seed of a seeded planner. Every run ends in exactly one status, written to a result file
+whatever happened, and
 `report` turns the results into the paper's tables, figures and quoted numbers. The sandbox
 behind the paper is `paper-results.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases); unzip it beside the

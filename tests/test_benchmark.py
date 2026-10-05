@@ -79,3 +79,34 @@ def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monke
     bench._write(tmp_path, record, "MEMOUT")
     written = json.loads((tmp_path / "results/fsx/puzznic__0__s0.json").read_text())
     assert written["status"] == "MEMOUT" and len(calls) == 2
+
+
+def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkeypatch):
+    """SLURM caps an array at the site's MaxArraySize, so a group over more instances than
+    `MAX_ARRAY` is written as parts, each with its own command file and array, and `submit.sh`
+    submits every part."""
+    import re
+    import planiverse.benchmark as bench
+    from planiverse.environments import get_spec
+
+    monkeypatch.setattr(bench, "REGISTRY", [get_spec("puzznic")])      # 100 instances
+    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.PLANNERS["bfws"]})
+    monkeypatch.setattr(bench, "MAX_ARRAY", 30)
+    bench.generate(tmp_path)
+
+    parts = sorted(tmp_path.glob("cmds/*.txt"))
+    assert [p.name for p in parts] == ["bfws-p0.txt", "bfws-p1.txt", "bfws-p2.txt", "bfws-p3.txt"]
+    lines = [p.read_text().splitlines() for p in parts]
+    assert [len(part) for part in lines] == [30, 30, 30, 10]
+    assert [line.split()[-1] for part in lines for line in part] == [f"puzznic@{i}" for i in range(100)]
+    for part, commands in zip(parts, lines):
+        sbatch = (tmp_path / "slurm" / f"{part.stem}.sbatch").read_text()
+        assert f"--array=0-{len(commands) - 1}%50" in sbatch and part.name in sbatch
+        assert "--job-name=planiverse-bench-bfws\n" in sbatch     # the group, not the part
+    submit = (tmp_path / "submit.sh").read_text()
+    assert re.findall(r"slurm/(\S+)\.sbatch", submit) == [p.stem for p in parts]
+
+    # A group that fits in one array keeps its plain name.
+    monkeypatch.setattr(bench, "MAX_ARRAY", 1000)
+    bench.generate(tmp_path / "one")
+    assert [p.name for p in (tmp_path / "one" / "cmds").iterdir()] == ["bfws.txt"]
