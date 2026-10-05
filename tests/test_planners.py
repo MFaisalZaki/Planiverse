@@ -13,22 +13,15 @@ from planiverse.environments.games.puzznic import PuzznicGame
 from planiverse.planners.blind import BreadthFirstSearch, IterativeDeepening, UniformCostSearch
 from planiverse.planners.common import SuccessorCache, action_vocabulary
 from planiverse.planners.heuristic import (
-    BULB, BeamSearch, BestFirstSearch, DiverseBestFirst, EnforcedHillClimbing,
-    EpsilonGreedySearch, FeatureSpaceSearch, IterativeBroadening, LRTAStar,
-    LimitedDiscrepancySearch, LocalExplorationSearch, MonteCarloRandomWalks,
-    MultiQueueSearch, RTAAStar, RestartingWeightedAStar, TypeBasedSearch,
+    BULB, BeamSearch, BestFirstSearch, EnforcedHillClimbing, FeatureSpaceSearch,
+    IterativeBroadening, LRTAStar, LimitedDiscrepancySearch, MultiQueueSearch, RTAAStar,
+    RestartingWeightedAStar,
 )
-from planiverse.planners.macros import FocusedMacros, MacroPlanner
 from planiverse.planners.pruning import DominatedActionPruner
-from planiverse.planners.sampling import (
-    CrossEntropyPlanner, GoExplore, KinodynamicTree, MAPElitesPlanner, NestedMonteCarloSearch,
-    PlanLocalSearch, RandomShooting, RollingHorizonEvolution, evaluate_sequence,
-)
 from planiverse.planners.width import (
-    ApproximateNoveltySearch, BFNoS, BFWS, BoundaryExtensionFeatures, Budget, HierarchicalIW,
-    QuantifiedNoveltySearch, SearchResult,
+    BFNoS, BFWS, BoundaryExtensionFeatures, Budget, HierarchicalIW, QuantifiedNoveltySearch,
+    SearchResult,
 )
-from planiverse.planners.width.approximate import BloomFilter, BloomNoveltyTable
 from planiverse.planners.width.count import CountNoveltyTable
 from planiverse.planners.width.quantified import HeuristicNovelty
 
@@ -59,8 +52,6 @@ PLANNERS = [
     ("bfwsr", lambda: BFWS(progress=boxes, relevant="iw"), True),
     ("qn", lambda: QuantifiedNoveltySearch(progress=boxes), True),
     ("cbn", lambda: BFNoS(progress=boxes, open_limit=500), True),
-    ("ans", lambda: ApproximateNoveltySearch(width=2, progress=boxes, space_bound=2000,
-                                             seed=0), True),
     ("hiw", lambda: HierarchicalIW(low_expansions=100), True),
     ("bfws-bee", lambda: BFWS(width=1, progress=boxes,
                                     atoms=BoundaryExtensionFeatures(
@@ -68,14 +59,7 @@ PLANNERS = [
     ("gbfs", lambda: BestFirstSearch(progress=boxes), True),
     ("wastar", lambda: BestFirstSearch(progress=boxes, weight=2.0), True),
     ("rwa", lambda: RestartingWeightedAStar(progress=boxes), True),
-    ("egbfs", lambda: EpsilonGreedySearch(progress=boxes, seed=0), True),
-    ("tgbfs", lambda: TypeBasedSearch(progress=boxes, seed=0), True),
-    ("dbfs", lambda: DiverseBestFirst(progress=boxes, seed=0), True),
-    ("gbfsle", lambda: LocalExplorationSearch(progress=boxes, patience=10, seed=0), True),
-    ("gbfslw", lambda: LocalExplorationSearch(progress=boxes, patience=10, strategy="walks",
-                                              seed=0), True),
     ("ehc", lambda: EnforcedHillClimbing(progress=boxes), True),
-    ("mrw", lambda: MonteCarloRandomWalks(progress=boxes, seed=0), True),
     ("beam", lambda: BeamSearch(progress=boxes, beam=20), True),
     ("bulb", lambda: BULB(progress=boxes, beam=5, max_depth=30), True),
     ("lds", lambda: LimitedDiscrepancySearch(progress=boxes, max_depth=15,
@@ -89,20 +73,6 @@ PLANNERS = [
     ("brfs", lambda: BreadthFirstSearch(), True),
     ("ucs", lambda: UniformCostSearch(), True),
     ("iddfs", lambda: IterativeDeepening(max_depth=30), True),
-    ("rhea", lambda: RollingHorizonEvolution(progress=boxes, seed=0), True),
-    ("cem", lambda: CrossEntropyPlanner(progress=boxes, seed=0), True),
-    ("shoot", lambda: RandomShooting(progress=boxes, seed=0), False),
-    ("nmcs", lambda: NestedMonteCarloSearch(progress=boxes, level=2, horizon=20, seed=0),
-     True),
-    ("goexp", lambda: GoExplore(progress=boxes, seed=0), True),
-    ("mapel", lambda: MAPElitesPlanner(progress=boxes, seed=0), True),
-    ("est", lambda: KinodynamicTree("est", seed=0), True),
-    ("kpiece", lambda: KinodynamicTree("kpiece", projection=one_feature, seed=0), True),
-    ("sst", lambda: KinodynamicTree("sst", seed=0), True),
-    ("sa", lambda: PlanLocalSearch(progress=boxes, seed=0), True),
-    ("ils", lambda: PlanLocalSearch(progress=boxes, method="iterated", max_iterations=100,
-                                    seed=0), False),
-    ("macro", lambda: MacroPlanner(progress=boxes, seed=0), True),
 ]
 
 
@@ -122,14 +92,22 @@ def test_every_planner_runs_stops_and_never_lies(env, name, build, solves):
 
 # ---------------------------------------------------------------- width variants
 
-def test_no_planner_takes_a_reward():
+def test_no_planner_takes_a_reward_or_a_seed():
     """This is a planning suite: every planner is driven by `is_goal` and, at most, a
-    goal-distance heuristic. Nothing added here accepts a reward callback."""
+    goal-distance heuristic, and every planner is deterministic. Nothing here accepts a
+    reward callback or a seed."""
     import inspect
     for _, build, _ in PLANNERS:
         planner = build()
-        assert "reward" not in inspect.signature(type(planner).__init__).parameters, \
-            type(planner).__name__
+        parameters = inspect.signature(type(planner).__init__).parameters
+        assert "reward" not in parameters and "seed" not in parameters, type(planner).__name__
+
+
+def test_every_planner_is_reproducible(env):
+    """Two runs of the same planner on the same instance under the same budget agree."""
+    for name, build, _ in PLANNERS:
+        a, b = build().solve(env, budget()), build().solve(env, budget())
+        assert a.status == b.status and a.plan == b.plan, name
 
 
 def test_bfws_r_finds_relevant_atoms_from_its_pre_search(env):
@@ -169,23 +147,6 @@ def test_the_trimmed_open_list_reports_what_it_dropped(env):
     result = BFNoS(progress=boxes, open_limit=4).solve(env, budget())
     assert result.statistics.pruned_novelty > 0, "with an open list of 4, trimming happened"
     assert result.solved or result.status == "failed"
-
-
-def test_a_bloom_filter_has_no_false_negatives():
-    bloom = BloomFilter(bits=1 << 12, hashes=3)
-    keys = [("atom", i) for i in range(200)]
-    for key in keys:
-        bloom.add(key)
-    assert all(key in bloom for key in keys)
-    table = BloomNoveltyTable(width=2, sample=5)
-    assert table.evaluate_and_record(set("abcdefgh")) == 1
-    assert table.tuples_enumerated <= 8 + 5, "pairs were sampled, not enumerated"
-
-
-def test_approximate_novelty_allows_width_three_because_bounding_it_is_the_point(env):
-    result = ApproximateNoveltySearch(width=3, progress=boxes, sample=50, seed=0).solve(
-        env, budget())
-    assert result.solved
 
 
 def test_boundary_extension_features_are_novel_only_when_a_boundary_moves():
@@ -254,52 +215,6 @@ def test_feature_space_search_prefers_advised_moves(env):
     assert advised.solve(env, budget()).solved and plain.solve(env, budget()).solved
 
 
-def test_random_walks_record_dead_end_rates_per_first_action(env):
-    planner = MonteCarloRandomWalks(progress=boxes, walks=10, seed=0)
-    result = planner.solve(env, budget())
-    assert result.solved
-    assert result.statistics.rollouts > 0
-
-
-# ---------------------------------------------------------------- sampling family
-
-def test_sequence_evaluation_skips_inapplicable_genes_and_stops_at_a_goal(env):
-    state, _ = env.reset()
-    cache = SuccessorCache(env)
-    result = evaluate_sequence(env, cache, state, ["left-hold", "left", "right"], boxes)
-    assert result.actions == ["left", "right"], "the hold is a no-op with no box under it"
-    assert result.score == -boxes(state)
-    assert cache.statistics.expansions == 2, "left then right is back at the root, cached"
-
-
-def test_go_explore_keeps_one_trajectory_per_cell_and_prefers_shorter(env):
-    planner = GoExplore(progress=boxes, cell=one_feature, seed=0)
-    result = planner.solve(env, budget())
-    assert result.solved
-    assert set(planner.archive) <= {(n,) for n in range(7)}
-    for cell in planner.archive.values():
-        assert len(cell.trace) == len(cell.plan) + 1
-
-
-def test_the_kinodynamic_strategies_are_the_three_the_docs_name():
-    with pytest.raises(ValueError, match="strategy"):
-        KinodynamicTree("rrt")
-
-
-def test_rolling_horizon_evolution_ends_a_decision_by_generations_when_the_cache_is_warm(env):
-    planner = RollingHorizonEvolution(progress=boxes, generations=3, expansions_per_step=10_000,
-                                      seed=0)
-    result = planner.solve(env, Budget(max_expansions=200, max_seconds=30))
-    assert result.status in ("solved", "out_of_budget", "step_limit")
-    assert result.statistics.episodes <= 3 * (len(result.states) + 1)
-
-
-def test_the_sampling_planners_are_reproducible_when_seeded(env):
-    a = CrossEntropyPlanner(progress=boxes, seed=3).solve(env, budget())
-    b = CrossEntropyPlanner(progress=boxes, seed=3).solve(env, budget())
-    assert a.status == b.status and a.plan == b.plan
-
-
 # ---------------------------------------------------------------- add-ons
 
 def test_the_pruner_drops_an_action_that_always_duplicates_another():
@@ -320,13 +235,3 @@ def test_the_pruner_plugs_into_the_successor_cache(env):
     assert len(action_vocabulary(env, state, cache)) >= 1
     cache.expand(state)
     assert cache.pruner.counts, "the cache fed its expansion to the pruner"
-
-
-def test_focused_macros_have_the_smallest_footprints(env):
-    state, _ = env.reset()
-    cache = SuccessorCache(env)
-    macros = FocusedMacros(length=2, count=4, probes=1, seed=0).discover(env, cache, state)
-    assert 0 < len(macros) <= 4
-    assert all(1 <= len(macro) <= 2 for macro in macros)
-    end = cache.replay(state, macros[0])[-1]
-    assert len(end.literals ^ state.literals) <= 4, "a cursor move changes two atoms"

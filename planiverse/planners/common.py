@@ -3,9 +3,9 @@
 Every environment offers `successors(state)` and nothing cheaper, so a planner that wants to
 apply one action, or replay an action sequence, has to expand the whole state and pick the
 child it asked for. `SuccessorCache` makes that cost once per state rather than once per
-visit, which is what turns the sampling planners (rolling-horizon evolution, the cross-entropy
-method, rollouts, Go-Explore) from hopeless into ordinary against these simulators: an
-evolutionary population re-evaluates the same prefix hundreds of times.
+visit, which is what makes the searches that revisit states (the restarting and depth-first
+ones, the real-time ones, macro discovery) affordable against these simulators: a restart
+re-reads what the last round generated instead of asking the simulator again.
 
 The cache is keyed on `literals`, the same identity every closed list in the library uses,
 so two states an environment spells the same are the same state here too.
@@ -99,7 +99,7 @@ class SuccessorCache:
 
 
 def action_vocabulary(env, state, cache=None):
-    """The actions a sampling planner may draw from.
+    """The actions a planner that draws actions, rather than expands states, may draw from.
 
     `get_actions()` when the environment offers one, else the actions applicable in `state`,
     which is the best a per-state action set allows. Planners that learn the vocabulary as

@@ -13,7 +13,6 @@ are not exported.
 | `DualBFWS` | Lipovetzky & Geffner 2017 | a filter in cheap rounds, then a sort key in the last | yes |
 | `QuantifiedNoveltySearch` | Katz, Lipovetzky, Moshkovich & Tuisov 2017 | a heuristic: how many atoms are new at this heuristic value | yes |
 | `BFNoS` | Rosa & Lipovetzky 2024 | a sort key on how often the rarest tuple was seen; open list trimmed | no |
-| `ApproximateNoveltySearch` | Singh, Lipovetzky, Ramírez & Segovia-Aguas 2021 | a sort key from Bloom filters over sampled tuples | no |
 | `HierarchicalIW` | Junyent, Gómez & Jonsson 2021 | a filter at two levels of abstraction | no |
 
 `BoundaryExtensionFeatures` (Teichteil-Königsbuch, Ramírez & Lipovetzky 2020) is not a
@@ -32,7 +31,6 @@ What changes when the task is a simulator rather than a PDDL model:
 * **The atoms are whatever `literals` says.** How coarsely an environment spells its state is
   what fixes its width (see `novelty`).
 """
-from planiverse.planners.width.approximate import ApproximateNoveltySearch
 from planiverse.planners.width.bee import BoundaryExtensionFeatures
 from planiverse.planners.width.bfws import BFWS, DualBFWS
 from planiverse.planners.width.count import BFNoS
@@ -42,7 +40,7 @@ from planiverse.planners.width.quantified import QuantifiedNoveltySearch
 from planiverse.planners.width.result import Budget, SearchResult, SearchStatistics
 
 __all__ = [
-    "ApproximateNoveltySearch", "BFNoS", "BFWS", "BoundaryExtensionFeatures", "Budget",
+    "BFNoS", "BFWS", "BoundaryExtensionFeatures", "Budget",
     "DualBFWS", "HierarchicalIW", "IW", "QuantifiedNoveltySearch", "SIW", "SearchResult",
     "SearchStatistics",
 ]

@@ -1,10 +1,8 @@
 # Benchmarking
 
 `planiverse-bench` is the library's evaluation protocol as code. It runs the four reference
-planner configurations (BFWS, IW, SIW and FSX) and the forty-one others, every planner the
-library has, on every instance of every environment, under fixed limits, with five
-seeds for every planner that takes one, and turns the results into tables and figures.
-`--reference` keeps `generate` and `report` to the four.
+planners the library has, twenty-five configurations, on every instance of every
+environment, under fixed limits, and turns the results into tables and figures.
 
 - **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the benchmark, and the progress
   measures the heuristic-guided planners take per environment.
@@ -25,7 +23,7 @@ a loaded laptop are not comparable with a cluster's.
 
 ### `generate`
 
-`planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A] [--parallel N] [--reference]`
+`planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A] [--parallel N]`
 
 Builds each registered environment and walks `set_index` upwards until it refuses, which is how
 many instances it has. Then it writes:
@@ -33,22 +31,19 @@ many instances it has. Then it writes:
 - `sandbox/tasks.json`, the instance count per environment. `report` reads it to know which runs
   to expect, so a job that never ran is `MISSING` rather than silently absent.
 - `sandbox/cmds/<group>.txt`, one `solve` command per instance, where a group is a planner
-  (`bfws`) or one seed of a seeded planner (`fsx-s3`). Line *n* is array element *n*, so a
-  failed element can be re-run by hand from its line. SLURM caps an array at the site's
+  (`bfws`). Line *n* is array element *n*, so a failed element can be re-run by hand from its
+  line. SLURM caps an array at the site's
   `MaxArraySize`, commonly 1001 elements and often less, so a group over more than 1,000
   instances is cut into parts of 1,000, `<group>-p0.txt`, `<group>-p1.txt`, …, each with its
   own array; with the suite's 2,000 instances every group is two parts.
 - `sandbox/slurm/<group>.sbatch` (or `<group>-p<k>.sbatch`), a job array that reads that file by
   `$SLURM_ARRAY_TASK_ID`, throttled to `--parallel` elements at a time (default 50), and given
   35 minutes and 9 GB so the benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps
-  in. The groups are written seed 0 first, so `submit.sh` submits it first.
+  in.
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
 The suite's 2,000 instances, a hundred in each of the twenty environments the report covers,
-make one group per unseeded planner and five per seeded one: 25 unseeded and 20 seeded
-planners, so 125 groups, 250,000 runs in 250 arrays of 1,000. `--reference` writes the four
-reference planners alone, 8 groups (three for the deterministic width planners and five for
-FSX), 16,000 runs in 16 arrays. The commands
+make one group per planner: 25 groups, 50,000 runs in 50 arrays of 1,000. The commands
 call the interpreter that ran `generate` by absolute path, so the jobs need no activation and
 cannot pick up a different install. An environment that cannot be built here (a missing
 dependency) is skipped, and
@@ -61,13 +56,12 @@ do for you.
 
 ### `solve`
 
-`planiverse-bench solve [--sandbox-dir sandbox] <planner> <environment>@<index> [--seed N]`
+`planiverse-bench solve [--sandbox-dir sandbox] <planner> <environment>@<index>`
 
 What one array element runs: one planner on one instance, under the limits, written to
-`sandbox/results/<planner>/<environment>__<index>.json`, or `..._<index>__s<seed>.json` for a
-seeded planner, whatever happened, with exit code zero either way. The failure is the result, and
-a non-zero exit would make SLURM file it among the infrastructure errors. The generated commands
-carry `--seed`; a seeded planner run by hand without one gets the first seed.
+`sandbox/results/<planner>/<environment>__<index>.json` whatever happened, with exit code zero
+either way. The failure is the result, and a non-zero exit would make SLURM file it among the
+infrastructure errors.
 
 ## The protocol
 
@@ -77,22 +71,20 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 | Memory | 8 GB, as an address-space limit, so an overrun is a `MemoryError` the run records |
 | Expansions | 500,000 |
 | Cores | one per run |
-| Seeds | 0 to 4 for FSX and every other planner that takes one, each (instance, seed) a full run under the limits above; BFWS, IW, SIW and the other deterministic planners run once |
+| Runs | one per (planner, instance): every planner and every environment is deterministic |
 | Solved | only if the returned plan, replayed through `simulate`, reaches a goal |
 
-| Planner | Class | Parameters |
-|---|---|---|
-| `bfws` | `BFWS` | `width=1` |
-| `iw` | `IW` | `max_width=1000, strict=False` |
-| `siw` | `SIW` | `width=1, max_width=1000, strict=False` |
-| `fsx` | `FSXPlanner` | `horizon=6, walkers=8`, the run's seed; the distinct-state count, zero temperature and 200 committed steps are the class defaults |
+The configurations, one per planner and per documented variant of one, are in
+[`planners.py`](../planiverse/benchmark/planners.py) under the tags the
+[catalogue](planners/catalogue.md) lists; for instance `bfws` is `BFWS(width=1)`, `iw` is
+`IW(max_width=1000, strict=False)` and `siw` is `SIW(width=1, max_width=1000, strict=False)`.
+Anything a configuration does not name is the class's own default.
 
 SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count a classical
 planner would use, and so does every other planner that takes a heuristic.
 [`measures.py`](../planiverse/benchmark/measures.py) supplies one per environment, lower is
 better; they are search guides, not admissible heuristics, and nothing in the benchmark is a
-reward. The environments are deterministic, so for the seeded planners the seed is the only
-source of variance.
+reward.
 
 ## Statuses
 
@@ -110,57 +102,47 @@ Every run ends in exactly one:
 | `UNSUPPORTED` | the environment could not be built |
 | `MISSING` | no result file; assigned by `report` |
 
-`UNSOLVED` says the planner stopped looking, not that there is no plan: of the reference
-planners only BFWS is complete. For an online planner it means its walk ended at a dead end or
-the step cap. A search that reports `out_of_budget` without reaching either
-limit (an iterated search whose per-width allowances ran out, or FSX at its step cap or a dead
-end) is filed as `NODEOUT`.
+`UNSOLVED` says the planner stopped looking, not that there is no plan: most planners here
+are incomplete. For an online planner it means its walk ended at a dead end or the step cap.
+A search that reports `out_of_budget` without reaching either limit (an iterated search whose
+per-width allowances ran out) is filed as `NODEOUT`.
 
 ## `report`
 
-`planiverse-bench report [--sandbox-dir sandbox] [--reference]` writes into `sandbox/report/`. A seeded planner
-is summarised over its seeds: coverage is the mean per seed with the standard deviation in
-brackets, never the best seed; solve times are pooled; and the claims about what it solved that
-another planner did not use the union over seeds, which is the strongest form of a negative.
+`planiverse-bench report [--sandbox-dir sandbox]` writes into `sandbox/report/`, over every
+planner on every instance `tasks.json` lists.
 
-- `coverage.tex`: instances solved per environment and planner, by family; `65.2 (1.9)` for a
-  seeded planner.
+- `coverage.tex`: instances solved per environment and planner, by family.
 - `statuses.tex`: how every run ended, one row per planner, one column per status that occurred,
-  and the median solve time. A seeded planner's counts are means per seed, so its row still sums
-  to the instance count. A `MISSING` run is counted as unsolved there; `facts.txt` still lists
-  it.
+  and the median solve time. A `MISSING` run is counted as unsolved there; `facts.txt` still
+  lists it.
 - `cactus.pdf`: each planner's sorted solve times, with its time-outs and memory-outs charged the
-  full limit and appended; for a seeded planner the runs are pooled and the count divided by the
-  number of seeds, which is the mean curve.
+  full limit and appended.
 - `overlap_bfws_iw_siw.pdf`: one bar per environment, split by which of the three width planners
   solved each instance, ordered by the share all three solved.
 - `runtime_bfws_iw_siw.pdf`: BFWS's time per instance against IW (filled, left axis) and SIW
   (hollow, right axis), with failures on the limit.
-- `facts.txt`: the numbers a write-up would quote: coverage per seed and in some or every
-  seed, what each planner solved outside BFWS's set, medians, the per-instance speed ratios
-  with their sign tests, errors and missing runs, IW's widths, plan lengths, and each seeded
-  planner's coverage per family; then the other aggregations (the mean fraction solved over
+- `facts.txt`: the numbers a write-up would quote: coverage, what each planner solved outside
+  BFWS's set, medians, the per-instance speed ratios with their sign tests, errors and
+  missing runs, IW's widths, plan lengths, and each planner's coverage per family; then the
+  other aggregations (the mean fraction solved over
   environments and the IPC quality score), each planner's plan lengths against BFWS's, every
   planner's statuses per environment, the cost of an expansion per environment, and the
   difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
   largest width).
 
-## The other planners
+## The planners
 
 Every planner in the library ([docs/planners/catalogue.md](planners/catalogue.md)) is
-registered in `planiverse/benchmark/planners.py` under its own tag, the four reference
-configurations and forty-one others covering every planner class the library exports and
-the documented variants of each (A* and weighted A* beside greedy best-first, local exploration by walks beside by
-search, iterated local search beside annealing, KPIECE beside EST and SST). The four that
-need more than one number from an environment get it from the progress measure: FESS
-searches the feature space it spans (`fess`), KPIECE projects onto it (`kpiece`), BFWS over
-boundary-extension features extends its range (`bee`), and multi-queue alternation pairs it
-with FSX's option count (`multi`). `generate` writes their jobs beside the reference planners'
-and `report` tabulates every one that left a results directory under `sandbox/results/`, so
-a sandbox generated under `--reference` reports the four reference planners and nothing
-else, and `report --reference` does the same for any sandbox. The overlap and runtime figures
-stay over BFWS, IW and SIW. `solve` takes any tag, so one run can be made by hand:
+registered in `planiverse/benchmark/planners.py` under its own tag: twenty-five
+configurations covering every planner class the library exports and the documented variants
+of each (A* and weighted A* beside greedy best-first). The three that need more than one
+number from an environment get it from the progress measure: FESS searches the feature space
+it spans (`fess`), BFWS over boundary-extension features extends its range (`bee`), and
+multi-queue alternation pairs it with quantified novelty over it (`multi`). `report`
+tabulates every planner on every instance; the overlap and runtime figures are over BFWS, IW
+and SIW. `solve` takes any tag, so one run can be made by hand:
 
 ```bash
-python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0
+python -m planiverse.benchmark solve --sandbox-dir sandbox ehc puzznic@0
 ```

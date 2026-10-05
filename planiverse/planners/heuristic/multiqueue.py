@@ -5,9 +5,8 @@ the Merrier: Combining Heuristic Estimators for Satisficing Planning*, ICAPS 201
 found that alternating between queues beats combining the heuristics into one number.
 Every state goes on every queue; a state expanded from one is dropped from the others.
 
-This is the framework in which a goal-directed `progress` measure, novelty and FSX's
-goal-free `option_count` can search together. Each heuristic is a callable, lower is
-better; `boost` gives a queue that just improved its best value that many extra turns,
+This is the framework in which a goal-directed `progress` measure and a novelty measure
+can search together. Each heuristic is a callable, lower is better; `boost` gives a queue that just improved its best value that many extra turns,
 Fast Downward's preferred-operator boost applied to whole queues.
 """
 from heapq import heappop, heappush
@@ -22,9 +21,10 @@ class MultiQueueSearch:
 
     ```python
     from planiverse.planners.heuristic import MultiQueueSearch
-    from planiverse.planners.fsx import option_count
+    from planiverse.planners.width.quantified import HeuristicNovelty
 
-    MultiQueueSearch([boxes, lambda s: -option_count(env, s, horizon=4, walkers=4)]).solve(env)
+    novelty = HeuristicNovelty()
+    MultiQueueSearch([boxes, lambda s: -novelty.evaluate_and_record(s.literals, boxes(s))]).solve(env)
     ```
     """
 

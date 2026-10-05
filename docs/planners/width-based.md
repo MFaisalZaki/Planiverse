@@ -2,8 +2,8 @@
 
 This module implements the searches built on novelty, against the `successors()` / `literals`
 contract and nothing else, and exports them under the names the literature uses: `IW`, `SIW`,
-`BFWS` and `DualBFWS` are described here; the other novelty planners (quantified, count-based
-and approximate novelty, hierarchical IW) and the boundary-extension features are in the
+`BFWS` and `DualBFWS` are described here; the other novelty planners (quantified and
+count-based novelty, hierarchical IW) and the boundary-extension features are in the
 [catalogue](catalogue.md). IW at one fixed width is `IW(width=k)`; the novelty tables are
 internals of `novelty.py`.
 

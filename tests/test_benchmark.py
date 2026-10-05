@@ -14,50 +14,41 @@ def test_a_run_is_written_out_whatever_happens(tmp_path):
     assert solve(tmp_path, "iw", "puzznic@9999")["status"] == "UNSUPPORTED"
 
 
-def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
-    record = solve(tmp_path, "fsx", "puzznic@9999", seed=3)
-    assert record["seed"] == 3 and (tmp_path / "results/fsx/puzznic__9999__s3.json").is_file()
-    assert solve(tmp_path, "fsx", "puzznic@9999")["seed"] == 0   # run by hand: the first seed
-
-
-def test_no_registered_planner_takes_a_reward():
-    """A planning library: every configuration is driven by the goal test and, at most, a
-    progress heuristic."""
+def test_no_registered_planner_takes_a_reward_or_a_seed():
+    """A planning library of deterministic planners: every configuration is driven by the
+    goal test and, at most, a progress heuristic, and runs once per instance."""
     import inspect
-    from planiverse.benchmark import PLANNERS, REFERENCE
-    assert set(REFERENCE) == {"bfws", "iw", "siw", "fsx"}
+    from planiverse.benchmark import PLANNERS
     for cls, _ in PLANNERS.values():
-        assert "reward" not in inspect.signature(cls).parameters, cls.__name__
+        parameters = inspect.signature(cls).parameters
+        assert "reward" not in parameters and "seed" not in parameters, cls.__name__
 
 
 def test_every_planner_in_the_library_is_in_the_benchmark():
     """The benchmark runs the whole library: every planner class the planner packages
     export, and every documented configuration of one, is registered under a tag that
-    `solve` builds the way it builds any other, so `generate` with no flag covers them
-    all."""
+    `solve` builds the way it builds any other, so `generate` covers them all."""
     import inspect
-    from planiverse.benchmark import PLANNERS, REFERENCE
-    from planiverse.planners import blind, heuristic, macros, sampling, width
+    from planiverse.benchmark import PLANNERS
+    from planiverse.planners import blind, heuristic, width
 
     registered = {cls for cls, _ in PLANNERS.values()}
     registered |= {base for cls in registered for base in cls.__mro__[1:]}
-    exported = {getattr(module, name) for module in (width, heuristic, sampling)
+    exported = {getattr(module, name) for module in (width, heuristic)
                 for name in module.__all__} | {
-        blind.BreadthFirstSearch, blind.UniformCostSearch, blind.IterativeDeepening,
-        macros.MacroPlanner}
+        blind.BreadthFirstSearch, blind.UniformCostSearch, blind.IterativeDeepening}
     planners = {cls for cls in exported if inspect.isclass(cls) and hasattr(cls, "solve")}
     assert planners <= registered, {cls.__name__ for cls in planners - registered}
-    assert list(PLANNERS)[:len(REFERENCE)] == list(REFERENCE)
     # The documented variants of one class, each under its own tag.
-    assert {"astar", "wastar", "gbfslw", "kpiece", "ils", "bee", "multi"} <= set(PLANNERS)
+    assert {"astar", "wastar", "bee", "multi"} <= set(PLANNERS)
 
 
 def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
-    """Each tag's class takes its parameters, plus `progress` and `seed` where `solve` adds
-    them, and runs on one instance under a small budget without returning a plan that does
-    not replay."""
+    """Each tag's class takes its parameters, plus `progress` where `solve` adds it, and
+    runs on one instance under a small budget without returning a plan that does not
+    replay."""
     import inspect
-    from planiverse.benchmark import PLANNERS, _seeds
+    from planiverse.benchmark import PLANNERS
     from planiverse.benchmark.measures import MEASURES
     from planiverse.environments import get_spec
     from planiverse.planners.width import Budget, SearchResult
@@ -65,8 +56,6 @@ def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
     for tag, (cls, params) in PLANNERS.items():
         env = get_spec("puzznic").build()
         env.set_index(0)
-        if _seeds(tag)[0] is not None:
-            params = {**params, "seed": 0}
         if "progress" in inspect.signature(cls).parameters:
             params = {**params, "progress": MEASURES["puzznic"]}
         result = cls(**params).solve(env, Budget(max_expansions=60, max_seconds=10))
@@ -77,7 +66,7 @@ def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
             assert result.plan is None, tag
 
 
-def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
+def test_the_report_expects_every_run(tmp_path):
     (tmp_path / "tasks.json").write_text(
         json.dumps({"environments": [{"environment": "puzznic", "instances": 2}]}))
     solve(tmp_path, "bfws", "puzznic@0")
@@ -86,10 +75,12 @@ def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
     statuses = (tmp_path / "report/statuses.tex").read_text()
     facts = (tmp_path / "report/facts.txt").read_text()
     assert "BFWS & \\textbf{2} & 0" in statuses and "Missing" not in statuses
-    # Ten missing FSX runs are two per seed, so the row still sums to the two instances.
-    assert "IW & 0 & 2" in statuses and "FSX & 0.0 (0.0) & 2" in statuses
+    # A planner that never ran is unsolved on both instances, so its row still sums to two.
+    assert "IW & 0 & 2" in statuses and "IDDFS & 0 & 2" in statuses
     missing = facts.split("missing")[1].split("\n")[0]
-    assert "iw on puzznic 2" in missing and "fsx on puzznic 10" in missing
+    assert "iw on puzznic 2" in missing and "iddfs on puzznic 2" in missing
+    coverage = (tmp_path / "report/coverage.tex").read_text()
+    assert "Total & 2 & \\textbf{2} & 0 & 0" in coverage
 
 
 def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):
@@ -105,10 +96,10 @@ def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monke
         return real_dump(*args, **kwargs)
 
     monkeypatch.setattr(bench.json, "dump", dump_once_out_of_memory)
-    record = {"task": "puzznic@0", "environment": "puzznic", "index": 0, "planner": "fsx",
-              "seed": 0, "started": 0.0}
+    record = {"task": "puzznic@0", "environment": "puzznic", "index": 0, "planner": "iw",
+              "started": 0.0}
     bench._write(tmp_path, record, "MEMOUT")
-    written = json.loads((tmp_path / "results/fsx/puzznic__0__s0.json").read_text())
+    written = json.loads((tmp_path / "results/iw/puzznic__0.json").read_text())
     assert written["status"] == "MEMOUT" and len(calls) == 2
 
 
@@ -121,7 +112,7 @@ def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkey
     from planiverse.environments import get_spec
 
     monkeypatch.setattr(bench, "REGISTRY", [get_spec("puzznic")])      # 100 instances
-    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.REFERENCE["bfws"]})
+    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.PLANNERS["bfws"]})
     monkeypatch.setattr(bench, "MAX_ARRAY", 30)
     bench.generate(tmp_path)
 

@@ -1,43 +1,31 @@
 """Every planner in the library, as benchmark configurations.
 
-`REFERENCE` holds the four reference configurations, the three width planners and FSX;
-`PLANNERS` holds every configuration, the reference ones first, and is what `generate` and
-`report` run and tabulate (`--reference` keeps either to the four). The tags are what `solve`
-takes and what the result directories are named. Anything not named in a configuration is
-the class's own default, which is where FSX's measure, temperature and step cap come from.
+`PLANNERS` holds one configuration per planner, and one per documented variant of a planner,
+under the tag `solve` takes and the result directory is named by. `generate` writes jobs for
+all of them and `report` tabulates all of them. Anything not named in a configuration is the
+class's own default.
 
 Every configuration takes `progress` from `measures.py`, and the planners that want more
 than one number from an environment get it from that same measure through the adapters
-below: FESS searches the feature space it spans, KPIECE projects onto it, boundary-extension
-features extend its range, and multi-queue alternation pairs it with FSX's goal-free option
-count. The planners that take a projection and run without one (`GoExplore`'s cell,
-`MAPElitesPlanner`'s descriptor, `KinodynamicTree`'s EST and SST) run on their default, the
-exact state. The two add-ons, `DominatedActionPruner` and `FocusedMacros`, are not planners:
-the second is what `MacroPlanner` runs on, and the first is a `SuccessorCache` option no
-configuration here sets.
+below: FESS searches the feature space it spans, boundary-extension features extend its
+range, and multi-queue alternation pairs it with quantified novelty over it.
 
-No configuration takes a reward: every planner here is driven by `is_goal` and the progress
-heuristic, and nothing learns before it plans. Parameters are the classes' defaults, except
-that the protocol's 500,000 expansions bound the approximate-novelty policy and the online
-planners get 1,000 expansions per decision.
+Every planner here is deterministic: the same instance under the same limits gives the same
+result, so each runs once per instance. No configuration takes a reward, and nothing learns
+before it plans. Parameters are the classes' defaults, except that the online planners get
+1,000 expansions per decision.
 """
 from planiverse.planners.blind import BreadthFirstSearch, IterativeDeepening, UniformCostSearch
-from planiverse.planners.fsx import FSXPlanner, option_count
 from planiverse.planners.heuristic import (
-    BULB, BeamSearch, BestFirstSearch, DiverseBestFirst, EnforcedHillClimbing,
-    EpsilonGreedySearch, FeatureSpaceSearch, IterativeBroadening, LRTAStar,
-    LimitedDiscrepancySearch, LocalExplorationSearch, MonteCarloRandomWalks, MultiQueueSearch,
-    RTAAStar, RestartingWeightedAStar, TypeBasedSearch,
-)
-from planiverse.planners.macros import MacroPlanner
-from planiverse.planners.sampling import (
-    CrossEntropyPlanner, GoExplore, KinodynamicTree, MAPElitesPlanner, NestedMonteCarloSearch,
-    PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
+    BULB, BeamSearch, BestFirstSearch, EnforcedHillClimbing, FeatureSpaceSearch,
+    IterativeBroadening, LRTAStar, LimitedDiscrepancySearch, MultiQueueSearch, RTAAStar,
+    RestartingWeightedAStar,
 )
 from planiverse.planners.width import (
-    BFWS, IW, SIW, ApproximateNoveltySearch, BFNoS, BoundaryExtensionFeatures, DualBFWS,
-    HierarchicalIW, QuantifiedNoveltySearch,
+    BFWS, IW, SIW, BFNoS, BoundaryExtensionFeatures, DualBFWS, HierarchicalIW,
+    QuantifiedNoveltySearch,
 )
+from planiverse.planners.width.quantified import HeuristicNovelty
 
 
 class FESSOnProgress(FeatureSpaceSearch):
@@ -45,17 +33,6 @@ class FESSOnProgress(FeatureSpaceSearch):
 
     def __init__(self, progress):
         super().__init__(features=lambda state: (progress(state),))
-
-
-class KPIECEOnProgress(KinodynamicTree):
-    """KPIECE whose projection is the environment's progress measure.
-
-    KPIECE's grid is over a low-dimensional projection; on the exact state (the default
-    EST and SST run on) every cell holds one state and the grid does nothing.
-    """
-
-    def __init__(self, progress, seed=None):
-        super().__init__("kpiece", projection=lambda state: (progress(state),), seed=seed)
 
 
 class BFWSOverBoundaryExtensions(BFWS):
@@ -72,44 +49,31 @@ class BFWSOverBoundaryExtensions(BFWS):
                              lambda state: {"progress": progress(state)}, bins=bins))
 
 
-class ProgressAndOptionsQueues(MultiQueueSearch):
-    """Multi-queue alternation between the progress measure and FSX's option count.
+class ProgressAndNoveltyQueues(MultiQueueSearch):
+    """Multi-queue alternation between the progress measure and quantified novelty.
 
-    The option count needs the environment, so the queues are set when `solve` is given
-    one. Four walkers of four steps per state keep it to sixteen simulator steps a node.
+    The second queue orders states by how many of their atoms no earlier state with as good
+    a progress value contained (`HeuristicNovelty`, the measure `QuantifiedNoveltySearch`
+    searches on), most novel first.
     """
 
-    def __init__(self, progress, horizon=4, walkers=4, boost=0):
-        super().__init__([progress], boost=boost)
-        self.progress = progress
-        self.horizon = horizon
-        self.walkers = walkers
-
-    def solve(self, env, budget=None, state=None):
-        self.heuristics = [
-            self.progress,
-            lambda s: -option_count(env, s, horizon=self.horizon, walkers=self.walkers),
-        ]
-        return super().solve(env, budget, state)
+    def __init__(self, progress, boost=0):
+        novelty = HeuristicNovelty()
+        super().__init__(
+            [progress, lambda s: -novelty.evaluate_and_record(s.literals, progress(s))],
+            boost=boost)
 
 
-#: The reference configurations: the three width planners and FSX.
-REFERENCE = {
+#: Every configuration, by tag.
+PLANNERS = {
+    # width-based
     "bfws": (BFWS, {"width": 1}),
     "iw": (IW, {"max_width": 1000, "strict": False}),
     "siw": (SIW, {"width": 1, "max_width": 1000, "strict": False}),
-    "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
-}
-
-#: Every configuration, by tag, the reference ones first.
-PLANNERS = {
-    **REFERENCE,
-    # width-based
     "dual": (DualBFWS, {"max_width": 1000}),
     "bfwsr": (BFWS, {"width": 1, "relevant": "iw"}),
     "qn": (QuantifiedNoveltySearch, {}),
     "bfnos": (BFNoS, {"width": 1}),
-    "ans": (ApproximateNoveltySearch, {"width": 2, "space_bound": 500_000}),
     "hiw": (HierarchicalIW, {"low_expansions": 1000}),
     "bee": (BFWSOverBoundaryExtensions, {"width": 1, "bins": 4}),
     # heuristic search
@@ -117,13 +81,7 @@ PLANNERS = {
     "astar": (BestFirstSearch, {"weight": 1.0}),
     "wastar": (BestFirstSearch, {"weight": 2.0}),
     "rwa": (RestartingWeightedAStar, {}),
-    "egbfs": (EpsilonGreedySearch, {"epsilon": 0.2}),
-    "tgbfs": (TypeBasedSearch, {}),
-    "dbfs": (DiverseBestFirst, {}),
-    "gbfsle": (LocalExplorationSearch, {}),
-    "gbfslw": (LocalExplorationSearch, {"strategy": "walks"}),
     "ehc": (EnforcedHillClimbing, {}),
-    "mrw": (MonteCarloRandomWalks, {}),
     "beam": (BeamSearch, {"beam": 100}),
     "bulb": (BULB, {"beam": 20, "max_depth": 200}),
     "lds": (LimitedDiscrepancySearch, {"max_depth": 60}),
@@ -131,20 +89,7 @@ PLANNERS = {
     "lrta": (LRTAStar, {"lookahead": 50, "max_steps": 2000}),
     "rtaa": (RTAAStar, {"lookahead": 50, "max_steps": 2000}),
     "fess": (FESSOnProgress, {}),
-    "multi": (ProgressAndOptionsQueues, {"horizon": 4, "walkers": 4}),
-    # sampling
-    "rhea": (RollingHorizonEvolution, {"expansions_per_step": 1000}),
-    "cem": (CrossEntropyPlanner, {}),
-    "shoot": (RandomShooting, {}),
-    "nmcs": (NestedMonteCarloSearch, {}),
-    "goexp": (GoExplore, {}),
-    "mapel": (MAPElitesPlanner, {}),
-    "est": (KinodynamicTree, {"strategy": "est"}),
-    "kpiece": (KPIECEOnProgress, {}),
-    "sst": (KinodynamicTree, {"strategy": "sst"}),
-    "sa": (PlanLocalSearch, {}),
-    "ils": (PlanLocalSearch, {"method": "iterated"}),
-    "macro": (MacroPlanner, {}),
+    "multi": (ProgressAndNoveltyQueues, {}),
     # blind
     "brfs": (BreadthFirstSearch, {}),
     "ucs": (UniformCostSearch, {}),

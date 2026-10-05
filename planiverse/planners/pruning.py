@@ -9,9 +9,9 @@ and stops generating them (DASP; DASA extends it to context-dependent sequences)
 
 Under this library's `successors` contract every child of a state is generated at once,
 and duplicate children are already caught on `literals`, so pruning single actions saves
-nothing in a tree search. It pays for the **sampling** planners, which draw actions from a
-vocabulary and would otherwise spend draws on actions that duplicate others. That is where
-this plugs in: give a `DominatedActionPruner` to `SuccessorCache`, and the cache observes
+nothing in a tree search. It pays for a planner that draws actions from a vocabulary
+(`action_vocabulary`) and would otherwise spend draws on actions that duplicate others.
+That is where this plugs in: give a `DominatedActionPruner` to `SuccessorCache`, and the cache observes
 every expansion it performs and drops from each state's children any action that, after
 `threshold` observations, led to the same state as a lower-ranked action at least a
 `(1 - tolerance)` fraction of the time. The statistics come from the run being pruned;

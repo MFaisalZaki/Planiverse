@@ -348,12 +348,10 @@ one panel per quantity, with the actions along the bottom. See
 
 | Family | Where | What it needs from an environment |
 |---|---|---|
-| Width-based: `IW`, `SIW`, `BFWS` (with BFWS(R) as `relevant="iw"`), `DualBFWS`, quantified, count-based and approximate novelty, boundary-extension features, hierarchical IW | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
-| Future State Maximization | [`planiverse/planners/fsx.py`](planiverse/planners/fsx.py) | `successors`, and **nothing else**: no goal, no heuristic |
-| Heuristic search: greedy best-first, A* and weighted A*, restarting WA*, ε-greedy, type-based, diverse, local exploration, EHC, random walks, beam and BULB, discrepancy search, LRTA*/RTAA*, FESS, multi-queue | [`planiverse/planners/heuristic/`](planiverse/planners/heuristic/) | a `progress` measure |
-| Sampling: RHEA, CEM, random shooting, nested Monte Carlo, Go-Explore, MAP-Elites, EST/KPIECE/SST, local search | [`planiverse/planners/sampling/`](planiverse/planners/sampling/) | `successors`; `progress` helps |
+| Width-based: `IW`, `SIW`, `BFWS` (with BFWS(R) as `relevant="iw"`), `DualBFWS`, quantified and count-based novelty, boundary-extension features, hierarchical IW | [`planiverse/planners/width/`](planiverse/planners/width/) | `successors` and `literals`; a `progress` callback helps |
+| Heuristic search: greedy best-first, A* and weighted A*, restarting WA*, EHC, beam and BULB, discrepancy search, LRTA*/RTAA*, FESS, multi-queue | [`planiverse/planners/heuristic/`](planiverse/planners/heuristic/) | a `progress` measure |
 | Blind: breadth-first, uniform cost, iterative deepening | [`planiverse/planners/blind.py`](planiverse/planners/blind.py) | `successors` only |
-| Add-ons: dominated-action pruning, focused macro-actions | [`planiverse/planners/pruning.py`](planiverse/planners/pruning.py), [`planiverse/planners/macros.py`](planiverse/planners/macros.py) | `successors` and `literals` |
+| Add-on: dominated-action pruning | [`planiverse/planners/pruning.py`](planiverse/planners/pruning.py) | `successors` and `literals` |
 | Tree search: a minimal best-first search, the "Writing a planner" example | [`planiverse/planners/tree_search.py`](planiverse/planners/tree_search.py) | a heuristic and a cost function |
 
 ```python
@@ -371,30 +369,22 @@ to count, so SIW and BFWS take a `progress` callback instead; (2) expansions are
 every search takes a budget and reports what it spent; and (3) dead ends are real, and detecting
 them is most of what makes a simulator task searchable.
 
-Future State Maximization is in
-[docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
-given no goal and no heuristic at all and picks whichever action leaves the most futures
-open. That makes `option_count` a goal-free measure of how close a state is to being stuck,
-useful as a heuristic for the other planners precisely when heuristics are hardest to
-write.
-
 Every planner, with its reference, what it needs from an environment, its benchmark tag and
 the choices its implementation makes, is in
 [docs/planners/catalogue.md](docs/planners/catalogue.md).
 
 This is a planning library, not a learning one, and that is a rule the tree follows: no
-planner takes a reward, none learns before or while it plans, and none is a Monte Carlo tree
-search. Everything runs on the black-box goal test and, at most, a `progress` heuristic. Every
-planner here is in the benchmark: `planiverse-bench generate` runs them all, `--reference`
-the four reference configurations.
+planner takes a reward, none learns before or while it plans, none is a Monte Carlo tree
+search, and every one is deterministic: the same instance under the same budget gives the
+same plan. Everything runs on the black-box goal test and, at most, a `progress` heuristic.
+Every planner here is in the benchmark: `planiverse-bench generate` runs them all.
 
 ## Benchmarking
 
 `planiverse-bench` is the library's evaluation protocol as code: every planner in the library,
-forty-five configurations with BFWS, IW, SIW and FSX as the four reference ones, on
-every instance of every environment, under a 30-minute wall-clock limit, an 8 GB
-address-space cap and a 500,000-expansion bound, with five seeds for every planner that
-takes one, on a SLURM cluster or on one machine. `--reference` keeps it to the four. There is
+twenty-five configurations, on every instance of every environment, under a 30-minute
+wall-clock limit, an 8 GB address-space cap and a 500,000-expansion bound, on a SLURM cluster
+or on one machine. Every planner is deterministic, so each runs once per instance. There is
 no configuration file, because the protocol is the point.
 
 ```bash
@@ -404,9 +394,8 @@ planiverse-bench report --sandbox-dir sandbox
 ```
 
 `generate` asks each registered environment how many instances it has and writes one command
-per planner, instance and seed, and SLURM job arrays of at most 1,000 elements per planner or
-per seed of a seeded planner. Every run ends in exactly one status, written to a result file
-whatever happened, and
+per planner and instance, and SLURM job arrays of at most 1,000 elements per planner. Every
+run ends in exactly one status, written to a result file whatever happened, and
 `report` turns the results into tables, figures and the numbers a write-up would quote.
 [docs/benchmark.md](docs/benchmark.md) has the protocol, the statuses and the report.
 
@@ -536,12 +525,10 @@ planiverse/
 │       └── crop_management/            # CropEnv (PCSE/WOFOST)
 ├── planners/
 │   ├── width/                          # IW, SIW, BFWS, Dual BFWS, and the other novelty planners
-│   ├── heuristic/                      # best-first family, EHC, random walks, beam, real-time, FESS
-│   ├── sampling/                       # RHEA, CEM, NMCS, Go-Explore, MAP-Elites, kinodynamic trees
+│   ├── heuristic/                      # best-first family, EHC, beam, real-time, FESS, multi-queue
 │   ├── blind.py                        # breadth-first, uniform cost, iterative deepening
 │   ├── common.py                       # SuccessorCache and the helpers the planners share
-│   ├── fsx.py                          # FSXPlanner (future state maximisation)
-│   ├── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
+│   ├── pruning.py                      # dominated-action pruning
 │   └── tree_search.py                  # TreeSearchPlanner, Heuristic, CostFunction
 ├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the evaluation protocol
@@ -549,7 +536,7 @@ planiverse/
     ├── planners.py                     # every planner, as a benchmark configuration under its tag
     └── measures.py                     # per-environment progress measures
 docs/environments/                      # per-environment documentation
-docs/planners/                          # the planner catalogue, the width-based and the FSX docs
+docs/planners/                          # the planner catalogue and the width-based planners
 docs/benchmark.md                       # the benchmark: protocol, statuses, report
 docs/provenance.md                      # where the game rules and level data came from
 tools/setup_benchmark.sh                # builds the venv, installs, runs generate
@@ -609,13 +596,13 @@ What is in the tree:
   factory on factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
-- Forty-five planner configurations over thirty-seven planner classes: the width-based
-  family, Future State Maximization, heuristic search, sampling and population planners, the
-  blind baselines and two add-ons, catalogued in
-  [docs/planners/catalogue.md](docs/planners/catalogue.md). No planner takes a reward or learns.
-- `planiverse-bench`, the evaluation protocol as code: every planner in the library, five
-  seeds for each that takes one, and a report that writes the tables, figures and quoted
-  numbers from the results.
+- Twenty-five planner configurations over twenty-two planner classes: the width-based
+  family, heuristic search, the blind baselines and an add-on, catalogued in
+  [docs/planners/catalogue.md](docs/planners/catalogue.md). Every planner is deterministic,
+  and none takes a reward or learns.
+- `planiverse-bench`, the evaluation protocol as code: every planner in the library, once
+  per instance, and a report that writes the tables, figures and quoted numbers from the
+  results.
 - A test suite that skips what it cannot build.
 
 Open:
