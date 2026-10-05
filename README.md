@@ -104,11 +104,9 @@ Game Boy cartridge for `game_boy`, which is copyrighted and comes from you.
 if anything it reaches is undeclared, so a dependency that only works because another package
 happens to pull it in cannot go missing silently.
 
-One system package may be missing on Linux: NASim imports `tkinter` for a viewer the
-environment never opens, and Debian and Ubuntu ship it separately, so if `network_attack`
-reports `No module named 'tkinter'`, `sudo apt install python3-tk`. Three dependencies are
-not declared the plain way, because their publishers do not cover every platform.
-`tools/check_install.py` prints what the install in front of you covers and what is missing.
+Three dependencies are not declared the plain way, because their publishers do not cover
+every platform. `tools/check_install.py` prints what the install in front of you covers and
+what is missing.
 
 - **pooltool** (billiards) is installed by `scripts/install_pooltool.py`. On Linux and Windows its
   own dependency list pins a Panda3D development build that PyPI does not carry, so a plain
