@@ -389,17 +389,18 @@ This is a planning library, not a learning one, and that is a rule the tree foll
 planner takes a reward, none learns before or while it plans, and none is a Monte Carlo tree
 search. The four surveyed planners defined by an accumulated reward were left out, and the
 MCTS, Rollout IW and π-IW planners the library once had were removed for the same reason.
-Everything runs on the black-box goal test and, at most, a `progress` heuristic. The surveyed
-planners join the benchmark only with `planiverse-bench generate --candidates`.
+Everything runs on the black-box goal test and, at most, a `progress` heuristic. Every planner
+here is in the benchmark: `planiverse-bench generate` runs them all, `--reference` the four of
+the tool paper's protocol.
 
 ## Benchmarking
 
-`planiverse-bench` is the library's evaluation protocol as code: the four reference planner
-configurations (BFWS, IW, SIW and FSX), and with `--candidates` the surveyed planners too, on
+`planiverse-bench` is the library's evaluation protocol as code: every planner in the library,
+the four reference configurations (BFWS, IW, SIW and FSX) and the forty-one surveyed ones, on
 every instance of every environment, under a 30-minute wall-clock limit, an 8 GB
 address-space cap and a 500,000-expansion bound, with five seeds for every planner that
-takes one, on a SLURM cluster or on one machine. There is no configuration file, because the
-protocol is the point.
+takes one, on a SLURM cluster or on one machine. `--reference` keeps it to the four. There is
+no configuration file, because the protocol is the point.
 
 ```bash
 tools/setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
@@ -553,7 +554,7 @@ planiverse/
 ├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
-    ├── candidates.py                   # the surveyed planners, run with --candidates
+    ├── candidates.py                   # the surveyed planners, as benchmark configurations
     └── measures.py                     # per-environment progress measures
 docs/environments/                      # per-environment documentation
 docs/benchmark.md                       # the benchmark: protocol, statuses, report
@@ -618,14 +619,15 @@ What is in the tree:
 - The planners: IW, SIW, BFWS and Dual BFWS under their literature names; Future State
   Maximization; and the surveyed additions in [docs/planners/more-planners.md](docs/planners/more-planners.md).
   No planner takes a reward or learns.
-- `planiverse-bench`, the evaluation protocol as code: four reference configurations, five
-  seeds for the one that takes them, the surveyed planners on request, and a report that
-  writes the tables, figures and quoted numbers from the results.
+- `planiverse-bench`, the evaluation protocol as code: every planner in the library, five
+  seeds for each that takes one, and a report that writes the tables, figures and quoted
+  numbers from the results.
 - A test suite that skips what it cannot build.
 
 Open:
 
-- [ ] Benchmark runs for the surveyed planners (`planiverse-bench generate --candidates`).
+- [ ] Benchmark runs for the surveyed planners; `planiverse-bench generate` writes their jobs
+      beside the reference planners', and none have been run yet.
 - [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
       one dependency list and a `dev` extra.
 - [ ] A generated benchmark: `planiverse-bench` runs the bundled instances only.

@@ -33,6 +33,54 @@ def test_the_reference_planners_take_no_reward_and_learn_nothing():
         assert "reward" not in inspect.signature(cls).parameters, cls.__name__
 
 
+def test_every_planner_in_the_library_is_in_the_benchmark():
+    """The benchmark runs the whole library: every planner class the planner packages
+    export, and every documented configuration of one, is registered under a tag that
+    `solve` builds the way it builds any other, so `generate` with no flag covers them
+    all."""
+    import inspect
+    from planiverse.benchmark import ALL, PLANNERS
+    from planiverse.benchmark.candidates import CANDIDATES
+    from planiverse.planners import blind, heuristic, macros, sampling, width
+
+    registered = {cls for cls, _ in ALL.values()}
+    registered |= {base for cls in registered for base in cls.__mro__[1:]}
+    exported = {getattr(module, name) for module in (width, heuristic, sampling)
+                for name in module.__all__} | {
+        blind.BreadthFirstSearch, blind.UniformCostSearch, blind.IterativeDeepening,
+        macros.MacroPlanner}
+    planners = {cls for cls in exported if inspect.isclass(cls) and hasattr(cls, "solve")}
+    assert planners <= registered, {cls.__name__ for cls in planners - registered}
+    assert set(PLANNERS) <= set(ALL) and not set(PLANNERS) & set(CANDIDATES)
+    # The documented variants of one class, each under its own tag.
+    assert {"astar", "wastar", "gbfslw", "kpiece", "ils", "bee", "multi"} <= set(CANDIDATES)
+
+
+def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
+    """Each tag's class takes its parameters, plus `progress` and `seed` where `solve` adds
+    them, and runs on one instance under a small budget without returning a plan that does
+    not replay."""
+    import inspect
+    from planiverse.benchmark import ALL, _seeds
+    from planiverse.benchmark.measures import MEASURES
+    from planiverse.environments import get_spec
+    from planiverse.planners.width import Budget, SearchResult
+
+    for tag, (cls, params) in ALL.items():
+        env = get_spec("puzznic").build()
+        env.set_index(0)
+        if _seeds(tag)[0] is not None:
+            params = {**params, "seed": 0}
+        if "progress" in inspect.signature(cls).parameters:
+            params = {**params, "progress": MEASURES["puzznic"]}
+        result = cls(**params).solve(env, Budget(max_expansions=60, max_seconds=10))
+        assert isinstance(result, SearchResult), tag
+        if result.solved:
+            assert env.validate(result.plan), f"{tag} returned a plan that does not replay"
+        else:
+            assert result.plan is None, tag
+
+
 def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
     (tmp_path / "tasks.json").write_text(
         json.dumps({"environments": [{"environment": "puzznic", "instances": 2}]}))
@@ -90,7 +138,7 @@ def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkey
     from planiverse.environments import get_spec
 
     monkeypatch.setattr(bench, "REGISTRY", [get_spec("puzznic")])      # 100 instances
-    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.PLANNERS["bfws"]})
+    monkeypatch.setattr(bench, "ALL", {"bfws": bench.PLANNERS["bfws"]})
     monkeypatch.setattr(bench, "MAX_ARRAY", 30)
     bench.generate(tmp_path)
 

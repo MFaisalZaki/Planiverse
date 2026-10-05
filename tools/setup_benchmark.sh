@@ -1,8 +1,10 @@
 #!/bin/bash
-# Build a virtualenv, install planiverse into it, and generate the benchmark's jobs.
+# Build a virtualenv, install planiverse into it, and generate the benchmark's jobs: every
+# planner in the library on every instance, or with --reference the four reference planners.
 #
 #   tools/setup_benchmark.sh [--venv DIR] [--python BIN] [generate options...]
 #   tools/setup_benchmark.sh --partition gpu --qos long --parallel 100
+#   tools/setup_benchmark.sh --partition gpu --reference
 #
 # Every environment ships its own data, so there is nothing to supply. An environment whose
 # dependencies are missing is skipped and says so.

@@ -1,9 +1,10 @@
 # Benchmarking
 
 `planiverse-bench` is the library's evaluation protocol as code. It runs the four reference
-planner configurations (BFWS, IW, SIW and FSX), and with `--candidates` the surveyed planners
-too, on every instance of every environment, under fixed limits, with five seeds for every
-planner that takes one, and turns the results into tables and figures.
+planner configurations (BFWS, IW, SIW and FSX) and the forty-one surveyed planners, every
+planner the library has, on every instance of every environment, under fixed limits, with five
+seeds for every planner that takes one, and turns the results into tables and figures.
+`--reference` keeps `generate` and `report` to the four.
 
 - **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the benchmark, and the progress
   measures the heuristic-guided planners take per environment.
@@ -24,7 +25,7 @@ a loaded laptop are not comparable with a cluster's.
 
 ### `generate`
 
-`planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A] [--parallel N]`
+`planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A] [--parallel N] [--reference]`
 
 Builds each registered environment and walks `set_index` upwards until it refuses, which is how
 many instances it has. Then it writes:
@@ -44,9 +45,10 @@ many instances it has. Then it writes:
 - `sandbox/submit.sh` and `sandbox/run_local.sh`.
 
 The suite's 2,000 instances, a hundred in each of the twenty environments the report covers,
-make 8 groups: three for the deterministic width planners and five for FSX, 16,000 runs in
-16 arrays of 1,000; `--candidates` adds one group per unseeded candidate and five per seeded
-one. The commands
+make one group per unseeded planner and five per seeded one: 25 unseeded and 20 seeded
+planners, so 125 groups, 250,000 runs in 250 arrays of 1,000. `--reference` writes the four
+reference planners alone, 8 groups (three for the deterministic width planners and five for
+FSX), 16,000 runs in 16 arrays. The commands
 call the interpreter that ran `generate` by absolute path, so the jobs need no activation and
 cannot pick up a different install. An environment that cannot be built here (a missing
 dependency) is skipped, and
@@ -75,7 +77,7 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 | Memory | 8 GB, as an address-space limit, so an overrun is a `MemoryError` the run records |
 | Expansions | 500,000 |
 | Cores | one per run |
-| Seeds | 0 to 4 for FSX and the seeded candidates, each (instance, seed) a full run under the limits above; BFWS, IW and SIW are deterministic and run once |
+| Seeds | 0 to 4 for FSX and every other planner that takes one, each (instance, seed) a full run under the limits above; BFWS, IW, SIW and the other deterministic planners run once |
 | Solved | only if the returned plan, replayed through `simulate`, reaches a goal |
 
 | Planner | Class | Parameters |
@@ -116,7 +118,7 @@ end) is filed as `NODEOUT`.
 
 ## `report`
 
-`planiverse-bench report [--sandbox-dir sandbox]` writes into `sandbox/report/`. A seeded planner
+`planiverse-bench report [--sandbox-dir sandbox] [--reference]` writes into `sandbox/report/`. A seeded planner
 is summarised over its seeds: coverage is the mean per seed with the standard deviation in
 brackets, never the best seed; solve times are pooled; and the claims about what it solved that
 another planner did not use the union over seeds, which is the strongest form of a negative.
@@ -143,7 +145,7 @@ another planner did not use the union over seeds, which is the strongest form of
   difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
   largest width).
 
-Dual BFWS and BFWS(R) run as the candidates `dual` and `bfwsr`.
+Dual BFWS and BFWS(R) run under the tags `dual` and `bfwsr`.
 
 The sandbox behind the tool paper is `paper-results.zip` on the
 [release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
@@ -156,12 +158,18 @@ lists, but those runs cannot be repeated from here.
 ## The candidate planners
 
 The surveyed planners ([docs/planners/more-planners.md](planners/more-planners.md)) are
-registered in `planiverse/benchmark/candidates.py` under their own tags and are **not** part
-of the reference protocol: `generate` and `report` include them only with `--candidates`, and
-their results live in their own directories under `sandbox/results/`, so a report without
-the flag covers the four reference planners. With it, every candidate that left results joins the coverage and
-status tables and the cactus plot; the overlap and runtime figures stay over BFWS, IW and
-SIW. `solve` accepts a candidate tag either way, so one can be run by hand:
+registered in `planiverse/benchmark/candidates.py` under their own tags, forty-one
+configurations covering every planner class the library exports and the documented variants
+of each (A* and weighted A* beside greedy best-first, local exploration by walks beside by
+search, iterated local search beside annealing, KPIECE beside EST and SST). The four that
+need more than one number from an environment get it from the progress measure: FESS
+searches the feature space it spans (`fess`), KPIECE projects onto it (`kpiece`), BFWS over
+boundary-extension features extends its range (`bee`), and multi-queue alternation pairs it
+with FSX's option count (`multi`). `generate` writes their jobs beside the reference planners'
+and `report` tabulates every one that left a results directory under `sandbox/results/`, so
+a sandbox generated under `--reference` reports the four reference planners and nothing
+else, and `report --reference` does the same for any sandbox. The overlap and runtime figures
+stay over BFWS, IW and SIW. `solve` takes any tag, so one run can be made by hand:
 
 ```bash
 python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0

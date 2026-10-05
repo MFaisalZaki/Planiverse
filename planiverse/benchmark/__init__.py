@@ -5,8 +5,9 @@
     planiverse-bench report   [--sandbox-dir sandbox]
 
 `generate` asks every registered environment how many instances it has and writes one command
-per (planner, instance, seed), plus a SLURM job array for each planner, or for each of a seeded
-planner's seeds, that runs them. `solve` is what one array element runs: one planner on one
+per (planner, instance, seed) for every planner the library has, plus a SLURM job array for
+each planner, or for each of a seeded planner's seeds, that runs them; `--reference` keeps it
+to the four reference configurations. `solve` is what one array element runs: one planner on one
 instance under the limits, written out as one JSON file whatever happens. `report` reads those
 files back and writes the tables, the figures, and the numbers a write-up would quote.
 
@@ -51,9 +52,10 @@ PLANNERS = {
     "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
 }
 
-#: Every planner `solve` can run: the reference ones, then the surveyed candidates, which
-#: `generate` and `report` include only with `--candidates`. A candidate's results sit in
-#: their own directory and never enter the reference tables unless asked for.
+#: Every planner the library has, which is what `generate` and `report` run and tabulate:
+#: the reference configurations, then the surveyed candidates. `--reference` keeps either to
+#: the four. Each planner's results sit in their own directory, so a sandbox generated under
+#: `--reference` reports the same way whichever flag `report` is given.
 ALL = {**PLANNERS, **CANDIDATES}
 
 #: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
@@ -111,9 +113,9 @@ def _filename(environment, index, seed):
     return f"{environment}__{index}" + ("" if seed is None else f"__s{seed}") + ".json"
 
 
-def generate(sandbox, partition=None, qos=None, account=None, parallel=50, candidates=False):
+def generate(sandbox, partition=None, qos=None, account=None, parallel=50, reference=False):
     """Count every environment's instances, then write the commands and the arrays to run them."""
-    planners = ALL if candidates else PLANNERS
+    planners = PLANNERS if reference else ALL
     sandbox = os.path.abspath(sandbox)
     counts = {}
     for spec in REGISTRY:
@@ -304,18 +306,19 @@ def _write(sandbox, record, status, seconds=None, note=None):
     return record
 
 
-def report(sandbox, candidates=False):
+def report(sandbox, reference=False):
     """Read every expected result back and write the tables, figures and numbers.
 
-    With `candidates`, every candidate planner that left a results directory joins the
-    tables and the cactus plot; the overlap and runtime figures stay over the three width
-    planners.
+    The four reference planners are always expected, run or not; every other planner that
+    left a results directory joins the tables and the cactus plot, so a sandbox generated
+    under `--reference` reports those four and nothing else. The overlap and runtime figures
+    stay over the three width planners.
     """
     import matplotlib
     import pandas as pd
     matplotlib.use("Agg")
     planners = dict(PLANNERS)
-    if candidates:
+    if not reference:
         planners.update({tag: CANDIDATES[tag] for tag in CANDIDATES
                          if pathlib.Path(sandbox, "results", tag).is_dir()})
 
@@ -698,8 +701,8 @@ def main(argv=None):
                                     help="write the commands and the SLURM arrays")
     for option in ("partition", "qos", "account"):
         generate_.add_argument(f"--{option}", help=f"SLURM {option}")
-    generate_.add_argument("--candidates", action="store_true",
-                           help="also run the surveyed planners")
+    generate_.add_argument("--reference", action="store_true",
+                           help="only the four reference planners, not every planner")
     generate_.add_argument("--parallel", type=int, default=50,
                            help="array elements running at once (default: 50)")
     solve_ = commands.add_parser("solve", parents=[common],
@@ -710,14 +713,14 @@ def main(argv=None):
                         help="for the seeded planners; the generated commands set it")
     report_ = commands.add_parser("report", parents=[common],
                                   help="the tables, figures and numbers")
-    report_.add_argument("--candidates", action="store_true",
-                         help="include the surveyed planners that left results")
+    report_.add_argument("--reference", action="store_true",
+                         help="only the four reference planners, not every one that left results")
     args = parser.parse_args(argv)
     if args.command == "generate":
         generate(args.sandbox_dir, args.partition, args.qos, args.account, args.parallel,
-                 args.candidates)
+                 args.reference)
     elif args.command == "solve":
         solve(args.sandbox_dir, args.planner, args.task, args.seed)
     else:
-        report(args.sandbox_dir, args.candidates)
+        report(args.sandbox_dir, args.reference)
     return 0

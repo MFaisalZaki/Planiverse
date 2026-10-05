@@ -234,10 +234,16 @@ chose their actions, π-IW learned a policy as it planned, and MCTS wanted a rew
 ## Running them in the benchmark
 
 They are registered in [`planiverse/benchmark/candidates.py`](../../planiverse/benchmark/candidates.py)
-under short tags, and `planiverse-bench generate --candidates` and `report --candidates`
-include them; without the flag the benchmark is the paper's protocol and nothing else.
-`solve` accepts any tag either way. The seeded ones run under the same five seeds as FSX. Boundary-extension features, multi-queue alternation and the two add-ons need
-per-environment callbacks the benchmark does not carry and are not registered.
+under short tags, and `planiverse-bench generate` and `report` include every one of them
+beside the four reference planners; `--reference` keeps either to the paper's protocol.
+`solve` accepts any tag. The seeded ones run under the same five seeds as FSX. Every class
+above is registered, with a tag per documented variant (`astar`, `wastar`, `gbfslw`, `ils`,
+`kpiece`). Boundary-extension features and multi-queue alternation want more than one number
+from an environment, which the benchmark has only as the progress measure, so they run over
+it: `bee` is BFWS whose atoms are the measure's boundary extensions over the literals, and
+`multi` alternates the measure with FSX's option count. The two add-ons are not planners and
+have no tag: `MacroPlanner` (`macro`) is what `FocusedMacros` runs under, and
+`DominatedActionPruner` is a `SuccessorCache` option no configuration sets.
 
 ## Files
 
@@ -249,5 +255,5 @@ per-environment callbacks the benchmark does not carry and are not registered.
 | [`sampling/`](../../planiverse/planners/sampling/) | RHEA, CEM, NMCS, Go-Explore, MAP-Elites, kinodynamic trees, local search |
 | [`blind.py`](../../planiverse/planners/blind.py) | the three blind baselines |
 | [`pruning.py`](../../planiverse/planners/pruning.py), [`macros.py`](../../planiverse/planners/macros.py) | the add-ons |
-| [`benchmark/candidates.py`](../../planiverse/benchmark/candidates.py) | the opt-in benchmark registry |
+| [`benchmark/candidates.py`](../../planiverse/benchmark/candidates.py) | their benchmark registry |
 | [`tests/test_candidate_planners.py`](../../tests/test_candidate_planners.py) | the smoke tests |
