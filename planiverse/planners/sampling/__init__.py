@@ -3,8 +3,8 @@
 None of them trains anything, none is Monte Carlo *tree* search, and none takes a reward:
 each optimises a set of action sequences against the simulator, scoring a sequence by the
 same `progress` heuristic the width planners take (how far from the goal its last state
-is), and commits. The two surveyed planners whose definition is an accumulated reward,
-Fractal Monte Carlo and the rollout algorithm, are deliberately not here.
+is), and commits. Fractal Monte Carlo and the rollout algorithm are defined by an
+accumulated reward, so they are not here.
 
 | Planner | Optimises |
 |---|---|

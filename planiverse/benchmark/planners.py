@@ -1,27 +1,28 @@
-"""The surveyed planners, as benchmark configurations.
+"""Every planner in the library, as benchmark configurations.
 
-`generate` and `report` run every planner the library has: the four reference configurations
-in `PLANNERS` and these, under `--reference` the four alone. The tags are what `solve` takes
-and what the result directories are named. Every configuration takes `progress` from
-`measures.py` the way the reference planners do, and the planners that want more than one
-number from an environment get it from that same measure through the adapters below: FESS
-searches the feature space it spans, KPIECE projects onto it, boundary-extension features
-extend its range, and multi-queue alternation pairs it with FSX's goal-free option count.
-The planners that take a projection and run without one (`GoExplore`'s cell,
+`REFERENCE` holds the four reference configurations, the three width planners and FSX;
+`PLANNERS` holds every configuration, the reference ones first, and is what `generate` and
+`report` run and tabulate (`--reference` keeps either to the four). The tags are what `solve`
+takes and what the result directories are named. Anything not named in a configuration is
+the class's own default, which is where FSX's measure, temperature and step cap come from.
+
+Every configuration takes `progress` from `measures.py`, and the planners that want more
+than one number from an environment get it from that same measure through the adapters
+below: FESS searches the feature space it spans, KPIECE projects onto it, boundary-extension
+features extend its range, and multi-queue alternation pairs it with FSX's goal-free option
+count. The planners that take a projection and run without one (`GoExplore`'s cell,
 `MAPElitesPlanner`'s descriptor, `KinodynamicTree`'s EST and SST) run on their default, the
 exact state. The two add-ons, `DominatedActionPruner` and `FocusedMacros`, are not planners:
 the second is what `MacroPlanner` runs on, and the first is a `SuccessorCache` option no
 configuration here sets.
 
-No configuration takes a reward: every planner here is driven by `is_goal` and the
-progress heuristic, and the surveyed planners defined by an accumulated reward (2BFS,
-prioritised IW, Fractal Monte Carlo, the rollout algorithm) were left out of the library.
-
-Parameters are the classes' defaults, except that the protocol's 500,000 expansions bound
-the approximate-novelty policy and the online planners get 1,000 expansions per decision.
+No configuration takes a reward: every planner here is driven by `is_goal` and the progress
+heuristic, and nothing learns before it plans. Parameters are the classes' defaults, except
+that the protocol's 500,000 expansions bound the approximate-novelty policy and the online
+planners get 1,000 expansions per decision.
 """
 from planiverse.planners.blind import BreadthFirstSearch, IterativeDeepening, UniformCostSearch
-from planiverse.planners.fsx import option_count
+from planiverse.planners.fsx import FSXPlanner, option_count
 from planiverse.planners.heuristic import (
     BULB, BeamSearch, BestFirstSearch, DiverseBestFirst, EnforcedHillClimbing,
     EpsilonGreedySearch, FeatureSpaceSearch, IterativeBroadening, LRTAStar,
@@ -34,8 +35,8 @@ from planiverse.planners.sampling import (
     PlanLocalSearch, RandomShooting, RollingHorizonEvolution,
 )
 from planiverse.planners.width import (
-    BFWS, ApproximateNoveltySearch, BFNoS, BoundaryExtensionFeatures, DualBFWS, HierarchicalIW,
-    QuantifiedNoveltySearch,
+    BFWS, IW, SIW, ApproximateNoveltySearch, BFNoS, BoundaryExtensionFeatures, DualBFWS,
+    HierarchicalIW, QuantifiedNoveltySearch,
 )
 
 
@@ -92,8 +93,18 @@ class ProgressAndOptionsQueues(MultiQueueSearch):
         return super().solve(env, budget, state)
 
 
-CANDIDATES = {
-    # width-based variants
+#: The reference configurations: the three width planners and FSX.
+REFERENCE = {
+    "bfws": (BFWS, {"width": 1}),
+    "iw": (IW, {"max_width": 1000, "strict": False}),
+    "siw": (SIW, {"width": 1, "max_width": 1000, "strict": False}),
+    "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
+}
+
+#: Every configuration, by tag, the reference ones first.
+PLANNERS = {
+    **REFERENCE,
+    # width-based
     "dual": (DualBFWS, {"max_width": 1000}),
     "bfwsr": (BFWS, {"width": 1, "relevant": "iw"}),
     "qn": (QuantifiedNoveltySearch, {}),

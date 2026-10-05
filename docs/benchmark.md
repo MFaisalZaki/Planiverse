@@ -1,8 +1,8 @@
 # Benchmarking
 
 `planiverse-bench` is the library's evaluation protocol as code. It runs the four reference
-planner configurations (BFWS, IW, SIW and FSX) and the forty-one surveyed planners, every
-planner the library has, on every instance of every environment, under fixed limits, with five
+planner configurations (BFWS, IW, SIW and FSX) and the forty-one others, every planner the
+library has, on every instance of every environment, under fixed limits, with five
 seeds for every planner that takes one, and turns the results into tables and figures.
 `--reference` keeps `generate` and `report` to the four.
 
@@ -88,7 +88,7 @@ carry `--seed`; a seeded planner run by hand without one gets the first seed.
 | `fsx` | `FSXPlanner` | `horizon=6, walkers=8`, the run's seed; the distinct-state count, zero temperature and 200 committed steps are the class defaults |
 
 SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count a classical
-planner would use, and so does every candidate that takes a heuristic.
+planner would use, and so does every other planner that takes a heuristic.
 [`measures.py`](../planiverse/benchmark/measures.py) supplies one per environment, lower is
 better; they are search guides, not admissible heuristics, and nothing in the benchmark is a
 reward. The environments are deterministic, so for the seeded planners the seed is the only
@@ -145,22 +145,12 @@ another planner did not use the union over seeds, which is the strongest form of
   difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
   largest width).
 
-Dual BFWS and BFWS(R) run under the tags `dual` and `bfwsr`.
+## The other planners
 
-The sandbox behind the tool paper is `paper-results.zip` on the
-[release page](https://github.com/MFaisalZaki/Planiverse/releases). Unzip it beside the
-repository and `report` tabulates it. Two things have moved since those runs were made: the
-sandbox holds results for the five emulator-backed environments the paper compared, which
-have since been withdrawn from this repository, and its planner configurations are not the
-ones the library now runs under the same tags. `report` still tabulates whatever `tasks.json`
-lists, but those runs cannot be repeated from here.
-
-## The candidate planners
-
-The surveyed planners ([docs/planners/more-planners.md](planners/more-planners.md)) are
-registered in `planiverse/benchmark/candidates.py` under their own tags, forty-one
-configurations covering every planner class the library exports and the documented variants
-of each (A* and weighted A* beside greedy best-first, local exploration by walks beside by
+Every planner in the library ([docs/planners/catalogue.md](planners/catalogue.md)) is
+registered in `planiverse/benchmark/planners.py` under its own tag, the four reference
+configurations and forty-one others covering every planner class the library exports and
+the documented variants of each (A* and weighted A* beside greedy best-first, local exploration by walks beside by
 search, iterated local search beside annealing, KPIECE beside EST and SST). The four that
 need more than one number from an environment get it from the progress measure: FESS
 searches the feature space it spans (`fess`), KPIECE projects onto it (`kpiece`), BFWS over
@@ -174,7 +164,3 @@ stay over BFWS, IW and SIW. `solve` takes any tag, so one run can be made by han
 ```bash
 python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0
 ```
-
-One item is still pending: the caption of the overlap figure
-describes four groups and the figure has five, and the bar order the report writes is not the
-caption's.

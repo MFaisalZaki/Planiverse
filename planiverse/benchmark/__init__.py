@@ -32,31 +32,18 @@ try:
 except ImportError:     # Windows: no address-space cap, the Budget alone bounds a run
     resource = None
 
-from planiverse.benchmark.candidates import CANDIDATES
 from planiverse.benchmark.measures import MEASURES
+from planiverse.benchmark.planners import PLANNERS, REFERENCE
 from planiverse.environments import REGISTRY, get_spec
-from planiverse.planners.fsx import FSXPlanner
-from planiverse.planners.width import BFWS, Budget, IW, SIW
+from planiverse.planners.width import Budget
 
 #: Per run: 30 minutes of wall clock, 8 GB of address space, 500,000 expansions.
 LIMITS = {"seconds": 1800, "bytes": 8 * 1024 ** 3, "expansions": 500_000}
 
-#: The reference configurations: the three width planners and FSX. Anything not named is
-#: the class's own default, which is where FSX's measure, temperature and step cap come from.
-#: This is a planning library: nothing here takes a reward, and nothing learns before it
-#: plans.
-PLANNERS = {
-    "bfws": (BFWS, {"width": 1}),
-    "iw": (IW, {"max_width": 1000, "strict": False}),
-    "siw": (SIW, {"width": 1, "max_width": 1000, "strict": False}),
-    "fsx": (FSXPlanner, {"horizon": 6, "walkers": 8}),
-}
-
-#: Every planner the library has, which is what `generate` and `report` run and tabulate:
-#: the reference configurations, then the surveyed candidates. `--reference` keeps either to
-#: the four. Each planner's results sit in their own directory, so a sandbox generated under
-#: `--reference` reports the same way whichever flag `report` is given.
-ALL = {**PLANNERS, **CANDIDATES}
+#: `REFERENCE` and `PLANNERS` (every configuration, by tag) are in `planners.py`. This is a
+#: planning library: nothing there takes a reward, and nothing learns before it plans. Each
+#: planner's results sit in their own directory, so a sandbox generated under `--reference`
+#: reports the same way whichever flag `report` is given.
 
 #: The seeds a planner whose constructor takes one runs under. Every (instance, seed) is a
 #: full run under the same limits, and the report averages over them; the environments are
@@ -106,7 +93,7 @@ eval "$(sed -n "$((${{SLURM_ARRAY_TASK_ID:-0}} + 1))p" {cmds})"
 
 def _seeds(tag):
     """The seeds a planner runs under: SEEDS if its constructor takes one, else a single None."""
-    return list(SEEDS) if "seed" in inspect.signature(ALL[tag][0]).parameters else [None]
+    return list(SEEDS) if "seed" in inspect.signature(PLANNERS[tag][0]).parameters else [None]
 
 
 def _filename(environment, index, seed):
@@ -115,7 +102,7 @@ def _filename(environment, index, seed):
 
 def generate(sandbox, partition=None, qos=None, account=None, parallel=50, reference=False):
     """Count every environment's instances, then write the commands and the arrays to run them."""
-    planners = PLANNERS if reference else ALL
+    planners = REFERENCE if reference else PLANNERS
     sandbox = os.path.abspath(sandbox)
     counts = {}
     for spec in REGISTRY:
@@ -200,7 +187,7 @@ def solve(sandbox, tag, task, seed=None):
     name, index = task.rsplit("@", 1)
     seed = _seeds(tag)[0] if seed is None else seed   # a seeded planner run by hand gets its first
     record = {"task": task, "environment": name, "index": int(index), "planner": tag,
-              "seed": seed, "params": ALL[tag][1], "limits": LIMITS,
+              "seed": seed, "params": PLANNERS[tag][1], "limits": LIMITS,
               "host": platform.node(), "started": time.time()}
     # An address-space cap turns an overrun into a MemoryError the run can record, instead of
     # an OOM kill that leaves no file. macOS refuses the call and Windows has no `resource`
@@ -218,7 +205,7 @@ def solve(sandbox, tag, task, seed=None):
             env.set_index(int(index))
         except Exception as exc:
             return _write(sandbox, record, "UNSUPPORTED", note=f"{type(exc).__name__}: {exc}")
-        cls, params = ALL[tag]
+        cls, params = PLANNERS[tag]
         if seed is not None:
             params = {**params, "seed": seed}
         if "progress" in inspect.signature(cls).parameters:
@@ -317,10 +304,10 @@ def report(sandbox, reference=False):
     import matplotlib
     import pandas as pd
     matplotlib.use("Agg")
-    planners = dict(PLANNERS)
+    planners = dict(REFERENCE)
     if not reference:
-        planners.update({tag: CANDIDATES[tag] for tag in CANDIDATES
-                         if pathlib.Path(sandbox, "results", tag).is_dir()})
+        planners.update({tag: PLANNERS[tag] for tag in PLANNERS if tag not in REFERENCE
+                         and pathlib.Path(sandbox, "results", tag).is_dir()})
 
     manifest = json.loads(pathlib.Path(sandbox, "tasks.json").read_text())
     counts = {entry["environment"]: entry["instances"] for entry in manifest["environments"]}
@@ -397,7 +384,7 @@ def _solved_per_seed(df):
 
 def _coverage_tex(df, counts, planners=None):
     """The coverage table: instances solved per environment and planner, by family."""
-    planners = planners or PLANNERS
+    planners = planners or REFERENCE
     solved = (df.assign(ok=df.status == "SOLVED")
               .groupby(["planner", "seed", "environment"]).ok.sum()
               .unstack("environment").reindex(columns=list(counts), fill_value=0))
@@ -421,7 +408,7 @@ def _coverage_tex(df, counts, planners=None):
 
 
 def _statuses_tex(df, solved, planners=None):
-    planners = planners or PLANNERS
+    planners = planners or REFERENCE
     """The status table: how every run ended, one row per planner, every status that occurred.
 
     The columns come from the data, so a status cannot be left out without the row totals
@@ -464,7 +451,7 @@ def _statuses_tex(df, solved, planners=None):
 
 
 def _facts(df, counts, planners=None):
-    planners = planners or PLANNERS
+    planners = planners or REFERENCE
     """The numbers a write-up would quote, read off here rather than worked out by hand."""
     import pandas as pd
     from scipy.stats import binomtest
@@ -707,7 +694,7 @@ def main(argv=None):
                            help="array elements running at once (default: 50)")
     solve_ = commands.add_parser("solve", parents=[common],
                                  help="run one planner on one instance")
-    solve_.add_argument("planner", choices=list(ALL))
+    solve_.add_argument("planner", choices=list(PLANNERS))
     solve_.add_argument("task", help="environment@index")
     solve_.add_argument("--seed", type=int,
                         help="for the seeded planners; the generated commands set it")

@@ -145,7 +145,7 @@ target; a potted ball leaves the cue somewhere new). What changed in the generat
 - **Billiards guards pooltool's cushion model**, which asserts on a ball resting against a
   pocket jaw with no closing speed; a shot the physics cannot resolve is not offered.
 
-Dual BFWS over the hundred instances of each, as the benchmark's `dual` candidate runs it (the
+Dual BFWS over the hundred instances of each, as the benchmark's `dual` configuration runs it (the
 unit progress measures, a width bound of 1000, 200,000 expansions):
 
 | Environment | Solved | Expansions, median (max) | Seconds, median (max) | Plan lengths |

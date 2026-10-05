@@ -1,4 +1,4 @@
-"""Smoke tests for the planners added after the tool paper.
+"""Smoke tests for the planners, one run each on Puzznic level 1.
 
 Every planner runs against the pure-Python Puzznic level 1 under a small budget, and any
 plan it returns is replayed through the environment. The level is the one the width
@@ -107,7 +107,7 @@ PLANNERS = [
 
 
 @pytest.mark.parametrize("name,build,solves", PLANNERS, ids=[p[0] for p in PLANNERS])
-def test_every_candidate_runs_stops_and_never_lies(env, name, build, solves):
+def test_every_planner_runs_stops_and_never_lies(env, name, build, solves):
     result = build().solve(env, budget())
     assert isinstance(result, SearchResult)
     assert result.statistics.expansions <= 3000

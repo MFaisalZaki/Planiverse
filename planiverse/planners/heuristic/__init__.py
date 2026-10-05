@@ -1,9 +1,8 @@
 """Heuristic search with black-box heuristics, and the exploration repairs for when the
 heuristic misleads.
 
-The library had one best-first search. This package has the rest of what satisficing
-planning learned about searching on a weak heuristic, which `progress` usually is, and
-none of it needs a model:
+What satisficing planning learned about searching on a weak heuristic, which `progress`
+usually is, and none of it needs a model:
 
 | Planner | What it does when the heuristic is wrong |
 |---|---|

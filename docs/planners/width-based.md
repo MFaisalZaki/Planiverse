@@ -2,10 +2,10 @@
 
 This module implements the searches built on novelty, against the `successors()` / `literals`
 contract and nothing else, and exports them under the names the literature uses: `IW`, `SIW`,
-`BFWS` and `DualBFWS` are described here; the four variants added with the survey (quantified,
-count-based and approximate novelty, hierarchical IW) and the boundary-extension features are
-in [more-planners.md](more-planners.md). IW at one fixed width is `IW(width=k)`; the novelty
-tables are internals of `novelty.py`.
+`BFWS` and `DualBFWS` are described here; the other novelty planners (quantified, count-based
+and approximate novelty, hierarchical IW) and the boundary-extension features are in the
+[catalogue](catalogue.md). IW at one fixed width is `IW(width=k)`; the novelty tables are
+internals of `novelty.py`.
 
 The *novelty* of a state (i.e., the size of the smallest tuple of its atoms that has not appeared
 in any state seen before) is what all five order or filter on. A state with a brand-new atom has
@@ -27,7 +27,7 @@ env.set_index(0)
 result = IW(width=2).solve(env, Budget(max_expansions=5000, max_seconds=60))
 if result:
     env.validate(result.plan)
-print(result.statistics)   # 120 expansions, 443 generated, 0 pruned by novelty, ...
+print(result.statistics)   # expansions, generated, pruned by novelty, ...
 ```
 
 ## Planning against a simulator
@@ -61,23 +61,16 @@ here bucket deliberately for that reason.
 
 ## IW(k) is incomplete
 
-The incompleteness can be watched on Puzznic level 1, which needs no dependencies:
+The incompleteness can be watched on Puzznic level 1, which needs no dependencies. IW(1)
+exhausts: it runs out of states rather than time, because everything reachable with a new
+atom has been seen and the plan needs a state that is only novel as a pair. IW(2) solves it,
+and so does iterated `IW`, at width 2 after the width-1 round fails. That is the
+incompleteness, and it is what `IW` exists for.
 
-| Planner | Result | Plan | Expansions |
-|---|---|---|---|
-| IW(1) | exhausted | | 32 |
-| IW(2) | solved | 10 | 120 |
-| IW(2) | solved at width 2 | 10 | 152 |
-| BFWS(1) | solved | 12 | 90 |
-| SIW(2) | solved | 12 | 76 |
-
-IW(1) runs out of states rather than time: everything reachable with a new atom has been seen, and
-the plan needs a state that is only novel as a pair. That is the incompleteness, and it is what
-`IW` exists for.
-
-Note the shape of the trade. BFWS expands fewest but returns a longer plan, since it is not
-optimal, and IW pays for the failed width-1 round on top of the width-2 one, because
-each width restarts from scratch. Against a simulator that re-expansion is not free.
+Note the shape of the trade. BFWS(1) solves the level too, expanding fewer states but
+returning a longer plan, since it is not optimal, and iterated IW pays for the failed width-1
+round on top of the width-2 one, because each width restarts from scratch. Against a
+simulator that re-expansion is not free.
 
 ## SIW and dead ends
 
@@ -93,7 +86,7 @@ that alone turns the failure into a solved instance:
 
 ```python
 SIW(width=2, progress=boxes, avoid_dead_ends=False).solve(env)   # fails
-SIW(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # solved, 12 actions
+SIW(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # solved
 ```
 
 `avoid_dead_ends` defaults to `True`. Set it `False` for the classical behaviour.
@@ -107,9 +100,9 @@ Geffner's 2017 paper.
 Its rounds run k-BFWS, `BFWS(prune=True)`, which keeps BFWS's `<novelty, progress,
 heuristic>` ordering but discards states whose novelty exceeds the width, the way IW does. Each
 round gets IW's bounded frontier, so it is cheap, while the ordering inside it heads for the goal
-instead of sweeping breadth-first. On Puzznic level 1 the pruned width-1 round exhausts at exactly
-IW(1)'s 32 expansions, since it is the same filter over the same reach, and the width-2 round
-solves it.
+instead of sweeping breadth-first. On Puzznic level 1 the pruned width-1 round exhausts after
+exactly IW(1)'s expansions, since it is the same filter over the same reach, and the width-2
+round solves it.
 
 The rounds escalate width only while the filter is discarding something, and if every allowed
 width fails, the last of the budget goes to one unpruned round, plain BFWS(1), which is complete:

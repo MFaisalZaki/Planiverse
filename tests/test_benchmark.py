@@ -6,9 +6,6 @@ import pytest
 
 from planiverse.benchmark import report, solve
 
-SANDBOX = pathlib.Path(__file__).resolve().parents[1] / "sandbox"
-
-
 def test_a_run_is_written_out_whatever_happens(tmp_path):
     record = solve(tmp_path, "bfws", "puzznic@1")
     assert record["status"] == "SOLVED" and record["plan_length"] == 10
@@ -23,12 +20,12 @@ def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
     assert solve(tmp_path, "fsx", "puzznic@9999")["seed"] == 0   # run by hand: the first seed
 
 
-def test_the_reference_planners_take_no_reward_and_learn_nothing():
-    """A planning library: every reference configuration is driven by the goal test and,
-    at most, a progress heuristic."""
+def test_no_registered_planner_takes_a_reward():
+    """A planning library: every configuration is driven by the goal test and, at most, a
+    progress heuristic."""
     import inspect
-    from planiverse.benchmark import PLANNERS
-    assert set(PLANNERS) == {"bfws", "iw", "siw", "fsx"}
+    from planiverse.benchmark import PLANNERS, REFERENCE
+    assert set(REFERENCE) == {"bfws", "iw", "siw", "fsx"}
     for cls, _ in PLANNERS.values():
         assert "reward" not in inspect.signature(cls).parameters, cls.__name__
 
@@ -39,11 +36,10 @@ def test_every_planner_in_the_library_is_in_the_benchmark():
     `solve` builds the way it builds any other, so `generate` with no flag covers them
     all."""
     import inspect
-    from planiverse.benchmark import ALL, PLANNERS
-    from planiverse.benchmark.candidates import CANDIDATES
+    from planiverse.benchmark import PLANNERS, REFERENCE
     from planiverse.planners import blind, heuristic, macros, sampling, width
 
-    registered = {cls for cls, _ in ALL.values()}
+    registered = {cls for cls, _ in PLANNERS.values()}
     registered |= {base for cls in registered for base in cls.__mro__[1:]}
     exported = {getattr(module, name) for module in (width, heuristic, sampling)
                 for name in module.__all__} | {
@@ -51,9 +47,9 @@ def test_every_planner_in_the_library_is_in_the_benchmark():
         macros.MacroPlanner}
     planners = {cls for cls in exported if inspect.isclass(cls) and hasattr(cls, "solve")}
     assert planners <= registered, {cls.__name__ for cls in planners - registered}
-    assert set(PLANNERS) <= set(ALL) and not set(PLANNERS) & set(CANDIDATES)
+    assert list(PLANNERS)[:len(REFERENCE)] == list(REFERENCE)
     # The documented variants of one class, each under its own tag.
-    assert {"astar", "wastar", "gbfslw", "kpiece", "ils", "bee", "multi"} <= set(CANDIDATES)
+    assert {"astar", "wastar", "gbfslw", "kpiece", "ils", "bee", "multi"} <= set(PLANNERS)
 
 
 def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
@@ -61,12 +57,12 @@ def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
     them, and runs on one instance under a small budget without returning a plan that does
     not replay."""
     import inspect
-    from planiverse.benchmark import ALL, _seeds
+    from planiverse.benchmark import PLANNERS, _seeds
     from planiverse.benchmark.measures import MEASURES
     from planiverse.environments import get_spec
     from planiverse.planners.width import Budget, SearchResult
 
-    for tag, (cls, params) in ALL.items():
+    for tag, (cls, params) in PLANNERS.items():
         env = get_spec("puzznic").build()
         env.set_index(0)
         if _seeds(tag)[0] is not None:
@@ -94,19 +90,6 @@ def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
     assert "IW & 0 & 2" in statuses and "FSX & 0.0 (0.0) & 2" in statuses
     missing = facts.split("missing")[1].split("\n")[0]
     assert "iw on puzznic 2" in missing and "fsx on puzznic 10" in missing
-
-
-@pytest.mark.skip(reason="the released sandbox was run with planner configurations the "
-                         "library no longer has under these tags")
-def test_the_released_results_come_out_of_their_sandbox():
-    report(SANDBOX)
-    facts = (SANDBOX / "report/facts.txt").read_text()
-    assert facts.startswith("solved per seed: bfws 476, iw 357, siw 207")
-    statuses = (SANDBOX / "report/statuses.tex").read_text()
-    assert "BFWS & \\textbf{476} & 122 & 229 & 104 & 7 &" in statuses
-    # The open-challenges section quotes these, so they come out of the same report.
-    assert "open instances (solved by no planner in any seed): 439" in facts
-    assert "ipc quality score over the 499 instances solved by any planner: bfws 444.9" in facts
 
 
 def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):
@@ -138,7 +121,7 @@ def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkey
     from planiverse.environments import get_spec
 
     monkeypatch.setattr(bench, "REGISTRY", [get_spec("puzznic")])      # 100 instances
-    monkeypatch.setattr(bench, "ALL", {"bfws": bench.PLANNERS["bfws"]})
+    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.REFERENCE["bfws"]})
     monkeypatch.setattr(bench, "MAX_ARRAY", 30)
     bench.generate(tmp_path)
 
