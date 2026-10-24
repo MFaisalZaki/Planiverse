@@ -24,7 +24,7 @@ def a_cartridge_for_the_game_boy():
         yield
         return
     from counter_rom import counter_rom
-    from planiverse.environments.games.emulated.game_boy import ROM_VARIABLE
+    from planiverse.environments.games.game_boy.environment import ROM_VARIABLE
 
     already = os.environ.get(ROM_VARIABLE)
     if not already:
@@ -75,7 +75,7 @@ def assert_successors_contract(successors):
 
 @pytest.fixture
 def puzznic_env():
-    from planiverse.environments.games.puzznic import PuzznicGame
+    from planiverse.environments.games.puzznic.environment import PuzznicGame
 
     env = PuzznicGame()
     env.set_index(0)

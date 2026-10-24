@@ -13,7 +13,7 @@ from conftest import assert_string_literals, assert_successors_contract
 
 
 def puzznic():
-    from planiverse.environments.games.puzznic import PuzznicGame
+    from planiverse.environments.games.puzznic.environment import PuzznicGame
 
     env = PuzznicGame()
     env.set_index(0)
@@ -21,7 +21,7 @@ def puzznic():
 
 
 def flipull():
-    from planiverse.environments.games.flipull import FlipullGame
+    from planiverse.environments.games.flipull.environment import FlipullGame
 
     env = FlipullGame()
     env.set_index(0)
@@ -29,7 +29,7 @@ def flipull():
 
 
 def lolo():
-    from planiverse.environments.games.lolo import LoloGame
+    from planiverse.environments.games.lolo.environment import LoloGame
 
     env = LoloGame()
     env.set_index(0)
@@ -37,7 +37,7 @@ def lolo():
 
 
 def amazing_tater():
-    from planiverse.environments.games.amazing_tater import AmazingTaterGame
+    from planiverse.environments.games.amazing_tater.environment import AmazingTaterGame
 
     env = AmazingTaterGame()
     env.set_index(0)
@@ -74,7 +74,7 @@ def crop_management():
 
 def network_attack():
     pytest.importorskip("nasim", exc_type=ImportError, reason="nasim is not installed")
-    from planiverse.environments.operational.network_attack.network_attack import EnvNASim
+    from planiverse.environments.operational.network_attack.environment import EnvNASim
 
     env = EnvNASim()
     env.set_index(0)
@@ -92,7 +92,7 @@ def flood_transport():
 def game_boy():
     pytest.importorskip("pyboy", exc_type=ImportError, reason="pyboy is not installed")
     from counter_rom import COUNTER, counter_rom
-    from planiverse.environments.games.emulated.game_boy import GameBoyEnv
+    from planiverse.environments.games.game_boy.environment import GameBoyEnv
 
     env = GameBoyEnv(counter_rom(), watch={"counter": COUNTER},
                      goal={"memory": COUNTER, "at_least": 3}, actions=("right", "left", "a"),
@@ -208,7 +208,7 @@ def slingshot():
 
 def retro():
     pytest.importorskip("stable_retro", exc_type=ImportError, reason="stable-retro is not installed")
-    from planiverse.environments.games.emulated.stable_retro import RetroEnv
+    from planiverse.environments.games.retro.environment import RetroEnv
 
     env = RetroEnv(goal={"survive": 5})
     env.set_index(0)
@@ -449,7 +449,7 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     assert not Environment.provides("generate_instance"), "required, and only explained here"
     assert not Environment.provides("set_instance")
 
-    from planiverse.environments.games.flipull import FlipullGame
+    from planiverse.environments.games.flipull.environment import FlipullGame
 
     assert FlipullGame.validate is Environment.validate, "inherited, not rewritten"
     assert "validate" in FlipullGame.capabilities(), "and still offered"

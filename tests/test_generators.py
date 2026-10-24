@@ -203,7 +203,7 @@ def test_flipull_targets_are_reachable_and_a_size_of_ones_own_gets_the_fewest():
     """The bundled stages were made the way the generator makes them, so the two agree: a
     cartridge target that can be reached, or, for a wall of the caller's own size, the fewest
     blocks it can be reduced to."""
-    from planiverse.environments.games.flipull import STAGES, fewest_blocks_reachable
+    from planiverse.environments.games.flipull.environment import STAGES, fewest_blocks_reachable
 
     for index in (0, 7, 31):
         fewest, _, plan, _ = fewest_blocks_reachable(STAGES[index][0])
@@ -235,7 +235,7 @@ def test_an_unchecked_draw_is_allowed_but_is_asked_for():
 def test_amazing_tater_solve_and_the_generator_share_one_search():
     """`solve` found the stored solutions; the generator checks a drawn room with the same
     breadth-first search, so an accepted room passes exactly the test the bundled ones did."""
-    from planiverse.environments.games.amazing_tater import solve
+    from planiverse.environments.games.amazing_tater.environment import solve
 
     assert len(solve(0)) == 38 and solve(0, limit=3) is None
     env, _ = fresh("amazing_tater", seed=4)

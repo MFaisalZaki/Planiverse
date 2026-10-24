@@ -9,7 +9,7 @@ an invalid plan.
 """
 import pytest
 
-from planiverse.environments.games.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic.environment import PuzznicGame
 from planiverse.planners.blind import BreadthFirstSearch, IterativeDeepening, UniformCostSearch
 from planiverse.planners.common import SuccessorCache, action_vocabulary
 from planiverse.planners.heuristic import (

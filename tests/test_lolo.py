@@ -7,7 +7,7 @@ on top.
 """
 import pytest
 
-from planiverse.environments.games.lolo import (
+from planiverse.environments.games.lolo.environment import (
     DIRECTIONS, DRIFTING_RIVERS, EXACT_ROOMS, MEDUSA_SHIELDS,
     PROFILES, PUSHABLE_ONTO, RIVER, ROOMS,
     SHOOT, SHOTS_PER_MAGIC_HEART, WALKABLE, LoloAction, LoloGame, Room, blocked_by_medusa,

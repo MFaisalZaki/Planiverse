@@ -8,7 +8,7 @@ fourth replays stored solutions.
 """
 import pytest
 
-from planiverse.environments.games.amazing_tater import (
+from planiverse.environments.games.amazing_tater.environment import (
     ACTIONS, ARM_GLYPHS, BLOCK_GLYPHS, LEVELS, LEVEL_COUNT,
     LEVEL_SETS, PROFILES, SETTLED_GLYPHS,
     SWITCH, AmazingTaterAction, AmazingTaterGame, AmazingTaterState, Level, advance, board,

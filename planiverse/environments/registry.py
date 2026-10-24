@@ -74,7 +74,7 @@ class EnvironmentSpec:
 REGISTRY = (
     EnvironmentSpec(
         name="puzznic",
-        factory="planiverse.environments.games.puzznic:PuzznicGame",
+        factory="planiverse.environments.games.puzznic.environment:PuzznicGame",
         summary="Sliding block puzzle, re-implemented in pure Python",
         instances="100 levels: the first 100 of the cartridge's 128 rounds",
         generates="board size, wall layout, block colours and pairs",
@@ -85,7 +85,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="flipull",
-        factory="planiverse.environments.games.flipull:FlipullGame",
+        factory="planiverse.environments.games.flipull.environment:FlipullGame",
         summary="Flipull-like throwing puzzle, re-implemented in pure Python",
         instances="100 stages: 32 to the cartridge's table, then 68 generated",
         generates="wall size, block types, arrangement and clear target",
@@ -96,7 +96,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="amazing_tater",
-        factory="planiverse.environments.games.amazing_tater:AmazingTaterGame",
+        factory="planiverse.environments.games.amazing_tater.environment:AmazingTaterGame",
         summary="Amazing Tater's blocks, pits and turnstiles, re-implemented in pure Python",
         instances="100 rooms: 41 puzzle-mode, then the first 59 of 64 beginner and action-mode",
         generates="room size, walls, blocks, pits, turnstiles and taters",
@@ -107,7 +107,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="lolo",
-        factory="planiverse.environments.games.lolo:LoloGame",
+        factory="planiverse.environments.games.lolo.environment:LoloGame",
         summary="Adventures of Lolo's block-and-heart puzzle, re-implemented in pure Python",
         instances="100 rooms: the first 100 of the cartridge's 163",
         generates="terrain, hearts, Emerald Framers, Snakeys and Medusas",
@@ -258,7 +258,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="game_boy",
-        factory="planiverse.environments.games.emulated.game_boy:GameBoyEnv",
+        factory="planiverse.environments.games.game_boy.environment:GameBoyEnv",
         summary="Any Game Boy cartridge, through PyBoy and its game wrappers",
         instances="one per stage, level or room the cartridge's wrapper reaches",
         generates="the stage, the timer seed, and an opening played from its first frame",
@@ -270,7 +270,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="retro",
-        factory="planiverse.environments.games.emulated.stable_retro:RetroEnv",
+        factory="planiverse.environments.games.retro.environment:RetroEnv",
         summary="Any Stable-Retro integration, from a save state to a goal on its variables",
         instances="one per save state the integration ships (Airstriker: 1)",
         generates="the save state, an opening played from it, and the goal",
@@ -282,7 +282,7 @@ REGISTRY = (
     ),
     EnvironmentSpec(
         name="network_attack",
-        factory="planiverse.environments.operational.network_attack.network_attack:EnvNASim",
+        factory="planiverse.environments.operational.network_attack.environment:EnvNASim",
         summary="Penetration testing against a simulated enterprise network",
         instances="100 networks: NASim's 18 benchmarks, then 82 generated",
         generates="network topology, hosts, services, OSs and exploits",

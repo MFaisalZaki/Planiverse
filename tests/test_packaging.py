@@ -37,10 +37,10 @@ pytestmark = pytest.mark.skipif(
 # One module per environment, plus the facade and the planner: whatever these reach is what
 # an install has to provide.
 ENTRY_POINTS = [
-    "planiverse.environments.games.puzznic",
-    "planiverse.environments.games.flipull",
-    "planiverse.environments.games.lolo",
-    "planiverse.environments.games.amazing_tater",
+    "planiverse.environments.games.puzznic.environment",
+    "planiverse.environments.games.flipull.environment",
+    "planiverse.environments.games.lolo.environment",
+    "planiverse.environments.games.amazing_tater.environment",
     "planiverse.environments.games.slingshot.environment",
     "planiverse.environments.games.tower_defence.environment",
     "planiverse.environments.games.fluid.environment",
@@ -56,10 +56,10 @@ ENTRY_POINTS = [
     "planiverse.environments.operational.water_network.environment",
     "planiverse.environments.operational.power_grid.environment",
     "planiverse.environments.operational.crop_management.environment",
-    "planiverse.environments.operational.network_attack.network_attack",
+    "planiverse.environments.operational.network_attack.environment",
     "planiverse.environments.operational.flood_transport.environment",
-    "planiverse.environments.games.emulated.game_boy",
-    "planiverse.environments.games.emulated.stable_retro",
+    "planiverse.environments.games.game_boy.environment",
+    "planiverse.environments.games.retro.environment",
     "planiverse.benchmark",
     "planiverse.rendering.trace",
     "planiverse.planners.tree_search",

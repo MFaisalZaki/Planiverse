@@ -1,6 +1,6 @@
 """Amazing Tater in pure Python: no ROM, no emulator, no dependencies.
 
-The rules are implemented directly, the way [`puzznic`](puzznic.py)'s are, so this is a
+The rules are implemented directly, the way [`puzznic`](../puzznic/environment.py)'s are, so this is a
 dependency-free benchmark.
 
 ## The rules, stated

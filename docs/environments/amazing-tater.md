@@ -8,8 +8,8 @@ block shoved into the wrong pit is gone, and so is the room. The environment is 
 the rooms in it, and it needs no ROM, no emulator and no dependency beyond the standard library.
 
 - **Class:** `AmazingTaterGame`
-- **Import:** `from planiverse.environments.games.amazing_tater import AmazingTaterGame`
-- **Source:** [`planiverse/environments/games/amazing_tater.py`](../../planiverse/environments/games/amazing_tater.py)
+- **Import:** `from planiverse.environments.games.amazing_tater.environment import AmazingTaterGame`
+- **Source:** [`planiverse/environments/games/amazing_tater/environment.py`](../../planiverse/environments/games/amazing_tater/environment.py)
 - **Instances:** 100 rooms, indices `0` to `99`: the cartridge's 41 puzzle-mode rooms and the first 59 of its 64 beginner and action-mode rooms
 - **Generator:** `generate_instance(seed, width=None, height=None, blocks=None, pits=None, turnstiles=None, ...)`; see [Generating rooms](#generating-rooms)
 - **Dependencies:** none
@@ -169,7 +169,7 @@ number, the action that produced it, and a note on the goal state. Both were gen
 the instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.games.amazing_tater import AmazingTaterGame
+from planiverse.environments.games.amazing_tater.environment import AmazingTaterGame
 from planiverse.benchmark import measures
 from planiverse.planners.width import DualBFWS
 
@@ -196,7 +196,7 @@ and `action.cost()` is what each one costs. A shortest plan is also available wi
 turnstile angle and every tater:
 
 ```python
-from planiverse.environments.games.amazing_tater import solve
+from planiverse.environments.games.amazing_tater.environment import solve
 plan = solve(0)
 print(len(plan), plan[:6])
 # 38 ['left', 'left', 'left', 'left', 'up', 'up']
@@ -301,5 +301,5 @@ alphabet the levels are stored in, which is what the tests compare. See
 
 | Path | What |
 |---|---|
-| [`amazing_tater.py`](../../planiverse/environments/games/amazing_tater.py) | `AmazingTaterGame`, `AmazingTaterState`, `solve`, `board` |
+| [`environment.py`](../../planiverse/environments/games/amazing_tater/environment.py) | `AmazingTaterGame`, `AmazingTaterState`, `solve`, `board` |
 | [`tests/test_amazing_tater.py`](../../tests/test_amazing_tater.py) | Tests |

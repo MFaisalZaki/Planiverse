@@ -7,7 +7,7 @@ reachable; a benchmark whose goals cannot be met is worse than no benchmark.
 """
 import pytest
 
-from planiverse.environments.games.flipull import (
+from planiverse.environments.games.flipull.environment import (
     BLOCK_TYPES, EMPTY, GENERATED_STAGES, INSTANCES, PROFILES, FlipullAction, FlipullGame,
     FlipullState, STAGES, WALL, profile,
     collapse, count_blocks, parse_stage, playable_rows, throw,

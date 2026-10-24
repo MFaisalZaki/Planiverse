@@ -8,8 +8,8 @@ few enough blocks are left, which the cartridge calls the CLEAR target, and the 
 needs no emulator, no ROM and no dependency beyond the standard library.
 
 - **Class:** `FlipullGame`
-- **Import:** `from planiverse.environments.games.flipull import FlipullGame`
-- **Source:** [`planiverse/environments/games/flipull.py`](../../planiverse/environments/games/flipull.py)
+- **Import:** `from planiverse.environments.games.flipull.environment import FlipullGame`
+- **Source:** [`planiverse/environments/games/flipull/environment.py`](../../planiverse/environments/games/flipull/environment.py)
 - **Instances:** 100 stages, indices `0` to `99`: 32 to the cartridge's stage table, then 68 the generator drew
 - **Generator:** `generate_instance(seed, width=None, height=None, types=4, clear_target=None, ...)`; see [Generating stages](#generating-stages)
 - **Dependencies:** none
@@ -177,7 +177,7 @@ the step number, the action that produced it, and a note on the goal state. Both
 by solving the instance and handing the trace to `render_trace`:
 
 ```python
-from planiverse.environments.games.flipull import FlipullGame
+from planiverse.environments.games.flipull.environment import FlipullGame
 from planiverse.benchmark import measures
 from planiverse.planners.width import DualBFWS
 
@@ -277,6 +277,6 @@ hand and the count on a last line, and `env.render()` prints the state history. 
 
 | Path | What |
 |---|---|
-| [`flipull.py`](../../planiverse/environments/games/flipull.py) | `FlipullGame`, `FlipullState`, `FlipullAction`, `STAGES`, `GENERATED_STAGES` |
+| [`environment.py`](../../planiverse/environments/games/flipull/environment.py) | `FlipullGame`, `FlipullState`, `FlipullAction`, `STAGES`, `GENERATED_STAGES` |
 | [`tests/test_flipull.py`](../../tests/test_flipull.py) | Tests |
 | [`tests/data/flipull_solutions.json`](../../tests/data/flipull_solutions.json) | The plan each stage was accepted on |

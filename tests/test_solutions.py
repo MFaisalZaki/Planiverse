@@ -20,10 +20,10 @@ import os
 
 import pytest
 
-from planiverse.environments.games.flipull import INSTANCES as FLIPULL_INSTANCES
-from planiverse.environments.games.flipull import FlipullGame
-from planiverse.environments.games.lolo import EXACT_ROOMS, ROOMS, LoloGame
-from planiverse.environments.games.puzznic import PuzznicGame
+from planiverse.environments.games.flipull.environment import INSTANCES as FLIPULL_INSTANCES
+from planiverse.environments.games.flipull.environment import FlipullGame
+from planiverse.environments.games.lolo.environment import EXACT_ROOMS, ROOMS, LoloGame
+from planiverse.environments.games.puzznic.environment import PuzznicGame
 
 DATA = os.path.join(os.path.dirname(__file__), "data")
 

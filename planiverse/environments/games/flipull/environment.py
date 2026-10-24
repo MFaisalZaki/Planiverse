@@ -1,6 +1,6 @@
 """Flipull in pure Python: no ROM, no emulator, no dependencies.
 
-The rules are implemented directly, the way [`puzznic`](puzznic.py) is, so this is a
+The rules are implemented directly, the way [`puzznic`](../puzznic/environment.py) is, so this is a
 dependency-free benchmark rather than a prediction of the original game.
 
 ## The rules, stated

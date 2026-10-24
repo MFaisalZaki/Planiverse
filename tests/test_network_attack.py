@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("nasim", exc_type=ImportError, reason="nasim is not installed")
 
-from planiverse.environments.operational.network_attack.network_attack import (  # noqa: E402
+from planiverse.environments.operational.network_attack.environment import (  # noqa: E402
     BENCHMARKS, GENERATED, EnvNASim, NASimState,
 )
 

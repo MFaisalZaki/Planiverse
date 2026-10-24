@@ -5,7 +5,7 @@ be asserted on.
 """
 import pytest
 
-from planiverse.environments.games.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic.environment import PuzznicGame
 from planiverse.planners.fsx import FSXPlanner, option_count
 from planiverse.planners.width.result import Budget
 

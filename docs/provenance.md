@@ -18,17 +18,17 @@ what was written from them: the reimplementations, and the level data described 
 Deriving rules that way leaves confidence uneven, and each module says where it stops agreeing
 with the original rather than smoothing it over:
 
-- [`lolo.py`](../planiverse/environments/games/lolo.py)'s "Where this differs from the
+- [`environment.py`](../planiverse/environments/games/lolo/environment.py)'s "Where this differs from the
   cartridge" is the model the others follow: six of the eight enemies are frozen, `EXACT_ROOMS`
   names the 21 of the 100 shipped rooms the model is therefore faithful for, and the divergence is shown
   to run in both directions rather than being presented as a relaxation.
-- [`flipull.py`](../planiverse/environments/games/flipull.py) states its rules outright and
+- [`environment.py`](../planiverse/environments/games/flipull/environment.py) states its rules outright and
   says where each came from: four were derived by driving the cartridge, and the one an
   automated comparison showed to be missing, that a wall turns a thrown block downward, is
   the original's documented rule, cited in the module.
-- [`puzznic.py`](../planiverse/environments/games/puzznic.py) records two known gaps, in
+- [`environment.py`](../planiverse/environments/games/puzznic/environment.py) records two known gaps, in
   where the cursor starts and in how eagerly matches are cleared.
-- [`amazing_tater.py`](../planiverse/environments/games/amazing_tater.py) records none
+- [`environment.py`](../planiverse/environments/games/amazing_tater/environment.py) records none
   found, after a lockstep comparison across all 105 rooms.
 
 ## 2. The reimplementations
@@ -68,7 +68,8 @@ audio**. The renders under [`docs/renders/`](renders/) are drawn from this repos
 reimplementations, with two exceptions the directory's README names: the Game Boy render
 shows the test suite's own cartridge, and the Stable-Retro render shows *Airstriker*, the game
 Stable-Retro ships and redistributes. The two emulator environments
-([`emulated/`](../planiverse/environments/games/emulated/)) run a cartridge the user supplies and
+([`game_boy/`](../planiverse/environments/games/game_boy/) and
+[`retro/`](../planiverse/environments/games/retro/)) run a cartridge the user supplies and
 supply none; the cartridge their tests run on is an original program written for this
 repository ([`tests/counter_rom.py`](../tests/counter_rom.py)), and the knowledge of any
 commercial game's memory they rely on lives in PyBoy's wrappers and Stable-Retro's

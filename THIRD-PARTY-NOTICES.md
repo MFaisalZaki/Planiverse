@@ -12,9 +12,9 @@ emulator environments run whatever cartridge the user supplies, and supply none.
 ## Emulators
 
 Two environments drive an emulator rather than a Python reimplementation:
-`planiverse/environments/games/emulated/game_boy.py` runs a cartridge under
+`planiverse/environments/games/game_boy/environment.py` runs a cartridge under
 [PyBoy](https://github.com/Baekalfen/PyBoy) (LGPL-3.0), and
-`planiverse/environments/games/emulated/stable_retro.py` runs a console under
+`planiverse/environments/games/retro/environment.py` runs a console under
 [Stable-Retro](https://github.com/Farama-Foundation/stable-retro) (MIT, a fork of OpenAI's
 Gym Retro). Both are dependencies, installed from PyPI, and neither is included here.
 

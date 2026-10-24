@@ -152,7 +152,7 @@ involved.
 Puzznic is the smallest environment, so it is the fastest way to see the interface:
 
 ```python
-from planiverse.environments.games.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic.environment import PuzznicGame
 
 env = PuzznicGame()
 env.set_index(0)              # choose the instance before reset
@@ -474,15 +474,16 @@ planiverse/environments/
 ├── base.py          # Environment: the eight-method contract, and nothing else
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
-├── games/           # every game: the four cartridge puzzles as modules, the rest as subpackages
-│   ├── puzznic.py, flipull.py, lolo.py, amazing_tater.py   # reimplemented in pure Python
+├── games/           # every game, one subpackage each, its environment in environment.py
+│   ├── puzznic/, flipull/, lolo/, amazing_tater/   # reimplemented in pure Python
 │   ├── slingshot/       # a physics puzzle on pymunk
 │   ├── tower_defence/   # waves fought by simulation, pure Python
 │   ├── fluid/           # a cellular automaton of water, pure Python
 │   ├── pipe_dream/      # a Pipe Dream-like, pure Python
 │   ├── billiards/       # pool on pooltool
 │   ├── lemmings/        # a crowd of walkers, pure Python
-│   └── emulated/        # one environment per emulator (PyBoy, Stable-Retro), for any game
+│   ├── game_boy/        # any cartridge under PyBoy
+│   └── retro/           # any Stable-Retro integration
 └── operational/     # every simulator-backed environment, one subpackage each
     ├── micropolis/      # a city on the Micropolis engine, built from source
     ├── factory/         # an early-game factory on factory-sim, built from source
@@ -537,20 +538,19 @@ planiverse/
 │   ├── base.py                         # Environment, the one base class
 │   ├── registry.py                     # EnvironmentSpec, list_environments(), make()
 │   ├── generation.py                   # rng, bounded_search, draw_until, solvable_draw
-│   ├── games/                          # every game
-│   │   ├── puzznic.py                  # PuzznicGame, in pure Python, nothing to supply
-│   │   ├── flipull.py                  # FlipullGame
-│   │   ├── lolo.py                     # LoloGame
-│   │   ├── amazing_tater.py            # AmazingTaterGame
+│   ├── games/                          # every game, its environment in <name>/environment.py
+│   │   ├── puzznic/                    # PuzznicGame, in pure Python, nothing to supply
+│   │   ├── flipull/                    # FlipullGame
+│   │   ├── lolo/                       # LoloGame
+│   │   ├── amazing_tater/              # AmazingTaterGame
 │   │   ├── slingshot/                  # SlingshotEnv: a physics puzzle on pymunk
 │   │   ├── tower_defence/              # TowerDefenceEnv: waves fought by simulation
 │   │   ├── fluid/                      # FluidEnv: a cellular automaton of water
 │   │   ├── pipe_dream/                 # PipeDreamEnv: pipe laid from a queue ahead of a flow
 │   │   ├── billiards/                  # BilliardsEnv: pool on pooltool
 │   │   ├── lemmings/                   # LemmingsEnv: a crowd of walkers steered with skills
-│   │   └── emulated/                   # any game, nothing shipped
-│   │       ├── game_boy.py             # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
-│   │       └── stable_retro.py         # RetroEnv: a Stable-Retro integration from its save states
+│   │   ├── game_boy/                   # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
+│   │   └── retro/                      # RetroEnv: a Stable-Retro integration from its save states
 │   └── operational/                    # every simulator-backed environment
 │       ├── micropolis/                 # MicropolisEnv: a city on the Micropolis engine
 │       ├── factory/                    # FactoryEnv: an early-game factory on factory-sim

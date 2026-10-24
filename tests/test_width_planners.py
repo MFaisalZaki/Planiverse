@@ -5,7 +5,7 @@ that the theory is visible: IW(1) genuinely exhausts on level 1, IW(2) genuinely
 """
 import pytest
 
-from planiverse.environments.games.puzznic import PuzznicGame
+from planiverse.environments.games.puzznic.environment import PuzznicGame
 from planiverse.planners.width import (
     BFWS, Budget, DualBFWS, IW, SIW, SearchResult, SearchStatistics,
 )
