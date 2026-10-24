@@ -7,8 +7,11 @@ visit, which is what turns the sampling planners (rolling-horizon evolution, the
 method, rollouts, Go-Explore) from hopeless into ordinary against these simulators: an
 evolutionary population re-evaluates the same prefix hundreds of times.
 
-The cache is keyed on `literals`, the same identity every closed list in the library uses,
-so two states an environment spells the same are the same state here too.
+The cache is keyed on the state itself, which every environment makes hashable and
+comparable on its identity. `literals` are not that identity: they are the atoms the novelty
+tests count, and an environment may spell two different states the same way (two orders of the
+same measures at different costs, say), so a cache keyed on them would hand one state the
+other's children.
 """
 # Imported inside the functions: `planiverse.planners.width` imports this module, and this
 # module wants its `result` types, so a module-level import here would be a cycle.
@@ -37,7 +40,7 @@ def finish(status, plan, trace, statistics, budget, width=None):
 
 
 class SuccessorCache:
-    """`env.successors` memoised on `literals`, counting expansions once.
+    """`env.successors` memoised on the state, counting expansions once.
 
     `expand(state)` is the cached expansion; `apply(state, action)` the successor an action
     leads to, or `None` when the action does nothing here (the environment filters
@@ -55,7 +58,7 @@ class SuccessorCache:
         self.table = {}
 
     def expand(self, state):
-        key = state.literals
+        key = state
         children = self.table.get(key)
         if children is None:
             children = self.env.successors(state)

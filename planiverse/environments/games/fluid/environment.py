@@ -79,7 +79,8 @@ class FluidState:
         literals = [f"cell({x}, {y}, {'water' if cell == WATER else 'air' if cell == AIR else 'earth'})"
                     for y, row in enumerate(self.rows) for x, cell in enumerate(row)
                     if cell in (WATER, AIR, EARTH)]
-        literals += [f"filled({filled})", f"supply({supply})", f"digs_left({digs_left})"]
+        literals += [f"filled({filled})", f"supply({supply})", f"digs_left({digs_left})",
+                     f"tick({tick})"]
         self.literals = frozenset(literals)
 
     @property

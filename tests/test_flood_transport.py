@@ -225,3 +225,18 @@ def test_make_builds_it_by_name():
     env = make("flood_transport", index=2)
     state, info = env.reset()
     assert info["zones"] == 12 and env.successors(state)
+
+
+def test_the_successor_cache_tells_apart_states_spelled_the_same():
+    """Two orders of the same measures reach the same step with the same protection and, in
+    twentieths of the target, the same cost, so their literals agree; the costs, and so the
+    children, do not. The cache keys on the state, not on its literals."""
+    from planiverse.planners.common import SuccessorCache
+
+    env = make("flood_transport", index=3)
+    first = env.simulate(["elevate1(z09)", "elevate1(z07)", "wait"])[-1]
+    second = env.simulate(["elevate1(z09)", "wait", "elevate1(z07)"])[-1]
+    assert first.literals == second.literals and first != second
+    cache = SuccessorCache(env)
+    for state in (first, second):
+        assert cache.expand(state) == env.successors(state)
