@@ -40,6 +40,7 @@ FAST = {
     "traffic": dict(vehicles=120, horizon=600),
     "airspace": dict(count=3, horizon=12),
     "reservoir": dict(),
+    "microgrid": dict(horizon=24),
     "railway": dict(trains=3, size=25),
     "water_network": dict(network="Net1.inp"),
     "power_grid": dict(),

@@ -41,6 +41,9 @@ dependencies = [
     # Manchester's water resource simulator, for the reservoirs. It publishes wheels for Linux
     # and Windows only; on macOS build it from source after `brew install glpk` (see the README).
     "pywr (>=1.20) ; sys_platform != 'darwin'",
+    # TotalEnergies' microgrid simulator, for the microgrid; its benchmark microgrids ship
+    # inside it. It also brings in Gym 0.26, which OR-Gym's inventory runs on.
+    "python-microgrid (>=1.4)",
     # BlueSky (the airspace environment) is installed by scripts/install_bluesky.sh: its
     # published dependency list names a placeholder package that does not build.
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle

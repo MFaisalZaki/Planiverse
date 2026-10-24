@@ -156,6 +156,11 @@ def railway(state):
     return state.to_go + state.left
 
 
+def microgrid(state):
+    """Periods still to run, and the cost so far as a share of the target on top."""
+    return max(0, state.horizon - state.hour) / 3 + state.cost / state.target
+
+
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
@@ -182,4 +187,5 @@ MEASURES = {
     "retro": emulated,
     "flood_transport": flood_transport,
     "railway": railway,
+    "microgrid": microgrid,
 }

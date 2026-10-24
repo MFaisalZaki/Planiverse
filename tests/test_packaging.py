@@ -23,7 +23,8 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "fsim": "factory-sim",
                    "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
                    "bluesky": "bluesky-simulator",
-                   "pyspiel": "open-spiel"}
+                   "pyspiel": "open-spiel",
+                   "pymgrid": "python-microgrid"}
 
 #: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
 #: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), and
@@ -54,6 +55,7 @@ ENTRY_POINTS = [
     "planiverse.environments.operational.traffic.environment",
     "planiverse.environments.operational.airspace.environment",
     "planiverse.environments.operational.reservoir.environment",
+    "planiverse.environments.operational.microgrid.environment",
     "planiverse.environments.operational.railway.environment",
     "planiverse.environments.operational.water_network.environment",
     "planiverse.environments.operational.power_grid.environment",

@@ -243,6 +243,18 @@ REGISTRY = (
         tags=frozenset({"operational", "infrastructure", "water"}),
     ),
     EnvironmentSpec(
+        name="microgrid",
+        factory="planiverse.environments.operational.microgrid.environment:MicrogridEnv",
+        summary="Microgrid operations on python-microgrid: set the battery and the genset every three hours, meet the load every hour, keep the cost under the target and hand the battery back as charged as it was found",
+        instances="100 instances, generated",
+        generates="the benchmark microgrid, the day and start hour, the horizon, the starting charge and the cost target",
+        deterministic=True,
+        state_identity="value",
+        requires=("pymgrid",),
+        docs="docs/environments/microgrid.md",
+        tags=frozenset({"operational", "infrastructure", "energy"}),
+    ),
+    EnvironmentSpec(
         name="railway",
         factory="planiverse.environments.operational.railway.environment:RailwayEnv",
         summary="Train dispatching on Flatland: choose when each train leaves its station, so every train reaches its target with no deadlock, before the horizon and under a train-steps target",
