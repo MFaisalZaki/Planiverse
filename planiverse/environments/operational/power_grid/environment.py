@@ -70,8 +70,8 @@ BLACKOUT_WITHIN = 6
 SEARCH_LIMIT = 1
 
 #: Draws the generator may make before giving up. About one random (series, step, line)
-#: draw in eleven survives both tests (measured over 120: 18 doomed, 11 of those secured
-#: by one reconfiguration), so eighty draws fail to find one about once in two thousand.
+#: draw in eleven survives both tests, so eighty draws fail to find one about once in two
+#: thousand.
 ATTEMPTS = 80
 
 #: Which line to trip, on which time series.

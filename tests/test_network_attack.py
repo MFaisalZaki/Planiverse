@@ -62,8 +62,8 @@ def test_reset_without_a_scenario_raises():
 
 
 def test_scenario_yaml_is_loaded(tmp_path):
-    """A YAML path used to satisfy the assert and then be ignored, so make_benchmark(None)
-    was called instead of loading the file."""
+    """A YAML path must be loaded, not merely satisfy the assert and leave
+    make_benchmark(None) to be called instead."""
     scenario = textwrap.dedent("""
         subnets: [1]
         topology: [[ 1, 1],

@@ -1,11 +1,9 @@
 """What each environment is, as data rather than as a package path.
 
-The old layout encoded one fact about an environment ("real world problem" or "retro game")
-in the directory it lived in, which meant the fact could not be queried, could not be
-combined with any other fact, and could not be wrong without moving files. Everything a
-planner might actually select on is here instead, and the old distinction survives as
-family tags, alongside finer ones: `game`, `operational` (an agent running a system it is
-responsible for), and `security`.
+A fact about an environment encoded in the directory it lives in cannot be queried, cannot be
+combined with any other fact, and cannot be corrected without moving files. Everything a
+planner might actually select on is here instead, including the family tags: `game`,
+`operational` (an agent running a system it is responsible for), and `security`.
 
     >>> from planiverse.environments import list_environments, make
     >>> [spec.name for spec in list_environments(tag="operational")]

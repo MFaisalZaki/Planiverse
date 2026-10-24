@@ -1,16 +1,12 @@
 """The one thing every Planiverse environment is.
 
-There used to be two base classes, `RealWorldProblem` and `RetroGame`, and the split cost
-something without buying anything. It described where an environment *came from*, not what a
-planner could *do* with it, so nothing could dispatch on it usefully: the `Simulator` facade
-ended up asking `isinstance(env, RetroGame) or isinstance(env, RealWorldProblem)`, two
-branches doing identical work. Meanwhile the distinctions that actually matter to a planner
-(is the transition deterministic, how do you get back to a state to expand it again, how
-expensive is one successor) were written nowhere at all.
-
-So there is one base class now, and the taxonomy moved into data. `Environment` is the
-contract; `EnvironmentSpec` in `registry.py` carries everything a caller might want to select
-on, including the tags that used to be package directories.
+There is one base class, because where an environment *came from* (a real-world problem or a
+retro game) says nothing about what a planner can *do* with it, so nothing could dispatch on
+that split usefully. The distinctions that matter to a planner (is the transition
+deterministic, how do you get back to a state to expand it again, how expensive is one
+successor) are data rather than class structure. `Environment` is the contract;
+`EnvironmentSpec` in `registry.py` carries everything a caller might want to select on,
+including the family tags.
 """
 from collections import namedtuple
 

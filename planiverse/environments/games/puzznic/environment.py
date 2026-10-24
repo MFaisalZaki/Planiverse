@@ -170,7 +170,6 @@ class PuzznicState:
 
     def __update__(self):
         # this function updates the boolean predicates of the state.
-        # the representation is simple for now,
         self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])
         
         # for box in filter(lambda o: isinstance(o, Box), [item for sublist in self.grid for item in sublist]):
@@ -517,10 +516,10 @@ class PuzznicGame(Environment):
     def set_index(self, index:int):
         """Select a level. Out of range is refused here, not later.
 
-        It used to be accepted and only rejected at `reset()`, by an assertion inside
-        `_levels_str_`, which `python -O` strips, and which meant anything asking the
-        environment how many levels it has by walking `set_index` upwards (the benchmark
-        does exactly that) got told there was no limit.
+        Rejecting it only at `reset()`, by the assertion inside `_levels_str_`, would not do:
+        `python -O` strips assertions, and anything asking the environment how many levels it
+        has by walking `set_index` upwards (the benchmark does exactly that) would be told
+        there was no limit.
         """
         if not 0 <= index < len(self.levelsstr):
             raise IndexError(

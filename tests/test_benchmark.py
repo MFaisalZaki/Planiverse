@@ -105,8 +105,8 @@ def test_the_toolkit_reads_the_runs_and_counts_the_missing_ones(tmp_path, monkey
 
 
 def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):
-    """Five 2026-09 runs left empty files: `open` truncated, then `json.dump` raised MemoryError
-    under the address-space cap. The write lifts the cap and tries once more."""
+    """A write must still leave a file when `open` has truncated it and `json.dump` raises
+    MemoryError under the address-space cap. The write lifts the cap and tries once more."""
     import planiverse.benchmark as bench
     real_dump, calls = bench.json.dump, []
 

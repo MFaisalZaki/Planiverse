@@ -125,8 +125,8 @@ def test_destroying_a_block_drops_the_stack_above_it():
 
 
 def test_the_collapse_never_drags_the_border_into_the_board():
-    """It used to shift whatever was above, which walked the top wall down into the play
-    area one throw at a time, quietly, because the board still looked plausible."""
+    """Shifting whatever is above would walk the top wall down into the play area one throw
+    at a time, quietly, because the board would still look plausible."""
     grid = grid_of("#####", "# 1 #", "# 2 #", "#####")
     collapse(grid, 2, 2)
     assert text_of(grid)[0] == "#####", "the border stays put"

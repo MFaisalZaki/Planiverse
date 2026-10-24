@@ -305,8 +305,8 @@ def test_an_egg_pushed_into_a_river_floats():
     assert afloat.lolo == (4, 3), "Lolo takes the cell the egg was pushed out of"
 
 
-def test_rafts_are_off_unless_asked_for():
-    """The default keeps the old refusal, so no room silently gains a plan."""
+def test_a_river_refuses_the_egg_with_rafts_off():
+    """With rafts off, as `board` builds rooms, a river refuses the egg."""
     _, state = board(room_with(**{"4_1": "@", "4_3": "S", "4_4": "~"}), magic_shots=1)
     state = shoot(move(state, "right"))
     assert move(state, "right") is None, "the egg was floated with rafts off"

@@ -217,8 +217,8 @@ def test_match_cascades_after_gravity():
 def test_moving_a_box_scores_nothing():
     """A box that merely falls must not be scored as cleared.
 
-    Scores used to be diffed by (letter, position), so a box that moved counted as
-    removed twice and awarded 20 points for clearing nothing.
+    Diffing scores by (letter, position) would count a box that moved as removed twice and
+    award 20 points for clearing nothing.
     """
     game = build(LEVEL_0)
     on_box = game._compute_successor_state_(game.state, "left")

@@ -34,9 +34,8 @@ the positions checked. Rule 4 is the original's, documented for the arcade *Plot
 cartridge ports: a block that reaches the back wall slides straight down it, as it does off
 the ceiling, and one that reaches the floor bounces back to the player
 (https://gamefaqs.gamespot.com/arcade/584111-plotting/faqs/41573;
-https://en.wikipedia.org/wiki/Plotting_(video_game)). It is what an earlier automated
-comparison was missing: the throws it disagreed on were those whose row was empty or emptied,
-which this module used to refuse or stop and the cartridge carries down the far side. The
+https://en.wikipedia.org/wiki/Plotting_(video_game)). It governs the throws whose row is
+empty or emptied, which the cartridge carries down the far side. The
 cartridge's own stages also carry a staircase of fixed bricks and, later, pipes; a `#` inside
 the board deflects a block here the way the back wall does, which is what the staircase does,
 but the bundled stages carry none and pipes are not modelled.

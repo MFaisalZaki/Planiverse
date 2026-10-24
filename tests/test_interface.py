@@ -262,14 +262,8 @@ def test_implements_the_core_interface(factory):
 
 @pytest.mark.parametrize("factory", environment_params())
 def test_is_a_recognised_environment_type(factory):
-    """One base class now, and the contract check is structural as well.
-
-    There used to be two (`RetroGame` and `RealWorldProblem`), and the split described
-    where an environment came from rather than what a planner could do with it, so the
-    `Simulator` facade that dispatched on them ended up with two isinstance branches doing
-    identical work. The facade followed the split into history once every caller took the
-    environment directly.
-    """
+    """Every environment derives from the one base class, and the contract check is
+    structural as well."""
     env = factory()
     assert isinstance(env, Environment)
     assert implements_contract(env), "and it answers the contract structurally too"

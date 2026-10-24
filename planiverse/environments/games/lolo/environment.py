@@ -15,7 +15,7 @@ measured on the cartridge rather than taken from a manual.
    if the cell behind is empty walkable ground. Nothing can be pulled, and no chain of two
    can be pushed at once. A river refuses a Framer always and an egg only where the current
    would carry the raft; elsewhere the egg floats into a raft Lolo may stand on and which
-   drifts away once he steps off. `rafts=False` goes back to refusing every river.
+   drifts away once he steps off. `rafts=False` makes every river refuse the egg.
 4. A step onto a **heart framer** collects it. A *magic* heart framer (the cartridge stores
    two heart codes and this is the second) also gives Lolo **two magic shots**; a plain one
    gives none.
@@ -41,10 +41,10 @@ cartridge, in lock-step with Lolo, and this module leaves them where they starte
 137 rooms that contain one, a plan found here is usually a plan against an easier puzzle, and
 it may well die on the cartridge. Freezing is not a relaxation, though, and it does not only
 err that way: a frozen enemy is a wall as well as a threat removed, so a room can also come
-out harder here than it is on the cartridge. tutorial 4a is the measured case. Its Rocky
-stands in the only approach to the room's magic heart framer, which is one of the nine hearts
-the door waits for and the room's only source of magic shots, so BFWS proves the room
-unsolvable here while it clears the same room on the cartridge in 56 moves. Either direction
+out harder here than it is on the cartridge. In tutorial 4a, for instance, Rocky stands in
+the only approach to the room's magic heart framer, which is one of the nine hearts the door
+waits for and the room's only source of magic shots, so the room cannot be cleared here
+although it can be on the cartridge, where Rocky moves. Either direction
 is the wrong one for an approximation to err in, so it is flagged rather than smoothed over:
 `Room.exact` says which rooms the model is faithful for.
 
@@ -52,10 +52,10 @@ is the wrong one for an approximation to err in, so it is flagged rather than sm
 floats, and Lolo can step onto it and ride across; that is how int 1-3 is cleared. The
 cartridge has six river codes and they do not agree with each other: `$82` refuses the push
 outright, `$84`, `$86` and `$87` float a raft that stays where it was put, `$83` floats one
-that drifts up and `$85` one that drifts down. The room texts spell all six `~`, so this
-module used to be unable to tell them apart and refused every push, which lost int 1-3.
+that drifts up and `$85` one that drifts down. The room texts spell all six `~`, so the text
+alone cannot tell them apart.
 
-`DRIFTING_RIVERS` closes that: it carries the `$83` and `$85` cells, read back out of the
+`DRIFTING_RIVERS` supplies the difference: it carries the `$83` and `$85` cells, read back out of the
 cartridge and pinned against it by `tests/test_lolo.py`. An egg pushed at a still river floats
 into a raft Lolo may stand on and which drifts away the moment he steps off, and an egg pushed
 at a drifting one is refused. That is exact rather than a guess, because a current is measured
@@ -65,8 +65,7 @@ to invent one, so it declines the push and leaves those rooms alone.
 
 `$82` never appears in any of the cartridge's 163 rooms, and 71 of the 111 river rooms have no current at
 all, so the rule this module keeps is the cartridge's own for all but the 40 rooms that drift.
-Rafts are on by default for that reason. int 1-3 is solved here in the cartridge's own twelve
-actions, and replaying that plan on the cartridge clears the room.
+Rafts are on by default for that reason.
 
 Two smaller divergences, both in the safe direction. Medusa's shot is modelled as instant,
 where the cartridge gives one move of grace, but that move cannot be used to escape, so no
@@ -371,9 +370,8 @@ ROOMS = (
 )
 
 #: River cells whose current carries a raft, keyed by room. The room texts spell all six of
-#: the cartridge's river codes `~`, so this module could not tell one river from another and
-#: refused to float an egg into any of them. The codes were measured one by one on the
-#: cartridge: `$82` refuses the push outright and appears in none of the 163 rooms, `$84`,
+#: the cartridge's river codes `~`, so the text alone cannot tell one river from another. The
+#: codes were read one by one off the cartridge: `$82` refuses the push outright and appears in none of the 163 rooms, `$84`,
 #: `$86` and `$87` float a raft that holds still, `$83` floats one that drifts **up** and
 #: `$85` one that drifts **down**. The cells below are the `$83` and `$85` ones, read back
 #: out of the cartridge.

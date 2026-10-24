@@ -70,8 +70,8 @@ def test_puzznic_solution_coverage_does_not_shrink():
     unsolved = sorted(set(range(50)) - set(PUZZNIC_SOLUTIONS))
     assert unsolved == [15, 17, 28, 34, 35, 42, 46, 47, 49], \
         "the set of Puzznic levels without a stored solution changed"
-    # Levels 50-99 were added from the cartridge after the benchmark ran, so none of them
-    # has been solved yet. They are listed here rather than silently uncovered.
+    # Levels 50-99 have no stored solutions. They are listed here rather than silently
+    # uncovered.
     assert not set(range(50, 100)) & set(PUZZNIC_SOLUTIONS), \
         "levels 50-99 now have solutions; record them and update this test"
 
@@ -88,10 +88,9 @@ LOLO_SOLVED = [
     57, 66, 75, 81,
 ]
 
-#: The plans that also cleared their room on the original game, recorded when they were
-#: replayed on it. Every plan for a room the model is exact for is here; most of the plans for
-#: a room whose enemies the model freezes are not, because on the original those enemies moved
-#: and killed Lolo. See `docs/environments/lolo.md`.
+#: The plans that also clear their room on the original game when replayed on it. Every plan for a room the model is exact for is here; most of the plans for
+#: a room whose enemies the model freezes are not, because on the original those enemies move
+#: and can kill Lolo. See `docs/environments/lolo.md`.
 LOLO_CARTRIDGE_VALIDATED = [0, 1, 12, 13, 20, 38, 39, 41, 54, 57]
 
 
