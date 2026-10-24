@@ -330,6 +330,35 @@ from outside the library counts as long as it answers the eight contract methods
 generator's two included: `implements_contract` checks structurally, so no subclassing is
 required.
 
+### Through OpenSpiel
+
+Every environment is also an [OpenSpiel](https://github.com/google-deepmind/open_spiel) game,
+and every planner runs on any single-player OpenSpiel game, ours or OpenSpiel's own
+(`planiverse/spiel.py`):
+
+```python
+import pyspiel
+import planiverse.spiel as spiel
+
+game = pyspiel.load_game("planiverse_lolo", {"index": 3})   # or {"seed": 7}
+actions, result = spiel.solve(game, "bfws")                 # any benchmark tag, or a planner
+
+state = game.new_initial_state()
+for action in actions:
+    state.apply_action(action)
+state.returns()                                             # [1.0]: the goal
+
+spiel.solve(pyspiel.load_game("deep_sea"), "iw")            # one of OpenSpiel's games
+```
+
+A `planiverse_*` game is single-player and deterministic, with reward 1 at a goal and 0
+anywhere else; a goal and a dead end are both terminal, with no legal actions. Its states
+carry `literals` and hand any other attribute through to the simulator's own state. On
+OpenSpiel's games, the atoms the planners see are the nonzero entries of the observation
+tensor, and chance is resolved by a generator seeded on the history, so expansion stays
+deterministic. A goal there is a terminal state with a positive return unless `solve` is
+given `goal=`. OpenSpiel publishes no Windows wheels, so a Windows install leaves it out.
+
 ## Rendering a trace
 
 ```python
@@ -543,6 +572,7 @@ planiverse/
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
 │   ├── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
 │   └── tree_search.py                  # TreeSearchPlanner, Heuristic, CostFunction
+├── spiel.py                            # every environment a pyspiel game; solve(game, planner)
 ├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants

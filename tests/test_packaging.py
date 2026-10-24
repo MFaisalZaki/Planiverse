@@ -22,7 +22,8 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "pooltool": "pooltool-billiards",
                    "fsim": "factory-sim",
                    "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
-                   "bluesky": "bluesky-simulator"}
+                   "bluesky": "bluesky-simulator",
+                   "pyspiel": "open-spiel"}
 
 #: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
 #: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), and
@@ -62,6 +63,7 @@ ENTRY_POINTS = [
     "planiverse.benchmark",
     "planiverse.rendering.trace",
     "planiverse.planners.tree_search",
+    "planiverse.spiel",
 ]
 
 
