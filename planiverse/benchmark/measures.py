@@ -161,6 +161,13 @@ def microgrid(state):
     return max(0, state.horizon - state.hour) / 3 + state.cost / state.target
 
 
+def inventory(state):
+    """Periods still to run, and the target's shortfall from the profit with every unit in the
+    chain counted at the raw material price, in periods' worth of the target, on top."""
+    pace = max(1.0, abs(state.target) / max(1, state.horizon))
+    return max(0, state.horizon - state.period) + max(0.0, state.target - state.worth) / pace
+
+
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
@@ -188,4 +195,5 @@ MEASURES = {
     "flood_transport": flood_transport,
     "railway": railway,
     "microgrid": microgrid,
+    "inventory": inventory,
 }

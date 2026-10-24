@@ -188,6 +188,15 @@ def reservoir():
     return env
 
 
+def inventory():
+    pytest.importorskip("or_gym", exc_type=ImportError, reason="or-gym is not installed")
+    from planiverse.environments.operational.inventory.environment import InventoryEnv
+
+    env = InventoryEnv()
+    env.set_index(0)
+    return env
+
+
 def microgrid():
     pytest.importorskip("pymgrid", exc_type=ImportError, reason="pymgrid is not installed")
     from planiverse.environments.operational.microgrid.environment import MicrogridEnv
@@ -255,6 +264,7 @@ ENVIRONMENTS = {
     "traffic": traffic,
     "airspace": pytest.param(airspace, marks=pytest.mark.slow),
     "reservoir": reservoir,
+    "inventory": inventory,
     "microgrid": microgrid,
     "railway": railway,
     "game_boy": game_boy,
@@ -316,7 +326,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "slingshot", "tower_defence", "fluid", "pipe_dream", "billiards",
-            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir", "microgrid", "railway",
+            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir", "inventory", "microgrid", "railway",
             "game_boy", "retro"} == registered
 
 

@@ -1,8 +1,8 @@
 # Operational environments as planning problems
 
 The operational simulators (an epidemic, a traffic grid, an airspace, a reservoir system, a water
-network, a power grid, a crop, a flooding city, a Micropolis city and a factory) do not come with
-a goal state. What they ask for is a property of the whole trajectory: a hospital load never
+network, a power grid, a crop, a flooding city, a Micropolis city, a factory, a railway, a supply
+chain and a microgrid) do not come with a goal state. What they ask for is a property of the whole trajectory: a hospital load never
 over capacity, separation never lost, a river never short, and a cost accumulated over the
 horizon kept small. A search planner asks for an initial state, a successor function and a goal
 test. The reduction that bridges the two has three parts.

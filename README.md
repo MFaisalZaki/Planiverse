@@ -30,6 +30,7 @@ season or city, so a benchmark is not limited to what ships.
 | Traffic signals | `traffic` | 100 mornings | the trips, their spacing, the horizon and the travel-time target | operational, infrastructure, traffic | [docs](docs/environments/traffic.md) |
 | Airspace | `airspace` | 100 sectors | the aircraft, their entries, speeds and exits, the horizon and the exit-time target | operational, aviation | [docs](docs/environments/airspace.md) |
 | Reservoir | `reservoir` | 100 years | the inflows, the demands, the capacities, the reserves and the shortfall target | operational, infrastructure, water | [docs](docs/environments/reservoir.md) |
+| Inventory | `inventory` | 100 seasons | the demand distribution and the season's demand, the costs, the capacities, the lead times, the initial stock, the lost-sales allowance and the profit target | operational, supply-chain | [docs](docs/environments/inventory.md) |
 | Microgrid | `microgrid` | 100 instances | the benchmark microgrid, the day and start hour, the horizon, the starting charge and the cost target | operational, infrastructure, energy | [docs](docs/environments/microgrid.md) |
 | Railway | `railway` | 100 timetables | the cities, the rail network, the trains' stations and targets, the horizon and the train-steps target | operational, infrastructure, transport, scheduling | [docs](docs/environments/railway.md) |
 | Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
@@ -51,8 +52,8 @@ season or city, so a benchmark is not limited to what ships.
 from planiverse.environments import list_environments, make
 
 [spec.name for spec in list_environments(tag="operational")]
-# ['airspace', 'crop_management', 'epidemic', 'factory', 'flood_transport', 'micropolis',
-#  'power_grid', 'reservoir', 'traffic', 'water_network']
+# ['airspace', 'crop_management', 'epidemic', 'factory', 'flood_transport', 'inventory',
+#  'microgrid', 'micropolis', 'power_grid', 'railway', 'reservoir', 'traffic', 'water_network']
 
 env = make("water_network", index=8)       # the ninth bundled scenario
 env = make("puzznic", seed=7)              # a freshly generated level
@@ -87,6 +88,8 @@ git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
 pip install -e ".[dev]"              # the dev extra adds pytest
 python scripts/install_pooltool.py   # the billiards table; see below
+python scripts/install_flatland.py   # the railway
+python scripts/install_or_gym.py     # the inventory
 ```
 
 Or, with poetry:
@@ -95,19 +98,21 @@ Or, with poetry:
 poetry env use python3.12
 poetry install --extras dev
 poetry run python scripts/install_pooltool.py
+poetry run python scripts/install_flatland.py
+poetry run python scripts/install_or_gym.py
 ```
 
 One install gets you every environment, on every supported Python, and nothing has to be
-supplied: the games and the flood environment are self-contained, the water, power grid,
-crop, epidemic, traffic and reservoir environments ship their benchmark data inside their
-dependencies, so they run offline, and Stable-Retro ships Airstriker. The one exception is a
-Game Boy cartridge for `game_boy`, which is copyrighted and comes from you.
-`tests/test_packaging.py` walks the import graph from each environment's entry point and fails
-if anything it reaches is undeclared, so a dependency that only works because another package
-happens to pull it in cannot go missing silently.
+supplied: the games and the flood, railway and inventory environments are self-contained, the
+water, power grid, crop, epidemic, traffic, reservoir and microgrid environments ship their
+benchmark data inside their dependencies, so they run offline, and Stable-Retro ships
+Airstriker. The one exception is a Game Boy cartridge for `game_boy`, which is copyrighted and
+comes from you. `tests/test_packaging.py` walks the import graph from each environment's entry
+point and fails if anything it reaches is undeclared, so a dependency that only works because
+another package happens to pull it in cannot go missing silently.
 
 These dependencies are not declared the plain way, because their publishers do not cover
-every platform. `tools/check_install.py` prints what the install in front of you covers and
+every platform or declare bounds the rest of the dependencies cannot meet. `tools/check_install.py` prints what the install in front of you covers and
 what is missing.
 
 - **pooltool** (billiards) is installed by `scripts/install_pooltool.py`. On Linux and Windows its
@@ -115,6 +120,14 @@ what is missing.
   `pip install` of it fails there with "No matching distribution found for panda3d". The
   script installs its dependencies with the released Panda3D 1.10 from PyPI and then pooltool
   without its list. Panda3D is pooltool's renderer; the physics is unaffected.
+- **Flatland** (railway) is installed by `scripts/install_flatland.py`. It declares `numpy<2`,
+  which has no Python 3.13 wheels, and upper bounds on matplotlib, networkx, contourpy and
+  rpds-py that the other dependencies exceed; the script installs it without its list and the
+  list beside it with those bounds dropped.
+- **OR-Gym** (inventory) is installed by `scripts/install_or_gym.py`. It declares `gym<=0.19`,
+  whose metadata current pip refuses, so the script installs it without its list and the list
+  beside it with Gym 0.26, which python-microgrid brings in. The inventory environment restores
+  the two numpy names OR-Gym uses that numpy 2 removed.
 - **pywr** (reservoirs) publishes wheels for Linux and Windows only, so the dependency list
   leaves it out on macOS. To have the reservoir environment there, build it from source:
   `brew install glpk`, then
@@ -384,7 +397,7 @@ env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 ```
 
 Rendering a trace is one image per state: a board's own text, typeset, or, for an environment
-whose state is a handful of readings (the ten operational environments and the tower
+whose state is a handful of readings (the thirteen operational environments and the tower
 defence), a chart of those readings over the plan so far,
 one panel per quantity, with the actions along the bottom. See
 [docs/rendering.md](docs/rendering.md).
@@ -510,6 +523,7 @@ planiverse/environments/
     ├── traffic/         # signals on a SUMO grid
     ├── airspace/        # crossing aircraft on BlueSky
     ├── reservoir/       # reservoir operations on pywr
+    ├── inventory/       # a multi-echelon supply chain on or-gym
     ├── microgrid/       # microgrid operations on python-microgrid
     ├── railway/         # train dispatching on Flatland
     └── water_network/, power_grid/, crop_management/, flood_transport/, network_attack/
@@ -579,6 +593,7 @@ planiverse/
 │       ├── traffic/                    # TrafficEnv: signals on a SUMO grid
 │       ├── airspace/                   # AirspaceEnv: crossing aircraft on BlueSky
 │       ├── reservoir/                  # ReservoirEnv: reservoir operations on pywr
+│       ├── inventory/                  # InventoryEnv: a multi-echelon supply chain on or-gym
 │       ├── microgrid/                  # MicrogridEnv: microgrid operations on python-microgrid
 │       ├── railway/                    # RailwayEnv: train dispatching on Flatland
 │       ├── flood_transport/            # FloodTransportEnv (after MAAT), a city drawn from a seed

@@ -7,7 +7,8 @@ planner might actually select on is here instead, including the family tags: `ga
 
     >>> from planiverse.environments import list_environments, make
     >>> [spec.name for spec in list_environments(tag="operational")]
-    ['crop_management', 'power_grid', 'water_network']
+    ['airspace', 'crop_management', 'epidemic', 'factory', 'flood_transport', 'inventory',
+     'microgrid', 'micropolis', 'power_grid', 'railway', 'reservoir', 'traffic', 'water_network']
     >>> env = make("puzznic")
 
 Nothing here imports an environment module. The specs are declarative and `make` imports
@@ -241,6 +242,18 @@ REGISTRY = (
         requires=("pywr",),
         docs="docs/environments/reservoir.md",
         tags=frozenset({"operational", "infrastructure", "water"}),
+    ),
+    EnvironmentSpec(
+        name="inventory",
+        factory="planiverse.environments.operational.inventory.environment:InventoryEnv",
+        summary="A multi-echelon supply chain on or-gym: set the retailer's and the upstream stages' order-up-to levels each period, keep lost sales within the allowance, and end the season at the profit target",
+        instances="100 seasons, generated",
+        generates="the demand distribution and the season's demand, the costs, the capacities, the lead times, the initial stock, the lost-sales allowance and the profit target",
+        deterministic=True,
+        state_identity="value",
+        requires=("or_gym",),
+        docs="docs/environments/inventory.md",
+        tags=frozenset({"operational", "supply-chain"}),
     ),
     EnvironmentSpec(
         name="microgrid",

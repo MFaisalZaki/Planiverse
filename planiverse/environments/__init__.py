@@ -4,7 +4,8 @@ One flat namespace, one base class, and a registry that carries the differences 
 
     >>> from planiverse.environments import list_environments, make
     >>> [spec.name for spec in list_environments(tag="operational")]
-    ['crop_management', 'power_grid', 'water_network']
+    ['airspace', 'crop_management', 'epidemic', 'factory', 'flood_transport', 'inventory',
+     'microgrid', 'micropolis', 'power_grid', 'railway', 'reservoir', 'traffic', 'water_network']
     >>> env = make("puzznic", index=0)
 """
 import sys

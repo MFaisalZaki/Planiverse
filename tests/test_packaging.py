@@ -55,6 +55,7 @@ ENTRY_POINTS = [
     "planiverse.environments.operational.traffic.environment",
     "planiverse.environments.operational.airspace.environment",
     "planiverse.environments.operational.reservoir.environment",
+    "planiverse.environments.operational.inventory.environment",
     "planiverse.environments.operational.microgrid.environment",
     "planiverse.environments.operational.railway.environment",
     "planiverse.environments.operational.water_network.environment",
