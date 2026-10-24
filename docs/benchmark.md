@@ -1,9 +1,9 @@
 # Benchmarking
 
-`planiverse-bench` is the library's evaluation protocol as code. It runs the four reference
-planner configurations (BFWS, IW, SIW and FSX) and the forty-one others, every planner the
-library has, on every instance of every environment, under fixed limits, with five
-seeds for every planner that takes one. `--reference` keeps `generate` to the four.
+`planiverse-bench` is the library's evaluation protocol as code. It runs the two reference
+planner configurations (BFWS and IW) and the eighteen others, every planner the library has,
+on every instance of every environment, under fixed limits, with five seeds for every planner
+that takes one. `--reference` keeps `generate` to the two.
 
 The harness is [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit)'s: its sandbox
 layout, its command files and SLURM job arrays, its local runner, and its `analyze` and
@@ -42,7 +42,7 @@ writers, it writes:
 - `sandbox/tasks.json`, every task and, per planner group, the runs expected of it. The toolkit's
   `analyze` reads it, so a job that never ran is `MISSING` rather than silently absent.
 - `sandbox/cmds/<group>.txt`, one `solve` command per instance, where a group is a planner
-  (`bfws`) or one seed of a seeded planner (`fsx-s3`). Line *n* is array element *n* of the
+  (`bfws`) or one seed of a seeded planner (`goexp-s3`). Line *n* is array element *n* of the
   group's arrays, so a failed element can be re-run by hand from its line.
 - `sandbox/slurm/pypmteval-<group>.sbatch`, a job array that reads that file by
   `$SLURM_ARRAY_TASK_ID`, throttled to `--parallel` elements at a time (default 50), and given
@@ -54,9 +54,9 @@ writers, it writes:
 
 Every environment but the two emulators has a hundred instances; the Game Boy has as many as the
 cartridge's wrapper offers, and Stable-Retro one per save state of its integration. There is one
-group per unseeded planner and five per seeded one: 25 unseeded and 20 seeded planners, so 125
-groups, each over every instance. `--reference` writes the four reference planners alone, 8
-groups (three for the deterministic width planners and five for FSX). The commands call the
+group per unseeded planner and five per seeded one: 12 unseeded and 8 seeded planners, so 52
+groups, each over every instance. `--reference` writes the two reference planners alone, 2
+groups, since both are deterministic. The commands call the
 interpreter that ran `generate` by absolute path, so the jobs need no activation and cannot pick
 up a different install. An environment that cannot be built here (a missing dependency) is
 skipped, and `generate` says so.
@@ -88,17 +88,15 @@ SLURM killed (`KILLED`) from one that never started (`MISSING`). The generated c
 | Memory | 8 GB, as an address-space limit, so an overrun is a `MemoryError` the run records |
 | Expansions | 500,000 |
 | Cores | one per run |
-| Seeds | 0 to 4 for FSX and every other planner that takes one, each (instance, seed) a full run under the limits above; BFWS, IW, SIW and the other deterministic planners run once |
+| Seeds | 0 to 4 for every planner that takes one, each (instance, seed) a full run under the limits above; BFWS, IW and the other deterministic planners run once |
 | Solved | only if the returned plan, replayed through `simulate`, reaches a goal |
 
 | Planner | Class | Parameters |
 |---|---|---|
 | `bfws` | `BFWS` | `width=1` |
 | `iw` | `IW` | `max_width=1000, strict=False` |
-| `siw` | `SIW` | `width=1, max_width=1000, strict=False` |
-| `fsx` | `FSXPlanner` | `horizon=6, walkers=8`, the run's seed; the distinct-state count, zero temperature and 200 committed steps are the class defaults |
 
-SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count a classical
+BFWS takes a `progress(state)` callback in place of the unachieved-goal count a classical
 planner would use, and so does every other planner that takes a heuristic.
 [`measures.py`](../planiverse/benchmark/measures.py) supplies one per environment, lower is
 better; they are search guides, not admissible heuristics, and nothing in the benchmark is a
@@ -121,8 +119,7 @@ Every run ends in exactly one of the toolkit's statuses:
 | `MISSING` | no result file; assigned by the toolkit's `analyze` |
 
 A search that stops on its own says the planner stopped looking, not that there is no plan: of
-the reference planners only BFWS is complete. For an online planner it means its walk ended at a
-dead end or the step cap. A search that reports `out_of_budget` without reaching either limit
+the reference planners only BFWS is complete. A search that reports `out_of_budget` without reaching either limit
 (an iterated search whose per-width allowances ran out) is filed at the expansion cap.
 
 Every environment is filed under the toolkit's `classical` track: each is a classical planning
@@ -144,24 +141,22 @@ followed by `pypmtevalcli report --sandbox-dir sandbox`:
 - `report/plots/`: survival (cactus) plots over time and memory, coverage and outcome bars, and
   runtime and plan-length scatters per pair of planners, as PDF and PNG.
 
-A seeded planner's seeds are separate groups (`fsx-s0` to `fsx-s4`), so the tables list them
+A seeded planner's seeds are separate groups (`goexp-s0` to `goexp-s4`), so the tables list them
 side by side rather than as a mean over seeds. The toolkit's line figures draw the first six
 planners and its scatters the first six pairs.
 
 ## The other planners
 
 Every planner in the library ([docs/planners/catalogue.md](planners/catalogue.md)) is
-registered in `planiverse/benchmark/planners.py` under its own tag, the four reference
-configurations and forty-one others covering every planner class the library exports and
-the documented variants of each (A* and weighted A* beside greedy best-first, local exploration by walks beside by
-search, iterated local search beside annealing, KPIECE beside EST and SST). The four that
-need more than one number from an environment get it from the progress measure: FESS
-searches the feature space it spans (`fess`), KPIECE projects onto it (`kpiece`), BFWS over
-boundary-extension features extends its range (`bee`), and multi-queue alternation pairs it
-with FSX's option count (`multi`). `generate` writes their jobs beside the reference planners',
-and `report` tabulates every group `tasks.json` expects, so a sandbox generated under
-`--reference` reports the four reference planners and nothing else. `solve` takes any tag, so
-one run can be made by hand:
+registered in `planiverse/benchmark/planners.py` under its own tag, the two reference
+configurations and eighteen others covering every planner class the library exports and the
+documented variants of each (A\* and weighted A\* beside greedy best-first, BFWS(R) beside
+BFWS). The two that need more than one number from an environment get it from the progress
+measure: FESS searches the feature space it spans (`fess`) and KPIECE projects onto it
+(`kpiece`). `generate` writes their jobs beside the reference planners', and `report`
+tabulates every group `tasks.json` expects, so a sandbox generated under `--reference` reports
+the two reference planners and nothing else. `solve` takes any tag, so one run can be made by
+hand:
 
 ```bash
 python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0
