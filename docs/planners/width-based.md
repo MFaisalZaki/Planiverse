@@ -7,9 +7,9 @@ novelty) are in the [catalogue](catalogue.md). IW at one fixed width is `IW(widt
 novelty tables are internals of `novelty.py`.
 
 The *novelty* of a state (i.e., the size of the smallest tuple of its atoms that has not appeared
-in any state seen before) is what IW filters on and BFWS orders on. A state with a brand-new atom has
-novelty 1, whereas one whose atoms have all been seen individually but which combines two of them
-in a new way has novelty 2.
+in any state seen before) is what IW filters on and BFWS orders on. A state with a brand-new
+atom has novelty 1, whereas one whose atoms have all been seen individually but which combines
+two of them in a new way has novelty 2.
 
 | Planner | Novelty is used as | Complete? |
 |---|---|---|
@@ -39,8 +39,7 @@ BFWS(width=1, progress=lambda s: s.contaminated).solve(env)
 BFWS(width=1, progress=lambda s: s.blocks_remaining, relevant="iw").solve(env)   # BFWS(R)
 ```
 
-Without one, BFWS becomes breadth-first search ordered by novelty alone. IW takes no callback:
-it needs nothing beyond `successors`, `literals` and the goal test.
+Without one, BFWS becomes breadth-first search ordered by novelty alone. IW takes no callback.
 
 **Expansions are expensive.** A water-network expansion is a full hydraulic and transport solve.
 So every search takes a `Budget` and returns `SearchStatistics`, because "found nothing" and "ran
