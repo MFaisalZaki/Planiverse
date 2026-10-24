@@ -197,16 +197,16 @@ paths to it.
 
 ## An example
 
-Instance `0` is a city of eight zones over thirty years with the 160 mm design storm every
-year, five years to a decision, so six decisions, and `elevate1` the only measure. The design
-storm floods four of the zones: `z01` to 0.18 m, `z03` to 0.90 m, `z06` to 0.26 m and `z07` to
-1.01 m. Doing nothing for thirty years costs 246.5 M DKK, the reference policy costs 159.6 M by
+Instance `0` is a city of eight zones over thirty years with the 160 mm design storm every year,
+five years to a decision, so six decisions, and `elevate1` the only measure. The design storm
+floods four of the zones: `z01` to 0.18 m, `z03` to 0.90 m, `z06` to 0.26 m and `z07` to 1.01 m.
+Doing nothing for thirty years costs 246.5 M DKK, the reference policy costs 159.6 M by
 elevating `z03` and then `z07` and waiting out the rest, and the target is 162.8 M. The five
 successors of the initial state show the first period's bill: waiting costs 41.1 M, and
 protecting `z07` costs 50.6 M, `z03` 52.9 M, `z01` 59.8 M and `z06` 188.9 M. The last is so dear
 because `z06` holds the city's only motorway and a trunk road, and elevating them costs 22% of
-their value. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a
-width bound of 1000), returns the six-decision plan
+their value. BFWS, run as the benchmark runs `bfws` (i.e., with the measure above, at width 1),
+returns the six-decision plan
 
 ```
 elevate1(z07), elevate1(z03), wait, wait, wait, wait
@@ -231,14 +231,14 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments import make
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = make("flood_transport")
 env.set_index(0)                   # eight zones, thirty years, the design storm every year
 state, info = env.reset()          # info["target"], info["reference"], info["do_nothing"]: 162.8e6, 159.6e6, 246.5e6 kroner
 print(state)                       # year 0 of 30 / protected: nothing / cost 0.00 M of 162.84 M DKK: ...
 
-result = DualBFWS(max_width=1000, progress=measures.flood_transport).solve(env)
+result = BFWS(width=1, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "flood_transport_chart.gif")                                   # animated

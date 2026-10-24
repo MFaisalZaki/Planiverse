@@ -149,7 +149,7 @@ and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.billiards.environment import BilliardsEnv, BilliardsAction
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = BilliardsEnv()
 env.set_index(0)
@@ -158,7 +158,7 @@ print(state)                       # where every ball lies, and the shots left
 for action, child in env.successors(state):
     print(action, len(child.object_balls), "balls left")
 
-result = DualBFWS(max_width=1000, progress=measures.billiards).solve(env)
+result = BFWS(width=1, progress=measures.billiards).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "billiards.gif")                                   # animated

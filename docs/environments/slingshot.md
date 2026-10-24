@@ -168,7 +168,7 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.slingshot.environment import SlingshotEnv, SlingshotAction
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = SlingshotEnv()
 env.set_index(0)
@@ -177,7 +177,7 @@ print(state)                       # what stands, where, and the shots left
 for action, child in env.successors(state):
     print(action, child.targets_left, "targets left")
 
-result = DualBFWS(max_width=1000, progress=measures.slingshot).solve(env)
+result = BFWS(width=1, progress=measures.slingshot).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "slingshot.gif")                                   # animated

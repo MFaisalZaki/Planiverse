@@ -154,14 +154,14 @@ solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.airspace.environment import AirspaceEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = AirspaceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: sector, aircraft, horizon, target, generated
 print(state)                       # t=0s, closest 99.0 nm; AC1 hdg 272 FL300 38.3 nm to go on course; ...
 
-result = DualBFWS(max_width=1000, progress=measures.airspace).solve(env)
+result = BFWS(width=1, progress=measures.airspace).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "airspace_chart.gif")                                   # animated

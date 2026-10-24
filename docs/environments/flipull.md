@@ -172,7 +172,7 @@ by solving the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.flipull.environment import FlipullGame
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = FlipullGame()
 env.set_index(0)
@@ -181,7 +181,7 @@ print(state)                       # the board above
 print(info)                        # {'stage': 0, 'generated': False, 'blocks': 25,
                                    #  'clear_target': 9, 'rows': 6}
 
-result = DualBFWS(max_width=1000, progress=measures.flipull).solve(env)
+result = BFWS(width=1, progress=measures.flipull).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "flipull.gif")                                   # animated

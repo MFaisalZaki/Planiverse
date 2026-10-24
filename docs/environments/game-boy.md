@@ -208,13 +208,13 @@ trace to `render_trace`:
 ```python
 from planiverse.environments.games.game_boy.environment import GameBoyEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = GameBoyEnv("/path/to/counter.gb")      # or any cartridge, see above
 env.set_index(0)
 env.reset()
 
-result = DualBFWS(max_width=1000, progress=measures.emulated).solve(env)
+result = BFWS(width=1, progress=measures.emulated).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "game_boy.gif")                                                # animated

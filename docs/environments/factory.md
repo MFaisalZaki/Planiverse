@@ -149,8 +149,8 @@ Instance `0` is a square patch of ore from `(-3, -3)` to `(3, 3)`, seven tiles b
 walls. The character starts at `(5.4, -11.6)` carrying two drills, two furnaces and six coal,
 with a target of 26 plates by a horizon of 7,200 ticks (two minutes). Fifteen decisions are open
 at the start: the eight walks, a drill on the one anchor within reach in each of its four
-facings, and the three waits. Dual BFWS, run as the benchmark runs `dual` (i.e., with the
-measure above and a width bound of 1000), returns a plan of thirty-eight decisions:
+facings, and the three waits. BFWS, run as the benchmark runs `bfws` (i.e., with the measure
+above, at width 1), returns a plan of thirty-eight decisions:
 
 ```
 place(drill, 3, -2, north), give(3, -2, coal, 1), wait(40), place(furnace, 3, -4),
@@ -184,14 +184,14 @@ handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.factory.environment import FactoryEnv, FactoryAction
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = FactoryEnv()
 env.set_index(0)
 state, info = env.reset()          # info: patch, family, target, horizon, generated
 print(state)                       # tick 0: at (5.4, -11.6); holds coal 6, drill 2, furnace 2; ...
 
-result = DualBFWS(max_width=1000, progress=measures.factory).solve(env)
+result = BFWS(width=1, progress=measures.factory).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "factory_chart.gif")                                   # animated

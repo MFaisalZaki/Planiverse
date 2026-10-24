@@ -151,7 +151,7 @@ low, so that little is bought that cannot be sold. The run-down loses 4 more sal
 seventeen, 29 of the 30 allowed, and the season ends at 271.17. The policy the season was accepted on (both levels high for
 sixteen periods, then both low for four) ends at 270.76, which is where the target comes from.
 
-![Dual BFWS solving inventory instance 0](../renders/inventory_chart.gif)
+![BFWS solving inventory instance 0](../renders/inventory_chart.gif)
 
 The render draws the readings of each state over the plan rather than the state's text, since a
 state here is a handful of numbers. The panels are the stock on hand at each stage, the period's
@@ -166,14 +166,14 @@ the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.inventory.environment import InventoryEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = InventoryEnv()
 env.set_index(0)
 state, info = env.reset()          # info: season, target, allowed, generated
 print(state)                       # period 0: on hand retailer 29, distributor 24, ...
 
-result = DualBFWS(max_width=1000, progress=measures.inventory).solve(env)
+result = BFWS(width=1, progress=measures.inventory).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "inventory_chart.gif")                                   # animated

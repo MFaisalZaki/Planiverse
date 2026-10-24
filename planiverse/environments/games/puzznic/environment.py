@@ -168,6 +168,10 @@ class PuzznicState:
     def __eq__(self, value):
         return self.grid == value.grid and self.cursor == value.cursor
 
+    def __hash__(self):
+        # The text is the grid and the cursor, which is what `__eq__` compares.
+        return hash(str(self))
+
     def __update__(self):
         # this function updates the boolean predicates of the state.
         self.literals = frozenset([f"at(cursor, {self.cursor.pos[0]}, {self.cursor.pos[1]})"])

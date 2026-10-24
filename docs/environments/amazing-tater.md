@@ -163,7 +163,7 @@ the instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.amazing_tater.environment import AmazingTaterGame
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = AmazingTaterGame()
 env.set_index(0)                   # choose the room before reset
@@ -173,7 +173,7 @@ print(info)                        # {'level_index': 0, 'level': 'A-01', 'genera
                                    #  'size': (15, 5), 'taters': 1, 'blocks': 0,
                                    #  'turnstiles': 3, 'pits': 0}
 
-result = DualBFWS(max_width=1000, progress=measures.amazing_tater).solve(env)
+result = BFWS(width=1, progress=measures.amazing_tater).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "amazing_tater.gif")                                   # animated

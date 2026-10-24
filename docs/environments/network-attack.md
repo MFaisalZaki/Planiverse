@@ -183,14 +183,14 @@ the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.network_attack.environment import EnvNASim
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = EnvNASim()
 env.set_index(0)                   # 'tiny'
 state, info = env.reset()          # info: instance, scenario, generated
 print(state)                       # host (1, 0): discovered, reachable
 
-result = DualBFWS(max_width=1000, progress=measures.network_attack).solve(env)
+result = BFWS(width=1, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)
 env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
 ```

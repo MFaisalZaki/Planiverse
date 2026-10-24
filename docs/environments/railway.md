@@ -161,14 +161,14 @@ and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.railway.environment import RailwayEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = RailwayEnv()
 env.set_index(0)
 state, info = env.reset()          # info: timetable, trains, cities, horizon, target, generated
 print(state)                       # step 0: 0 of 5 arrived, 0 running, 0 stopped, 5 waiting; ...
 
-result = DualBFWS(max_width=1000, progress=measures.railway).solve(env)
+result = BFWS(width=1, progress=measures.railway).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "railway_chart.gif")                                   # animated

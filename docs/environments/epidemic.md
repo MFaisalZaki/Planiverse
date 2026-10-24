@@ -135,14 +135,14 @@ trace to `render_trace`:
 ```python
 from planiverse.environments.operational.epidemic.environment import EpidemicEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = EpidemicEnv()
 env.set_index(0)
 state, info = env.reset()          # info: outbreak, weeks, capacity, budget, target, generated
 print(state)                       # week 0 of 12: 0 infectious, 0 in hospital (peak 0 of 144 beds), ...
 
-result = DualBFWS(max_width=1000, progress=measures.epidemic).solve(env)
+result = BFWS(width=1, progress=measures.epidemic).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "epidemic_chart.gif")                                   # animated

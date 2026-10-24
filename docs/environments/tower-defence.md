@@ -153,14 +153,14 @@ instance and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv, TowerAction, START
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = TowerDefenceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: map, waves, slots, gold, lives, generated
 print(state)                       # wave 0 fought, 4 lives, 100 gold; nothing built
 
-result = DualBFWS(max_width=1000, progress=measures.tower_defence).solve(env)
+result = BFWS(width=1, progress=measures.tower_defence).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "tower_defence_chart.gif")                                   # animated

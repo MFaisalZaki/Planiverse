@@ -122,13 +122,13 @@ periods still to run plus the cost so far as a share of the target.
 ## An example
 
 Instance `0` is pymgrid's microgrid 2, which has solar, a battery and a genset and no grid. The
-battery holds 66,116 kWh, of which the lowest fifth is out of reach, and charges or discharges at
-up to 16,529 kWh an hour. The genset runs between 2,429 and 43,726 kWh an hour at 0.6 a kWh in
-fuel and carbon. The instance starts on day 255 at 06:00 with the battery at 0.51 of its
+battery holds 66,116 kWh, of which the lowest fifth is out of reach, and charges or discharges
+at up to 16,529 kWh an hour. The genset runs between 2,429 and 43,726 kWh an hour at 0.6 a kWh
+in fuel and carbon. The instance starts on day 255 at 06:00 with the battery at 0.51 of its
 capacity, which is also the reserve, and runs 36 hours. The load over those hours is 858,690
 kWh, from 9,256 to 33,049 an hour, and solar could give 607,060 kWh, up to 45,394 an hour. The
-target allows a cost of 202,446.86. The twelve-period plan Dual-BFWS finds, which the render
-below shows, is
+target allows a cost of 202,446.86. The twelve-period plan BFWS finds, which the render below
+shows, is
 
 ```
 operate(cover, on), operate(store, on), operate(store, off), operate(cover, on),
@@ -147,7 +147,7 @@ target. The witness the instance was accepted on is `cover` throughout with the 
 backup, which costs the same: where the battery is at its floor `idle` and `cover` do the same
 thing, and where solar meets the load `store` and `cover` do too.
 
-![Dual-BFWS solving microgrid instance 0](../renders/microgrid_chart.gif)
+![BFWS solving microgrid instance 0](../renders/microgrid_chart.gif)
 
 The render draws the readings of each state over the plan rather than the state's text, since a
 state here is a handful of numbers. The panels are the period's load, solar, genset and grid
@@ -161,14 +161,14 @@ and handing the trace to `render_trace`:
 ```python
 from planiverse.environments.operational.microgrid.environment import MicrogridEnv
 from planiverse.benchmark import measures
-from planiverse.planners.width import DualBFWS
+from planiverse.planners.width import BFWS
 
 env = MicrogridEnv()
 env.set_index(0)
 state, info = env.reset()          # info: index, microgrid, start, horizon, target, reserve, ...
 print(state)                       # hour 0 of 36 (day 255, 06:00): battery at 0.51; ...
 
-result = DualBFWS(max_width=1000, progress=measures.microgrid).solve(env)
+result = BFWS(width=1, progress=measures.microgrid).solve(env)
 trace = env.simulate(result.plan)
 
 env.render_trace(trace, "microgrid_chart.gif")                                   # animated
