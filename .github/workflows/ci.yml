@@ -45,6 +45,11 @@ jobs:
       - name: Install pooltool, the billiards table
         run: python scripts/install_pooltool.py
 
+      - name: Install Flatland and OR-Gym, the railway and the inventory
+        run: |
+          python scripts/install_flatland.py
+          python scripts/install_or_gym.py
+
       # pywr publishes no macOS wheels; the README documents this build and this checks it.
       - name: Build pywr from source (macOS)
         if: runner.os == 'macOS'
@@ -88,6 +93,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           python scripts/install_pooltool.py
+          python scripts/install_flatland.py
+          python scripts/install_or_gym.py
 
       - name: Build the Micropolis engine
         run: |
