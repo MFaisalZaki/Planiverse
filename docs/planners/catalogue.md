@@ -109,11 +109,6 @@ deepening re-expand states on every iteration. `SuccessorCache` makes those re-e
 free in simulator calls, so the counted expansions are distinct states; their *time* is
 still exponential in `max_depth`, which is why their defaults are small.
 
-[`tree_search.py`](../../planiverse/planners/tree_search.py) holds `TreeSearchPlanner`, a
-small best-first search over a `Heuristic` and a `CostFunction`, the worked example the
-README's "Writing a planner" section walks through. As a search it is A\* on `progress`,
-which the benchmark runs as `astar`.
-
 ## Sampling, population and swarm planners (`planiverse/planners/sampling/`)
 
 | Class | File | Reference | Beyond `progress` it needs | Tag |
@@ -231,6 +226,5 @@ feature and their projection. See [docs/benchmark.md](../benchmark.md).
 | [`sampling/`](../../planiverse/planners/sampling/) | RHEA, CEM, NMCS, Go-Explore, MAP-Elites, kinodynamic trees, local search |
 | [`blind.py`](../../planiverse/planners/blind.py) | the three blind baselines |
 | [`pruning.py`](../../planiverse/planners/pruning.py), [`macros.py`](../../planiverse/planners/macros.py) | the add-ons |
-| [`tree_search.py`](../../planiverse/planners/tree_search.py) | `TreeSearchPlanner`, `Heuristic`, `CostFunction` |
 | [`benchmark/planners.py`](../../planiverse/benchmark/planners.py) | the benchmark registry |
 | [`tests/test_width_planners.py`](../../tests/test_width_planners.py), [`tests/test_sampling_planners.py`](../../tests/test_sampling_planners.py), [`tests/test_planners.py`](../../tests/test_planners.py) | the tests |

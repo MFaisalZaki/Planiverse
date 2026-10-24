@@ -186,10 +186,10 @@ env.render_trace(trace, "slingshot.gif")                                   # ani
 env.render_trace(trace, "slingshot.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes a `SlingshotAction`
-such as `SlingshotAction(20, 60)` or its name and returns the state and the targets the shot
-brought down. `env.render()` prints the history of `step` calls and returns it as a list of
-strings. See [docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_slingshot")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Levels
 

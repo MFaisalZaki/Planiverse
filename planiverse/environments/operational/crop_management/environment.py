@@ -322,7 +322,6 @@ class CropEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
         self._cache = {}
         self._providers = None
 
@@ -493,7 +492,6 @@ class CropEnv(Environment):
         if "reference" not in self.instance:
             self.__measure__()
         self.state = self.__state__(())
-        self.state_history = [self.state]
         return self.state, {"year": self.instance["year"],
                             "sow": tuple(self.instance["sow"]),
                             "scenario": self.scenario_index,
@@ -542,22 +540,6 @@ class CropEnv(Environment):
         amount = action.amount if isinstance(action, CropAction) else float(action)
         return self.__state__(state.schedule + (amount,))
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        """Stateful play. The reward is the biomass gained since the last decision."""
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.biomass
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.biomass - before
-
     def get_actions(self):
         return [CropAction(amount) for amount in self.amounts]
 
@@ -571,14 +553,6 @@ class CropEnv(Environment):
         days = decision_days()
         by_day = dict(REFERENCE_SCHEDULE)
         return [CropAction(by_day.get(day, 0.0)) for day in days]
-
-    def render(self):
-        rendered = [str(state) for state in self.state_history]
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
 
     def close(self):
         self._cache = {}

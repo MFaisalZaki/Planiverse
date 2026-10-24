@@ -71,8 +71,8 @@ Airstriker is six combinations, each costing 1:
 For a game the module has no entry for, the vocabulary is every combination the integration's
 discrete action space allows, which is 126 on a Genesis pad, and `actions=` on the constructor
 narrows it. Pressing holds the combination for `hold` frames. A name that is not a combination
-of the pad's buttons is refused with `ValueError`, and actions can be given to `simulate` and
-`step` as strings.
+of the pad's buttons is refused with `ValueError`, and actions can be given to `simulate` as
+strings.
 
 `successors` tries every action from the state's save state and drops the ones that change
 nothing. Note that under a survival goal the step count is part of the state, so every action
@@ -197,10 +197,10 @@ env.render_trace(trace, "retro.gif")                                            
 env.render_trace(trace, "retro.png", actions=result.plan, env=env, max_states=12)   # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and how far
-the progress measure fell (one per action under a survival goal). `render()` returns the
-console's frames for the positions `step` played through, as arrays (see
-[Rendering](#rendering)). See [docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_retro")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Generating instances
 
@@ -238,10 +238,10 @@ This is off by default: a survival goal is deep, and an emulator expansion is no
 
 ## Rendering
 
-`render()` returns the console's frames for the positions `step` played through, as `(height,
-width, 3)` arrays. `render(target)` and `render_trace` write a trace as a GIF, a contact sheet
-or a directory of PNGs of those frames. Each frame is captioned with its step, the action that
-produced it and whether it is a goal or a dead end. The variables are `str(state)`.
+`frames(trace)` returns the console's own frames, one per state of a trace. `render_trace`
+writes a trace as a GIF, a contact sheet or a directory of PNGs of those frames. Each frame is
+captioned with its step, the action that produced it and whether it is a goal or a dead end. The
+variables are `str(state)`.
 
 ## Caveats
 

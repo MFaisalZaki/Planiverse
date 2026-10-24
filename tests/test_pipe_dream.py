@@ -202,13 +202,12 @@ def test_the_text_draws_laid_and_run_pipe_differently(tiny):
     assert "═" in str(trace[-1]) and "carried 3 of 3" in str(trace[-1])
 
 
-def test_simulate_and_step_agree(tiny):
+def test_simulate_and_successors_agree(tiny):
     plan = [PipeAction(1, 0), DISCARD, FLUSH]
     trace = tiny.simulate(plan)
-    tiny.reset()
-    for action in plan:
-        state, gained = tiny.step(action)
-    assert state == trace[-1] and len(tiny.render()) == 4
+    assert len(trace) == len(plan) + 1
+    for state, action, after in zip(trace, plan, trace[1:]):
+        assert next(child for move, child in tiny.successors(state) if move == action) == after
 
 
 def test_set_instance_checks_its_shape():

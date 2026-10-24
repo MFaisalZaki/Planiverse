@@ -300,7 +300,6 @@ class GameBoyEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
         self._start_fields = {}
         self._initial = None                  # (instance key, compressed snapshot)
         self.__boot__({"ticks": BOOT_FRAMES}, 0)   # to learn the wrapper, and so the profile
@@ -460,7 +459,6 @@ class GameBoyEnv(Environment):
             self._start_fields = self.__start__()
             self._initial = (key, self.__snapshot__())
         self.state = self.__observe__(0, 0)
-        self.state_history = [self.state]
         return self.state, {"rom": os.path.basename(self.rom),
                             "wrapper": type(self._wrapper).__name__,
                             "index": instance["index"],
@@ -499,21 +497,6 @@ class GameBoyEnv(Environment):
         self.__press__(action)
         return self.__observe__(state.steps + 1, state.depth + 1)
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.progress
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, (before - self.state.progress) if before is not None else 0
-
     def get_actions(self):
         return [GBAction(name) for name in self.actions]
 
@@ -525,13 +508,6 @@ class GameBoyEnv(Environment):
             self._pyboy.tick(1, True)
             frames.append(self._pyboy.screen.image.copy())
         return frames
-
-    def render(self, target=None, **kwargs):
-        """The console's own frames for the positions `step` played through, as PIL images,
-        or written to `target` through `render_trace` when one is given."""
-        if target is None:
-            return self.frames(self.state_history)
-        return self.render_trace(self.state_history, target, **kwargs)
 
     def render_trace(self, trace, target, **kwargs):
         """Write a trace to `target` as the console's frames, captioned from the states."""

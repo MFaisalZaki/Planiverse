@@ -18,18 +18,19 @@ on, including the tags that used to be package directories.
 REQUIRED_METHODS = ("reset", "set_index", "set_instance", "generate_instance", "successors",
                     "is_goal", "is_terminal", "simulate")
 
-#: Methods a planner should check for. `capabilities()` reports which are present.
-OPTIONAL_METHODS = ("step", "validate", "get_actions", "render", "close")
+#: Methods a planner should check for. `capabilities()` reports which are present. Stateful
+#: play is the environment's OpenSpiel game (`planiverse/spiel.py`), and drawing a trace is
+#: `render_trace`, so neither is a method here.
+OPTIONAL_METHODS = ("validate", "get_actions", "close")
 
 
 def _stub(method):
     """Mark a default that only explains its own absence.
 
-    The distinction matters to `capabilities()`. `validate` has a *working* default derived
-    from `simulate` and `is_goal`, so an environment that does not override it still offers
-    it. `step` and `get_actions` have defaults that only raise, so an environment that does
-    not override them does not offer them at all. Overriding is the wrong test, and so is
-    `hasattr`.
+    The distinction matters to `capabilities()`. `simulate` and `validate` have *working*
+    defaults, so an environment that does not override them still offers them.
+    `get_actions` has a default that only raises, so an environment that does not override
+    it does not offer it at all. Overriding is the wrong test, and so is `hasattr`.
     """
     method.__planiverse_stub__ = True
     return method
@@ -113,11 +114,29 @@ class Environment:
         """Is this a dead end (no goal reachable from here)?"""
         raise NotImplementedError(f"{type(self).__name__} must implement is_terminal()")
 
-    @_stub
     def simulate(self, plan):
         """Replay `plan` from the initial state and return the full state trace, which is
-        one longer than the plan."""
-        raise NotImplementedError(f"{type(self).__name__} must implement simulate()")
+        one longer than the plan.
+
+        Defined once here: an environment that can apply one action to a state names that
+        `__advance__(state, action)`, and the replay is that, applied in turn. One that
+        cannot is replayed through `successors`, which stops being possible at the first
+        action that does not apply.
+        """
+        state, _ = self.reset()
+        trace = [state]
+        advance = getattr(self, "__advance__", None)
+        for action in plan:
+            if advance is not None:
+                trace.append(advance(trace[-1], action))
+                continue
+            for candidate, successor in self.successors(trace[-1]):
+                if candidate == action:
+                    trace.append(successor)
+                    break
+            else:
+                raise ValueError(f"{action!r} does not apply at step {len(trace) - 1}")
+        return trace
 
     def validate(self, plan):
         """A plan is valid when replaying it from the initial state reaches a goal.
@@ -128,15 +147,8 @@ class Environment:
         return self.is_goal(self.simulate(plan)[-1])
 
     # ------------------------------------------------------------------- extensions
-    # Stateful play and a static action list only make sense for some environments. The
-    # defaults say what the environment does not offer, rather than letting Python report
-    # what it could not find.
-
-    @_stub
-    def step(self, action):
-        """Stateful play, as opposed to expansion: advance the environment's own state."""
-        raise NotImplementedError(
-            f"{type(self).__name__} does not offer stateful play; expand with successors()")
+    # A static action list only makes sense for some environments. The default says what the
+    # environment does not offer, rather than letting Python report what it could not find.
 
     @_stub
     def get_actions(self):

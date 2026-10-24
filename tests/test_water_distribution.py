@@ -266,17 +266,12 @@ def test_the_easiest_scenario_is_solvable_and_validates(env):
     pytest.fail("no two-closure solution found, but the scenario records one")
 
 
-def test_simulate_and_step_track_the_history(env):
+def test_simulate_tracks_the_history(env):
     state, _ = env.reset()
     plan = [action for action, _ in env.successors(state)[:2]]
     trace = env.simulate(plan)
     assert len(trace) == 3 and [s.depth for s in trace] == [0, 1, 2]
-
-    env.reset()
-    after, cut = env.step(plan[0])
-    assert after.closed == {plan[0].pipe}
-    assert cut == pytest.approx(state.contaminated - after.contaminated)
-    assert len(env.render()) == 2
+    assert trace[1].closed == {plan[0].pipe}
 
 
 # ------------------------------------------------------------------------- housekeeping

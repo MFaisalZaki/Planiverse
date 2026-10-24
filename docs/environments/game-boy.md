@@ -97,7 +97,7 @@ Pressing holds the buttons for `hold` frames, releases them, and settles. The fo
 the fork expose `settle()`, which runs the game to its next stable frame after a press; the
 others get `settle=` frames, or one. A wrapper that declares its own `press_ticks` wins over the
 profile's `hold`, and `actions=` and `hold=` on the constructor override both. Actions can be
-given to `simulate` and `step` as strings.
+given to `simulate` as strings.
 
 `successors` tries every action in the vocabulary from the state's save state and drops the ones
 that change nothing (a `nop` on a still menu, a wall bumped into). Note that under a survival
@@ -227,10 +227,10 @@ env.render_trace(trace, "game_boy.gif")                                         
 env.render_trace(trace, "game_boy.png", actions=result.plan, env=env, max_states=12)   # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and how far
-the profile's progress fell. `render()` returns the console's frames for the positions `step`
-played through, as PIL images (see [Rendering](#rendering)). See
-[docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_game_boy")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Profiles
 
@@ -301,11 +301,11 @@ an emulator expansion is milliseconds and a search of a real level is minutes.
 
 ## Rendering
 
-`render()` returns the console's own frames, one PIL image per position `step` played through.
-`render(target)` and `render_trace` write a trace as a GIF, a contact sheet or a directory of
-PNGs of those frames. Each frame is captioned with its step, the action that produced it and
-whether it is a goal or a dead end. `charts=False` and the other `render_trace` options apply as
-elsewhere; the state's text (the tile grid and the fields) is `str(state)`.
+`frames(trace)` returns the console's own frames, one per state of a trace. `render_trace`
+writes a trace as a GIF, a contact sheet or a directory of PNGs of those frames. Each frame is
+captioned with its step, the action that produced it and whether it is a goal or a dead end.
+`charts=False` and the other `render_trace` options apply as elsewhere; the state's text (the
+tile grid and the fields) is `str(state)`.
 
 ## Caveats
 

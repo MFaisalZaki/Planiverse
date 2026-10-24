@@ -168,12 +168,13 @@ env.render_trace(trace, "tower_defence_chart.gif")                              
 env.render_trace(trace, "tower_defence_chart.png", actions=result.plan, env=env)     # the sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes a `TowerAction` such as
-`TowerAction("arrow", 2)` or `START` and returns the state and the lives lost since the last one.
-The readings each environment charts, and the panels they go on, are in
-[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False` asks
-`render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md) covers the
-other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_tower_defence")`, whose `apply_action` advances a state (see
+[Through OpenSpiel](../../README.md#through-openspiel)). The readings each environment charts,
+and the panels they go on, are in
+[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
+asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
+covers the other output formats.
 
 ## Maps
 

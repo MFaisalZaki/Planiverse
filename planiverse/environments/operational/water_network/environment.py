@@ -335,7 +335,6 @@ class WaterNetworkEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
 
         self._wn = None
         self._cache = {}
@@ -539,7 +538,6 @@ class WaterNetworkEnv(Environment):
         self.candidates = self.__candidates__()
         self.state = self.__state__(frozenset(), 0)
         self.baseline = self.state
-        self.state_history = [self.state]
         return self.state, {"network": self.instance["network"],
                             "source": self.instance["source"],
                             "scenario": self.scenario_index,
@@ -589,33 +587,8 @@ class WaterNetworkEnv(Environment):
         pipe = action.pipe if isinstance(action, WaterNetworkAction) else action
         return self.__state__(state.closed | {pipe}, state.depth + 1)
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        """Stateful play. The reward is the contamination cut since the incident began."""
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.contaminated
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.contaminated
-
     def get_actions(self):
         return [WaterNetworkAction(pipe) for pipe in self.candidates]
-
-    def render(self):
-        """Print the history of `step` calls, and return it as strings."""
-        rendered = [str(state) for state in self.state_history]
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
 
     def close(self):
         shutil.rmtree(self._workdir, ignore_errors=True)

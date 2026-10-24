@@ -212,13 +212,13 @@ env.render_trace(trace, "factory_chart.gif")                                   #
 env.render_trace(trace, "factory_chart.png", actions=result.plan, env=env)     # the sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes an action or its name
-and returns the state and the plates gained. `successors(state)` returns the action and state
-pairs the simulator accepts, and `env.render()` prints the history of `step` calls as lines of
-text and returns them:
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_factory")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs the simulator accepts:
 
 ```python
-state, gained = env.step("place(drill, 3, -2, north)")
+state = env.simulate(["place(drill, 3, -2, north)"])[-1]
 for action, child in env.successors(state):
     print(action, child.tick, child.plates)
 ```

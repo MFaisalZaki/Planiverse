@@ -177,7 +177,6 @@ class AirspaceEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
         self.__loaded__ = None
@@ -389,7 +388,6 @@ class AirspaceEnv(Environment):
             self.set_index(0)
         self._start()
         self.state = self._read((), 0)
-        self.state_history = [self.state]
         return self.state, {"sector": self.index, "aircraft": len(self.instance["aircraft"]),
                             "horizon": self.instance["horizon"], "target": self.instance["target"],
                             "generated": self.index is None}
@@ -438,26 +436,6 @@ class AirspaceEnv(Environment):
         self._apply(action)
         self.__loaded__ = state.instructions + (action,)
         return self._read(self.__loaded__, state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = len(self.state.flying)
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - len(self.state.flying)
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
 
     def close(self):
         self.__loaded__ = None

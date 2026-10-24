@@ -251,16 +251,11 @@ def test_the_same_action_is_worth_anything_from_nothing_to_the_crop(env):
     assert gains[-1] < max(gains), "past the peak the same water is worth less again"
 
 
-def test_simulate_and_step_track_the_history(env):
+def test_simulate_tracks_the_history(env):
     state, _ = env.reset()
     trace = env.simulate([CropAction(0.0), CropAction(2.0)])
     assert len(trace) == 3 and [s.depth for s in trace] == [0, 1, 2]
-
-    env.reset()
-    after, growth = env.step(CropAction(2.0))
-    assert after.schedule == (2.0,)
-    assert isinstance(growth, float)
-    assert len(env.render()) == 2
+    assert env.simulate([CropAction(2.0)])[-1].schedule == (2.0,)
 
 
 def test_a_generated_season_reproduces_from_its_seed():

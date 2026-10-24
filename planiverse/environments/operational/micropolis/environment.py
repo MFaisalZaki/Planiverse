@@ -192,7 +192,6 @@ class MicropolisEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -278,7 +277,6 @@ class MicropolisEnv(Environment):
         if self.instance is None:
             self.set_index(0)
         self.state = self.__state__(())
-        self.state_history = [self.state]
         return self.state, {"city": self.index, "years": self.instance["years"],
                             "target": self.instance["target"], "sites": SITES,
                             "generated": self.index is None}
@@ -314,27 +312,6 @@ class MicropolisEnv(Environment):
         if action.kind is not None and (action.site in taken or not 0 <= action.site < SITES):
             return state
         return self.__state__(state.decisions + ((action.kind, action.site),), state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.population
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.population - before
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled cities: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

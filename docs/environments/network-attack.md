@@ -196,7 +196,7 @@ trace = env.simulate(result.plan)
 env.render_trace(trace, "network_attack.png", actions=result.plan, env=env)
 ```
 
-There is no stateful `step` here and no static action list: expansion goes through
+There is no static action list here: expansion goes through
 `successors(state)`, which needs `reset()` first, and `simulate(plan)` replays a plan from a fresh
 reset and returns the trace. A scenario can also be named directly instead of selected by index,
 or a scenario file of your own loaded through `nasim.load`:

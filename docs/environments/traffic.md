@@ -168,11 +168,12 @@ env.render_trace(trace, "traffic_chart.png", actions=result.plan, env=env)     #
 env.close()                                                                    # shuts SUMO down
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes an action or its name
-(e.g., `"switch(B1)"`) and returns the state and the vehicles arrived since the last one.
-`successors(state)` returns the action and state pairs for all seventeen actions, and `close()`
-shuts the simulator down. The readings each environment charts, and the panels they go on, are
-in [`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_traffic")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs for all seventeen actions, and `close()` shuts the simulator down. The readings each
+environment charts, and the panels they go on, are in
+[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
 asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
 covers the other output formats.
 

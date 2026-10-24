@@ -189,14 +189,14 @@ env.render_trace(trace, "water_network_chart.png", actions=result.plan, env=env)
 env.close()                        # removes the simulator's scratch directory
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and the
-contamination cut since the last one. `successors(state)` returns the action and state pairs for
-the candidate pipes not yet closed, and `get_actions()` lists every candidate whatever the
-state. `env.render()` prints the history of `step` calls and returns it as a list of strings.
-The readings each environment charts, and the panels they go on, are in
-[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
-asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
-covers the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_water_network")`, whose `apply_action` advances a state (see
+[Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
+and state pairs for the candidate pipes not yet closed, and `get_actions()` lists every
+candidate whatever the state. The readings each environment charts, and the panels they go on,
+are in [`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py);
+`charts=False` asks `render_trace` for the state's text instead, and
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios
 

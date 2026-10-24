@@ -280,7 +280,6 @@ class FactoryEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
         self.sim = None
@@ -505,7 +504,6 @@ class FactoryEnv(Environment):
         self.__snapshots__ = OrderedDict()
         self.__loaded__ = ()
         self.state = self._read_state((), 0)
-        self.state_history = [self.state]
         return self.state, {"patch": self.index, "family": self.instance["family"],
                             "target": self.instance["target"], "horizon": self.instance["horizon"],
                             "generated": self.index is None}
@@ -599,26 +597,6 @@ class FactoryEnv(Environment):
         if child == state:
             return state
         return child
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.plates
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.plates - before
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
 
     def close(self):
         self.sim = None

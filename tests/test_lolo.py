@@ -467,13 +467,10 @@ def test_facing_is_part_of_the_identity():
     assert facing_up != facing_down
 
 
-def test_step_reports_the_hearts_it_collected():
-    instance = game(38)
-    _, reward = instance.step("right")
-    assert reward == 0
-    for _ in range(2):
-        _, reward = instance.step("right")
-    assert reward == 1, "the third step right lands on a heart"
+def test_the_third_step_right_collects_a_heart():
+    trace = game(38).simulate(["right"] * 3)
+    assert trace[2].hearts_left == trace[0].hearts_left
+    assert trace[3].hearts_left == trace[0].hearts_left - 1
 
 
 def test_get_actions_offers_the_four_directions_and_the_shot():

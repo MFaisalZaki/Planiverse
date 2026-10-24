@@ -804,7 +804,6 @@ class LoloGame(Environment):
         self.witness = None
         self.room = None
         self.state = None
-        self.state_history = []
         #: Rooms are immutable and states compare their room by identity, so a room reached by
         #: two different `reset` calls has to be the same object or nothing found in one run
         #: would ever equal anything found in another.
@@ -876,7 +875,6 @@ class LoloGame(Environment):
             frozenset(), start_alive, frozenset(), self.magic_shots, None,
             dead=blocked_by_medusa(self.room, self.room.start_framers, frozenset(),
                                    self.room.start_hearts, start_alive, self.room.start))
-        self.state_history = [self.state]
         return self.state, {"room_index": self.index,
                             "room": self.room.label,
                             "generated": self.index is None,
@@ -915,32 +913,8 @@ class LoloGame(Environment):
         successor = shoot(state) if name == SHOOT else move(state, name)
         return state if successor is None else successor
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.hearts_left
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.hearts_left
-
     def get_actions(self):
         return [LoloAction(name) for name in DIRECTIONS] + [LoloAction(SHOOT)]
-
-    def render(self):
-        rendered = [str(state) for state in self.state_history]
-        for step_index, text in enumerate(rendered):
-            print(f"Step: {step_index}")
-            print(text)
-            print("--------------")
-        return rendered
-
 
 if __name__ == "__main__":
     import argparse

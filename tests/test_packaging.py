@@ -62,7 +62,6 @@ ENTRY_POINTS = [
     "planiverse.environments.games.retro.environment",
     "planiverse.benchmark",
     "planiverse.rendering.trace",
-    "planiverse.planners.tree_search",
     "planiverse.spiel",
 ]
 

@@ -191,10 +191,10 @@ env.render_trace(trace, "lemmings.gif")                                   # anim
 env.render_trace(trace, "lemmings.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes a `LemmingsAction` such as
-`LemmingsAction("basher", 2)`, `WAIT` or a name and returns the state and the lemmings saved since
-the last one. `env.render()` prints the history of `step` calls and returns it as a list of
-strings. See [docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_lemmings")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Levels
 

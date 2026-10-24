@@ -103,14 +103,9 @@ def test_successors_obey_the_contract_and_spend_a_shot(env):
     assert all(child != state for _, child in children), "a miss is not offered"
 
 
-def test_simulate_and_step_agree(env):
-    plan = [ACTIONS[0], ACTIONS[1]]
-    trace = env.simulate(plan)
-    env.reset()
-    for action in plan:
-        state, _ = env.step(action)
-    assert state == trace[-1] and len(trace) == 3
-    assert len(env.render()) == 3
+def test_simulate_replays_the_plan(env):
+    trace = env.simulate([ACTIONS[0], ACTIONS[1]])
+    assert len(trace) == 3 and trace[0] == env.reset()[0]
 
 
 # ------------------------------------------------------------------------------- instances

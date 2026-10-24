@@ -141,13 +141,12 @@ def test_actions_parse_and_print():
         LemmingsAction("climber", 0)
 
 
-def test_simulate_and_step_agree(env):
+def test_simulate_and_successors_agree(env):
     plan = [WAIT, WAIT, WAIT]
     trace = env.simulate(plan)
-    env.reset()
-    for action in plan:
-        state, _ = env.step(action)
-    assert state == trace[-1] and len(env.render()) == 4
+    assert len(trace) == len(plan) + 1
+    for state, action, after in zip(trace, plan, trace[1:]):
+        assert next(child for move, child in env.successors(state) if move == action) == after
 
 
 # ------------------------------------------------------------------------------- instances

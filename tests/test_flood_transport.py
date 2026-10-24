@@ -165,13 +165,12 @@ def test_actions_parse_from_their_names():
         FloodAction("flee", "z01")
 
 
-def test_get_actions_and_step(env):
+def test_get_actions_and_simulate(env):
     state, _ = env.reset()
     actions = env.get_actions()
     assert actions[0].kind == "wait" and len(actions) == 1 + len(env.__city__()["flooded"])
-    state, reward = env.step("wait")
-    assert state.step == 1 and reward < 0, "a period's costs come back as a negative reward"
-    assert len(env.render()) == 2
+    before, after = env.simulate(["wait"])
+    assert after.step == 1 and after.cost > before.cost, "a period's costs accumulate"
 
 
 def test_search_finds_a_plan_that_meets_the_target(env):

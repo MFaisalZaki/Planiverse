@@ -272,7 +272,7 @@ def test_simulate_replays_a_plan_from_the_start(env):
     assert trace[0] == state
 
 
-def test_simulate_and_step_agree(env):
+def test_simulate_and_successors_agree(env):
     state, _ = env.reset()
     plan, node = [], state
     for _ in range(6):
@@ -281,13 +281,7 @@ def test_simulate_and_step_agree(env):
             break
         action, node = successors[-1]
         plan.append(action)
-
-    stepped = FlipullGame()
-    stepped.set_index(0)
-    stepped.reset()
-    for action in plan:
-        stepped.step(action)
-    assert stepped.state == env.simulate(plan)[-1]
+    assert node == env.simulate(plan)[-1]
 
 
 def test_replaying_the_same_plan_gives_the_same_trace(env):
@@ -299,18 +293,11 @@ def test_replaying_the_same_plan_gives_the_same_trace(env):
     assert first == second
 
 
-def test_step_reports_how_many_blocks_went(env):
+def test_a_throw_clears_blocks(env):
     state, _ = env.reset()
     assert "throw" in {action.name for action, _ in env.successors(state)}
-    _, cleared = env.step(FlipullAction("throw"))
-    assert cleared >= 1
-
-
-def test_step_before_reset_is_an_error():
-    game = FlipullGame()
-    game.set_index(0)
-    with pytest.raises(ValueError, match="reset"):
-        game.step(FlipullAction("throw"))
+    before, after = env.simulate([FlipullAction("throw")])
+    assert after.blocks_remaining < before.blocks_remaining
 
 
 def test_a_goal_state_is_absorbing(env):
@@ -372,14 +359,6 @@ def test_an_action_that_does_not_exist_is_refused():
 
 def test_get_actions_lists_the_whole_alphabet(env):
     assert {a.name for a in env.get_actions()} == {"up", "down", "throw"}
-
-
-def test_render_prints_the_history(env, capsys):
-    state, _ = env.reset()
-    env.step(FlipullAction("throw"))
-    rendered = env.render()
-    assert len(rendered) == 2
-    assert "held:" in capsys.readouterr().out
 
 
 def test_the_state_marks_the_row_the_player_is_on(env):

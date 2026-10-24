@@ -425,7 +425,6 @@ class FloodTransportEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
         self._city = None
         self._years = {}                         # (protected, rain) -> a year's impacts
         self._reference_plan = None
@@ -514,7 +513,6 @@ class FloodTransportEnv(Environment):
             self.set_index(0)
         self.__measure__()
         self.state = self.__initial__()
-        self.state_history = [self.state]
         instance = self.instance
         return self.state, {"zones": len(instance["zones"]), "years": instance["years"],
                             "period": instance["period"],
@@ -536,32 +534,11 @@ class FloodTransportEnv(Environment):
             return []
         return [(action, self.__advance__(state, action)) for action in self.__candidates__(state)]
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.cost
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.cost
-
     def get_actions(self):
         """Every action the instance offers, whichever year it is."""
         city = self.__city__()
         return [FloodAction("wait")] + [FloodAction(kind, zone) for kind in self.instance["measures"]
                                         for zone in city["flooded"]]
-
-    def render(self):
-        history = [str(state) for state in self.state_history]
-        for line in history:
-            print(line)
-        return history
 
     # ------------------------------------------------------------------ the model
 

@@ -311,7 +311,6 @@ class PowerGridEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
 
         self._env = None
         self._converter = None
@@ -508,7 +507,6 @@ class PowerGridEnv(Environment):
         self.__release_cursor__()
         self._cache = {}
         self.state = self.__state__(())
-        self.state_history = [self.state]
         return self.state, {"grid": self.grid_name,
                             "chronic": self.instance["chronic"],
                             "offset": self.instance["offset"],
@@ -598,34 +596,9 @@ class PowerGridEnv(Environment):
         action_id = action.action_id if isinstance(action, PowerGridAction) else int(action)
         return self.__state__(state.path + (action_id,))
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        """Stateful play. The reward is how much the worst line loading came down."""
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.max_rho
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        relief = before - self.state.max_rho
-        return self.state, relief if relief == relief and abs(relief) != float("inf") else 0.0
-
     def get_actions(self):
         """Every topology action the case has, whatever state it is in."""
         return [PowerGridAction(action_id) for action_id in range(self.__converter__().n)]
-
-    def render(self):
-        rendered = [str(state) for state in self.state_history]
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
 
     def close(self):
         self.__release_cursor__()

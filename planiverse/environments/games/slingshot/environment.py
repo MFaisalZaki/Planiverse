@@ -290,7 +290,6 @@ class SlingshotEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -352,7 +351,6 @@ class SlingshotEnv(Environment):
         if self.instance is None:
             self.set_index(0)
         self.state = SlingshotState(self.instance["bodies"], self.instance["shots"])
-        self.state_history = [self.state]
         return self.state, {"level": self.index, "targets": self.state.targets_left,
                             "shots": self.instance["shots"], "generated": self.index is None}
 
@@ -380,29 +378,8 @@ class SlingshotEnv(Environment):
         bodies = shoot(state.bodies, action)
         return SlingshotState(bodies, state.shots_left - 1, state.depth + 1)
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.targets_left
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.targets_left
-
     def get_actions(self):
         return list(ACTIONS)
-
-    def render(self):
-        lines = [f"step {k}:\n{state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled levels: `generate_instance(seed, targets=n)` for the seed and target count
 #: beside each, embedded as the plain data `set_instance` takes, with the plan each was

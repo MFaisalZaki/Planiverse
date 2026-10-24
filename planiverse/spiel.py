@@ -38,7 +38,9 @@ import random
 
 import pyspiel
 
+from planiverse.environments.base import Environment
 from planiverse.environments.registry import REGISTRY, make
+from planiverse.planners.common import SuccessorCache
 
 _NO_SEED = -1
 
@@ -86,7 +88,7 @@ class PlaniverseGame(pyspiel.Game):
         if self.env.provides("get_actions"):
             self.actions = list(dict.fromkeys(self.env.get_actions()))
         self.ids = {action: i for i, action in enumerate(self.actions)}
-        self.children = {}                # literals -> {action id: state}, one expansion each
+        self.cache = SuccessorCache(self.env)
         bound = max(len(self.actions), params.get("max_actions", 100_000))
         info = pyspiel.GameInfo(num_distinct_actions=bound, max_chance_outcomes=0,
                                 num_players=1, min_utility=0.0, max_utility=1.0,
@@ -107,12 +109,8 @@ class PlaniverseGame(pyspiel.Game):
         return self.ids[action]
 
     def expand(self, inner):
-        children = self.children.get(inner.literals)
-        if children is None:
-            children = {self.action_id(action): child
-                        for action, child in self.env.successors(inner)}
-            self.children[inner.literals] = children
-        return children
+        """`{action id: successor}`, from one simulator expansion per state."""
+        return {self.action_id(action): child for action, child in self.cache.expand(inner)}
 
 
 class PlaniverseState(pyspiel.State):
@@ -210,7 +208,7 @@ class SpielNode:
         return str(self.state)
 
 
-class SpielEnvironment:
+class SpielEnvironment(Environment):
     """Any single-player `pyspiel.Game`, through the contract the planners are written to.
 
     `goal(state)` decides which terminal states are goals; by default a terminal state with a
@@ -221,13 +219,10 @@ class SpielEnvironment:
         if game.num_players() != 1:
             raise ValueError("planning needs a single-player game; "
                              f"{game.get_type().short_name} has {game.num_players()}")
+        super().__init__(game.get_type().short_name)
         self.game = game
-        self.name = game.get_type().short_name
         self.goal = goal or (lambda state: state.returns()[0] > 0)
         self.seed = seed
-
-    def provides(self, name):
-        return False
 
     def _settle(self, state):
         """Resolve chance nodes, the same way every time for the same history."""
@@ -240,36 +235,24 @@ class SpielEnvironment:
     def reset(self):
         return SpielNode(self._settle(self.game.new_initial_state())), {}
 
+    def __advance__(self, node, action):
+        state = node.state.clone()
+        state.apply_action(action)
+        return SpielNode(self._settle(state))
+
     def successors(self, node):
         if node.state.is_terminal():
             return []
-        children = []
-        for action in node.state.legal_actions():
-            child = node.state.clone()
-            child.apply_action(action)
-            child = SpielNode(self._settle(child))
-            if child.literals != node.literals:
-                children.append((action, child))
-        return children
+        children = [(action, self.__advance__(node, action))
+                    for action in node.state.legal_actions()]
+        return [(action, child) for action, child in children
+                if child.literals != node.literals]
 
     def is_goal(self, node):
         return node.state.is_terminal() and self.goal(node.state)
 
     def is_terminal(self, node):
         return node.state.is_terminal()
-
-    def simulate(self, plan):
-        node, _ = self.reset()
-        trace = [node]
-        for action in plan:
-            state = node.state.clone()
-            state.apply_action(action)
-            node = SpielNode(self._settle(state))
-            trace.append(node)
-        return trace
-
-    def validate(self, plan):
-        return self.is_goal(self.simulate(plan)[-1])
 
 
 def solve(game, planner="bfws", budget=None, progress=None, goal=None, **options):

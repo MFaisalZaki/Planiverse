@@ -222,7 +222,6 @@ class RetroEnv(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
         self._start_variables = {}
         self._initial = None
 
@@ -381,7 +380,6 @@ class RetroEnv(Environment):
         else:
             self.__load__(self._initial)
         self.state = self.__observe__(0, 0)
-        self.state_history = [self.state]
         return self.state, {"game": self.game,
                             "state": self.instance["state"],
                             "index": self.index,
@@ -419,21 +417,6 @@ class RetroEnv(Environment):
         self.__press__(action)
         return self.__observe__(state.steps + 1, state.depth + 1)
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.progress
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.progress
-
     def get_actions(self):
         return [self.__action__(name) for name in self.actions]
 
@@ -450,13 +433,6 @@ class RetroEnv(Environment):
             env.em.step()
             frames.append(env.em.get_screen())
         return frames
-
-    def render(self, target=None, **kwargs):
-        """The console's own frames for the positions `step` played through, as arrays, or
-        written to `target` through `render_trace` when one is given."""
-        if target is None:
-            return self.frames(self.state_history)
-        return self.render_trace(self.state_history, target, **kwargs)
 
     def render_trace(self, trace, target, **kwargs):
         """Write a trace to `target` as the console's frames, captioned from the states."""

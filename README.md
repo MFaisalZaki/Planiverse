@@ -246,28 +246,27 @@ eight rows below, plus whichever of the optional ones it can. Registration is an
 | `successors(state)` | `[(action, next_state), ...]` | The expansion step. Self-loops are filtered out. |
 | `is_goal(state)` | `bool` | |
 | `is_terminal(state)` | `bool` | Dead end: no goal reachable from here. |
-| `simulate(plan)` | `[state, ...]` | Replays a plan from the initial state. |
+| `simulate(plan)` | `[state, ...]` | Replays a plan from the initial state. The base class's replays it through `__advance__(state, action)`, or through `successors`. |
 | `generate_instance(seed, **options)` | the instance | Draws a fresh instance from a seed, selects it, and returns it as plain data. The same seed always gives the same instance. |
 | `set_instance(instance)` | | Selects an instance drawn earlier. |
-| `step(action)` | `(state, reward)` | Optional; stateful stepping. |
 | `validate(plan)` | `bool` | Optional. |
 | `get_actions()` | `[action, ...]` | Optional. |
 
 What is actually there today:
 
-| | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `generate_instance` | `step` | `validate` | `get_actions` | `render` | `close` |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `AmazingTaterGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `FloodTransportEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | | ✅ | | | |
-| `GameBoyEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `RetroEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `generate_instance` | `validate` | `get_actions` | `close` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `PuzznicGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `AmazingTaterGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `FloodTransportEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `EnvNASim` | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ | | |
+| `GameBoyEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `RetroEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ⚠️ `is_terminal` returns a hard-coded `False` in the network attack: it has no dead ends, or
 detecting them is left to the planner. Puzznic and Flipull compute a
@@ -280,9 +279,10 @@ or an integration's done condition.
 
 `Environment.capabilities()` reports the optional methods per class, so the table above is
 checked against the code rather than trusted: `tests/test_interface.py` asserts the two agree.
-Note that `validate` is provided by the base class for everything, derived from `simulate` and
-`is_goal`, so no environment writes it out; `step` and `get_actions` have base defaults too,
-but theirs only explain their own absence, and so do the eight contract methods, so a
+Note that `validate` and `simulate` are provided by the base class for everything, derived from
+`reset`, `successors` and `is_goal`, so only Puzznic and the network attack write their own
+`simulate`; `get_actions` has a base
+default too, but it only explains its own absence, and so do the other contract methods, so a
 half-written environment fails where a method is called rather than when it is built. That is
 why "does the class override it" is the wrong test, and `capabilities()` asks whether the
 method would actually do something.
@@ -383,7 +383,6 @@ one panel per quantity, with the actions along the bottom. See
 | Sampling: RHEA, CEM, random shooting, nested Monte Carlo, Go-Explore, MAP-Elites, EST/KPIECE/SST, local search | [`planiverse/planners/sampling/`](planiverse/planners/sampling/) | `successors`; `progress` helps |
 | Blind: breadth-first, uniform cost, iterative deepening | [`planiverse/planners/blind.py`](planiverse/planners/blind.py) | `successors` only |
 | Add-ons: dominated-action pruning, focused macro-actions | [`planiverse/planners/pruning.py`](planiverse/planners/pruning.py), [`planiverse/planners/macros.py`](planiverse/planners/macros.py) | `successors` and `literals` |
-| Tree search: a minimal best-first search, the "Writing a planner" example | [`planiverse/planners/tree_search.py`](planiverse/planners/tree_search.py) | a heuristic and a cost function |
 
 ```python
 from planiverse.planners.width import IW, BFWS, Budget
@@ -441,29 +440,34 @@ whatever happened, and
 
 ## Writing a planner
 
-Environments are planner-agnostic.
-[`planiverse/planners/tree_search.py`](planiverse/planners/tree_search.py) contains a small
-best-first `TreeSearchPlanner` that works against any environment implementing the contract:
+Environments are planner-agnostic. A planner is a class with `solve(env, budget=None,
+state=None)` that returns a `SearchResult`; breadth-first search, from
+[`planiverse/planners/blind.py`](planiverse/planners/blind.py), is the whole pattern:
 
 ```python
-class TreeSearchPlanner:
-    def search(self, state, env, hfn, costfn):
-        queue = PriorityQueue()
-        visited = set()
-        queue.push(([state], [], []), 0)
-        while not queue.isEmpty():
-            state_trace, action_trace, ltl_trace = queue.pop()
-            state = state_trace[0]
-            if env.is_goal(state):  return action_trace
-            if state.literals in visited: continue
-            visited.add(state.literals)
-            for action, successor_state in env.successors(state):
-                ...
+class BreadthFirstSearch:
+    def solve(self, env, budget=None, state=None):
+        budget = (budget or Budget()).start()
+        statistics = SearchStatistics()
+        if state is None:
+            state, _ = env.reset()
+        frontier, closed = deque([(state, [], [state])]), {state.literals}
+        while frontier:
+            node, plan, trace = frontier.popleft()
+            for action, successor in env.successors(node):
+                if successor.literals in closed:
+                    continue
+                closed.add(successor.literals)
+                if env.is_goal(successor):
+                    return finish("solved", plan + [action], trace + [successor],
+                                  statistics, budget)
+                if not env.is_terminal(successor):
+                    frontier.append((successor, plan + [action], trace + [successor]))
+        return finish("exhausted", None, [], statistics, budget)
 ```
 
-The pieces you supply are a `Heuristic` and a `CostFunction`, both callables over states and
-traces. Note that `PriorityQueue` pushes `(priority, item)` tuples, so ties compare the items
-themselves, which is why state and action classes define `__lt__`.
+Written to the contract, it runs on every environment here and, through
+`planiverse.spiel.solve`, on any single-player OpenSpiel game.
 
 ## Architecture
 
@@ -570,8 +574,7 @@ planiverse/
 │   ├── blind.py                        # breadth-first, uniform cost, iterative deepening
 │   ├── common.py                       # SuccessorCache and the helpers the planners share
 │   ├── fsx.py                          # FSXPlanner (future state maximisation)
-│   ├── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
-│   └── tree_search.py                  # TreeSearchPlanner, Heuristic, CostFunction
+│   └── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
 ├── spiel.py                            # every environment a pyspiel game; solve(game, planner)
 ├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the evaluation protocol

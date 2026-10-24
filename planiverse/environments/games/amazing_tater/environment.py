@@ -1906,7 +1906,6 @@ class AmazingTaterGame(Environment):
         self.witness = None
         self.level = None
         self.state = None
-        self.state_history = []
 
     def set_index(self, index):
         if not 0 <= index < LEVEL_COUNT:
@@ -1960,7 +1959,6 @@ class AmazingTaterGame(Environment):
     def reset(self):
         self.level = Level(self.index, self.instance)
         self.state = initial_state(self.level)
-        self.state_history = [self.state]
         height, width = self.level.shape
         return self.state, {"level_index": self.index,
                             "level": self.level.label,
@@ -2001,32 +1999,8 @@ class AmazingTaterGame(Environment):
         following = advance(self.level, state, name)
         return state if following is None else following
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = len(self.state.home)
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, len(self.state.home) - before
-
     def get_actions(self):
         return [AmazingTaterAction(name) for name in ACTIONS]
-
-    def render(self):
-        rendered = [str(state) for state in self.state_history]
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered
-
 
 def profile(rows):
     """The shape and inventory of a room, as the options `generate_room` takes to draw one

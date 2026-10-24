@@ -541,7 +541,6 @@ class FlipullGame(Environment):
         self.witness = None
         self.witness_expansions = None
         self.state = None
-        self.state_history = []
 
     def set_index(self, index):
         if not 0 <= index < len(INSTANCES):
@@ -620,7 +619,6 @@ class FlipullGame(Environment):
         held = next((grid[row][col] for col in range(len(grid[row]) - 1, -1, -1)
                      if grid[row][col] in BLOCK_TYPES), BLOCK_TYPES[0])
         self.state = FlipullState(grid, row, held, target)
-        self.state_history = [self.state]
         return self.state, {"stage": self.index,
                             "generated": self.index is None,
                             "blocks": self.state.blocks_remaining,
@@ -667,28 +665,5 @@ class FlipullGame(Environment):
         grid, held = outcome
         return FlipullState(grid, state.row, held, state.clear_target, state.depth + 1)
 
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("Game not initialized. Call reset() first.")
-        before = self.state.blocks_remaining
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.blocks_remaining
-
     def get_actions(self):
         return [FlipullAction(name) for name in ("up", "down", "throw")]
-
-    def render(self):
-        rendered = [str(state) for state in self.state_history]
-        for step, text in enumerate(rendered):
-            print(f"Step: {step}")
-            print(text)
-            print("--------------")
-        return rendered

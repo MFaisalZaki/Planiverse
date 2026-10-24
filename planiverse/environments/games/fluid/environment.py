@@ -225,7 +225,6 @@ class FluidEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -294,7 +293,6 @@ class FluidEnv(Environment):
             self.set_index(0)
         self.state = FluidState(self.instance["rows"], self.instance["supply"], 0,
                                 self.instance["digs"], 0, self.instance["need"])
-        self.state_history = [self.state]
         return self.state, {"cave": self.index, "need": self.instance["need"],
                             "supply": self.instance["supply"], "digs": self.instance["digs"],
                             "generated": self.index is None}
@@ -339,27 +337,6 @@ class FluidEnv(Environment):
         rows, supply, filled = run(rows, state.supply, state.filled, state.tick, PERIOD)
         return FluidState(rows, supply, filled, digs_left, state.tick + PERIOD, state.need,
                           state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.filled
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.filled - before
-
-    def render(self):
-        lines = [f"step {k}:\n{state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled caves: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

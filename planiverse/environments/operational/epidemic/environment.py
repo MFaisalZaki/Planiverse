@@ -169,7 +169,6 @@ class EpidemicEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -250,7 +249,6 @@ class EpidemicEnv(Environment):
         if self.instance is None:
             self.set_index(0)
         self.state = self.__state__(())
-        self.state_history = [self.state]
         return self.state, {"outbreak": self.index, "weeks": self.instance["weeks"],
                             "capacity": self.instance["capacity"], "budget": self.instance["budget"],
                             "target": self.instance["target"], "generated": self.index is None}
@@ -281,27 +279,6 @@ class EpidemicEnv(Environment):
         if action not in self.get_actions(state):
             return state
         return self.__state__(state.schedule + (action.level,), state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.deaths
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.deaths
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled outbreaks: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

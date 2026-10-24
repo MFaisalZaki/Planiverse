@@ -207,7 +207,6 @@ class TrafficEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
         self.__loaded__ = None
@@ -351,7 +350,6 @@ class TrafficEnv(Environment):
             self.set_index(0)
         self._start()
         self.state = self._read((), 0)
-        self.state_history = [self.state]
         return self.state, {"morning": self.index, "vehicles": self.instance["vehicles"],
                             "horizon": self.instance["horizon"], "target": self.instance["target"],
                             "generated": self.index is None}
@@ -387,27 +385,6 @@ class TrafficEnv(Environment):
         self._apply(action)
         self.__loaded__ = state.decisions + (action,)
         return self._read(self.__loaded__, state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.arrived
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.arrived - before
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled mornings: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

@@ -432,14 +432,6 @@ def test_switch_is_free_and_a_step_is_not():
     assert all(AmazingTaterAction(name).cost() == 1 for name in ACTIONS if name != SWITCH)
 
 
-def test_step_reports_how_many_taters_got_home():
-    game = AmazingTaterGame()
-    game.set_index(0)
-    game.reset()
-    _, gained = game.step(AmazingTaterAction("left"))
-    assert gained == 0
-
-
 # --------------------------------------------------------------------------- solutions
 # Shortest plans, found by `solve` and replayed here. Every one of them was also replayed on
 # the original game, which is what makes them evidence about the game rather than about this

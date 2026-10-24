@@ -130,12 +130,11 @@ def test_a_survival_goal_makes_the_step_count_part_of_the_state():
     env.close()
 
 
-def test_step_plays_statefully_and_render_gives_the_console_frames(counter):
+def test_frames_are_the_console_screens_of_a_trace(counter):
     counter.set_index(0)
-    counter.reset()
-    state, reward = counter.step("right")
-    assert state.fields["counter"] == 1 and isinstance(reward, (int, float))
-    frames = counter.render()
+    trace = counter.simulate(["right"])
+    assert trace[-1].fields["counter"] == 1
+    frames = counter.frames(trace)
     assert len(frames) == 2 and frames[0].size == (160, 144)
 
 
@@ -143,9 +142,7 @@ def test_a_written_render_is_the_console_frames_captioned(counter, tmp_path):
     from PIL import Image
 
     counter.set_index(0)
-    counter.reset()
-    counter.step("right")
-    path = counter.render(tmp_path / "play.png")
+    path = counter.render_trace(counter.simulate(["right"]), tmp_path / "play.png")
     with Image.open(path) as sheet:
         assert sheet.height < 300, "two captioned screens in a row, not the tile grid typeset"
         assert sheet.width > 2 * 160
@@ -367,12 +364,11 @@ def test_a_checked_draw_keeps_its_witness(airstriker):
     assert airstriker.witness is None
 
 
-def test_step_plays_statefully_and_render_gives_the_console_frames(airstriker):
+def test_frames_are_the_console_screens_of_a_trace(airstriker):
     airstriker.set_index(0)
-    airstriker.reset()
-    state, reward = airstriker.step("RIGHT")
-    assert state.steps == 1 and reward == 1, "one step closer to surviving"
-    frames = airstriker.render()
+    trace = airstriker.simulate(["RIGHT"])
+    assert trace[-1].steps == 1 and trace[-1].progress == trace[0].progress - 1
+    frames = airstriker.frames(trace)
     assert len(frames) == 2 and frames[0].shape[2] == 3
     assert frames[1].max() > 0, "the console's picture, not the blank buffer a load leaves"
 

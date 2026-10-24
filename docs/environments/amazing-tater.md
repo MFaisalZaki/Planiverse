@@ -188,12 +188,12 @@ env.render_trace(trace, "amazing_tater.gif")                                   #
 env.render_trace(trace, "amazing_tater.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and how many
-taters the move brought home; `env.render()` prints the state history and returns it as a list of
-strings. `successors(state)` returns the action and state pairs for the presses the game accepts,
-and `action.cost()` is what each one costs. A shortest plan is also available without a planner:
-`solve(index)` runs a breadth-first search over the full position, meaning every block, every
-turnstile angle and every tater:
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_amazing_tater")`, whose `apply_action` advances a state (see
+[Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
+and state pairs for the presses the game accepts, and `action.cost()` is what each one costs. A
+shortest plan is also available without a planner: `solve(index)` runs a breadth-first search
+over the full position, meaning every block, every turnstile angle and every tater:
 
 ```python
 from planiverse.environments.games.amazing_tater.environment import solve

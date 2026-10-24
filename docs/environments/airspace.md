@@ -179,13 +179,14 @@ env.render_trace(trace, "airspace_chart.gif")                                   
 env.render_trace(trace, "airspace_chart.png", actions=result.plan, env=env)     # the sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes an action or its name
-(e.g., `"turn(AC2, right)"`) and returns the state and the number of aircraft that left the
-sector in the minute. `successors(state)` returns the action and state pairs for the
-instructions `get_actions` offers. The readings each environment charts, and the panels they
-go on, are in [`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py);
-`charts=False` asks `render_trace` for the state's text instead, and
-[docs/rendering.md](../rendering.md) covers the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_airspace")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs for the instructions `get_actions` offers. The readings each environment charts, and the
+panels they go on, are in
+[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
+asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
+covers the other output formats.
 
 ## Sectors
 

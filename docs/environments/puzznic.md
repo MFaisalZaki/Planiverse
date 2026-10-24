@@ -158,10 +158,10 @@ env.render_trace(trace, "puzznic.gif")                                   # anima
 env.render_trace(trace, "puzznic.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and the
-points the move scored; `env.render()` prints the de-duplicated history of `step` calls and
-returns it as a list of strings. Note that consecutive identical states are collapsed there, so
-the printed step numbers do not line up with plan indices. See
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_puzznic")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). Note that consecutive identical states are
+collapsed there, so the printed step numbers do not line up with plan indices. See
 [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Levels

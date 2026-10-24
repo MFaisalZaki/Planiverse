@@ -246,14 +246,14 @@ env.render_trace(trace, "flood_transport_chart.gif")                            
 env.render_trace(trace, "flood_transport_chart.png", actions=result.plan, env=env)     # the sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and the
-change in the total, negated (i.e., minus what the period cost). `successors(state)` returns
-the action and state pairs for waiting and for each measure still open, and `get_actions()`
-lists `wait` and every measure on every flooding zone whatever the state. `reference_plan()`
-returns the policy that set the target as a plan, and `validate(plan)` replays a plan and says
-whether it reaches a goal, which it does for the reference. `env.render()` prints the history
-of `step` calls and returns it as a list of strings. The readings each environment charts, and
-the panels they go on, are in
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_flood_transport")`, whose `apply_action` advances a state (see
+[Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
+and state pairs for waiting and for each measure still open, and `get_actions()` lists `wait`
+and every measure on every flooding zone whatever the state. `reference_plan()` returns the
+policy that set the target as a plan, and `validate(plan)` replays a plan and says whether it
+reaches a goal, which it does for the reference. The readings each environment charts, and the
+panels they go on, are in
 [`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
 asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
 covers the other output formats.

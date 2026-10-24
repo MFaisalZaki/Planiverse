@@ -277,12 +277,12 @@ env.render_trace(trace, "lolo.gif")                                   # animated
 env.render_trace(trace, "lolo.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and the
-hearts the move collected; `env.render()` prints the state history and returns it as a list of
-strings. `successors(state)` returns the action and state pairs for the moves that change the
-position, with `successor.lolo` and `successor.hearts_left` on each. A room can also be chosen by
-name, `make("lolo", index=38)` for `int 1-1`. See [docs/rendering.md](../rendering.md) for the
-other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_lolo")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs for the moves that change the position, with `successor.lolo` and `successor.hearts_left`
+on each. A room can also be chosen by name, `make("lolo", index=38)` for `int 1-1`. See
+[docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Rooms
 

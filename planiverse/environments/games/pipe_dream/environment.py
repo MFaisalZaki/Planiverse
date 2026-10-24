@@ -263,7 +263,6 @@ class PipeDreamEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -374,7 +373,6 @@ class PipeDreamEnv(Environment):
         self.state = PipeState(rows, (), (sx, sy, START[glyph]), 0, 0, 0, False,
                                self.instance["queue"], self.instance["distance"],
                                self.instance["countdown"], self.instance["pace"])
-        self.state_history = [self.state]
         return self.state, {"level": self.index, "distance": self.instance["distance"],
                             "countdown": self.instance["countdown"], "pace": self.instance["pace"],
                             "queue": len(self.instance["queue"]), "generated": self.index is None}
@@ -454,27 +452,6 @@ class PipeDreamEnv(Environment):
             due -= 1
         return PipeState(rows, flooded, head, carried, tick, placed, spilled, state.queue,
                          state.distance, state.countdown, state.pace, state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.carried
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.carried - before
-
-    def render(self):
-        lines = [f"step {k}:\n{state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled levels: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

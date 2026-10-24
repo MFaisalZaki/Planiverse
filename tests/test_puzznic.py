@@ -22,7 +22,6 @@ def build(levelstr):
     game = PuzznicGame()
     game.level = Level(levelstr)
     game.state, _ = game.level.reset()
-    game.state_history = [game.state]
     return game
 
 
@@ -123,18 +122,9 @@ def test_successors_exclude_self_loops(puzznic_env):
     assert "left" in offered
 
 
-def test_step_advances_and_records_history(puzznic_env):
+def test_simulate_moves_the_cursor(puzznic_env):
     puzznic_env.reset()
-    state, score = puzznic_env.step("left")
-    assert state.cursor.pos == (1, 2)
-    assert isinstance(score, list)
-    assert len(puzznic_env.state_history) > 1
-
-
-def test_step_rejects_invalid_action(puzznic_env):
-    puzznic_env.reset()
-    with pytest.raises(AssertionError):
-        puzznic_env.step("diagonal")
+    assert puzznic_env.simulate(["left"])[-1].cursor.pos == (1, 2)
 
 
 def test_simulate_returns_state_trace(puzznic_env):

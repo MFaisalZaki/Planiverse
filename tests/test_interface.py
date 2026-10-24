@@ -425,7 +425,7 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
     hand-maintained. These are the rows that claim the full set."""
     from planiverse.environments import get_spec
 
-    full = {"step", "validate", "get_actions", "render", "close"}
+    full = {"validate", "get_actions", "close"}
     for name in ("water_network", "power_grid", "crop_management", "game_boy", "retro"):
         spec = get_spec(name)
         if not spec.available():
@@ -434,9 +434,9 @@ def test_the_capability_matrix_can_be_derived_from_the_code():
 
 
 def test_validate_comes_from_the_base_and_still_counts_as_provided():
-    """`validate` is the same sentence in every environment, so it is written once in the
-    base, but it is a *working* default, unlike `step` and `get_actions` whose defaults
-    only explain their own absence.
+    """`validate` and `simulate` are the same sentence in every environment, so they are
+    written once in the base, but they are *working* defaults, unlike `get_actions` whose
+    default only explains its own absence.
 
     So "does the class override it" is the wrong test for whether a capability is offered,
     and `capabilities()` asks whether the method would do something instead.
@@ -444,14 +444,15 @@ def test_validate_comes_from_the_base_and_still_counts_as_provided():
     from planiverse.environments import Environment
 
     assert "validate" in Environment.capabilities(), "the default works"
-    assert "step" not in Environment.capabilities(), "this default only raises"
-    assert "get_actions" not in Environment.capabilities()
+    assert Environment.provides("simulate"), "so does this one"
+    assert "get_actions" not in Environment.capabilities(), "this default only raises"
     assert not Environment.provides("generate_instance"), "required, and only explained here"
     assert not Environment.provides("set_instance")
 
     from planiverse.environments.games.flipull.environment import FlipullGame
 
     assert FlipullGame.validate is Environment.validate, "inherited, not rewritten"
+    assert FlipullGame.simulate is Environment.simulate
     assert "validate" in FlipullGame.capabilities(), "and still offered"
 
 

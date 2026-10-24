@@ -166,7 +166,6 @@ class ReservoirEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
         self.__model__ = None
@@ -326,7 +325,6 @@ class ReservoirEnv(Environment):
         self._start()
         self.__last__ = (0.0, 0.0, 0.0, 0.0)
         self.state = self._read((), 0)
-        self.state_history = [self.state]
         return self.state, {"year": self.index, "target": self.instance["target"],
                             "reserves": self.instance["reserves"], "generated": self.index is None}
 
@@ -361,26 +359,6 @@ class ReservoirEnv(Environment):
         self._apply(action)
         self.__loaded__ = state.settings + (action,)
         return self._read(self.__loaded__, state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.farm_short
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, before - self.state.farm_short
-
-    def render(self):
-        lines = [f"step {k}: {state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
 
     def close(self):
         self.__model__ = None

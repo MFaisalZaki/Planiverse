@@ -195,11 +195,11 @@ env.render_trace(trace, "flipull.gif")                                   # anima
 env.render_trace(trace, "flipull.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which returns the state and how
-many blocks the action cleared; `env.render()` prints the state history and returns it as a list
-of strings. `successors(state)` returns the action and state pairs for the moves that change the
-position, and `successor.blocks_remaining` is the count each one leaves. See
-[docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_flipull")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs for the moves that change the position, and `successor.blocks_remaining` is the count each
+one leaves. See [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Stages
 
@@ -270,7 +270,7 @@ give the same stage.
 ## Rendering
 
 `str(state)` draws the board in the stage alphabet, with `<` marking the player's row and the
-hand and the count on a last line, and `env.render()` prints the state history. See
+hand and the count on a last line. See
 [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Files

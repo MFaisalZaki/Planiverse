@@ -215,16 +215,11 @@ def test_one_reconfiguration_changes_the_whole_grid(env):
 
 
 @pytest.mark.slow
-def test_simulate_and_step_track_the_history(env):
+def test_simulate_tracks_the_history(env):
     state, _ = env.reset()
     trace = env.simulate([PowerGridAction(0)])
     assert len(trace) == 2 and trace[0] == state
-
-    env.reset()
-    after, relief = env.step(PowerGridAction(0))
-    assert after.path == (0,)
-    assert isinstance(relief, float)
-    assert len(env.render()) == 2
+    assert trace[1].path == (0,)
 
 
 @pytest.mark.slow

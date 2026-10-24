@@ -407,7 +407,6 @@ MAX_BLOCKS = 10
 
 class PuzznicGame(Environment):
     def __init__(self):
-        self.state_history = []
         self.state     = None
         self.level     = None
         self.index     = 0
@@ -493,9 +492,6 @@ class PuzznicGame(Environment):
             if letters_list.count(l) > 2: more_than_two_blocks_score += 50
         return [each_casecade_score + more_than_two_blocks_score]
 
-    def _commit_state_(self):
-        self.state_history += [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
-    
     def _compute_successor_state_(self, state:PuzznicState, action:str):
         # do not generate successors for goal/terminal states.
         successor_state = PuzznicState(state.grid, state.cursor, state.score, state.cleared_boxes)
@@ -579,30 +575,8 @@ class PuzznicGame(Environment):
     def reset(self):
         self.level = Level(self.instance)
         self.state, info = self.level.reset()
-        self.state_history = [PuzznicState(self.state.grid, self.state.cursor, self.state.score, self.state.cleared_boxes)]
         info.update(level=self.index, generated=self.index is None)
         return self.state, info
-    
-    def step(self, action:str):
-        if self.state is None: raise ValueError("Game not initialized.")
-        assert self.state.isvalid_action(action), "Invalid action."
-        self._commit_state_() # save a copy of the state.
-        self.state = self._compute_successor_state_(self.state, action)
-        self._commit_state_()
-        return self.state, self.state.score
-
-    def render(self):
-        # first remove the duplicate states
-        ret_render_txt = []
-        unique_states = []
-        for state in self.state_history:
-            if state not in unique_states: unique_states.append(state)
-        for t, state in enumerate(unique_states):
-            print(f"Step: {t}")
-            print(state)
-            ret_render_txt.append(str(state))
-            print('--------------')
-        return ret_render_txt
     
     def is_goal(self, state):
         return state.is_goal()

@@ -253,7 +253,6 @@ class LemmingsEnv(Environment):
         self.instance = None
         self.index = None
         self.state = None
-        self.state_history = []
         self.witness = None
         self.witness_expansions = None
 
@@ -325,7 +324,6 @@ class LemmingsEnv(Environment):
             self.set_index(0)
         self.state = LemmingsState(self.instance["rows"], (), 0, 0, 0, self.instance["skills"], 0,
                                    self.instance["quota"])
-        self.state_history = [self.state]
         return self.state, {"level": self.index, "lemmings": self.instance["lemmings"],
                             "quota": self.instance["quota"], "skills": dict(self.instance["skills"]),
                             "generated": self.index is None}
@@ -373,27 +371,6 @@ class LemmingsEnv(Environment):
             None, self.instance["entrance"], self.instance["exit"], self.instance["lemmings"], DECISION)
         return LemmingsState(rows, crowd, released, saved, lost, skills, tick, state.quota,
                              state.depth + 1)
-
-    def simulate(self, plan):
-        state, _ = self.reset()
-        trace = [state]
-        for action in plan:
-            trace.append(self.__advance__(trace[-1], action))
-        return trace
-
-    def step(self, action):
-        if self.state is None:
-            raise ValueError("call reset() first")
-        before = self.state.saved
-        self.state = self.__advance__(self.state, action)
-        self.state_history.append(self.state)
-        return self.state, self.state.saved - before
-
-    def render(self):
-        lines = [f"step {k}:\n{state}" for k, state in enumerate(self.state_history)]
-        print("\n".join(lines))
-        return lines
-
 
 #: The bundled levels: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

@@ -56,8 +56,8 @@ sunk, is a dead end.
 Six shots per object ball, so eighteen from a table with three balls up and six from one with one;
 `get_actions(state)` lists them for a state and `BilliardsAction.parse` reads one back from its
 name. A shot at a ball that is gone is refused and changes nothing. A shot pooltool's collision
-model cannot resolve is dropped from the successors rather than raised, and `step` leaves the state
-as it was. Its cushion model asserts on a ball resting against a pocket jaw with no closing speed,
+model cannot resolve is dropped from the successors rather than raised, and replaying it leaves the
+state as it was. Its cushion model asserts on a ball resting against a pocket jaw with no closing speed,
 which the odd table produces. A miss, on the other hand, is a shot like any other. It spends one of
 the shots left, so its successor differs from its parent and is offered.
 
@@ -168,10 +168,10 @@ env.render_trace(trace, "billiards.gif")                                   # ani
 env.render_trace(trace, "billiards.png", actions=result.plan, env=env)     # contact sheet
 ```
 
-Stateful play, as opposed to expansion, goes through `step`, which takes a `BilliardsAction` such
-as `BilliardsAction("1", 0, 2.0)` or its name and returns the state and the balls the shot potted.
-`env.render()` prints the history of `step` calls and returns it as a list of strings. See
-[docs/rendering.md](../rendering.md) for the other output formats.
+Stateful play goes through the environment's OpenSpiel game,
+`pyspiel.load_game("planiverse_billiards")`, whose `apply_action` advances a state (see [Through
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for the
+other output formats.
 
 ## Tables
 

@@ -82,13 +82,10 @@ def test_successors_obey_the_contract_and_spend_a_shot(env):
     assert f"balls_left({len(state.object_balls)})" in state.literals
 
 
-def test_simulate_and_step_agree(env):
+def test_simulate_replays_the_plan(env):
     plan = env.get_actions(env.reset()[0])[:2]
     trace = env.simulate(plan)
-    env.reset()
-    for action in plan:
-        state, _ = env.step(action)
-    assert state == trace[-1] and len(env.render()) == 3
+    assert len(trace) == 3 and trace[0] == env.reset()[0]
 
 
 def test_a_drawn_table_has_no_two_balls_touching():
@@ -145,4 +142,4 @@ def test_a_shot_the_physics_cannot_resolve_is_not_offered(monkeypatch):
     state, _ = game.reset()
     assert strike(dict(state.balls), BilliardsAction("1", CUTS[0], SPEEDS[0])) is None
     assert game.successors(state) == []
-    assert game.step(BilliardsAction("1", CUTS[0], SPEEDS[0]))[0] == state
+    assert game.simulate([BilliardsAction("1", CUTS[0], SPEEDS[0])])[-1] == state
