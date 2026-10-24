@@ -129,8 +129,7 @@ hundreds.
 Instance `0` is a sector of three aircraft with a horizon of 15 decisions and a target of 1,267
 seconds of exit time. `AC1` enters from the east on heading 272 at 270 knots, `AC2` from the
 south on heading 356 at 230 knots and `AC3` from the south-west on heading 26 at 250 knots.
-Each is about 38 nautical miles from its exit. The nine-instruction plan the render below shows
-is
+Each is about 38 nautical miles from its exit. The nine-instruction plan the render shows is
 
 ```
 turn(AC2, right), turn(AC3, right), turn(AC2, right), direct(AC3), direct(AC2),

@@ -10,9 +10,9 @@ deterministic, so a planner can reason about it rather than sample it.
 - **Source:** [`environment.py`](../../planiverse/environments/operational/network_attack/environment.py)
 - **Instances:** 100 scenarios, indices `0` to `99`: NASim's 18 benchmarks, then 82 networks its generator drew
 - **Generator:** `generate_instance(seed, hosts=5, services=3, **options)`; see [Generating networks](#generating-networks)
-- **Dependencies:** `nasim`, the `MFaisalZaki/NetworkAttackSimulator` fork pinned in
-  `pyproject.toml`. Upstream `nasim` will not work: `generative_step` and the patched internals
-  (`_perform_wiretapping`, `has_required_remote_permission`) come from the fork.
+- **Dependencies:** `nasim`, the `MFaisalZaki/NetworkAttackSimulator` fork that
+  `pyproject.toml` installs from git. Upstream `nasim` will not work: `generative_step` and the
+  patched internals (`_perform_wiretapping`, `has_required_remote_permission`) come from the fork.
 
 ## Context
 

@@ -47,9 +47,9 @@ of a turnstile is solid and never moves.
 
 We re-implemented the game rather than run the cartridge, so the rules are ours to read; the
 rules above come from observing the cartridge. What we do not model is anything outside the room
-itself. The cartridge's move counter, its timer, the pause menu behind A with its RETRY and QUIT, and the
-level counter that loads the next room over the top of a cleared one are all absent. Here a solved
-room is simply terminal.
+itself. The cartridge's move counter, its timer, the pause menu behind A with its RETRY and
+QUIT, and the level counter that loads the next room over the top of a cleared one are all
+absent. Here a solved room is simply terminal.
 
 ## Actions
 
@@ -194,8 +194,8 @@ print(len(plan), plan[:6])
 # 38 ['left', 'left', 'left', 'left', 'up', 'up']
 ```
 
-Its default budget is two million expansions. It is the shared breadth-first search in `planiverse.environments.generation`, the one the generator checks
-a drawn room with. See [docs/rendering.md](../rendering.md) for the other output formats.
+Its default budget is two million expansions. It is the shared breadth-first search in
+`planiverse.environments.generation`, the one the generator checks a drawn room with. See [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Rooms
 

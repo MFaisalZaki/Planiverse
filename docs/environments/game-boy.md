@@ -28,9 +28,8 @@ again, which a save state gives. It needs something to read a state as, which th
 hearts left, level progress, score). And it needs a goal, which the wrapper answers too, or
 which is a threshold on one of those measurements. What makes an instance hard is the game's
 own: a stage of Puzznic or a room of Lolo is as deep as its puzzle is. Running the game itself
-rather than a re-implementation has two costs. An expansion is milliseconds of emulation rather
-than microseconds, so a search budget buys fewer states; and a cartridge is only as readable as
-its wrapper.
+rather than a re-implementation has two costs. An expansion is a run of emulated frames, so a
+search budget buys fewer states; and a cartridge is only as readable as its wrapper.
 
 Commercial cartridges are copyrighted, so none ships with this repository and none is
 downloaded. The environment reads the path from `rom=` or from the `PLANIVERSE_GB_ROM` variable,
@@ -103,16 +102,12 @@ given to `simulate` as strings.
 that change nothing (a `nop` on a still menu, a wall bumped into). Note that under a survival
 goal the step count is part of the state, so every action changes it and none is dropped, which
 is why the counter cartridge's initial state has nine successors. One expansion is one
-save-state load and `hold` plus settle frames of emulation per action. PyBoy's compiled build
-runs a few thousand frames a second, so an expansion costs a few milliseconds, which is cheap
-beside a replayed simulator and dear beside a re-implementation.
+save-state load and `hold` plus settle frames of emulation per action.
 
 ## Planning problem
 
-A `GBState` carries a save state (PyBoy's, zlib-compressed; about 200 KB uncompressed and mostly
-zeros, so the counter cartridge's 143 KB compresses to about a kilobyte), the wrapper's
-`game_area()` as a tuple of rows of tile identifiers, and the fields the profile named. Its
-literals are:
+A `GBState` carries a save state (PyBoy's, zlib-compressed), the wrapper's `game_area()` as a
+tuple of rows of tile identifiers, and the fields the profile named. Its literals are:
 
 | Literal | When |
 |---|---|
@@ -189,15 +184,14 @@ claims, so instance `0` is the generic profile's. That is 120 frames of boot, th
 every button and `nop` held for eight frames, a goal of surviving twenty actions, and
 `game_over()` as the dead end. The generic wrapper exposes no number and `make("game_boy")`
 names no `watch=`, so the state is the 32-by-32 background map and the step count, 1,025
-literals. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width
-bound of 1000), solved it in 20 expansions and seven seconds. Its twenty-move plan is
+literals. A twenty-move plan for it is
 
 ```
 a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a
 ```
 
 which is the first button in the vocabulary pressed twenty times. It works because the cartridge
-has no game over, so any twenty actions survive, and the search went straight down. Each A puts
+has no game over, so any twenty actions survive. Each A puts
 the counter back to zero and adds one to the presses, so the last frame shows tile 0 at the
 corner and tile 20 beside it. With a cartridge of your own the frames are the game's own screen,
 and the plan is the game's.
@@ -296,8 +290,7 @@ instances is also a file of seeds.
 
 With `solvable=True` the draw is searched, best-first under the profile's progress measure, for
 up to `search_limit` expansions, and only a draw the search solves is handed out. The plan is
-left in `env.witness` and its cost in `env.witness_expansions`. This is off by default, because
-an emulator expansion is milliseconds and a search of a real level is minutes.
+left in `env.witness` and its cost in `env.witness_expansions`. This is off by default.
 
 ## Rendering
 

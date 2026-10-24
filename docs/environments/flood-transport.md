@@ -98,8 +98,8 @@ design depth.
 Fifth, time. A decision covers a `period` of years, five in the bundled scenarios. The measure
 is taken at the start of the period and protects the zone through it; each year's storm is
 then costed and the years summed. MAAT decides once a year over 77 years, which `period=1`
-reproduces at a depth few planners will search. The period trades that depth for a coarser
-decision, and it is the one modelling choice here that MAAT does not make.
+reproduces, 77 decisions deep. The period trades that depth for a coarser decision, and it is
+the one modelling choice here that MAAT does not make.
 
 ## Actions
 
@@ -114,8 +114,8 @@ decision, and it is the one modelling choice here that MAAT does not make.
 `FloodAction("wait")` lets the period pass, and `FloodAction(kind, zone)` protects a zone; both
 cost 1, so a plan's cost is its length and the money is in the state. `successors` offers
 `wait` and every measure the instance allows on every flooding zone not yet protected. The
-branching factor is therefore one plus the number of such zones times the number of measures,
-between five and thirty-one on the bundled scenarios. A measure on a zone already protected, or
+branching factor is therefore one plus the number of such zones times the number of measures.
+A measure on a zone already protected, or
 on one the design storm leaves dry, is refused: `__advance__` returns the state unchanged. A
 goal and a dead end are absorbing (i.e., no action leads out of them), so `successors` returns
 `[]` and `simulate` leaves such a state where it is. The last decision of the horizon is
@@ -126,8 +126,7 @@ Applying an action puts the measure in place at the start of the period, charges
 then runs each year of the period. The year's storm falls, the roads take damage according to
 their depth and their protection, and the trips are routed over the slowed network. The year's
 damage, delay and trips not made are then added to the total. A year's costs depend only on the
-measures in place and the storm, so they are memoised on that pair, which keeps an expansion
-to about a millisecond.
+measures in place and the storm, so they are memoised on that pair.
 
 ## Planning problem
 
@@ -186,8 +185,8 @@ solution by construction. A measure pays for itself only over decades, so a poli
 one period ahead never acts; the reference instead looks to the end of the horizon. At each
 decision it takes the action that leaves the lowest total if nothing more is done afterwards,
 over the storms the instance holds, and waits when no action improves on waiting. The target is
-that policy's cost plus a slack of 2%, and `reference_plan()` returns its plan, which is the
-instance's `witness`. A plan therefore has to do at least about as well as the reference, and
+that policy's cost plus a slack of 2%, and `reference_plan()` returns its plan, which is also
+the `witness` of a generated instance. A plan therefore has to do at least about as well as the reference, and
 an instance on which doing nothing would pass is not an instance: the generator redraws it.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.flood_transport`)
@@ -206,8 +205,7 @@ successors of the initial state show the first period's bill: waiting costs 41.1
 protecting `z07` costs 50.6 M, `z03` 52.9 M, `z01` 59.8 M and `z06` 188.9 M. The last is so dear
 because `z06` holds the city's only motorway and a trunk road, and elevating them costs 22% of
 their value. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a
-width bound of 1000), solved it in 36 expansions and no measurable time (the record rounds to
-0.0 s). Its six-decision plan is
+width bound of 1000), returns the six-decision plan
 
 ```
 elevate1(z07), elevate1(z03), wait, wait, wait, wait
@@ -282,13 +280,11 @@ Flipull's stages are, so the table gives the draw's options rather than a layout
 All but one of these fifteen are five years to a decision, so the horizons are six to twelve
 decisions deep; scenario 12 decides every two years and is twenty deep. Indices `15` to `99`
 were drawn over a grid of the same options (8 to 36 zones, 30 to 60 years, either storm
-series, the four measure sets above), one draw in six with a twist (two years to a decision,
-a later start in the Klimaatlas series, or six zones in ten flooding). They were drawn at the
-seeds recorded beside them in the module, and accepted by the same test as the fifteen.
-Under the design storm the reference protects most of the flooding zones and doing nothing
-costs half as much again. Under Klimaatlas storms, which are shallower, it protects one or
-two, and the margin over doing nothing is a few per cent, which makes those the harder
-instances, since fewer plans meet the target.
+series, the four measure sets above), each of three twists in about one draw in six (two years
+to a decision, a later start in the Klimaatlas series, or six zones in ten flooding). They were
+drawn at the seeds recorded beside them in the module, and accepted by the same test as the
+fifteen.
+
 
 ## Generating scenarios
 

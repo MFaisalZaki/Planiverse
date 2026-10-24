@@ -77,14 +77,11 @@ strings.
 `successors` tries every action from the state's save state and drops the ones that change
 nothing. Note that under a survival goal the step count is part of the state, so every action
 changes it and none is dropped. One expansion is one save-state load and `hold` frames of
-emulation per action. The Genesis core runs about a thousand steps a second, so an expansion
-costs a few milliseconds, which is cheap beside a replayed simulator and dear beside a
-re-implementation.
+emulation per action.
 
 ## Planning problem
 
-A `RetroState` carries a save state (the emulator's, zlib-compressed; a megabyte for the
-Genesis, which `Level1`'s first frame compresses to eleven kilobytes), the integration's
+A `RetroState` carries a save state (the emulator's, zlib-compressed), the integration's
 variables as integers, and a hash of the console's RAM. Its literals are:
 
 | Literal | When |
@@ -158,17 +155,15 @@ the state says is left: the distance to the target value, or the actions still t
 
 Instance `0` is Airstriker from `Level1`, its first frame, with `gameover` at 9, `lives` at 3
 and `score` at 0. Its actions are the six combinations above, its goal is to survive a hundred
-actions, and its dead end is the done condition or a fall in `gameover`. Dual BFWS, run as
-the benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), solved it in 103
-expansions and three seconds. Its hundred-move plan, with the runs of `nop` counted, is
+actions, and its dead end is the done condition or a fall in `gameover`. A hundred-move plan
+for it, with the runs of `nop` counted, is
 
 ```
 nop ×56, LEFT, nop ×5, LEFT, nop ×7, B, nop ×7, B, nop ×21
 ```
 
 which holds still for ninety-six of the hundred actions and spends four on staying alive: two
-sidesteps as the first wave arrives and two shots once it has, which is what the fighters'
-pattern needs. The shots score 20 points each, so the plan ends with `gameover` still 9, the
+sidesteps as the first wave arrives and two shots once it has. The shots score 20 points each, so the plan ends with `gameover` still 9, the
 three lives intact and a score of 40, none of which the goal asked for.
 
 ![BFWS solving Airstriker from Level1](../renders/retro.gif)
@@ -245,12 +240,10 @@ variables are `str(state)`.
 
 ## Caveats
 
-Three things to know. First, Airstriker never scores under random play and loses a life every
-three hundred frames or so, which is why its default goal is survival rather than score. A score
-goal on it is a long search. Second, a save state is a megabyte. A visited set of ten thousand
-states is a hundred megabytes or more after compression; the width planners' budgets are the way
-to bound that. Third, Stable-Retro's `retro` import name is deprecated in favour of
-`stable_retro`; the module takes either.
+Two things to know. First, every state carries a save state, so a visited set grows by one
+compressed save state per state; the width planners' budgets are the way to bound that. Second,
+Stable-Retro's `retro` import name is deprecated in favour of `stable_retro`; the module takes
+either.
 
 ## One emulator per process
 

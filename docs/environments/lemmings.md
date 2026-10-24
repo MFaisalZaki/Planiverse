@@ -143,8 +143,7 @@ builder and no blocker. The entrance is at (2, 1) over a platform at the top lef
 tick 0: 0 out, 0 saved, 0 lost; 2 basher, 0 blocker, 1 builder, 2 digger
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 7,239 expansions and 8.8 seconds. Its fourteen-decision plan is
+One plan, the one the render below plays, is fourteen decisions:
 
 ```
 wait, assign(digger,0), assign(basher,2), wait, wait, wait, wait,
