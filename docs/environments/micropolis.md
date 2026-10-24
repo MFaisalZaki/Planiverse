@@ -39,22 +39,20 @@ The engine is built by a script:
 
 ```console
 $ pip install swig                       # a swig binary, if the system has none
-$ bash scripts/build_micropolis.sh       # git, a C++ compiler and the Python headers
+$ bash scripts/build_micropolis.sh       # git, perl, a C++ compiler and the Python headers
 ```
 
 The script fetches MicropolisCore, replaces two Python 2 names in its SWIG callback hook, and
 makes the engine's `seedRandom` reachable from Python. That last step matters because the
 engine reseeds from the clock after generating a map, and the environment pins the seed
 instead. The script then builds the extension and copies `micropolisengine` into the running
-Python's site-packages. A city year is eight hundred engine
-ticks and takes a few milliseconds.
+Python's site-packages. A city year is eight hundred engine ticks.
 
 The engine builds on Linux and macOS, and its arithmetic is not the same on both: the
-bundled cities were drawn on Linux, and on macOS (Apple silicon) a city's target can come
-out a few points different and a baseline can reach a target it does not reach on Linux.
+bundled cities were drawn on Linux, and on macOS a city's readings can differ from them.
 The engine runs and the environment works there; the bundled instances' witnesses and
 targets are Linux's, and the two tests that pin them are marked as expected to fail on
-macOS until the divergence is traced.
+macOS.
 
 The rules are three. First, the map is the engine's own for the instance's seed. The layout is
 a coal plant, a road between two rows of four sites and wires round them, on the first flat
@@ -81,8 +79,7 @@ The engine reseeds its random numbers from the clock once it has generated a map
 environment pins the seed straight after and treats a state as its decisions. To expand one it
 builds a fresh engine, generates the map from the instance's seed, pins the random seed, lays
 the city out, and replays every decision so far, eight hundred ticks after each. This is what
-makes the same decisions always give the same city, and it is paid for in time, though not
-much of it: a ten-year replay was measured here at about fifteen milliseconds.
+makes the same decisions always give the same city, and it is paid for in time.
 
 ## Planning problem
 
@@ -137,7 +134,7 @@ the layout at tile (61, 22), a horizon of 10 years and a target of 26. The three
 plans reach 22, 8 and 19 on it, which is where the target comes from. The bare layout reads a
 population of 1, funds of 16,685 after the plant, the road and the wires, and a score of 500.
 Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 61 expansions and 6.6 seconds. Its ten-year plan is
+1000), returns the ten-year plan
 
 ```
 zone(I,0), zone(I,1), zone(R,5), zone(R,6), zone(R,2), zone(R,7), zone(R,3), wait, wait,
@@ -181,10 +178,10 @@ env.render_trace(trace, "micropolis_chart.png", actions=result.plan, env=env)   
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_micropolis")`, whose `apply_action` advances a state (see
 [Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
-and state pairs for the decisions open in the state, and The readings a state charts, and the
-panels they go on, are its own `readings()` and `panels`; `charts=False` asks `render_trace` for
-the state's text instead, and [docs/rendering.md](../rendering.md) covers the other output
-formats.
+and state pairs for the decisions open in the state, and `get_actions(state)` lists those
+decisions. The readings a state charts, and the panels they go on, are its own `readings()` and
+`panels`; `charts=False` asks `render_trace` for the state's text instead, and
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Cities
 
@@ -212,7 +209,8 @@ state, info = env.reset()                       # info["generated"] is True
 | `years` | 10, 15 or 20 at random | the horizon |
 | `slack` | 0.15 | the target's margin over the best baseline |
 | `search_limit` | 40 | expansions the acceptance search may spend per draw |
-| `attempts` | 80 | maps drawn before giving up with `GenerationError`; most maps have no flat patch and cost nothing |
+| `attempts` | 80 | maps drawn before giving up with `GenerationError`; a map with no flat patch is thrown back before anything is simulated |
+
 
 A draw is kept only if a best-first search over decisions meets the target within
 `search_limit` expansions. The search is guided by the population the city would have at the
