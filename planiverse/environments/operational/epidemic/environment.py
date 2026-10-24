@@ -32,7 +32,7 @@ random stream with it, so a state is its schedule (the levels chosen so far) and
 expansion replays the epidemic from day zero. Twelve weeks of ten thousand people take a
 third of a second.
 """
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 #: The levels a week may be set to: the factor on the model's transmission rate, and the
@@ -87,6 +87,22 @@ ACTIONS = tuple(EpidemicAction(level) for level in LEVELS)
 class EpidemicState:
     """The levels chosen so far and what the epidemic reads at the end of them. Identity is the
     schedule, since the model replays exactly from its seed."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("people", ("infectious",), None),
+        Panel("in hospital", ("in hospital",), "beds"),
+        Panel("deaths", ("deaths",), "allowed"),
+        Panel("disruption points", ("points spent",), "budget"),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"infectious": self.infectious, "in hospital": self.load, "beds": self.capacity,
+                "deaths": self.deaths, "allowed": self.target, "points spent": self.points,
+                "budget": self.budget}
 
     def __init__(self, schedule, day, infectious, load, peak, deaths, infections, points,
                  capacity=0, target=0, budget=0, weeks=0, depth=0):

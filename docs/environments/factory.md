@@ -223,10 +223,9 @@ for action, child in env.successors(state):
     print(action, child.tick, child.plates)
 ```
 
-The readings each environment charts, and the panels they go on, are in
-[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
-asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
-covers the other output formats.
+The readings a state charts, and the panels they go on, are its own `readings()` and `panels`;
+`charts=False` asks `render_trace` for the state's text instead, and
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Patches
 

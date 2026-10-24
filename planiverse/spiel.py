@@ -36,6 +36,7 @@ returns what it found, here a plan of action ids rather than a policy.
 import inspect
 import random
 
+import numpy as np
 import pyspiel
 
 from planiverse.environments.base import Environment
@@ -45,7 +46,7 @@ from planiverse.planners.common import SuccessorCache
 _NO_SEED = -1
 
 
-def _game_type(name, long_name):
+def _game_type(name, long_name, readings=True):
     return pyspiel.GameType(
         short_name=name,
         long_name=long_name,
@@ -58,8 +59,8 @@ def _game_type(name, long_name):
         min_num_players=1,
         provides_information_state_string=False,
         provides_information_state_tensor=False,
-        provides_observation_string=False,
-        provides_observation_tensor=False,
+        provides_observation_string=True,
+        provides_observation_tensor=readings,
         parameter_specification={"index": 0, "seed": _NO_SEED, "max_actions": 100_000,
                                  "max_game_length": 100_000})
 
@@ -94,7 +95,16 @@ class PlaniverseGame(pyspiel.Game):
                                 num_players=1, min_utility=0.0, max_utility=1.0,
                                 utility_sum=None,
                                 max_game_length=params.get("max_game_length", 100_000))
-        super().__init__(_game_type(f"planiverse_{spec.name}", spec.summary), info, params)
+        #: The readings a state of this instance carries, in a fixed order: what the
+        #: observation tensor holds, one number each, and names in its `dict`.
+        initial = self.env.reset()[0]
+        self.reading_names = tuple(initial.readings()) if hasattr(initial, "readings") else ()
+        super().__init__(_game_type(f"planiverse_{spec.name}", spec.summary,
+                                    readings=bool(self.reading_names)), info, params)
+
+    def make_py_observer(self, iig_obs_type=None, params=None):
+        """OpenSpiel's observer for this game: the state's text, and its readings."""
+        return ReadingsObserver(self.reading_names)
 
     def new_initial_state(self):
         return PlaniverseState(self, self.env.reset()[0])
@@ -111,6 +121,29 @@ class PlaniverseGame(pyspiel.Game):
     def expand(self, inner):
         """`{action id: successor}`, from one simulator expansion per state."""
         return {self.action_id(action): child for action, child in self.cache.expand(inner)}
+
+
+class ReadingsObserver:
+    """A state as OpenSpiel observes it, with OpenSpiel's observer interface.
+
+    The string is the simulator state's own text, the one `render_trace` typesets. The tensor
+    is its readings, one number each, and `dict` names each one, the way OpenSpiel names the
+    pieces of an observation. Every state here is perfect information, so the player is
+    ignored.
+    """
+
+    def __init__(self, names):
+        self.tensor = np.zeros(len(names), np.float32)
+        self.dict = {name: self.tensor[i:i + 1] for i, name in enumerate(names)}
+
+    def set_from(self, state, player):
+        if self.dict:
+            readings = state.inner.readings()
+            for name, view in self.dict.items():
+                view[0] = readings[name]
+
+    def string_from(self, state, player):
+        return str(state.inner)
 
 
 class PlaniverseState(pyspiel.State):

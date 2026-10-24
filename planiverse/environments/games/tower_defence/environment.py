@@ -31,7 +31,7 @@ https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
 import math
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: The map: `WIDTH` by `HEIGHT` cells.
@@ -89,6 +89,22 @@ START = TowerAction()
 
 class TowerState:
     """Which slots hold which towers, the gold, the lives, and the waves fought so far."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("lives", ("lives",), None),
+        Panel("gold", ("gold",), None),
+        Panel("towers built", ("arrow", "cannon"), None),
+        Panel("waves fought", ("wave",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        kinds = [kind for _, kind in self.towers]
+        return {"lives": self.lives, "gold": self.gold, "arrow": kinds.count("arrow"),
+                "cannon": kinds.count("cannon"), "wave": self.wave}
 
     def __init__(self, towers, gold, lives, wave, depth=0):
         self.towers = tuple(sorted(towers))

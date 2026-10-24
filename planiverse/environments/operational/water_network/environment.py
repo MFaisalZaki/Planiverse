@@ -42,7 +42,7 @@ import tempfile
 from collections import namedtuple
 from copy import deepcopy
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: Hydraulics are run pressure-driven rather than demand-driven. It matters here: under the
@@ -270,6 +270,20 @@ class WaterNetworkState:
     bit). So two states with the same pipes closed *are* the same state, and search can
     close over them without simulating anything twice.
     """
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("contaminated water delivered, %", ("contaminated",), None),
+        Panel("service, %", ("service",), None),
+        Panel("pipes closed", ("closed",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"contaminated": 100 * float(self.contaminated),
+                "service": 100 * float(self.service), "closed": len(self.closed)}
 
     def __init__(self, closed, service, contaminated, pressure_deficit, depth=0):
         self.closed = frozenset(closed)

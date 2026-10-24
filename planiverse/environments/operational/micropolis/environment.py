@@ -34,7 +34,7 @@ is left in `witness`. The bundled cities are such draws, embedded as plain data 
 each came from. The method is generate-and-test (search-based procedural content generation:
 Togelius et al. 2011, https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 KINDS = ("R", "C", "I")
@@ -94,6 +94,21 @@ class MicropolisState:
     engine is deterministic from the seed. The readings (`population`, `funds`, ...) are
     what the decisions produced and are carried for the planner to look at.
     """
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("people", ("population", "residents", "commerce", "industry"), "target"),
+        Panel("funds", ("funds",), None),
+        Panel("score", ("score",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"population": self.population, "residents": self.residents,
+                "commerce": self.commerce, "industry": self.industry,
+                "funds": self.funds, "score": self.score, "target": self.target}
 
     def __init__(self, decisions, population, residents, commerce, industry, funds, score,
                  target=0, depth=0):

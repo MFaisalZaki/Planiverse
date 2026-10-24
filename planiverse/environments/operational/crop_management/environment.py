@@ -36,7 +36,7 @@ import datetime
 import os
 from collections import namedtuple
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 #: A potato crop on a Dutch field, which is what the bundled weather describes.
@@ -253,6 +253,19 @@ class CropState:
     it twice), so replaying a schedule lands in the same place and two schedules that agree
     are the same state.
     """
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("biomass and yield, kg/ha", ("biomass", "yield"), None),
+        Panel("water used, cm", ("water used",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"biomass": float(self.biomass), "yield": float(self.yield_kg),
+                "water used": float(self.water_used)}
 
     def __init__(self, schedule, biomass, yield_kg, water_used, finished, stage):
         self.schedule = tuple(schedule)

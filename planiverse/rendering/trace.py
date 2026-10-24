@@ -13,10 +13,15 @@ visible at once and each frame is captioned with the step number, the action tha
 it, and whether the state is a goal or a dead end. A GIF shows one frame at a time, which
 is the right thing for an animation and the wrong thing for reading a plan.
 
-Every frame is **the state's own text**: `str(state)`, typeset in a monospace font. Most of
-these environments were designed to be read as an ASCII board, and a GIF is pixels:
-typesetting is the one step that turns the board into them, which is the only reason a font
-appears in this file at all.
+Every frame is **the state's own text**: `str(state)`, typeset in a monospace font, which for
+an OpenSpiel state is the text OpenSpiel prints for it. Most of these environments were
+designed to be read as an ASCII board, and a GIF is pixels: typesetting is the one step that
+turns the board into them, which is the only reason a font appears in this file at all. A
+state whose text is a line of numbers instead says so by carrying `readings()` and `panels`,
+and is charted (`charts.py`).
+
+A trace is any list of states: an environment's, from `env.simulate(plan)`, or an OpenSpiel
+game's, from applying the plan to `game.new_initial_state()` and cloning as it goes.
 """
 import os
 
@@ -117,6 +122,20 @@ def _caption(image, title, subtitle=None, colour=_INK):
     return canvas
 
 
+def outcome(state, env=None):
+    """"goal", "dead end" or None: what a caption says about a state.
+
+    `env` answers when it is given. Otherwise an OpenSpiel state answers for itself: a terminal
+    state with a positive return is a goal, any other terminal state a dead end.
+    """
+    if env is not None:
+        return "goal" if env.is_goal(state) else "dead end" if env.is_terminal(state) else None
+    is_terminal, returns = getattr(state, "is_terminal", None), getattr(state, "returns", None)
+    if callable(is_terminal) and callable(returns) and is_terminal():
+        return "goal" if returns()[0] > 0 else "dead end"
+    return None
+
+
 def kept_indices(count, max_states=None):
     """Which states of a trace of `count` to show: all of them, or the first, the last and
     an even spread between when `max_states` is fewer."""
@@ -169,12 +188,8 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
             action = actions[index - 1] if actions and index - 1 < len(actions) else None
             title = f"{index}. {action}" if action is not None else f"step {index}"
 
-        colour, note = _INK, None
-        if env is not None:
-            if env.is_goal(state):
-                colour, note = _GOAL, "goal"
-            elif env.is_terminal(state):
-                colour, note = _TERMINAL, "dead end"
+        note = outcome(state, env)
+        colour = {"goal": _GOAL, "dead end": _TERMINAL}.get(note, _INK)
         if len(indices) != len(states):
             note = f"{note} · state {index} of {len(states) - 1}" if note \
                 else f"state {index} of {len(states) - 1}"
@@ -232,20 +247,18 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
     number is not much use, and off for the GIF and the directory unless you passed
     `actions` or `env`, which is a fair sign you want them labelled.
 
-    `charts` picks the frame: the state's text, or, for an environment whose state is a
-    handful of readings (`rendering.readings` says which), a chart of those readings over
-    the steps so far. It defaults to the chart wherever one is registered; `False` asks
-    for the text anyway, `True` for the chart and an error where there is none. A chart
+    `charts` picks the frame: the state's text, or, for a state that carries `readings()` and
+    `panels`, a chart of those readings over the steps so far. It defaults to the chart
+    wherever the state has one; `False` asks for the text anyway, `True` for the chart and an
+    error where there is none. A chart
     trace ignores `columns` and `per_page`: its sheet is one figure, not tiles.
 
     `frames`, one picture per state, replaces the typeset text with the state's own screen
     (see `trace_frames`); the emulator environments pass their consoles' frames this way.
     """
-    from planiverse.rendering.readings import readings_of
-
     extension = os.path.splitext(str(target))[1].lower()
     if charts is None:
-        charts = bool(trace) and frames is None and readings_of(trace[0]) is not None
+        charts = bool(trace) and frames is None and getattr(trace[0], "panels", None) is not None
     if charts:
         return _render_charts(trace, target, extension, actions, env, duration_ms, max_states)
     if captions is None:

@@ -30,7 +30,7 @@ leaves behind: the month, the two volumes and the shortfalls so far. Two release
 leave the same volumes are one state, and the environment replays the year from January to
 expand one, which takes a few milliseconds.
 """
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 MONTHS = 12
@@ -90,6 +90,22 @@ ACTIONS = tuple(ReservoirAction(r, s) for r in RELEASES for s in SHARES)
 class ReservoirState:
     """A month's end: the volumes, the shortfalls so far and the last month's deliveries.
     Identity is the month, the volumes and the shortfalls; `settings` is kept for replay."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("volume", ("upper", "lower"), None),
+        Panel("flows a month", ("released", "city", "farm", "river"), None),
+        Panel("farm shortfall", ("farm shortfall",), "allowed"),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        city, farm, river, turbine = self.delivered
+        return {"upper": self.upper, "lower": self.lower, "released": turbine, "city": city,
+                "farm": farm, "river": river, "farm shortfall": self.farm_short,
+                "allowed": self.target}
 
     def __init__(self, settings, upper, lower, farm_short, city_short, river_short, delivered,
                  target=0, reserves=(0, 0), depth=0):

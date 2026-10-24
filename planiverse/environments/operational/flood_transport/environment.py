@@ -49,7 +49,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 # ---------------------------------------------------------------- what MAAT takes from the literature
@@ -360,6 +360,23 @@ class FloodState:
     path are the same state, and a path is what `simulate` replays. `depth` is the number of
     decisions taken and is not part of the identity in any other way.
     """
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("cost, M DKK", ("total", "damage", "delays", "measures"), "target"),
+        Panel("worst storm so far, mm", ("storm",), None),
+        Panel("measures in place", ("in place",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        million = 1e6
+        return {"total": float(self.cost) / million, "damage": float(self.damage) / million,
+                "delays": float(self.delay) / million, "measures": float(self.spent) / million,
+                "target": float(self.target) / million, "storm": float(self.rain or 0),
+                "in place": len(self.protected)}
 
     def __init__(self, path, protected, cost, spent, damage, delay, no_travel, rain, years,
                  period, target):

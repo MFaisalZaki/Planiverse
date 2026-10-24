@@ -47,7 +47,7 @@ import re
 import struct
 from collections import OrderedDict, deque, namedtuple
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 DIRECTIONS = ("north", "east", "south", "west")
@@ -180,6 +180,27 @@ class FactoryState:
     """The factory as it stands: the tick, the character, what it holds, the machines, the ore
     left under the patch and the piles on the ground, with the decisions that led here kept for
     replay. Identity is the contents; `path` and `depth` are bookkeeping."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("plates", ("brought back", "made", "in furnaces"), "target"),
+        Panel("held", ("coal", "ore"), None),
+        Panel("machines working", ("drills", "furnaces"), None),
+        Panel("game time, seconds", ("seconds",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        furnaces = [m for m in self.machines if m.kind == "furnace"]
+        drills = [m for m in self.machines if m.kind == "drill"]
+        return {"brought back": self.plates, "made": self.produced,
+                "in furnaces": sum(m.plates for m in furnaces), "target": self.target,
+                "coal": self.inventory.get("coal", 0), "ore": self.inventory.get("ore", 0),
+                "drills": sum(1 for m in drills if m.status == "working"),
+                "furnaces": sum(1 for m in furnaces if m.status == "working"),
+                "seconds": self.tick / 60}
 
     def __init__(self, path, tick, position, inventory, machines, piles, ore, produced,
                  target=0, horizon=0, depth=0):

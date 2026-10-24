@@ -252,11 +252,9 @@ Stateful play goes through the environment's OpenSpiel game,
 and state pairs for waiting and for each measure still open, and `get_actions()` lists `wait`
 and every measure on every flooding zone whatever the state. `reference_plan()` returns the
 policy that set the target as a plan, and `validate(plan)` replays a plan and says whether it
-reaches a goal, which it does for the reference. The readings each environment charts, and the
-panels they go on, are in
-[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
-asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
-covers the other output formats.
+reaches a goal, which it does for the reference. The readings a state charts, and the panels
+they go on, are its own `readings()` and `panels`; `charts=False` asks `render_trace` for the
+state's text instead, and [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios
 

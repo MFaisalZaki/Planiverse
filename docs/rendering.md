@@ -43,10 +43,34 @@ of the readings of every state up to the one shown**: one panel per quantity, th
 share a unit on one axis and never two scales on one panel, the action that produced each state
 along the bottom, a target as a dashed line, and the goal or dead end marked where the plan
 ends. The GIF grows the chart a state at a time; the sheet is the whole plan on one figure.
-Which readings an environment charts, and the panels they go on, is written down once in
-[`readings.py`](../planiverse/rendering/readings.py), keyed by the state's class, so
-`render_trace` needs no telling; `charts=False` asks for the text anyway. matplotlib draws it
-through its object API, so no display is involved.
+The readings are part of the state: such a state carries `readings()`, its numbers by name, and
+`panels`, which of them share an axis (`Panel(title, series, target)`, from
+`planiverse.environments`). `render_trace` charts whatever has them and needs no telling;
+`charts=False` asks for the text anyway. matplotlib draws it through its object API, so no
+display is involved.
+
+## Rendering OpenSpiel states
+
+A trace can be OpenSpiel states as well as an environment's, from applying a plan to
+`game.new_initial_state()`:
+
+```python
+game = pyspiel.load_game("planiverse_tower_defence", {"index": 0})
+actions, _ = spiel.solve(game, "bfws")
+trace = [game.new_initial_state()]
+for action in actions:
+    trace.append(trace[-1].clone())
+    trace[-1].apply_action(action)
+render_trace(trace, "plan.png")
+```
+
+A frame is then what OpenSpiel says about the state. Its text is `str(state)`, and for a
+`planiverse_*` game that is the simulator state's own text, the same as its
+`observation_string`. Its readings are the ones the game's observation tensor holds, named in
+the `dict` of OpenSpiel's observer (`open_spiel.python.observation.make_observation(game)`).
+Without `env=`, the caption reads the end of the plan off the game itself: a terminal state with
+a positive return is a goal, and any other terminal state is a dead end. Any of OpenSpiel's own
+games renders the same way, as its text.
 
 For the two emulators (the Game Boy and Stable-Retro) a frame is **the console's own screen**
 at that state, which the environment reads back by loading the state's snapshot and drawing
@@ -57,8 +81,7 @@ the captions go on as for text. `frames=` is open to any caller with a picture p
 
 | Path | What |
 |---|---|
-| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state` |
+| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state`, `outcome` |
 | [`charts.py`](../planiverse/rendering/charts.py) | `chart_image`, `chart_frames`: the readings charts |
-| [`readings.py`](../planiverse/rendering/readings.py) | what each numeric environment charts, and its panels |
 | [`tests/test_rendering.py`](../tests/test_rendering.py) | Tests |
 | [`renders/`](renders/) | Rendered plans, one per environment |

@@ -34,7 +34,7 @@ import random
 import subprocess
 import tempfile
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 #: The grid: three by three, 150 m blocks, 120 m stubs to the edge of the map.
@@ -164,6 +164,19 @@ class TrafficState:
     """The decisions so far and what the grid reads after them: the time, the vehicles arrived,
     on the road, halted in a queue and still to depart, the vehicle-seconds spent, and which
     green each junction shows. Identity is the path, since SUMO replays exactly."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("vehicles", ("on the road", "halted", "arrived", "to come"), None),
+        Panel("travel, vehicle-seconds", ("vehicle-seconds",), "target"),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"on the road": self.running, "halted": self.halted, "arrived": self.arrived,
+                "to come": self.pending, "vehicle-seconds": self.travel, "target": self.target}
 
     def __init__(self, decisions, time, arrived, running, pending, travel, greens, target=0,
                  horizon=0, total=0, halted=0, depth=0):

@@ -171,11 +171,10 @@ env.close()                                                                    #
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_traffic")`, whose `apply_action` advances a state (see [Through
 OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
-pairs for all seventeen actions, and `close()` shuts the simulator down. The readings each
-environment charts, and the panels they go on, are in
-[`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py); `charts=False`
-asks `render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md)
-covers the other output formats.
+pairs for all seventeen actions, and `close()` shuts the simulator down. The readings a state
+charts, and the panels they go on, are its own `readings()` and `panels`; `charts=False` asks
+`render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md) covers the
+other output formats.
 
 ## Mornings
 

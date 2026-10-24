@@ -104,34 +104,58 @@ def tower_trace():
 
 
 def test_a_readings_state_is_charted_and_a_board_is_not(env):
-    from planiverse.rendering import readings_of
-
     board, _ = env.reset()
-    assert readings_of(board) is None, "a board renders as its own text"
+    assert not hasattr(board, "readings"), "a board renders as its own text"
     game, _, trace = tower_trace()
-    readings = readings_of(trace[0])
-    assert readings is not None
-    for panel in readings.panels:
-        row = readings.values(trace[-1])
+    row = trace[-1].readings()
+    for panel in trace[0].panels:
         assert all(isinstance(row[name], (int, float)) for name in panel.series), panel.title
         assert panel.target is None or panel.target in row
 
 
-def test_every_registered_reading_names_a_state_class_that_exists():
-    """The registry is keyed by class, so a rename would silently drop a chart."""
+def test_every_panel_draws_readings_its_state_has():
+    """A panel naming a reading the state does not give would draw nothing, silently."""
     import importlib
 
-    from planiverse.rendering import READINGS
+    from planiverse.environments import list_environments
 
     checked = 0
-    for module, name in READINGS:
-        try:
-            loaded = importlib.import_module(module)
-        except ImportError:
-            continue                      # a simulator not installed here
-        assert hasattr(loaded, name), f"{module} has no {name}"
-        checked += 1
+    for spec in list_environments():
+        if not spec.available():
+            continue
+        module = importlib.import_module(spec.factory.split(":")[0])
+        for cls in vars(module).values():
+            panels = getattr(cls, "panels", None) if isinstance(cls, type) else None
+            if not panels:
+                continue
+            env = spec.build()
+            names = set(env.reset()[0].readings())
+            for panel in panels:
+                assert set(panel.series) <= names, f"{cls.__name__}: {panel.title}"
+                assert panel.target is None or panel.target in names
+            checked += 1
     assert checked >= 1
+
+
+def test_an_openspiel_trace_renders_and_its_end_is_captioned(tmp_path):
+    """A trace of OpenSpiel states renders like an environment's: the readings are the
+    simulator state's, and the caption reads the goal off the game's own return."""
+    pyspiel = pytest.importorskip("pyspiel")
+    import planiverse.spiel as spiel
+
+    game = pyspiel.load_game("planiverse_tower_defence", {"index": 0})
+    actions, result = spiel.solve(game, "bfws")
+    assert result.status == "solved"
+    trace = [game.new_initial_state()]
+    for action in actions:
+        trace.append(trace[-1].clone())
+        trace[-1].apply_action(action)
+    from planiverse.rendering import outcome
+
+    assert outcome(trace[-1]) == "goal" and outcome(trace[0]) is None
+    assert render_trace(trace, tmp_path / "plan.png").exists()
+    board = pyspiel.load_game("deep_sea").new_initial_state()
+    assert render_trace([board], tmp_path / "deep_sea.png").exists(), "OpenSpiel's own text"
 
 
 def test_a_charted_gif_grows_one_frame_per_state(tmp_path):

@@ -39,7 +39,7 @@ competitions: https://github.com/Grid2Op/grid2op
 """
 from collections import namedtuple
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: The bundled case. `test=True` uses the time series shipped inside grid2op, so nothing is
@@ -231,6 +231,19 @@ class PowerGridState:
     twice and comparing every line's loading), so replaying a path always lands in the same
     place, and two paths that agree are the same position.
     """
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("worst line loading, share of capacity", ("worst line loading",), "limit"),
+        Panel("lines overloaded", ("overloaded",), None),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"worst line loading": float(self.max_rho), "limit": 1.0,
+                "overloaded": sum(1 for rho in self.rhos if rho >= 1.0)}
 
     def __init__(self, path, max_rho, rhos, blackout, step, survived):
         self.path = tuple(path)

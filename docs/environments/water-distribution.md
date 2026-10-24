@@ -193,10 +193,9 @@ Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_water_network")`, whose `apply_action` advances a state (see
 [Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
 and state pairs for the candidate pipes not yet closed, and `get_actions()` lists every
-candidate whatever the state. The readings each environment charts, and the panels they go on,
-are in [`planiverse/rendering/readings.py`](../../planiverse/rendering/readings.py);
-`charts=False` asks `render_trace` for the state's text instead, and
-[docs/rendering.md](../rendering.md) covers the other output formats.
+candidate whatever the state. The readings a state charts, and the panels they go on, are its
+own `readings()` and `panels`; `charts=False` asks `render_trace` for the state's text instead,
+and [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios
 

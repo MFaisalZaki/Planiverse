@@ -9,7 +9,7 @@ figures) through its object API, so no backend or display is involved.
 """
 import math
 
-from planiverse.rendering.readings import readings_of
+from planiverse.rendering.trace import outcome
 
 #: Chart chrome: the surface, the inks, the grid and the axis, and the series and status
 #: colours, in a fixed order so a reading keeps its colour whatever else is drawn.
@@ -20,12 +20,12 @@ GOOD, CRITICAL = "#0ca30c", "#d03b3b"
 DPI = 110
 
 
-def readings_table(trace, readings=None):
-    """The readings of every state of a trace, one dict per state."""
-    readings = readings or readings_of(trace[0])
-    if readings is None:
-        raise ValueError(f"no readings are registered for {type(trace[0]).__name__}; it renders as text")
-    return [readings.values(state) for state in trace]
+def readings_table(trace):
+    """The readings of every state of a trace, one dict per state: what `state.readings()`
+    says, so a state that is not ours (an OpenSpiel game's) charts as soon as it has them."""
+    if getattr(trace[0], "panels", None) is None:
+        raise ValueError(f"{type(trace[0]).__name__} has no readings; it renders as text")
+    return [state.readings() for state in trace]
 
 
 def _limits(rows, panel):
@@ -73,16 +73,11 @@ def _step_labels(trace, actions):
 
 
 def _note(env, state):
-    if env is None:
-        return None, INK
-    if env.is_goal(state):
-        return "goal", GOOD
-    if env.is_terminal(state):
-        return "dead end", CRITICAL
-    return None, INK
+    note = outcome(state, env)
+    return note, {"goal": GOOD, "dead end": CRITICAL}.get(note, INK)
 
 
-def chart_image(trace, actions=None, env=None, upto=None, readings=None, dpi=DPI):
+def chart_image(trace, actions=None, env=None, upto=None, dpi=DPI):
     """One image: the readings of the states up to `upto` (the whole trace by default),
     drawn on axes sized for the whole trace so that a sequence of these does not jump."""
     from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -90,18 +85,18 @@ def chart_image(trace, actions=None, env=None, upto=None, readings=None, dpi=DPI
     from matplotlib.ticker import MaxNLocator
     from PIL import Image
 
-    readings = readings or readings_of(trace[0])
-    rows = readings_table(trace, readings)
+    rows = readings_table(trace)
+    panels = trace[0].panels
     count = len(rows)
     upto = count - 1 if upto is None else upto
     labels = _step_labels(trace, actions)
     longest = max(len(label) for label in labels)
-    widest_name = max(len(name) for panel in readings.panels for name in panel.series)
+    widest_name = max(len(name) for panel in panels for name in panel.series)
     width = max(7.5, 0.26 * count + 1.6)
-    height = 1.5 * len(readings.panels) + 0.55 + 0.062 * longest
+    height = 1.5 * len(panels) + 0.55 + 0.062 * longest
     figure = Figure(figsize=(width, height), dpi=dpi, facecolor=SURFACE)
-    axes = figure.subplots(len(readings.panels), 1, sharex=True)
-    axes = list(axes) if len(readings.panels) > 1 else [axes]
+    axes = figure.subplots(len(panels), 1, sharex=True)
+    axes = list(axes) if len(panels) > 1 else [axes]
     note, colour = _note(env, trace[upto])
     title = labels[upto] if upto < count else labels[-1]
     figure.suptitle(title, x=0.01, y=0.995, ha="left", va="top", fontsize=10,
@@ -109,7 +104,7 @@ def chart_image(trace, actions=None, env=None, upto=None, readings=None, dpi=DPI
     if note:
         figure.text(0.99, 0.995, note, ha="right", va="top", fontsize=9, color=colour)
 
-    for axis, panel in zip(axes, readings.panels):
+    for axis, panel in zip(axes, panels):
         axis.set_facecolor(SURFACE)
         for side in ("top", "right"):
             axis.spines[side].set_visible(False)
@@ -172,9 +167,8 @@ def chart_image(trace, actions=None, env=None, upto=None, readings=None, dpi=DPI
     return image
 
 
-def chart_frames(trace, actions=None, env=None, indices=None, readings=None, dpi=DPI):
+def chart_frames(trace, actions=None, env=None, indices=None, dpi=DPI):
     """One image per state (or per index in `indices`), each the chart up to that state."""
-    readings = readings or readings_of(trace[0])
     indices = range(len(trace)) if indices is None else indices
-    return [chart_image(trace, actions, env, upto=index, readings=readings, dpi=dpi)
+    return [chart_image(trace, actions, env, upto=index, dpi=dpi)
             for index in indices]

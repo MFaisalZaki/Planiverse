@@ -31,7 +31,7 @@ sector from the aircraft's entry. A minute of four aircraft takes about fifty mi
 """
 import math
 
-from planiverse.environments.base import Environment
+from planiverse.environments.base import Environment, Panel
 from planiverse.environments.generation import draw_until, rng
 
 #: Seconds of flying per decision, the turn an instruction makes, and the separation standard.
@@ -124,6 +124,22 @@ class AirspaceState:
     """The instructions so far and the sector after them: each aircraft's position, level,
     heading, distance to its exit and whether it is out, the closest any pair came, the sum of
     exit times, and whether separation was lost. Identity is the path."""
+
+    #: How a chart of a trace lays the readings out: one axis per quantity, the
+    #: series that share its unit, and the reading drawn across it as a target.
+    panels = (
+        Panel("aircraft in the sector", ("in the sector",), None),
+        Panel("closest pair, nautical miles", ("closest, nm",), "standard"),
+        Panel("miles still to fly", ("miles to go",), None),
+        Panel("exit times, seconds", ("exit times, s",), "target"),
+    )
+
+    def readings(self):
+        """What a chart of a trace plots, by name: the state's numbers, which its
+        OpenSpiel game also gives as the named pieces of its observation."""
+        return {"in the sector": len(self.flying), "closest, nm": min(self.closest, 30.0),
+                "standard": 5.0, "miles to go": sum(a[5] for a in self.flying),
+                "exit times, s": self.exit_sum, "target": self.target}
 
     def __init__(self, instructions, time, aircraft, closest, exit_sum, lost, target=0,
                  horizon=0, depth=0):

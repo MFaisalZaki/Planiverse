@@ -12,6 +12,8 @@ So there is one base class now, and the taxonomy moved into data. `Environment` 
 contract; `EnvironmentSpec` in `registry.py` carries everything a caller might want to select
 on, including the tags that used to be package directories.
 """
+from collections import namedtuple
+
 #: Methods a planner may always call: the six that search needs, and the two that make new
 #: instances, because an environment a benchmark cannot draw fresh instances from is not
 #: one this library ships.
@@ -22,6 +24,13 @@ REQUIRED_METHODS = ("reset", "set_index", "set_instance", "generate_instance", "
 #: play is the environment's OpenSpiel game (`planiverse/spiel.py`), and drawing a trace is
 #: `render_trace`, so neither is a method here.
 OPTIONAL_METHODS = ("validate", "get_actions", "close")
+
+
+#: One axis of a chart of a trace: its title (which names the unit), the readings drawn on it
+#: as series, and the reading drawn across it as a dashed target line, if any. A state whose
+#: `str` is a line of numbers rather than a board carries `readings()` and `panels`, and
+#: `render_trace` charts it.
+Panel = namedtuple("Panel", "title series target")
 
 
 def _stub(method):

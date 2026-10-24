@@ -96,3 +96,22 @@ def test_chance_is_resolved_the_same_way_every_time():
 def test_a_game_for_more_than_one_player_is_refused():
     with pytest.raises(ValueError, match="single-player"):
         spiel.SpielEnvironment(pyspiel.load_game("tic_tac_toe"))
+
+
+def test_a_state_is_observed_through_openspiels_observer():
+    """The text OpenSpiel prints is the simulator state's own, and its readings are the
+    observation tensor, each named in the observer's `dict`."""
+    from open_spiel.python.observation import make_observation
+
+    game = pyspiel.load_game("planiverse_tower_defence", {"index": 0})
+    state = game.new_initial_state()
+    assert state.observation_string(0) == str(state.inner)
+    observation = make_observation(game)
+    observation.set_from(state, 0)
+    assert {name: float(view[0]) for name, view in observation.dict.items()} == \
+        {name: float(value) for name, value in state.readings().items()}
+    assert list(state.observation_tensor(0)) == list(observation.tensor)
+
+    board = pyspiel.load_game("planiverse_lolo", {"index": 0})
+    assert not board.get_type().provides_observation_tensor, "a board has no readings"
+    assert board.new_initial_state().observation_string(0).startswith("#")
