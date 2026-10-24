@@ -243,6 +243,18 @@ REGISTRY = (
         tags=frozenset({"operational", "infrastructure", "water"}),
     ),
     EnvironmentSpec(
+        name="railway",
+        factory="planiverse.environments.operational.railway.environment:RailwayEnv",
+        summary="Train dispatching on Flatland: choose when each train leaves its station, so every train reaches its target with no deadlock, before the horizon and under a train-steps target",
+        instances="100 timetables, generated",
+        generates="the cities, the rail network, the trains' stations and targets, the horizon and the train-steps target",
+        deterministic=True,
+        state_identity="value",
+        requires=("flatland",),
+        docs="docs/environments/railway.md",
+        tags=frozenset({"operational", "infrastructure", "transport", "scheduling"}),
+    ),
+    EnvironmentSpec(
         name="factory",
         factory="planiverse.environments.operational.factory.environment:FactoryEnv",
         summary="An early-game factory on factory-sim: drills, furnaces and coal on an ore patch, and plates to bring back by the deadline",

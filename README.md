@@ -30,6 +30,7 @@ season or city, so a benchmark is not limited to what ships.
 | Traffic signals | `traffic` | 100 mornings | the trips, their spacing, the horizon and the travel-time target | operational, infrastructure, traffic | [docs](docs/environments/traffic.md) |
 | Airspace | `airspace` | 100 sectors | the aircraft, their entries, speeds and exits, the horizon and the exit-time target | operational, aviation | [docs](docs/environments/airspace.md) |
 | Reservoir | `reservoir` | 100 years | the inflows, the demands, the capacities, the reserves and the shortfall target | operational, infrastructure, water | [docs](docs/environments/reservoir.md) |
+| Railway | `railway` | 100 timetables | the cities, the rail network, the trains' stations and targets, the horizon and the train-steps target | operational, infrastructure, transport, scheduling | [docs](docs/environments/railway.md) |
 | Flood adaptation | `flood_transport` | 100 scenarios | the city, its storms, the horizon and the measures on offer | operational, infrastructure, climate | [docs](docs/environments/flood-transport.md) |
 | Network attack | `network_attack` | 100 networks | network topology, hosts, services, OSs and exploits | security | [docs](docs/environments/network-attack.md) |
 | Puzznic | `puzznic` | 100 levels | board size, wall layout, block colours and pairs | game | [docs](docs/environments/puzznic.md) |
@@ -508,6 +509,7 @@ planiverse/environments/
     ├── traffic/         # signals on a SUMO grid
     ├── airspace/        # crossing aircraft on BlueSky
     ├── reservoir/       # reservoir operations on pywr
+    ├── railway/         # train dispatching on Flatland
     └── water_network/, power_grid/, crop_management/, flood_transport/, network_attack/
 ```
 
@@ -575,6 +577,7 @@ planiverse/
 │       ├── traffic/                    # TrafficEnv: signals on a SUMO grid
 │       ├── airspace/                   # AirspaceEnv: crossing aircraft on BlueSky
 │       ├── reservoir/                  # ReservoirEnv: reservoir operations on pywr
+│       ├── railway/                    # RailwayEnv: train dispatching on Flatland
 │       ├── flood_transport/            # FloodTransportEnv (after MAAT), a city drawn from a seed
 │       ├── network_attack/             # EnvNASim (wraps NASim)
 │       ├── water_network/              # WaterNetworkEnv (WNTR/EPANET)

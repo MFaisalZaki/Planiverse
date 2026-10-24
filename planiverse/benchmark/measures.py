@@ -148,6 +148,14 @@ def flood_transport(state):
     return (state.years - state.year) + state.cost / state.target
 
 
+def railway(state):
+    """Cells the trains still have to run, and one for each train not yet arrived; a deadlock
+    or train-steps over the target is worse than any of them."""
+    if state.deadlocked or state.train_steps > state.target:
+        return 10 ** 6
+    return state.to_go + state.left
+
+
 #: environment name -> `progress(state)`, lower is better.
 MEASURES = {
     "puzznic": puzznic,
@@ -173,4 +181,5 @@ MEASURES = {
     "game_boy": emulated,
     "retro": emulated,
     "flood_transport": flood_transport,
+    "railway": railway,
 }

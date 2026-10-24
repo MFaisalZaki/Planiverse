@@ -188,6 +188,15 @@ def reservoir():
     return env
 
 
+def railway():
+    pytest.importorskip("flatland", exc_type=ImportError, reason="flatland-rl is not installed")
+    from planiverse.environments.operational.railway.environment import RailwayEnv
+
+    env = RailwayEnv()
+    env.set_index(0)
+    return env
+
+
 def factory_env():
     pytest.importorskip("fsim", exc_type=ImportError, reason="factory-sim is not installed")
     from planiverse.environments.operational.factory.environment import FactoryEnv
@@ -237,6 +246,7 @@ ENVIRONMENTS = {
     "traffic": traffic,
     "airspace": pytest.param(airspace, marks=pytest.mark.slow),
     "reservoir": reservoir,
+    "railway": railway,
     "game_boy": game_boy,
     "retro": retro,
 }
@@ -296,7 +306,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "slingshot", "tower_defence", "fluid", "pipe_dream", "billiards",
-            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir",
+            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir", "railway",
             "game_boy", "retro"} == registered
 
 

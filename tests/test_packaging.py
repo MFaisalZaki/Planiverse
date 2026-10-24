@@ -28,8 +28,9 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
 #: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
 #: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), and
 #: BlueSky and pooltool each publish a dependency list that pip cannot satisfy
-#: (`install_bluesky.sh`, `install_pooltool.py`).
-INSTALLED_BY_SCRIPT = {"micropolisengine", "bluesky", "pooltool"}
+#: (`install_bluesky.sh`, `install_pooltool.py`), and Flatland and OR-Gym each declare a bound
+#: the rest of the dependencies cannot meet (`install_flatland.py`, `install_or_gym.py`).
+INSTALLED_BY_SCRIPT = {"micropolisengine", "bluesky", "pooltool", "flatland", "or_gym"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -53,6 +54,7 @@ ENTRY_POINTS = [
     "planiverse.environments.operational.traffic.environment",
     "planiverse.environments.operational.airspace.environment",
     "planiverse.environments.operational.reservoir.environment",
+    "planiverse.environments.operational.railway.environment",
     "planiverse.environments.operational.water_network.environment",
     "planiverse.environments.operational.power_grid.environment",
     "planiverse.environments.operational.crop_management.environment",
