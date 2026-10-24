@@ -219,7 +219,7 @@ it, and returns it as a dict that `set_instance` accepts back:
 ```python
 env = PowerGridEnv()
 contingency = env.generate_instance(seed=7)     # or make("power_grid", seed=7)
-# {'chronic': 1, 'line': 9, 'offset': 122, 'rho_after_trip': 1.64, 'blackout_in': 2, 'solved_at': 1}
+# {'chronic': 0, 'line': 8, 'offset': 121, 'rho_after_trip': 1.12, 'blackout_in': 2, 'solved_at': 1}
 state, info = env.reset()
 ```
 

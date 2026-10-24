@@ -27,33 +27,35 @@ dependencies = [
     # macOS, which is where the benchmark runs.
     "pypmt-eval-toolkit @ git+https://github.com/pyPMT/pyPMTEvalToolkit.git",
     "scipy (>=1.10)",               # shortest paths through the flood city's roads
-    # The three simulator-backed environments. Each ships its own benchmark data, so none
-    # of them downloads anything at run time.
+    # The water network, the grid and the crop. Each simulator ships its own benchmark data,
+    # so none of them downloads anything at run time.
     "wntr (>=1.2)",                 # EPANET, for the water distribution network
     "grid2op (>=1.10)",             # RTE's power system framework, for the grid
     "pcse (>=6.0)",                 # Wageningen's WOFOST crop model
     "pyyaml (>=6.0)",               # PCSE agromanagement is written as YAML
-    # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
-    # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.
-    "covasim (>=3.1)",              # IDM's agent-based epidemic, for the epidemic environment
+    # IDM's agent-based epidemic, for the epidemic environment. Covasim 4 is a rewrite on Starsim
+    # with a different simulation API, which the environment does not drive.
+    "covasim (>=3.1,<4)",
     "eclipse-sumo (>=1.20)",        # the SUMO binaries, for the traffic signals
     "libsumo (>=1.20)",             # SUMO's in-process binding
     # Manchester's water resource simulator, for the reservoirs. It publishes wheels for Linux
     # and Windows only; on macOS build it from source after `brew install glpk` (see the README).
     "pywr (>=1.20) ; sys_platform != 'darwin'",
     # BlueSky (the airspace environment) is installed by scripts/install_bluesky.sh: its
-    # published dependency list names a package that no longer builds.
+    # published dependency list names a placeholder package that does not build.
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
     # pooltool (the billiards table) is installed by scripts/install_pooltool.py: on Linux and
     # Windows its dependency list pins a Panda3D development build that PyPI does not carry.
     "factory-sim (>=0.3)",          # a tick-exact C simulator of Factorio's early game, for the factory
+    # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
+    # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.
     "pyboy (>=2.0)",                # Game Boy emulator, with its game wrappers
     # Farama's fork of Gym Retro: Genesis, NES, SNES and more. It publishes no Windows wheels
     # and supports Windows through WSL2, so a Windows install leaves it out.
     "stable-retro (>=0.9) ; sys_platform != 'win32'",
     # DeepMind's OpenSpiel: every environment is a `pyspiel` game (`planiverse/spiel.py`), and
     # every planner runs on any single-player game. PyPI carries wheels for Linux and macOS
-    # only, and a Windows build from source is not yet one this install can rely on.
+    # only, so a Windows install leaves it out.
     "open_spiel (>=1.5) ; sys_platform != 'win32'",
 ]
 

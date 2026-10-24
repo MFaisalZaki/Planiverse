@@ -229,7 +229,7 @@ returns it as a dict that `set_instance` accepts back:
 ```python
 env = WaterNetworkEnv()
 scenario = env.generate_instance(seed=7)     # or make("water_network", seed=7)
-# {'network': 'Net3.inp', 'source': '61', 'baseline': 0.488, 'solved_at': 1}
+# {'network': 'Net3.inp', 'source': '169', 'baseline': 0.564628675779134, 'solved_at': 2}
 state, info = env.reset()
 ```
 

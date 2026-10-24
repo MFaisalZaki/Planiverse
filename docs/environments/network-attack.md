@@ -246,7 +246,7 @@ returns it as a dict that `set_instance` accepts back:
 ```python
 env = EnvNASim()
 network = env.generate_instance(seed=7, hosts=8, services=4, num_os=3)
-# {'hosts': 8, 'services': 4, 'seed': 7, 'num_os': 3}
+# {'hosts': 8, 'services': 4, 'seed': 7, 'num_os': 3, 'solved_at': 7}
 state, info = env.reset()
 ```
 

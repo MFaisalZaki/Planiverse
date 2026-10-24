@@ -151,8 +151,8 @@ assign(digger,0), assign(basher,0), assign(builder,1), wait, wait, wait, wait
 ```
 
 The first wait is forced, since nobody is out yet. The digger given to lemming 0 changes nothing.
-That lemming was turned back by the wall of two at the first platform's right end and is standing
-at the platform's left edge. It falls to its death in the next tick, as does the lemming behind it.
+That lemming was turned back by the wall of two at the first platform's right end and has walked
+off the platform's left edge. It falls to its death, as does the lemming behind it.
 The basher opens that wall, and the rest of the crowd walks through it. It goes along the platforms
 and down into a pit between a ledge and a wall at columns 13 to 17, where it is trapped. The second
 digger sinks a shaft from the pit's floor to the rock, and the second basher tunnels along the rock

@@ -150,26 +150,25 @@ walls. The character starts at `(5.4, -11.6)` carrying two drills, two furnaces 
 with a target of 26 plates by a horizon of 7,200 ticks (two minutes). Fifteen decisions are open
 at the start: the eight walks, a drill on the one anchor within reach in each of its four
 facings, and the three waits. Dual BFWS, run as the benchmark runs `dual` (i.e., with the
-measure above and a width bound of 1000), returns a plan of thirty-six decisions:
-
+measure above and a width bound of 1000), returns a plan of thirty-eight decisions:
 
 ```
 place(drill, 3, -2, north), give(3, -2, coal, 1), wait(40), place(furnace, 3, -4),
 give(3, -4, coal, 1), wait(10), take(3, -4), wait(10), take(3, -4), wait(10), take(3, -4),
 wait(10), take(3, -4), give(3, -2, coal, 1), wait(10), take(3, -4), wait(10), take(3, -4),
-move(south), move(south), place(drill, -2, 0, north), give(-2, 0, coal, 1), mine(3, -3),
-place(furnace, -2, -2), give(-2, -2, coal, 1), mine(3, -3), give(-2, -2, ore), mine(3, -3),
-wait(40), take(-2, -2), take(3, -4), move(north), take(-2, -2), wait(10),
-give(-2, -2, coal, 1), take(-2, -2)
+move(south), move(south), move(south), mine(3, 0), give(3, -4, ore), mine(3, 0),
+give(3, -4, coal, 1), give(3, -4, ore), wait(10), mine(3, 0), take(3, -4), mine(3, 0),
+take(3, -4), give(3, -4, ore), mine(3, 0), take(3, -4), move(north), move(north), move(north),
+take(3, -4)
 ```
 
-The plan builds one line where the character stands, feeds each machine a single piece of coal
-at a time and empties the furnace as the plates come. It then walks south to build a second line
-with the last of the coal. Since the coal is short, it digs fifteen ore by hand and feeds it to
-the second furnace directly. It ends at tick 7,110 of the 7,200 with the 26 plates in hand, all
-six coal burnt and five ore still held. The scripted line the target came from builds both lines
-at once, fuels them and waits, in eighteen decisions. BFWS's plan is twice as long and reaches
-the same 26, which is what the goal asks.
+The plan builds one line where the character stands, a drill at `(3, -2)` and a furnace at
+`(3, -4)`, feeds each a single piece of coal at a time and empties the furnace as the plates
+come. When the drill's coal runs out it walks south to the patch, digs ore by hand at `(3, 0)`,
+five at a time, and carries it to the furnace, which it fuels once more. It walks back north and
+takes the last plate at tick 7,200, the horizon, with the 26 plates in hand, two coal and five
+ore still held, and the second drill and furnace never placed. The scripted line the target came
+from builds both lines at once, fuels them and waits, in eighteen decisions.
 
 ![BFWS solving factory instance 0](../renders/factory_chart.gif)
 

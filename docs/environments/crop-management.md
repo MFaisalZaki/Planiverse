@@ -247,7 +247,7 @@ selects it, and returns it as a dict that `set_instance` accepts back:
 ```python
 env = CropEnv()
 season = env.generate_instance(seed=7)     # or make("crop_management", seed=7)
-# {'year': 1988, 'sow': [4, 25], 'rainfed': 13616.5, 'reference': 14101.4}
+# {'year': 1986, 'sow': [4, 5], 'rainfed': 6758.3, 'reference': 8508.2}
 state, info = env.reset()
 ```
 
