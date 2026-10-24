@@ -1,14 +1,13 @@
 # Width-based planners
 
 This module implements the searches built on novelty, against the `successors()` / `literals`
-contract and nothing else, and exports them under the names the literature uses: `IW`, `SIW`,
-`BFWS` and `DualBFWS` are described here; the other novelty planners (quantified, count-based
-and approximate novelty, hierarchical IW) and the boundary-extension features are in the
-[catalogue](catalogue.md). IW at one fixed width is `IW(width=k)`; the novelty tables are
-internals of `novelty.py`.
+contract and nothing else, and exports them under the names the literature uses: `IW` and
+`BFWS` are described here; the other novelty planners (quantified, count-based and approximate
+novelty) are in the [catalogue](catalogue.md). IW at one fixed width is `IW(width=k)`; the
+novelty tables are internals of `novelty.py`.
 
 The *novelty* of a state (i.e., the size of the smallest tuple of its atoms that has not appeared
-in any state seen before) is what all five order or filter on. A state with a brand-new atom has
+in any state seen before) is what IW filters on and BFWS orders on. A state with a brand-new atom has
 novelty 1, whereas one whose atoms have all been seen individually but which combines two of them
 in a new way has novelty 2.
 
@@ -16,9 +15,8 @@ in a new way has novelty 2.
 |---|---|---|
 | `IW(width=k)` | a filter: fail the test, get discarded | no, for fixed width |
 | `IW` | the same, at width 1, then 2, … | up to `max_width` |
-| `SIW` | the same, in short legs that each make progress | no |
 | `BFWS` | a sort key: nothing is discarded; `relevant="iw"` adds BFWS(R)'s `#r` | yes, unless `prune=True` |
-| `DualBFWS` | a filter in cheap early rounds, a sort key in the last | yes |
+| `BFWS(prune=True)` | a sort key inside IW's filter (k-BFWS) | no |
 
 ```python
 from planiverse.planners.width import IW, BFWS, Budget
@@ -33,24 +31,24 @@ print(result.statistics)   # expansions, generated, pruned by novelty, ...
 ## Planning against a simulator
 
 **There is no goal decomposition.** `is_goal` is a black-box predicate, so the unachieved-goal
-count that SIW and BFWS classically lean on does not exist, and there is nothing to be one closer
-to. Both take a `progress(state)` callback instead, where lower is better:
+count that BFWS classically leans on does not exist, and there is nothing to be one closer to.
+It takes a `progress(state)` callback instead, where lower is better:
 
 ```python
 BFWS(width=1, progress=lambda s: s.contaminated).solve(env)
-SIW(width=1, progress=lambda s: s.blocks_remaining).solve(env)
+BFWS(width=1, progress=lambda s: s.blocks_remaining, relevant="iw").solve(env)   # BFWS(R)
 ```
 
-Without one, BFWS becomes breadth-first search ordered by novelty alone and SIW becomes a single
-IW call, which SIW reports in the status of an unsolved result.
+Without one, BFWS becomes breadth-first search ordered by novelty alone. IW takes no callback:
+it needs nothing beyond `successors`, `literals` and the goal test.
 
 **Expansions are expensive.** A water-network expansion is a full hydraulic and transport solve.
 So every search takes a `Budget` and returns `SearchStatistics`, because "found nothing" and "ran
 out of budget after four nodes" are different answers.
 
 **Dead ends are real.** A PDDL benchmark usually has none, whereas several environments here do,
-and `is_terminal` states are dropped rather than expanded; see [SIW](#siw-and-dead-ends) for what
-that is worth.
+and `is_terminal` states are dropped rather than expanded. A goal is tested before the terminal
+test, because every absorbing goal state in this library is terminal as well as a goal.
 
 **The atoms are whatever `literals` says.** A planner cannot see inside the transition, so each
 environment's decision about how coarsely to spell its state is what fixes its width. The water
@@ -66,43 +64,19 @@ atom has been seen. That is the incompleteness, and it is what iterated `IW` exi
 runs width 1, then 2, and so on up to `max_width`. Each width restarts from scratch, so a
 failed round's expansions are paid again in the next.
 
-## SIW and dead ends
+## k-BFWS
 
-SIW chains short IW searches, each stopping at the first state that improves `progress`. It is
-incomplete because each leg commits irrevocably to that first improvement, and greedy progress can
-be a trap: a leg can improve `progress` by landing in a dead end, which ends the whole search. A
-simulator that computes `is_terminal` gives the leg a cheap way to refuse, since a dead end is not
-progress:
-
-```python
-SIW(width=2, progress=boxes, avoid_dead_ends=False).solve(env)   # classical SIW
-SIW(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # refuses dead-end progress
-```
-
-`avoid_dead_ends` defaults to `True`. Set it `False` for the classical behaviour.
-
-## Dual BFWS
-
-Plain BFWS is already complete, so `DualBFWS` should not be confused with `IW`'s
-cure for incompleteness: it is a budget strategy, after the Dual-BFWS shape in Lipovetzky and
-Geffner's 2017 paper.
-
-Its rounds run k-BFWS, `BFWS(prune=True)`, which keeps BFWS's `<novelty, progress,
-heuristic>` ordering but discards states whose novelty exceeds the width, the way IW does. Each
-round gets IW's bounded frontier, so it is cheap, while the ordering inside it heads for the goal
-instead of sweeping breadth-first.
-
-The rounds escalate width only while the filter is discarding something, and if every allowed
-width fails, the last of the budget goes to one unpruned round, plain BFWS(1), which is complete:
+`BFWS(prune=True)` keeps BFWS's `<novelty, progress, heuristic>` ordering but discards states
+whose novelty exceeds the width, the way IW does. It has IW's bounded frontier and IW's
+incompleteness, and the ordering inside it heads for the goal instead of sweeping
+breadth-first. On Puzznic level 1, which IW(1) exhausts, k-BFWS at width 1 exhausts too, after
+the same number of expansions: the filter, not the ordering, is what bounds what it can see.
 
 ```python
-DualBFWS(max_width=2, progress=boxes).solve(env, Budget(max_expansions=500))
+BFWS(width=1, prune=True, progress=boxes).solve(env, Budget(max_expansions=500))
 ```
 
-`DualBFWS` reports `exhausted` only when it proved there is no plan: a pruned round that
-emptied its frontier without discarding anything saw the whole reachable space, and the unpruned
-round discards nothing by construction. Hitting `max_width` with the filter still biting proves
-nothing and reports `failed`, and `IW` draws the same line.
+Leave `prune` at its default, `False`, for the complete search.
 
 ## Two notes on novelty
 
@@ -130,7 +104,7 @@ comparability.
 | Path | What |
 |---|---|
 | [`novelty.py`](../../planiverse/planners/width/novelty.py) | `NoveltyTable`, `PartitionedNovelty`, `path_novelty` |
-| [`iw.py`](../../planiverse/planners/width/iw.py) | `IW`, `SIW`, and the fixed-width `IWSearch` they are built from |
-| [`bfws.py`](../../planiverse/planners/width/bfws.py) | `BFWS` (with `relevant="iw"` for BFWS(R)), `DualBFWS` |
+| [`iw.py`](../../planiverse/planners/width/iw.py) | `IW`, and the fixed-width `IWSearch` it is built from |
+| [`bfws.py`](../../planiverse/planners/width/bfws.py) | `BFWS` (with `relevant="iw"` for BFWS(R), `prune=True` for k-BFWS) |
 | [`result.py`](../../planiverse/planners/width/result.py) | `SearchResult`, `SearchStatistics`, `Budget` |
 | [`tests/test_width_planners.py`](../../tests/test_width_planners.py) | Tests |

@@ -3,9 +3,9 @@
 Every environment offers `successors(state)` and nothing cheaper, so a planner that wants to
 apply one action, or replay an action sequence, has to expand the whole state and pick the
 child it asked for. `SuccessorCache` makes that cost once per state rather than once per
-visit, which is what turns the sampling planners (rolling-horizon evolution, the cross-entropy
-method, rollouts, Go-Explore) from hopeless into ordinary against these simulators: an
-evolutionary population re-evaluates the same prefix hundreds of times.
+visit, which is what makes the planners that come back to the same states affordable against
+these simulators: Go-Explore and KPIECE explore from the same cells over and over, and the
+macro planner replays every macro from every state it expands.
 
 The cache is keyed on the state itself, which every environment makes hashable and
 comparable on its identity. `literals` are not that identity: they are the atoms the novelty
@@ -15,20 +15,6 @@ other's children.
 """
 # Imported inside the functions: `planiverse.planners.width` imports this module, and this
 # module wants its `result` types, so a module-level import here would be a cycle.
-
-
-def remaining(budget, spent):
-    """A sub-budget with `spent` expansions and the elapsed time already taken off.
-
-    The iterated searches all cut the same slice; kept here so the new ones do not each
-    re-derive it.
-    """
-    from planiverse.planners.width.result import Budget
-    return Budget(
-        max_expansions=(None if budget.max_expansions is None
-                        else max(0, budget.max_expansions - spent)),
-        max_seconds=(None if budget.max_seconds is None
-                     else max(0.0, budget.max_seconds - budget.elapsed())))
 
 
 def finish(status, plan, trace, statistics, budget, width=None):
@@ -100,28 +86,3 @@ class SuccessorCache:
     def __len__(self):
         return len(self.table)
 
-
-def action_vocabulary(env, state, cache=None):
-    """The actions a sampling planner may draw from.
-
-    `get_actions()` when the environment offers one, else the actions applicable in `state`,
-    which is the best a per-state action set allows. Planners that learn the vocabulary as
-    they go widen it with every expansion they see.
-    """
-    if env.provides("get_actions") if hasattr(env, "provides") else hasattr(env, "get_actions"):
-        try:
-            actions = list(env.get_actions())
-            if actions:
-                return actions
-        except Exception:
-            pass
-    children = cache.expand(state) if cache is not None else env.successors(state)
-    return [action for action, _ in children]
-
-
-def dead_end_progress(progress, env, state, penalty=float("inf")):
-    """`progress(state)`, or `penalty` for a dead end: no goal is reachable, so no
-    measure of distance to one applies."""
-    if env.is_terminal(state) and not env.is_goal(state):
-        return penalty
-    return progress(state) if progress is not None else 0.0

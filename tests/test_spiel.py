@@ -59,7 +59,7 @@ def test_attributes_reach_the_simulators_own_state():
     assert state.lolo == state.inner.lolo
 
 
-@pytest.mark.parametrize("tag", ["bfws", "iw", "gbfs", "brfs"])
+@pytest.mark.parametrize("tag", ["bfws", "iw", "gbfs", "astar"])
 def test_a_plan_found_through_openspiel_reaches_the_goal(tag):
     game = pyspiel.load_game("planiverse_lolo", {"index": 0})
     actions, result = spiel.solve(game, tag)
@@ -73,8 +73,8 @@ def test_a_plan_found_through_openspiel_reaches_the_goal(tag):
 def test_the_benchmark_measure_is_the_default_progress():
     game = pyspiel.load_game("planiverse_lolo", {"index": 0})
     _, guided = spiel.solve(game, "gbfs")
-    _, blind = spiel.solve(game, "brfs")
-    assert guided.statistics.expansions < blind.statistics.expansions
+    _, flat = spiel.solve(game, "gbfs", progress=lambda state: 0)
+    assert guided.statistics.expansions < flat.statistics.expansions
 
 
 def test_openspiels_own_games_are_plannable():

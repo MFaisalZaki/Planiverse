@@ -20,10 +20,10 @@ def test_a_run_is_written_out_whatever_happens(tmp_path):
 
 
 def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
-    record = solve(tmp_path, "fsx", "puzznic@9999", seed=3)
-    assert record["planner"]["tag"] == "fsx-s3"
-    assert (tmp_path / "results/fsx-s3/planiverse_puzznic_9999.json").is_file()
-    assert solve(tmp_path, "fsx", "puzznic@9999")["planner"]["seed"] == 0   # by hand: seed 0
+    record = solve(tmp_path, "goexp", "puzznic@9999", seed=3)
+    assert record["planner"]["tag"] == "goexp-s3"
+    assert (tmp_path / "results/goexp-s3/planiverse_puzznic_9999.json").is_file()
+    assert solve(tmp_path, "goexp", "puzznic@9999")["planner"]["seed"] == 0   # by hand: seed 0
 
 
 def test_no_registered_planner_takes_a_reward():
@@ -31,7 +31,7 @@ def test_no_registered_planner_takes_a_reward():
     progress heuristic."""
     import inspect
     from planiverse.benchmark import PLANNERS, REFERENCE
-    assert set(REFERENCE) == {"bfws", "iw", "siw", "fsx"}
+    assert set(REFERENCE) == {"bfws", "iw"}
     for cls, _ in PLANNERS.values():
         assert "reward" not in inspect.signature(cls).parameters, cls.__name__
 
@@ -43,19 +43,17 @@ def test_every_planner_in_the_library_is_in_the_benchmark():
     all."""
     import inspect
     from planiverse.benchmark import PLANNERS, REFERENCE
-    from planiverse.planners import blind, heuristic, macros, sampling, width
+    from planiverse.planners import heuristic, macros, sampling, width
 
     registered = {cls for cls, _ in PLANNERS.values()}
     registered |= {base for cls in registered for base in cls.__mro__[1:]}
     exported = {getattr(module, name) for module in (width, heuristic, sampling)
-                for name in module.__all__} | {
-        blind.BreadthFirstSearch, blind.UniformCostSearch, blind.IterativeDeepening,
-        macros.MacroPlanner}
+                for name in module.__all__} | {macros.MacroPlanner}
     planners = {cls for cls in exported if inspect.isclass(cls) and hasattr(cls, "solve")}
     assert planners <= registered, {cls.__name__ for cls in planners - registered}
     assert list(PLANNERS)[:len(REFERENCE)] == list(REFERENCE)
     # The documented variants of one class, each under its own tag.
-    assert {"astar", "wastar", "gbfslw", "kpiece", "ils", "bee", "multi"} <= set(PLANNERS)
+    assert {"astar", "wastar", "bfwsr"} <= set(PLANNERS)
 
 
 def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
@@ -118,10 +116,10 @@ def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monke
 
     monkeypatch.setattr(bench.json, "dump", dump_once_out_of_memory)
     record = {"task": {"task-id": "planiverse:puzznic:0", "domain": "puzznic", "instance": "0"},
-              "planner": {"tag": "fsx-s0"},
+              "planner": {"tag": "goexp-s0"},
               "run": {"started": 0.0}, "timings": {}, "metrics": {}, "logs": []}
     bench._write(tmp_path, record, "MEMOUT")
-    written = json.loads((tmp_path / "results/fsx-s0/planiverse_puzznic_0.json").read_text())
+    written = json.loads((tmp_path / "results/goexp-s0/planiverse_puzznic_0.json").read_text())
     assert written["status"] == "MEMOUT" and len(calls) == 2
 
 

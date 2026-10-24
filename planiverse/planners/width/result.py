@@ -21,12 +21,12 @@ class SearchStatistics:
     novelty_evaluations: int = 0
     tuples_enumerated: int = 0
     elapsed: float = 0.0
-    rollouts: int = 0               #: random walks, playouts or sequence evaluations run
-    episodes: int = 0               #: decisions committed, generations or restarts (the online planners)
+    rollouts: int = 0               #: random propagations run (KPIECE)
+    episodes: int = 0               #: exploration rounds run (Go-Explore)
     widths_tried: tuple = ()        #: for iterated searches
 
     def merge(self, other):
-        """Accumulate another search's counters, for the iterated and serialised planners."""
+        """Accumulate another search's counters, for the iterated planners."""
         for name in ("expansions", "generated", "pruned_novelty", "pruned_terminal",
                      "pruned_duplicate", "novelty_evaluations", "tuples_enumerated",
                      "elapsed", "rollouts", "episodes"):

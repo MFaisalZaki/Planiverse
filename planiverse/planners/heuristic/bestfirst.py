@@ -27,8 +27,8 @@ wrong, and the satisficing-planning literature is largely about what to do then.
   `g` as well as `h` could not be read from this machine.
 * `LocalExplorationSearch` (Xie, Müller & Holte, *Adding Local Exploration to Greedy
   Best-First Search in Satisficing Planning*, AAAI 2014): when the global best has not
-  improved for `patience` expansions, run a local greedy search (`"greedy"`) or a batch of
-  random walks (`"walks"`) from the best node and add what they reach.
+  improved for `patience` expansions, run a batch of random walks from the node just
+  expanded and add their endpoints to the open list (the paper's GBFS-LRW).
 """
 import random
 from heapq import heappop, heappush
@@ -144,9 +144,8 @@ class BestFirstSearch:
             self.__expanded__(entry, statistics)
         return self.__finished__("exhausted", statistics, budget)
 
-    def __expand__(self, env, entry, statistics, push=None):
+    def __expand__(self, env, entry, statistics):
         """Generate `entry`'s children into the open list; return a goal child if any."""
-        push = push or self.__push__
         for action, successor in self.cache.expand(entry.state):
             g = entry.g + action_cost(action)
             if self.best_g.get(successor.literals, float("inf")) <= g:
@@ -160,7 +159,7 @@ class BestFirstSearch:
                 statistics.pruned_terminal += 1
                 continue
             self.best_g[successor.literals] = g
-            push(child)
+            self.__push__(child)
         return None
 
     # ------------------------------------------------------------- hooks
@@ -344,17 +343,16 @@ class DiverseBestFirst(BestFirstSearch):
 
 
 class LocalExplorationSearch(BestFirstSearch):
-    """Greedy best-first with local exploration when the best heuristic value stalls."""
+    """Greedy best-first with random walks when the best heuristic value stalls.
 
-    def __init__(self, progress=None, patience=50, strategy="greedy", local_expansions=50,
-                 walks=10, walk_length=10, seed=None):
-        if strategy not in ("greedy", "walks"):
-            raise ValueError(f"strategy must be 'greedy' or 'walks', got {strategy!r}")
+    `walks` walks of up to `walk_length` actions each, after every `patience` expansions
+    without a better heuristic value.
+    """
+
+    def __init__(self, progress=None, patience=50, walks=10, walk_length=10, seed=None):
         super().__init__(progress, None)
         self.random = random.Random(seed)
         self.patience = patience
-        self.strategy = strategy
-        self.local_expansions = local_expansions
         self.walks = walks
         self.walk_length = walk_length
 
@@ -376,27 +374,8 @@ class LocalExplorationSearch(BestFirstSearch):
             self.__explore__(entry, statistics)
 
     def __explore__(self, start, statistics):
-        """Local search from `start`; whatever it reaches joins the global open list."""
+        """Random walks from `start`; each endpoint joins the global open list."""
         env = self.env
-        if self.strategy == "greedy":
-            local = []
-            heappush(local, ((start.h, 0), next(self.tiebreak), start))
-            for _ in range(self.local_expansions):
-                if not local or self.cache.exhausted():
-                    return
-                _, _, entry = heappop(local)
-                found = self.__expand__(
-                    env, entry, statistics,
-                    push=lambda child: (self.__push__(child),
-                                        heappush(local, ((child.h, child.g),
-                                                         next(self.tiebreak), child))))
-                if found is not None:
-                    self.__push__(found)
-                    return
-                if entry.h < self.best_h:
-                    self.best_h = entry.h
-                    return
-            return
         for _ in range(self.walks):
             entry = start
             for _ in range(self.walk_length):

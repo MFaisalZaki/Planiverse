@@ -1,9 +1,10 @@
 """Progress measures, one per environment, lower is better.
 
-SIW and BFWS take a `progress(state)` callback in place of the unachieved-goal count that
-classical width-based planners lean on. Against a simulator that count does not exist, so the
-measure is written here, per environment: it is a property of how an environment is searched
-rather than of the environment, and it is a search guide, not an admissible heuristic.
+BFWS takes a `progress(state)` callback in place of the unachieved-goal count that classical
+width-based planners lean on, and the heuristic and sampling planners take the same callback.
+Against a simulator that count does not exist, so the measure is written here, per
+environment: it is a property of how an environment is searched rather than of the
+environment, and it is a search guide, not an admissible heuristic.
 """
 
 

@@ -14,8 +14,8 @@ Planning engine; here there is a simulator and a planner object instead.
 
 `generate` asks every registered environment how many instances it has and writes one command
 per (planner, instance, seed) for every planner the library has, through the toolkit's writers;
-`--reference` keeps it to the four reference configurations. A seeded planner runs once per
-seed, each under its own tag (`fsx-s3`), so the toolkit's tables list the seeds side by side.
+`--reference` keeps it to the two reference configurations. A seeded planner runs once per
+seed, each under its own tag (`goexp-s3`), so the toolkit's tables list the seeds side by side.
 
 The protocol is the constants below. There is no configuration file: a run that changed a limit
 would not be the same experiment, and one that did not has nothing to configure.
@@ -240,8 +240,8 @@ def solve(sandbox, tag, task, seed=None):
             except Exception:
                 record["metrics"]["validated"] = False
             status = SOLVED
-        elif out.status in ("failed", "exhausted", "step_limit", "dead_end"):
-            # The search stopped on its own: nothing left, or FSX at its step cap or a dead end.
+        elif out.status in ("failed", "exhausted"):
+            # The search stopped on its own: nothing left to expand, or its own bound reached.
             record["metrics"]["stopped"] = "on its own"
             status = EXHAUSTED
         elif elapsed >= 0.95 * LIMITS["seconds"]:
@@ -331,7 +331,7 @@ def main(argv=None):
     for option in ("partition", "qos", "account"):
         generate_.add_argument(f"--{option}", help=f"SLURM {option}")
     generate_.add_argument("--reference", action="store_true",
-                           help="only the four reference planners, not every planner")
+                           help="only the two reference planners, not every planner")
     generate_.add_argument("--parallel", type=int, default=50,
                            help="array elements running at once (default: 50)")
     solve_ = commands.add_parser("solve", parents=[common],

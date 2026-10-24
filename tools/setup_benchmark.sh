@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build a virtualenv, install planiverse into it, and generate the benchmark's jobs: every
-# planner in the library on every instance, or with --reference the four reference planners.
+# planner in the library on every instance, or with --reference the two reference planners.
 #
 #   tools/setup_benchmark.sh [--venv DIR] [--python BIN] [generate options...]
 #   tools/setup_benchmark.sh --partition gpu --qos long --parallel 100
