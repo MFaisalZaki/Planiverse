@@ -357,7 +357,11 @@ carry `literals` and hand any other attribute through to the simulator's own sta
 OpenSpiel's games, the atoms the planners see are the nonzero entries of the observation
 tensor, and chance is resolved by a generator seeded on the history, so expansion stays
 deterministic. A goal there is a terminal state with a positive return unless `solve` is
-given `goal=`. OpenSpiel publishes no Windows wheels, so a Windows install leaves it out.
+given `goal=`. A state is observed the OpenSpiel way: `observation_string` is the simulator
+state's own text, and where the state carries readings (the operational environments and the
+tower defence), `observation_tensor` holds them, each named in the `dict` of the game's observer.
+`render_trace` draws a trace of OpenSpiel states as it draws an environment's. OpenSpiel
+publishes no Windows wheels, so a Windows install leaves it out.
 
 ## Rendering a trace
 
@@ -427,16 +431,18 @@ no configuration file, because the protocol is the point.
 
 ```bash
 tools/setup_benchmark.sh --partition <p> --qos <q>   # venv, install, then `generate`
-bash sandbox/submit.sh                               # or: bash sandbox/run_local.sh 8
+bash sandbox/slurm/submit_all.sh                     # or: bash sandbox/run_local.sh 8
 planiverse-bench report --sandbox-dir sandbox
 ```
 
-`generate` asks each registered environment how many instances it has and writes one command
-per planner, instance and seed, and SLURM job arrays of at most 1,000 elements per planner or
-per seed of a seeded planner. Every run ends in exactly one status, written to a result file
-whatever happened, and
-`report` turns the results into tables, figures and the numbers a write-up would quote.
-[docs/benchmark.md](docs/benchmark.md) has the protocol, the statuses and the report.
+The harness is [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit)'s. `generate` asks
+each registered environment how many instances it has and writes, through the toolkit, one
+command per planner, instance and seed, and SLURM job arrays of at most 1,000 elements per
+planner or per seed of a seeded planner. `solve`, the one stage that is Planiverse's own, runs a
+planner on a simulator and writes the toolkit's result format whatever happened, and `report`
+is the toolkit's `analyze` and `report`: a CSV, coverage, outcome and IPC-score tables in text
+and LaTeX, and survival plots. [docs/benchmark.md](docs/benchmark.md) has the protocol, the
+statuses and the report.
 
 ## Writing a planner
 

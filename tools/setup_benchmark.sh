@@ -8,7 +8,7 @@
 #
 # Every environment ships its own data, so there is nothing to supply. An environment whose
 # dependencies are missing is skipped and says so.
-# Then: bash sandbox/submit.sh, or bash sandbox/run_local.sh 8.
+# Then: bash sandbox/slurm/submit_all.sh, or bash sandbox/run_local.sh 8.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

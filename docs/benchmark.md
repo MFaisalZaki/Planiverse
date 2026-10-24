@@ -3,19 +3,27 @@
 `planiverse-bench` is the library's evaluation protocol as code. It runs the four reference
 planner configurations (BFWS, IW, SIW and FSX) and the forty-one others, every planner the
 library has, on every instance of every environment, under fixed limits, with five
-seeds for every planner that takes one, and turns the results into tables and figures.
-`--reference` keeps `generate` and `report` to the four.
+seeds for every planner that takes one. `--reference` keeps `generate` to the four.
 
-- **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): the benchmark, and the progress
-  measures the heuristic-guided planners take per environment.
+The harness is [pyPMTEvalToolkit](https://github.com/pyPMT/pyPMTEvalToolkit)'s: its sandbox
+layout, its command files and SLURM job arrays, its local runner, and its `analyze` and
+`report` stages. What Planiverse adds is `solve`, the one stage the toolkit cannot do for a
+simulator: the toolkit's own parses PDDL and runs a Unified Planning engine, and here there is a
+simulator and a planner object instead. `solve` writes the toolkit's result format, so the
+toolkit reads the runs as its own.
+
+- **Package:** [`planiverse/benchmark/`](../planiverse/benchmark/): `generate`, `solve` and
+  `report`, the planner configurations, and the progress measures the heuristic-guided planners
+  take per environment.
 - **Command:** `planiverse-bench`, installed with the library. `python -m planiverse.benchmark`
-  is the same thing.
+  is the same thing, and the toolkit's `pypmtevalcli analyze` and `pypmtevalcli report` work on
+  the same sandbox.
 
 ## Running it
 
 ```bash
 tools/setup_benchmark.sh --partition <p> --qos <q>    # builds .venv, installs, runs generate
-bash sandbox/submit.sh                                # one sbatch per job array
+bash sandbox/slurm/submit_all.sh                      # one sbatch per job array
 planiverse-bench report --sandbox-dir sandbox
 ```
 
@@ -28,31 +36,31 @@ a loaded laptop are not comparable with a cluster's.
 `planiverse-bench generate [--sandbox-dir sandbox] [--partition P] [--qos Q] [--account A] [--parallel N] [--reference]`
 
 Builds each registered environment and walks `set_index` upwards until it refuses, which is how
-many instances it has. Then it writes:
+many instances it has. An instance is a toolkit task: suite `planiverse`, domain the environment,
+instance its index, track `classical` (see [Statuses](#statuses)). Then, through the toolkit's
+writers, it writes:
 
-- `sandbox/tasks.json`, the instance count per environment. `report` reads it to know which runs
-  to expect, so a job that never ran is `MISSING` rather than silently absent.
+- `sandbox/tasks.json`, every task and, per planner group, the runs expected of it. The toolkit's
+  `analyze` reads it, so a job that never ran is `MISSING` rather than silently absent.
 - `sandbox/cmds/<group>.txt`, one `solve` command per instance, where a group is a planner
-  (`bfws`) or one seed of a seeded planner (`fsx-s3`). Line *n* is array element *n*, so a
-  failed element can be re-run by hand from its line. SLURM caps an array at the site's
-  `MaxArraySize`, commonly 1001 elements and often less, so a group over more than 1,000
-  instances is cut into parts of 1,000, `<group>-p0.txt`, `<group>-p1.txt`, …, each with its
-  own array; with the suite's 2,000 instances every group is two parts.
-- `sandbox/slurm/<group>.sbatch` (or `<group>-p<k>.sbatch`), a job array that reads that file by
+  (`bfws`) or one seed of a seeded planner (`fsx-s3`). Line *n* is array element *n* of the
+  group's arrays, so a failed element can be re-run by hand from its line.
+- `sandbox/slurm/pypmteval-<group>.sbatch`, a job array that reads that file by
   `$SLURM_ARRAY_TASK_ID`, throttled to `--parallel` elements at a time (default 50), and given
   35 minutes and 9 GB so the benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps
-  in. The groups are written seed 0 first, so `submit.sh` submits it first.
-- `sandbox/submit.sh` and `sandbox/run_local.sh`.
+  in. SLURM caps an array at the site's `MaxArraySize`, commonly 1001 elements and often less,
+  so a group over more than 1,000 instances becomes several arrays,
+  `pypmteval-<group>.1.sbatch` onward, each over its own slice of the command file; with the
+  suite's 2,000 instances every group is two.
+- `sandbox/slurm/submit_all.sh` and `sandbox/run_local.sh`.
 
-The suite's 2,000 instances, a hundred in each of the twenty environments the report covers,
-make one group per unseeded planner and five per seeded one: 25 unseeded and 20 seeded
-planners, so 125 groups, 250,000 runs in 250 arrays of 1,000. `--reference` writes the four
-reference planners alone, 8 groups (three for the deterministic width planners and five for
-FSX), 16,000 runs in 16 arrays. The commands
-call the interpreter that ran `generate` by absolute path, so the jobs need no activation and
-cannot pick up a different install. An environment that cannot be built here (a missing
-dependency) is skipped, and
-`generate` says so.
+The suite's 2,000 instances, a hundred in each of the twenty environments, make one group per
+unseeded planner and five per seeded one: 25 unseeded and 20 seeded planners, so 125 groups,
+250,000 runs in 250 arrays. `--reference` writes the four reference planners alone, 8 groups
+(three for the deterministic width planners and five for FSX), 16,000 runs in 16 arrays. The
+commands call the interpreter that ran `generate` by absolute path, so the jobs need no
+activation and cannot pick up a different install. An environment that cannot be built here (a
+missing dependency) is skipped, and `generate` says so.
 
 The benchmark runs the bundled instances. Each environment can also generate its own (see
 [Generating instances](../README.md#generating-instances)); a generated benchmark is a matter of
@@ -64,10 +72,15 @@ do for you.
 `planiverse-bench solve [--sandbox-dir sandbox] <planner> <environment>@<index> [--seed N]`
 
 What one array element runs: one planner on one instance, under the limits, written to
-`sandbox/results/<planner>/<environment>__<index>.json`, or `..._<index>__s<seed>.json` for a
-seeded planner, whatever happened, with exit code zero either way. The failure is the result, and
-a non-zero exit would make SLURM file it among the infrastructure errors. The generated commands
-carry `--seed`; a seeded planner run by hand without one gets the first seed.
+`sandbox/results/<group>/planiverse_<environment>_<index>.json` whatever happened, with exit code
+zero either way. The failure is the result, and a non-zero exit would make SLURM file it among
+the infrastructure errors. The file is the toolkit's result format: the task, the planner (its
+group tag, its class's tag as `engine`, the seed, the parameters), the limits, the run, the
+status, the timings, the plan, and `metrics` with the plan length, whether the plan replayed,
+the peak memory, and the search's own counts (expansions, generated, widths tried, rollouts,
+episodes). A `.running` marker beside it while the run is under way lets the toolkit tell a job
+SLURM killed (`KILLED`) from one that never started (`MISSING`). The generated commands carry
+`--seed`; a seeded planner run by hand without one gets the first seed.
 
 ## The protocol
 
@@ -96,54 +109,48 @@ source of variance.
 
 ## Statuses
 
-Every run ends in exactly one:
+Every run ends in exactly one of the toolkit's statuses:
 
 | Status | Meaning |
 |---|---|
-| `SOLVED` | a plan that replays to a goal |
-| `INVALID` | a plan that does not: a planner bug, reported as one |
-| `UNSOLVED` | the search stopped on its own without a plan |
+| `SOLVED` | a plan came back; it counts as solved only if `metrics.validated` is true, i.e., it replays through `simulate` to a goal. One that does not is a planner bug, and the toolkit lists it apart from coverage |
+| `EXHAUSTED` | the search stopped without a plan: on its own (`metrics.stopped` is `on its own`), or at the expansion limit (`at the expansion cap`) |
 | `TIMEOUT` | the wall-clock limit ran out first |
-| `NODEOUT` | the expansion limit ran out first |
 | `MEMOUT` | the memory limit was hit |
-| `ERROR` | it raised |
+| `ERROR` | it raised; the traceback is in the result |
 | `UNSUPPORTED` | the environment could not be built |
-| `MISSING` | no result file; assigned by `report` |
+| `KILLED` | SLURM killed the job before it wrote; assigned by the toolkit's `analyze` |
+| `MISSING` | no result file; assigned by the toolkit's `analyze` |
 
-`UNSOLVED` says the planner stopped looking, not that there is no plan: of the reference
-planners only BFWS is complete. For an online planner it means its walk ended at a dead end or
-the step cap. A search that reports `out_of_budget` without reaching either
-limit (an iterated search whose per-width allowances ran out, or FSX at its step cap or a dead
-end) is filed as `NODEOUT`.
+A search that stops on its own says the planner stopped looking, not that there is no plan: of
+the reference planners only BFWS is complete. For an online planner it means its walk ended at a
+dead end or the step cap. A search that reports `out_of_budget` without reaching either limit
+(an iterated search whose per-width allowances ran out) is filed at the expansion cap.
+
+Every environment is filed under the toolkit's `classical` track: each is a classical planning
+problem in the toolkit's sense, deterministic, single-agent and with a goal, and the toolkit's
+tables lay out the classical, numeric and temporal tracks. The environments themselves are the
+domains, so the per-domain tables give them one by one.
 
 ## `report`
 
-`planiverse-bench report [--sandbox-dir sandbox] [--reference]` writes into `sandbox/report/`. A seeded planner
-is summarised over its seeds: coverage is the mean per seed with the standard deviation in
-brackets, never the best seed; solve times are pooled; and the claims about what it solved that
-another planner did not use the union over seeds, which is the strongest form of a negative.
+`planiverse-bench report [--sandbox-dir sandbox] [--no-plots]` runs the toolkit's `analyze` and
+`report` over the sandbox, the same as `pypmtevalcli analyze --sandbox-dir sandbox --per-domain`
+followed by `pypmtevalcli report --sandbox-dir sandbox`:
 
-- `coverage.tex`: instances solved per environment and planner, by family; `65.2 (1.9)` for a
-  seeded planner.
-- `statuses.tex`: how every run ended, one row per planner, one column per status that occurred,
-  and the median solve time. A seeded planner's counts are means per seed, so its row still sums
-  to the instance count. A `MISSING` run is counted as unsolved there; `facts.txt` still lists
-  it.
-- `cactus.pdf`: each planner's sorted solve times, with its time-outs and memory-outs charged the
-  full limit and appended; for a seeded planner the runs are pooled and the count divided by the
-  number of seeds, which is the mean curve.
-- `overlap_bfws_iw_siw.pdf`: one bar per environment, split by which of the three width planners
-  solved each instance, ordered by the share all three solved.
-- `runtime_bfws_iw_siw.pdf`: BFWS's time per instance against IW (filled, left axis) and SIW
-  (hollow, right axis), with failures on the limit.
-- `facts.txt`: the numbers a write-up would quote: coverage per seed and in some or every
-  seed, what each planner solved outside BFWS's set, medians, the per-instance speed ratios
-  with their sign tests, errors and missing runs, IW's widths, plan lengths, and each seeded
-  planner's coverage per family; then the other aggregations (the mean fraction solved over
-  environments and the IPC quality score), each planner's plan lengths against BFWS's, every
-  planner's statuses per environment, the cost of an expansion per environment, and the
-  difficulty profile (open instances, BFWS's plan lengths, successors per expansion, IW's
-  largest width).
+- `analysis/results.csv`, one row per expected run, and `analysis/summary.txt` and
+  `summary.json`: coverage per planner, the status breakdown, runtimes over solved runs, a
+  head-to-head over the instances every planner attempted, and per-domain coverage.
+- `report/results.txt`, with `coverage.tex`, `per-domain-coverage.tex` and `outcomes.tex` as
+  booktabs LaTeX: coverage, outcomes, the IPC quality and time scores, and per-domain coverage.
+- `report/plots/`: survival (cactus) plots over time and memory, coverage and outcome bars, and
+  runtime and plan-length scatters per pair of planners, as PDF and PNG.
+
+A seeded planner's seeds are separate groups (`fsx-s0` to `fsx-s4`), so the tables list them
+side by side rather than as a mean over seeds. The toolkit's line figures draw at most six
+planners and its scatters the first six pairs, so on the full sweep the figures are worth
+drawing over a selection: a sandbox generated with `--reference`, or the toolkit run on a
+copy of `results/` holding the groups to compare.
 
 ## The other planners
 
@@ -155,11 +162,10 @@ search, iterated local search beside annealing, KPIECE beside EST and SST). The 
 need more than one number from an environment get it from the progress measure: FESS
 searches the feature space it spans (`fess`), KPIECE projects onto it (`kpiece`), BFWS over
 boundary-extension features extends its range (`bee`), and multi-queue alternation pairs it
-with FSX's option count (`multi`). `generate` writes their jobs beside the reference planners'
-and `report` tabulates every one that left a results directory under `sandbox/results/`, so
-a sandbox generated under `--reference` reports the four reference planners and nothing
-else, and `report --reference` does the same for any sandbox. The overlap and runtime figures
-stay over BFWS, IW and SIW. `solve` takes any tag, so one run can be made by hand:
+with FSX's option count (`multi`). `generate` writes their jobs beside the reference planners',
+and `report` tabulates every group `tasks.json` expects, so a sandbox generated under
+`--reference` reports the four reference planners and nothing else. `solve` takes any tag, so
+one run can be made by hand:
 
 ```bash
 python -m planiverse.benchmark solve --sandbox-dir sandbox goexp puzznic@0 --seed 0

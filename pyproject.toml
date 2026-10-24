@@ -21,8 +21,12 @@ dependencies = [
     "psutil (>=7.0.0)",
     "pymetasploit3 (>=1.0.6)",
     "python-nmap (>=0.7.1)",
-    "matplotlib (>=3.5)",           # benchmark plots, and the font the trace renderer borrows
-    "scipy (>=1.10)",               # the benchmark report's sign tests
+    "matplotlib (>=3.5)",           # readings charts, and the font the trace renderer borrows
+    # The benchmark harness: SLURM arrays, the results' analysis, tables and figures. Its runner
+    # imports `resource` at import time, so `planiverse-bench solve` and `report` need Linux or
+    # macOS, which is where the benchmark runs.
+    "pypmt-eval-toolkit @ git+https://github.com/pyPMT/pyPMTEvalToolkit.git",
+    "scipy (>=1.10)",               # shortest paths through the flood city's roads
     # The three simulator-backed environments. Each ships its own benchmark data, so none
     # of them downloads anything at run time.
     "wntr (>=1.2)",                 # EPANET, for the water distribution network

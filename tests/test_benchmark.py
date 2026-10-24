@@ -1,23 +1,29 @@
-"""The benchmark's own job: one file per run whatever happened, and a report that adds up."""
+"""The benchmark's own job: one file per run whatever happened, in the format pyPMTEvalToolkit
+reads, and a report from the toolkit that adds up."""
 import json
-import pathlib
 
 import pytest
 
-from planiverse.benchmark import report, solve
+# The toolkit's runner imports `resource`, which Windows does not have.
+pytest.importorskip("pypmt_eval_toolkit.runner")
+
+from planiverse.benchmark import report, solve  # noqa: E402
 
 def test_a_run_is_written_out_whatever_happens(tmp_path):
     record = solve(tmp_path, "bfws", "puzznic@1")
-    assert record["status"] == "SOLVED" and record["plan_length"] == 10
-    written = json.loads((tmp_path / "results/bfws/puzznic__1.json").read_text())
-    assert written["search_status"] == "solved" and written["plan"] == record["plan"]
+    assert record["status"] == "SOLVED" and record["metrics"]["plan-length"] == 10
+    assert record["metrics"]["validated"] is True
+    written = json.loads((tmp_path / "results/bfws/planiverse_puzznic_1.json").read_text())
+    assert written["metrics"]["search-status"] == "solved" and written["plan"] == record["plan"]
+    assert not list(tmp_path.glob("results/bfws/*.running")), "the marker goes once written"
     assert solve(tmp_path, "iw", "puzznic@9999")["status"] == "UNSUPPORTED"
 
 
 def test_a_seeded_planner_writes_one_file_per_seed(tmp_path):
     record = solve(tmp_path, "fsx", "puzznic@9999", seed=3)
-    assert record["seed"] == 3 and (tmp_path / "results/fsx/puzznic__9999__s3.json").is_file()
-    assert solve(tmp_path, "fsx", "puzznic@9999")["seed"] == 0   # run by hand: the first seed
+    assert record["planner"]["tag"] == "fsx-s3"
+    assert (tmp_path / "results/fsx-s3/planiverse_puzznic_9999.json").is_file()
+    assert solve(tmp_path, "fsx", "puzznic@9999")["planner"]["seed"] == 0   # by hand: seed 0
 
 
 def test_no_registered_planner_takes_a_reward():
@@ -77,19 +83,25 @@ def test_every_registered_planner_builds_and_runs_as_solve_runs_it():
             assert result.plan is None, tag
 
 
-def test_the_report_expects_every_run_and_averages_over_seeds(tmp_path):
-    (tmp_path / "tasks.json").write_text(
-        json.dumps({"environments": [{"environment": "puzznic", "instances": 2}]}))
+def test_the_toolkit_reads_the_runs_and_counts_the_missing_ones(tmp_path, monkeypatch):
+    """`generate` writes the toolkit's `tasks.json`, so a run that never happened is MISSING in
+    the toolkit's rows, and a solved one is solved there too."""
+    from pypmt_eval_toolkit.analyzer import is_solved, load_rows
+
+    import planiverse.benchmark as bench
+    from planiverse.environments import get_spec
+
+    monkeypatch.setattr(bench, "REGISTRY", [get_spec("puzznic")])      # 100 instances
+    monkeypatch.setattr(bench, "PLANNERS", {"bfws": bench.REFERENCE["bfws"]})
+    bench.generate(tmp_path)
     solve(tmp_path, "bfws", "puzznic@0")
     solve(tmp_path, "bfws", "puzznic@1")
-    report(tmp_path)
-    statuses = (tmp_path / "report/statuses.tex").read_text()
-    facts = (tmp_path / "report/facts.txt").read_text()
-    assert "BFWS & \\textbf{2} & 0" in statuses and "Missing" not in statuses
-    # Ten missing FSX runs are two per seed, so the row still sums to the two instances.
-    assert "IW & 0 & 2" in statuses and "FSX & 0.0 (0.0) & 2" in statuses
-    missing = facts.split("missing")[1].split("\n")[0]
-    assert "iw on puzznic 2" in missing and "fsx on puzznic 10" in missing
+    rows = load_rows(str(tmp_path))
+    assert len(rows) == 100
+    assert sum(is_solved(row) for row in rows) == 2
+    assert sum(row["status"] == "MISSING" for row in rows) == 98
+    report(str(tmp_path), plots=False)
+    assert "2/100" in (tmp_path / "report/results.txt").read_text()
 
 
 def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monkeypatch):
@@ -105,17 +117,18 @@ def test_a_memout_is_written_even_when_the_write_itself_runs_out(tmp_path, monke
         return real_dump(*args, **kwargs)
 
     monkeypatch.setattr(bench.json, "dump", dump_once_out_of_memory)
-    record = {"task": "puzznic@0", "environment": "puzznic", "index": 0, "planner": "fsx",
-              "seed": 0, "started": 0.0}
+    record = {"task": {"task-id": "planiverse:puzznic:0", "domain": "puzznic", "instance": "0"},
+              "planner": {"tag": "fsx-s0"},
+              "run": {"started": 0.0}, "timings": {}, "metrics": {}, "logs": []}
     bench._write(tmp_path, record, "MEMOUT")
-    written = json.loads((tmp_path / "results/fsx/puzznic__0__s0.json").read_text())
+    written = json.loads((tmp_path / "results/fsx-s0/planiverse_puzznic_0.json").read_text())
     assert written["status"] == "MEMOUT" and len(calls) == 2
 
 
 def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkeypatch):
     """SLURM caps an array at the site's MaxArraySize, so a group over more instances than
-    `MAX_ARRAY` is written as parts, each with its own command file and array, and `submit.sh`
-    submits every part."""
+    `MAX_ARRAY` is written as several arrays over slices of its one command file, and
+    `submit_all.sh` submits every one."""
     import re
     import planiverse.benchmark as bench
     from planiverse.environments import get_spec
@@ -125,19 +138,19 @@ def test_generate_cuts_a_group_into_arrays_of_at_most_max_array(tmp_path, monkey
     monkeypatch.setattr(bench, "MAX_ARRAY", 30)
     bench.generate(tmp_path)
 
-    parts = sorted(tmp_path.glob("cmds/*.txt"))
-    assert [p.name for p in parts] == ["bfws-p0.txt", "bfws-p1.txt", "bfws-p2.txt", "bfws-p3.txt"]
-    lines = [p.read_text().splitlines() for p in parts]
-    assert [len(part) for part in lines] == [30, 30, 30, 10]
-    assert [line.split()[-1] for part in lines for line in part] == [f"puzznic@{i}" for i in range(100)]
-    for part, commands in zip(parts, lines):
-        sbatch = (tmp_path / "slurm" / f"{part.stem}.sbatch").read_text()
-        assert f"--array=0-{len(commands) - 1}%50" in sbatch and part.name in sbatch
-        assert "--job-name=planiverse-bench-bfws\n" in sbatch     # the group, not the part
-    submit = (tmp_path / "submit.sh").read_text()
-    assert re.findall(r"slurm/(\S+)\.sbatch", submit) == [p.stem for p in parts]
+    lines = (tmp_path / "cmds/bfws.txt").read_text().splitlines()
+    assert [line.split()[-1] for line in lines] == [f"puzznic@{i}" for i in range(100)]
+    arrays = sorted(tmp_path.glob("slurm/*.sbatch"))
+    assert [p.name for p in arrays] == [f"pypmteval-bfws.{k}.sbatch" for k in (1, 2, 3, 4)]
+    sizes = [int(re.search(r"--array=0-(\d+)%50", p.read_text()).group(1)) + 1 for p in arrays]
+    assert sizes == [30, 30, 30, 10]
+    assert all("--time=00:35:00" in p.read_text() and "--mem=9216M" in p.read_text()
+               for p in arrays), "the run's own limits, plus the headroom to record them"
+    submit = (tmp_path / "slurm/submit_all.sh").read_text()
+    assert re.findall(r"slurm/(\S+)\.sbatch", submit) == [p.stem for p in arrays]
 
-    # A group that fits in one array keeps its plain name.
+    # A group that fits in one array is one array.
     monkeypatch.setattr(bench, "MAX_ARRAY", 1000)
     bench.generate(tmp_path / "one")
-    assert [p.name for p in (tmp_path / "one" / "cmds").iterdir()] == ["bfws.txt"]
+    assert [p.name for p in (tmp_path / "one" / "slurm").glob("*.sbatch")] == \
+        ["pypmteval-bfws.sbatch"]
