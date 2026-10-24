@@ -12,8 +12,7 @@ rolling, spinning, meeting cushions and dropping into pockets.
 - **Generator:** `generate_instance(seed, balls=None, shots=None, ...)`; see [Generating tables](#generating-tables)
 - **Dependency:** `pooltool-billiards`, installed by `scripts/install_pooltool.py` (its own
   dependency list pins a Panda3D build PyPI does not carry on Linux and Windows); it pulls in
-  panda3d and numba, the first shot in a process compiles pooltool's numerics and takes a
-  while, every shot after it a hundredth of a second
+  panda3d and numba, and the first shot in a process compiles pooltool's numerics
 
 ## Context
 
@@ -37,8 +36,8 @@ its tables and rules are its own. The table is pooltool's default, a seven-foot 
 balls its default balls, 28.575 millimetres in radius. We use the engine rather than write an
 action model because no add or delete list carries a carom (i.e., a ball driven on by the one that
 struck it). That is what keeps the environment out of PDDL. The cost is the dependency and its
-warm-up. `pooltool-billiards` pulls in panda3d and numba, the first shot in a process compiles
-pooltool's numerics and takes a while, and every shot after it a hundredth of a second.
+warm-up. `pooltool-billiards` pulls in panda3d and numba, and the first shot in a process
+compiles pooltool's numerics.
 
 The rules are three. First, a shot aims the cue ball at an object ball still on the table, `cut`
 degrees off a full hit (`-30`, `0` or `30`), at `speed` metres per second (`2.0` or `3.5`). The
@@ -126,9 +125,7 @@ shots left: 3, balls to pot: 3
   cue at (0.437, 1.829)
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 3 expansions and 2.0 seconds. That is one expansion per shot, so the search
-never had to back up. Its three-shot plan is
+One three-shot plan, the one the render below plays, is
 
 ```
 shot(2,0,2), shot(1,-30,3.5), shot(3,30,2)

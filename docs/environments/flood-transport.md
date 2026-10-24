@@ -171,7 +171,7 @@ target can never come back under it. Both are absorbing, so `successors` returns
 Note that the problem as a city's planners would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end). The total must stay within the
 target throughout, and the horizon must be reached. We turn it into the goal above with the
-reduction the grid and epidemic environments use, which [NOTES.md](../../NOTES.md) sets out in
+reduction the grid and epidemic environments use, which [docs/operational.md](../operational.md) sets out in
 full, in three moves. First, a constraint that must hold throughout becomes a dead end. The
 first state whose total passes the target is terminal, so no plan through it exists, and a
 check over the whole trajectory becomes a check at each state. Second, a quantity that

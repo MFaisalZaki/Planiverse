@@ -30,8 +30,8 @@ little closer. The queue is the whole difficulty. A run of straights wants a lon
 run of elbows wants a winding one, and the route has to be decided before the pieces that
 make it have arrived.
 
-We re-implemented the game rather than run the cartridge, so a successor costs microseconds and
-the rules are ours to read. The cost is fidelity, in two places. First, the parameters are
+We re-implemented the game rather than run the cartridge, so the rules are ours to read. The
+cost is fidelity, in two places. First, the parameters are
 ours rather than measured. The port's board size, queue length and flow speed were not read off
 the cartridge. The board here is seven by seven, the countdown five to eight placements and the
 pace three placements a segment, which is the feel of its early levels rather than their
@@ -149,8 +149,7 @@ The queue of 39 pieces opens with a cross, a straight, a cross and a run of elbo
 carried 0 of 11; next ┼ ─ ┼ ┌ └; 6 ticks before the flow moves
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 771 expansions and under a second. Its twenty-two-action plan is
+One plan, the one the render below plays, is twenty-two actions:
 
 ```
 place(6,3), place(0,0), place(6,2), place(6,1), place(5,2), place(6,2), place(5,1),
@@ -160,13 +159,11 @@ place(0,0), place(3,2), place(3,3), place(2,3), place(1,3), place(0,0), place(1,
 
 The plan lays the two crosses that head the queue straight above the start and then bends the
 route west along the second row and south again through a cross at the fourth column, laying
-the elbows as they come. Three cells on the route are laid twice, at (6,2), (6,1) and (4,1),
-each a piece put down early and replaced when a better one arrived. The four pieces the route
-had no use for go to the far corner at (0,0), each over the last. Note that the corner is
-what `discard` would have done a tick cheaper each time; the planner's plan is no longer for it,
-since a placement and a discard cost the same action. The flow has carried 8 when the route is
-complete, and `flush` runs it through the last three pieces to 11. The route, in the order the
-flow runs it, is
+the elbows as they come. Two cells on the route are laid more than once, (6,2) twice and (4,1)
+three times, each piece put down early and replaced by a later one, and (6,1), off the route, is
+laid three times. The four pieces the route has no use for go to the far corner at (0,0), each
+over the last. The flow has carried 8 when the route is complete, and `flush` runs it through
+the last three pieces to 11. The route, in the order the flow runs it, is
 
 ```
 ─...#..
@@ -250,15 +247,14 @@ state, info = env.reset()                       # info["generated"] is True
 | `attempts` | 40 | draws before giving up with `GenerationError` |
 
 A draw is kept only if the thoughtless policy fails: lay each piece at the end of the pipe laid
-when it fits there, else discard it, and flush once the pipe laid reaches the distance. A
-best-first search over placements, guided by the distance still to carry less the pipe laid
-ahead of the flow with a point against every stray piece, must then find a plan of at least
-`min_plan_length` actions within `search_limit` expansions. About half the draws pass, in a
-fraction of a second each. The method is generate-and-test, which the procedural content
-generation literature calls search-based PCG (Togelius, Yannakakis, Stanley and Browne, 2011,
-https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content
-Generation in Games*, 2016, https://pcgbook.com/). The same seed and options always give the
-same level.
+when it fits there, else discard it, and flush once the pipe laid reaches the distance or the
+queue is used up. A best-first search over placements, guided by the distance still to carry
+less the pipe laid ahead of the flow with a point against every stray piece, must then find a
+plan of at least `min_plan_length` actions within `search_limit` expansions. The method is
+generate-and-test, which the procedural content generation literature calls search-based PCG
+(Togelius, Yannakakis, Stanley and Browne, 2011, https://doi.org/10.1109/TCIAIG.2011.2148116;
+Shaker, Togelius and Nelson, *Procedural Content Generation in Games*, 2016,
+https://pcgbook.com/). The same seed and options always give the same level.
 
 ## Files
 

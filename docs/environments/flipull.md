@@ -42,21 +42,16 @@ is therefore legal only where that block matches what the player is holding. Wha
 is holding was decided by the previous throw, and a board where neither matches the hand
 anywhere can never change again.
 
-We re-implemented the game rather than run the cartridge, so a successor costs microseconds
-and, because the rules are known, a dead end can be recognised exactly (see
-[Planning problem](#planning-problem)). The cost is fidelity, so we say where each rule stands
-with respect to the cartridge. Rules 1 to 3 and 5 we derived by driving a real Flipull cartridge
-and predicting what it would do next. They reproduce field and hand exactly for throws taken
-level with the wall in the positions we checked. Rule 4 is the original's, documented for the
+We re-implemented the game rather than run the cartridge, so, because the rules are known, a
+dead end can be recognised exactly (see [Planning problem](#planning-problem)). Rules 1 to 3 and
+5 come from observing a real Flipull cartridge. Rule 4 is the original's, documented for the
 arcade *Plotting* the cartridge ports ([the arcade
 FAQ](https://gamefaqs.gamespot.com/arcade/584111-plotting/faqs/41573),
 [Wikipedia](https://en.wikipedia.org/wiki/Plotting_(video_game))). There, a block that reaches
 the back wall slides straight down it, as it does off the ceiling, and one that reaches the
-floor bounces back to the player. It is what an earlier automated comparison against the
-cartridge was missing. The throws it disagreed on were those whose row was empty or emptied,
-which this module used to refuse or stop and the cartridge carries down the far side.
+floor bounces back to the player.
 
-Two simplifications remain. First, the cartridge's stages carry a staircase of fixed bricks at
+There are two simplifications. First, the cartridge's stages carry a staircase of fixed bricks at
 the left and, later, pipes. A `#` inside the board deflects a block here the way the back wall
 does, which is what the staircase does, but the bundled stages carry none and pipes are not
 modelled. Second, there is no clock, so the only failure is a genuine dead end and a plan's
@@ -123,8 +118,7 @@ above. A state is then always a settled wall, and the planner never sees a block
 Second, the game's win and loss conditions become the goal test and the dead-end test on that
 settled wall. The win is the count against the target. The loss, which the cartridge can only
 report as the clock running out, is decided at once from whether any throw would connect. That
-prunes a doomed branch the moment a planner enters one, which is most of what makes a puzzle
-searchable. An emulator-backed environment could not make the second move, since it does not
+prunes a doomed branch the moment a planner enters one. An emulator-backed environment could not make the second move, since it does not
 know what a throw hits. What the reduction gives up is the timer: a plan is judged by its
 length, since every action costs 1, and nothing here says whether the cartridge's clock would
 have allowed it.
@@ -152,8 +146,7 @@ opens with a legal throw:
 held: 4   blocks: 25/9
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 163 expansions and under a tenth of a second. Its thirty-five-move plan is
+A thirty-five-move plan for it is
 
 ```
 throw, up, up, throw, up, up, up, throw, down, down, down, down, throw, up, up, up, throw,

@@ -45,16 +45,9 @@ pushed, the turnstile carries him round with it and his position rotates about t
 nothing swings in behind it, he steps into the square he pushed. Eighth, the pivot at the centre
 of a turnstile is solid and never moves.
 
-We re-implemented the game rather than run the cartridge, so a successor costs microseconds and
-the rules are ours to read. The usual cost of that is fidelity, and here we know of no difference
-from the cartridge. The rules above were established by walking this module and the cartridge
-forward in lockstep (i.e., the same random press to both, then a cell-by-cell comparison of the
-board) across every one of the cartridge's 105 rooms. Every stored solution the tests replay was
-also replayed on the cartridge when it was found. Four of the eight rules are worded the way they
-are because that comparison rejected a simpler guess. Rule 3's "still be two blocks", rule 4, rule
-6's swept diagonal and rule 7's compartment were each a real disagreement with the cartridge
-before they were a sentence here. What we do not model is anything outside the room itself. The
-cartridge's move counter, its timer, the pause menu behind A with its RETRY and QUIT, and the
+We re-implemented the game rather than run the cartridge, so the rules are ours to read; the
+rules above come from observing the cartridge. What we do not model is anything outside the room
+itself. The cartridge's move counter, its timer, the pause menu behind A with its RETRY and QUIT, and the
 level counter that loads the next room over the top of a cleared one are all absent. Here a solved
 room is simply terminal.
 
@@ -146,8 +139,7 @@ nothing else. The flag `E` is at the left end, and the one tater starts at the r
       #####
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 215 expansions and under a tenth of a second. Its thirty-eight-move plan is
+A thirty-eight-move plan for it is
 
 ```
 left, left, left, left, up, up, left, left, down, right, up, left, left, down, right, left,
@@ -202,8 +194,7 @@ print(len(plan), plan[:6])
 # 38 ['left', 'left', 'left', 'left', 'up', 'up']
 ```
 
-Its default budget is two million expansions, which most of the later rooms exhaust. It is the
-shared breadth-first search in `planiverse.environments.generation`, the one the generator checks
+Its default budget is two million expansions. It is the shared breadth-first search in `planiverse.environments.generation`, the one the generator checks
 a drawn room with. See [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Rooms
@@ -215,7 +206,7 @@ corridors of the neighbouring floors as well as the room, and the tater starts o
 That makes it a different game rather than a different level.
 
 The rooms range from a 15 by 5 with three turnstiles and nothing else to an 18 by 16 with four
-taters, a dozen blocks and forty pits. Note that difficulty is not uniform in index order.
+taters, a dozen blocks and forty pits.
 
 We dumped all 105 of the cartridge's rooms off the running game, reading the board it composes in
 work RAM for each room, so nothing was transcribed by hand.

@@ -141,7 +141,7 @@ terminal(s) ≡ tick(s) ≥ H ∧ ¬goal(s)
 Note that the problem as a player would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end): bring the plates back before the
 deadline. We turn it into the goal above with the reduction the epidemic and flood environments
-use, which [NOTES.md](../../NOTES.md) sets out in full, in three moves. First, a constraint that
+use, which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that
 must hold throughout becomes a dead end. The first state at the horizon without the plates is
 terminal, so no plan through it exists, and a check over the whole trajectory becomes a check at
 each state. Second, a quantity that accumulates becomes part of the state and is bounded at the

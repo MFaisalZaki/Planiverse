@@ -125,9 +125,8 @@ E..=======7.
 
 The waves are `(6, 13, 12, 10)`, `(8, 19, 14, 10)`, `(9, 28, 14, 10)` and `(10, 43, 17, 18)`. That
 is six enemies of 13 hit points at first and ten of 43 at the last, each wave walking as fast as
-the one before or faster. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above
-and a width bound of 1000), solved it in 10 expansions and under a tenth of a second. Its
-seven-decision plan is
+the one before or faster. The plan it was accepted on, stored in
+`tests/data/tower_defence_solutions.json`, is seven decisions:
 
 ```
 build(arrow,1), start, build(arrow,2), start, start, build(arrow,0), start
@@ -183,8 +182,7 @@ in `tests/data/tower_defence_solutions.json`. A map is a path that wanders up an
 twelve by eight grid, with six to eight building slots beside it. It has three to five waves, whose
 hit points grow by two fifths to four fifths each wave. It comes with a starting purse of 100 to
 140 gold, two to four lives and a bounty of 4 to 6 a kill. The purse buys one or two towers at the
-start; the rest has to be earned, so the slots at the bends, where a tower sees the path twice, are
-the ones that matter. The plan each map was accepted on runs from four to ten decisions.
+start; the rest has to be earned. The plan each map was accepted on runs from four to ten decisions.
 
 ## Generating maps
 

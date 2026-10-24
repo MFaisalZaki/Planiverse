@@ -32,9 +32,8 @@ It is a dependency, and nothing of it is included here. We run a rigid-body engi
 write an action model because no add or delete list carries a toppling tower. A planner can see
 the whole world and choose among eighteen shots, but the effect of a shot is a physics step, and
 that is what keeps the environment out of PDDL. The cost is paid twice. An expansion plays
-eighteen shots of up to six hundred engine steps each rather than looking anything up, which
-comes to about a quarter of a second per expansion in the example below. The physics is also
-only reproducible on one platform, which [Determinism](#determinism) sets out.
+eighteen shots of up to six hundred engine steps each rather than looking anything up, and the
+physics is only reproducible on one platform, which [Determinism](#determinism) sets out.
 
 The rules are four. First, a shot launches a bird from the slingshot at `power` units per
 second, `angle` degrees above the horizontal. The world is then stepped at sixty steps a second
@@ -144,8 +143,7 @@ shots left: 3, targets standing: 3
   target at (91.8, 1.4)
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 6 expansions and 1.6 seconds. Its three-shot plan is
+The plan it was accepted on, stored in `tests/data/slingshot_solutions.json`, is three shots:
 
 ```
 shoot(20,60), shoot(20,75), shoot(20,75)

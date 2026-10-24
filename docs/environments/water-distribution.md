@@ -30,8 +30,8 @@ The hydraulics, the transport and the networks are WNTR's. [WNTR](https://github
 networks ship inside it. Containment is read off EPANET's trace analysis (i.e., the share of the
 water at each node, at each timestep, that came from the source junction), which is transport
 computed on top of the hydraulic solution. This is not a PDDL domain, and not merely because
-PDDL would be verbose here. Two properties, both measured on the shipped networks, rule it out.
-First, effects are global. On `Net3`, closing a single pipe changes the pressure at 94 of the 97
+PDDL would be verbose here. Two properties of the shipped networks rule it out. First, effects
+are global. On `Net3`, closing a single pipe changes the pressure at 94 of the 97
 nodes. The effect of `close pipe 123` is therefore not a set of facts to add and delete but an
 instruction to re-solve the hydraulics and the transport and see what happens. Second, effects
 are not monotone. On `Net1` with the source at node 12, closing pipe `110` makes the
@@ -40,8 +40,7 @@ delete-list cannot express that, and neither can a planner that assumes closing 
 contains more. A third property is softer: which pipes matter is not readable off the topology.
 On `Net3` the source has four pipes on it, two of which carry essentially all the contamination
 and two of which do nothing at all, and nothing structural distinguishes them. The cost of the
-simulator is that every successor is a full hydraulic and transport solve, a few hundredths of
-a second rather than a microsecond.
+simulator is that every successor is a full hydraulic and transport solve.
 
 The rules are four. First, the network runs for twelve hours with the source as the trace node,
 under pressure-driven demand (`demand_model = "PDD"`). That model delivers a junction's full
@@ -70,9 +69,7 @@ are clipped at zero.
 operator interface, with a cost of 1 each. The candidate pipes default to those within
 `radius=2` hops of the source, because the full pipe list is a branching factor of 117 on
 `Net3`, nearly all of it nowhere near the incident. `WaterNetworkEnv(radius=None)` offers every
-pipe, which is the honest setting and a slow one. Note that the `Net2` investigation in
-[Scenarios](#scenarios) used the unrestricted setting, so the restriction is not what made those
-instances unsolvable. `successors` skips a candidate that is already closed and drops any
+pipe, which is the honest setting and a slow one. `successors` skips a candidate that is already closed and drops any
 successor equal to its parent. It returns nothing from a goal or a dead end, so both are
 absorbing (i.e., no action leads out of them), and `simulate` leaves such a state where it is.
 
@@ -123,7 +120,7 @@ Note that the problem as a water utility would state it is a trajectory problem 
 requirements hold over the whole run rather than at its end). The customers must keep their
 water at every step, and the contamination must be contained by the end. We turn it into the
 goal above with the reduction the grid and flood environments use, which
-[NOTES.md](../../NOTES.md) sets out in full, in three moves. First, a constraint that must hold
+[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must hold
 throughout becomes a dead end. The first closure that drops service below the floor is terminal,
 so no plan through it exists, and a check over the whole trajectory becomes a check at each
 state. Second, a quantity that accumulates becomes part of the state and is bounded at the goal:
@@ -133,13 +130,11 @@ needed. A closure is permanent, there is no clock, and the goal may be met at an
 `depth` is carried for reporting only. The cost of the reduction is that the goal depends on
 thresholds, and here they are constants of ours rather than what a reference policy achieves.
 Nothing therefore guarantees that an instance is solvable, which is why every scenario carries
-the depth a search actually solved it at, and why `Net2` is not one of them (see
-[Scenarios](#scenarios)).
+the depth a plan for it was found at (see [Scenarios](#scenarios)).
 
 The progress measure the width planners take (`planiverse.benchmark.measures.water_network`) is
 the share of delivered water that is contaminated. A planner is thus pulled towards
-containment, and relies on the dead end to keep it from closing everything. Note that
-[Shape of the search](#shape-of-the-search) says where that signal on its own is not enough.
+containment, and relies on the dead end to keep it from closing everything.
 
 ## An example
 
@@ -147,7 +142,7 @@ Instance `0` is `Net1`, a network of 12 pipes, with the contaminant entering at 
 With nothing closed, 13.6 per cent of the water delivered over the twelve hours came from the
 source, and service is 100 per cent. Of the 12 pipes, 11 lie within two hops of the source and
 are on offer. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a
-width bound of 1000), solved it in 3 expansions and half a second. Its three-closure plan is
+width bound of 1000), returns the three-closure plan
 
 ```
 close_pipe_111, close_pipe_113, close_pipe_22
@@ -157,8 +152,7 @@ which leaves 0.0 per cent of the delivered water contaminated at 86.4 per cent s
 `111` and then `113` changes nothing the readings can see, since the contamination stays at 13.6
 per cent after each. It is `22` together with `113` that cuts the source off from the customers
 downstream of it. Closing those two alone gives the same readings, which is the depth-2
-solution the bundled record refers to. The extra closure is the price of a best-first search
-that stops at the first goal it reaches rather than the shortest plan.
+solution the bundled record refers to.
 
 ![BFWS solving water_network instance 0](../renders/water_network_chart.gif)
 
@@ -214,27 +208,14 @@ nine chosen scenarios, ordered by how deep a solution is:
 | 7 | Net1 | 22 | 28.7% | 4 |
 | 8 | Net1 | 11 | 80.1% | 7 |
 
-`solved_at` is a measurement rather than an estimate: it is the shallowest depth at which a
-solution was actually found. We record it because an instance whose goal nobody has reached is a
-poor benchmark entry, since a planner cannot tell "unreachable" from "not found yet". Every
-scenario here has been solved.
-
-We tried `Net2` and dropped it for exactly that reason. Its sources sit on trunk mains that cannot
-be rerouted around, and a width-16 beam search to depth 8 with every one of its 40 pipes available
-plateaued at 36% contamination and stopped improving. Rather than ship an instance that is
-probably unsolvable, we left it out.
+`solved_at` is the shallowest depth at which a solution was found, recorded because an instance
+whose goal nobody has reached is a poor benchmark entry, since a planner cannot tell
+"unreachable" from "not found yet". Every scenario carries one, and none is on `Net2`.
 
 The sources are not arbitrary either. `rank_sources(network_file)` runs every junction of a
 network as the source and reports how much of the delivered water ends up contaminated, and we
 chose the scenarios off that ranking. The function is kept so the choice can be re-derived rather
 than taken on trust.
-
-Index 8 is the interesting one. `Net1` with the source at node 11 contaminates 80% of everything
-delivered, and it is solvable. We proved that exhaustively over the full powerset of its 12 pipes,
-finding exactly three feasible closures at depth 7, one of which reaches zero contamination at
-100% service. A width-16 beam search to depth 8 does not find it. It is also where the obvious
-heuristic fails, since ranking states by contamination alone marches straight into "close
-everything", giving contamination zero, service zero, and the goal failed.
 
 Indices `9` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`, by the same two tests the nine above were chosen by. Each carries its measured
@@ -248,7 +229,7 @@ returns it as a dict that `set_instance` accepts back:
 ```python
 env = WaterNetworkEnv()
 scenario = env.generate_instance(seed=7)     # or make("water_network", seed=7)
-# {'network': 'Net3.inp', 'source': '61', 'baseline': 0.488}
+# {'network': 'Net3.inp', 'source': '61', 'baseline': 0.488, 'solved_at': 1}
 state, info = env.reset()
 ```
 
@@ -269,7 +250,7 @@ instance records `solved_at`, the way every bundled scenario carries the depth i
 at. Every expansion costs one hydraulic solve per candidate pipe, so the default budget
 covers every two-closure plan on the shipped networks and the shallower three-closure ones.
 A source that needs a deeper plan, like bundled scenario 8, is rejected unless the limit is
-raised. `Net2` is not drawn on by default because no source on it has been solved (see
+raised. `Net2` is not drawn on by default, since no bundled scenario is on it (see
 [Scenarios](#scenarios)); `set_instance({"network": "Net2.inp", "source": ...})` still
 loads one.
 
@@ -279,9 +260,9 @@ source; the test is breadth-first search over closures.
 
 ## Determinism
 
-The design rests on determinism, so we tested it rather than assuming it: the same set of closed
-pipes simulates bit-identically every time, at a maximum absolute pressure difference of `0.0`
-across repeated runs. Three consequences follow. First, the closed set is a sufficient statistic
+The design rests on determinism: the same set of closed pipes simulates bit-identically every
+time, which the tests check by comparing pressures across repeated runs. Three consequences
+follow. First, the closed set is a sufficient statistic
 for the state. Two states with the same pipes shut are the same state, so `__eq__` and
 `__hash__` are on the closed set alone and search can close over them. Second, results are
 memoised on the closed set. Third, `simulate` re-runs from scratch, so it is an independent
@@ -289,19 +270,6 @@ check on `successors`.
 
 `depth` is deliberately not part of state identity. With a step counter in there no successor
 could ever equal its parent, and the self-loop filter would be dead code.
-
-## Shape of the search
-
-The shape to know before pointing a planner at this is a branching factor between 6 and 22 and
-solution depths between 2 and 7. A successor costs about 0.03 to 0.05 s, since each one is a
-full hydraulic and transport solve. An expansion pays that once per candidate pipe, so instance 0's
-three expansions took half a second. Caching on the closed set does most of the work, because
-the same configuration is reached by many orderings.
-
-The heuristic to write is not "minimise contamination", which fails on index 8 as described above.
-It has to trade contamination against service, and the useful signal is that service is monotone
-while contamination is not. Service can be bounded from the closed set alone, whereas containment
-has to be simulated for.
 
 ## Rendering
 

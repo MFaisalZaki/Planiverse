@@ -66,9 +66,7 @@ vehicles that arrive and the vehicles on the road, which is where the vehicle-se
 from. Note that the successor is not obtained by advancing a copy of the running simulation.
 SUMO's saved state reloads with the route file re-read, so the environment replays the whole
 morning from its first vehicle for every successor. This is what makes the same decisions
-always give the same morning, and it is paid for in time. A morning of two hundred vehicles
-takes a tenth of a second to replay, and an expansion is seventeen replays, which
-[NOTES.md](../../NOTES.md) measured at 0.4 to 0.7 seconds.
+always give the same morning, and it is paid for in time: an expansion is seventeen replays.
 
 ## Planning problem
 
@@ -103,7 +101,7 @@ Note that the problem as a control room would state it is not an initial-to-goal
 trajectory problem (i.e., one whose requirements hold over the whole run rather than at its
 end). Everyone must be through by the horizon, and the travel time over the whole morning must
 be small. We turn it into the goal above with the reduction the epidemic, airspace and reservoir
-environments share, which [NOTES.md](../../NOTES.md) sets out in full, in three moves. First, a
+environments share, which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a
 constraint that must hold throughout becomes a dead end: the horizon passing with vehicles still
 on the road is terminal, and so is everyone arrived over the target, since nothing can then
 improve. A check over the whole trajectory thus becomes a check at each state. Second, a
@@ -123,9 +121,7 @@ leaves a queue standing is the thing to change.
 ## An example
 
 Instance `0` is a morning of 200 vehicles, one every 2.0 seconds, with a horizon of 600 seconds
-and a target of 17,136 vehicle-seconds. Dual BFWS, run as the benchmark runs `dual` (i.e., with
-the measure above and a width bound of 1000), solved it in 23 expansions and 16.4 seconds. Its
-seventeen-decision plan is
+and a target of 17,136 vehicle-seconds. The seventeen-decision plan the render below shows is
 
 ```
 switch(A2), switch(all), switch(all), switch(all), switch(all), switch(all), switch(all),
@@ -134,10 +130,7 @@ switch(all), switch(all), switch(all)
 ```
 
 which is the timer the morning was accepted on (every signal switched every decision) with one
-early switch of its own, at junction `A2` alone. It clears the grid at 510 seconds with 15,476
-vehicle-seconds, 103 fewer than the timer's 15,579 and well under the target. Note that the
-search took 23 expansions once the state carried the queue (i.e., the halted count the measure
-reads), and ran out of a fifteen-minute budget without it.
+early switch of its own, at junction `A2` alone.
 
 ![BFWS solving traffic instance 0](../renders/traffic_chart.gif)
 

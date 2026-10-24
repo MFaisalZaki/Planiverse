@@ -112,7 +112,7 @@ terminal(s) ≡ year(s) = Y ∧ population(s) < P
 Note that the problem as a mayor would state it is a trajectory problem (i.e., one whose
 requirement is a property of the whole run): grow the city over the horizon. We turn it into
 the goal above with the reduction the epidemic, traffic, airspace and reservoir environments
-share, which [NOTES.md](../../NOTES.md) sets out in full, in three moves, of which this
+share, which [docs/operational.md](../operational.md) sets out in full, in three moves, of which this
 environment needs the lightest form. First, a constraint that must hold throughout becomes a
 dead end. Here the only constraint is the horizon itself, so the only dead end is a city short
 of its target when the horizon comes, and nothing earlier is one. Second, a quantity that

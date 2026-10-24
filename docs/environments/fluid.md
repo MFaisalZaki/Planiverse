@@ -125,8 +125,7 @@ and 9 digs are allowed:
 filled 0, spring 15 left, 9 digs left, tick 0
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 3 expansions and under a tenth of a second. Its three-action plan is
+The plan it was accepted on, stored in `tests/data/fluid_solutions.json`, is three actions:
 
 ```
 wait, dig(10,8), dig(4,3)

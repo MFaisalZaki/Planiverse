@@ -31,8 +31,7 @@ from symptoms to the hospital, intensive care and death. It is a dependency inst
 and nothing of it is included here. We use it rather than a compartmental model (i.e., a handful
 of differential equations over the susceptible, infected and recovered) because the effect of a
 week's level on the weeks after it is only known by running the model. That is what keeps the
-environment out of PDDL and makes it a simulation-based planning problem. It is also what makes
-an expansion cost a third of a second rather than a microsecond.
+environment out of PDDL and makes it a simulation-based planning problem.
 
 The rules are four. First, the town is Covasim's default population at the instance's size with
 its seed infections, run from the instance's seed, so the same schedule always gives the same
@@ -55,8 +54,7 @@ An action sets the level for the coming week and runs the model through it, seve
 time. Note that the successor is not obtained by advancing a copy of the running simulation: a
 copy of a Covasim simulation does not carry its random stream with it, so the environment
 replays the whole schedule from day zero for every expansion. This is what makes the same
-schedule always give the same epidemic, and it is paid for in time, since a twelve-week schedule
-over ten thousand people takes about a third of a second to replay. `get_actions(state)` leaves
+schedule always give the same epidemic, and it is paid for in time. `get_actions(state)` leaves
 out any level the remaining budget cannot pay for, so a plan never overspends by construction,
 and every action costs 1.
 
@@ -93,7 +91,7 @@ Note that the problem as a health office would state it is not an initial-to-goa
 trajectory problem (i.e., one whose requirements hold over the whole run rather than at its end).
 The hospital must never overflow, the budget must not be exceeded, and the deaths must be few by
 the end. We turn it into the goal above with the reduction the grid and flood environments use,
-which [NOTES.md](../../NOTES.md) sets out in full, in three moves. First, a constraint that must
+which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must
 hold throughout becomes a dead end: the first week that overflows the hospital is terminal, so no
 plan through it exists, and a check over the whole trajectory becomes a check at each state.
 Second, a quantity that accumulates becomes part of the state and is bounded at the goal. The
@@ -113,18 +111,14 @@ horizon and away from schedules that have already lost.
 ## An example
 
 Instance `0` is a town of 8,000 people with 22 infected on day one, a horizon of 12 weeks, a
-hospital of 144 beds, a budget of 12 points and a target of 14 deaths. Dual BFWS, run as the
-benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), solved it in 278
-expansions and 134 seconds. Its twelve-week schedule is
+hospital of 144 beds, a budget of 12 points and a target of 14 deaths. The twelve-week schedule
+the render below shows is
 
 ```
 open, lockdown, lockdown, lockdown, open, open, open, open, lockdown, open, open, open
 ```
 
-which spends the whole budget on four lockdowns, three of them early. It ends the horizon with
-10 dead, a hospital peak of 128 of the 144 beds and 1,678 people still infectious. The early
-lockdowns are what keep the peak under the beds; the late one is what keeps the deaths under the
-target once the town has been open for a month.
+which spends the whole budget on four lockdowns, three of them early.
 
 ![BFWS solving epidemic instance 0](../renders/epidemic_chart.gif)
 

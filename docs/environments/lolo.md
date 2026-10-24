@@ -3,8 +3,8 @@
 Adventures of Lolo's puzzle, re-implemented in Python rather than emulated, over the first 100 of
 the cartridge's own 163 rooms. Lolo walks the four directions, one cell at a time, on an 8 by 8
 board. He has to collect every heart framer (i.e., the collectible hearts that open the door) and
-then stand on the open door. We measured every rule below on the cartridge rather than taking it
-from a manual, and the environment needs no ROM, no emulator and no dependencies.
+then stand on the open door. The rules below come from observing the cartridge, and the
+environment needs no ROM, no emulator and no dependencies.
 
 - **Class:** `LoloGame`
 - **Import:** `from planiverse.environments.games.lolo.environment import LoloGame, LoloAction`
@@ -41,19 +41,16 @@ framer, an enemy or an egg stands between them. Rocks, rivers, bridges, deserts,
 one-way passes and break tiles do not block a Medusa. Eighth, the door `D` opens once every heart
 framer is collected, and standing on the open door clears the room.
 
-We re-implemented the game rather than run the cartridge, so a successor costs microseconds and
-the rules are ours to read. The cost is fidelity, and here it is concentrated in one place.
+We re-implemented the game rather than run the cartridge, so the rules are ours to read. It
+differs from the cartridge in the ways set out below.
 
 **Six of the eight enemies are frozen here.** Snakey and Medusa never move on the cartridge
 either, so rooms holding only those two are modelled exactly. The other six (Leeper, Rocky, Alma,
 Gol, Skull and Don Medusa) do move there, in lock-step with Lolo, and this module leaves them
-where they started. For a room that contains one, a plan found here is usually a plan against an
-easier puzzle and may well die on the cartridge. Freezing is not a relaxation, though, and it does
-not only err that way. A frozen enemy is a wall as well as a threat removed, so a room can also
-come out harder here than it is on the cartridge. Either direction is the wrong one for an
-approximation to err in, so we flag it rather than smooth it over. `EXACT_ROOMS` lists the 21
-rooms of the hundred that ship whose enemies are only those two (26 of the cartridge's 163), and
-`reset` reports it room by room:
+where they started. Freezing is not a relaxation: a frozen enemy is a wall as well as a threat
+removed, so a room that contains one can come out easier or harder here than it is on the
+cartridge. `EXACT_ROOMS` lists the 21 rooms of the hundred that ship whose enemies are only those
+two (26 of the cartridge's 163), and `reset` reports it room by room:
 
 ```python
 from planiverse.environments.games.lolo.environment import EXACT_ROOMS
@@ -66,7 +63,7 @@ info["unmodelled_enemies"]     # ('K', 'R'), the kinds that would have moved
 
 **Rafts float on the rivers that hold still.** On the cartridge an egg shoved into a river floats,
 and Lolo can step onto it and ride across, which is how `int 1-3` is cleared. The cartridge has
-six river codes and they do not behave alike; we measured each one:
+six river codes and they do not behave alike:
 
 | Code | Push an egg into it | Lolo steps on |
 |---|---|---|
@@ -77,15 +74,13 @@ six river codes and they do not behave alike; we measured each one:
 
 The room texts spell all six `~`, so the text alone cannot tell one river from another;
 `DRIFTING_RIVERS` carries the `$83` and `$85` cells, read back out of the cartridge. An egg pushed
-at a still river floats; an egg pushed at a drifting one is refused. That split is exact rather
-than a guess, because a current runs on frames and not on moves. Board the raft on
-`tutorial 14a`'s `$83` channel and Lolo slides one cell every 160 frames with no button held at
-all. A module with no notion of time cannot carry him, so it declines the push there.
+at a still river floats; an egg pushed at a drifting one is refused, because a current runs on
+frames and not on moves (on `tutorial 14a`'s `$83` channel the raft carries Lolo one cell every
+160 frames with no button held), and the module has no notion of time.
 
 Of the 111 rooms with a river, 71 have no current anywhere, and the rule this module keeps is the
-cartridge's own for every one of them, which is why rafts are on by default. BFWS finds the
-cartridge's own twelve-action plan for `int 1-3`, action for action, and replaying it on the
-cartridge clears the room:
+cartridge's own for every one of them, which is why rafts are on by default. The cartridge's own
+twelve-action plan for `int 1-3` is a plan here:
 
 ```python
 game = LoloGame()
@@ -93,54 +88,15 @@ game.set_index(40)                     # int 1-3
 # right right up shoot up up up left left up up up
 ```
 
-Three further rooms gain a plan this way (`int 4-8`, `int 5-4` and `adv 3-1`), and all three die
-when replayed on the cartridge. Each holds a mobile enemy, so what defeats them is the freeze
-above rather than the raft. `int 1-3` and `tutorial 14a`, the two raft rooms with no mobile enemy
-in them, both now agree with the cartridge.
-
 **The hammer is not modelled.** A few rooms start with one in the cartridge's PWR meter, `int 1-5`
-among them, and we have not established what it breaks.
+among them.
 
 Two smaller divergences run in the safe direction. First, Medusa's shot is instant here where the
 cartridge gives one move of grace, but that move cannot be used to escape, so no plan is lost.
-Second, an Emerald Framer is not pushed onto a heart framer, a door or a marker, which we never
-tested and refuse rather than guess.
+Second, an Emerald Framer is not pushed onto a heart framer, a door or a marker.
 
-**A marker may block a Medusa, and here it does not.** The probe that established what stops a
-Medusa's line tried a tree, a Framer, a heart framer and an enemy. It also tried a rock, a river,
-a bridge, a desert, a flower bed, a one-way pass and a break tile. It never tried a marker, the
-`$97` to `$9C` codes whose meaning is unresolved, and this module treats one as transparent. That
-is the only assumption that separates this module's verdict on `tutorial 13a` from the
-cartridge's. The cartridge clears that room by walking column 0 underneath a marker at `(3, 0)`
-that would otherwise be a Medusa's clear line. Adding the marker to the shield set is the one
-change that makes BFWS clear it here too. Until somebody probes it, `tutorial 13a` is an open
-question rather than a room with no plan.
-
-We measured what these approximations cost. Breadth-first search over this module found a plan for
-32 of the cartridge's 163 rooms, and we replayed every one of those plans on the real cartridge:
-
-| | plans found | cleared the room on the cartridge |
-|---|---|---|
-| rooms in `EXACT_ROOMS` | 7 | 7 |
-| rooms whose enemies this module freezes | 25 | 3 |
-
-Where the model is faithful it is faithful. The twenty-two failures are all Lolo walking into an
-enemy that was not standing still, so on the rooms it does find a plan for, the approximation errs
-in the easy direction. It errs the other way as well, on rooms where it finds no plan at all, and
-comparing against the cartridge under BFWS turns that up. `tutorial 4a` is the case: the cartridge
-clears it in 56 moves, and this module proves it unsolvable. Its Rocky stands in the only approach
-to the room's magic heart framer, which is one of the nine hearts the door waits for and the
-room's only source of magic shots. Freezing it walls the room off rather than making it easier.
-Deleting that one Rocky from the room is enough to make BFWS clear it here, in 37 moves. Four more
-rooms this module proves unsolvable open up once their mobile enemies are taken off the board.
-Taking an enemy off the board is more permissive than moving it, though, so this bounds the cost
-rather than measuring it. `tutorial 4b` is the other half of the same tutorial pair and `int 4-8`
-is still running on the cartridge, while on `int 2-10` and `int 5-2` the cartridge proves the room
-unsolvable too.
-
-Every other disagreement runs the expected way round: the plan found here is a plan against the
-easier puzzle, and it dies on the cartridge. `tutorial 4a` is the only room the pairing has found
-where this module proves unsolvable something the cartridge clears.
+**A marker does not block a Medusa here.** A marker (the `$97` to `$9C` codes) is transparent
+to a Medusa's line, like the terrain listed under rule 7.
 
 ## Actions
 
@@ -160,8 +116,8 @@ fire before the first move either), or when the cell he faces holds neither an e
 `successors` drops every refused action, and a goal state or a dead end has no successors at all.
 
 The meter starts empty, as the cartridge does on a cold boot, because the meter belongs to the
-player rather than to the room. A few rooms need a shot they cannot earn in-room, `int 1-5` among
-them, and cannot be cleared from a cold boot for that reason:
+player rather than to the room. `magic_shots` sets the starting meter, for a room that needs a
+shot it cannot earn in-room:
 
 ```python
 game = LoloGame(magic_shots=2)
@@ -236,8 +192,7 @@ enemy is a Snakey, so it is a room the model is exact for:
 ########
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 64 expansions and under a tenth of a second. Its nineteen-move plan is
+A nineteen-move plan for it is
 
 ```
 left, left, left, up, up, up, right, right, shoot, shoot, right, right, left, left, left, left,
@@ -281,7 +236,7 @@ Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_lolo")`, whose `apply_action` advances a state (see [Through
 OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
 pairs for the moves that change the position, with `successor.lolo` and `successor.hearts_left`
-on each. A room can also be chosen by name, `make("lolo", index=38)` for `int 1-1`. See
+on each. `make("lolo", index=38)` selects room 38, `int 1-1`. See
 [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Rooms

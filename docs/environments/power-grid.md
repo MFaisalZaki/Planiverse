@@ -39,8 +39,7 @@ action has a global, numerical effect. Second, doing nothing is not safe, becaus
 time series keeps moving, so the problem is a moving target with a deadline. On chronic 1,
 tripping line 6 gives a worst loading of 1.078, which climbs to 1.96 and then blacks the grid
 out on the fourth step if the operator does nothing. The cost of the simulator is that every
-successor is a power-flow solve, and an expansion that tries every relevant reconfiguration
-takes seconds rather than microseconds.
+successor is a power-flow solve.
 
 The rules are four. First, the grid is the case on the instance's time series (i.e., its
 *chronic*, Grid2Op's name for one recorded run of demand), at the instance's step, with the
@@ -62,19 +61,18 @@ grid is secure when every line is back within its rating with the grid still sta
 Actions are indices into grid2op's `IdToAct` enumeration of the topology space, so a plan is a
 list of integers and replays identically. `do_nothing` is action 0 and costs 0, while every
 reconfiguration costs 1. `successors` offers reconfigurations at substations touching an
-overloaded line, plus doing nothing. Every topology action is legal from every state, but
-offering all 209 costs about thirty seconds a node, and the substations either end of the
-overloading line are what an operator would look at.
-`PowerGridEnv(restrict_to_overloads=False)` offers the lot, which is the honest setting and a
+overloaded line, plus doing nothing. Every topology action is legal from every state, but the
+substations either end of the overloading line are what an operator would look at.
+`PowerGridEnv(restrict_to_overloads=False)` offers all 209, which is the honest setting and a
 slow one. A goal and a dead end are both absorbing (i.e., no action leads out of them), so
 `successors` returns `[]` and a plan cannot wander past the end.
 
 Applying an action replays the path from the trip. A fresh Grid2Op environment is seeded, set
 to the chronic, fast-forwarded to the offset and given the trip, and the path's actions are
 stepped through it. Expanding a parent replays it once and then copies the environment per
-child, so a path is never walked twice. Every child is an AC power-flow solve of about 50 ms,
-and one expansion takes 8 to 19 seconds. The state a path leads to is memoised, since the
-simulator is deterministic once pinned (see [Determinism](#determinism)).
+child, so a path is never walked twice. Every child is an AC power-flow solve. The state a path
+leads to is memoised, since the simulator is deterministic once pinned (see
+[Determinism](#determinism)).
 
 ## Planning problem
 
@@ -106,7 +104,7 @@ genuinely nothing further to plan from.
 Note that the problem as an operator would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end). The grid must stand at every step,
 and it must be secure before the cascade arrives. We turn it into the goal above with the
-reduction the epidemic and flood environments use, which [NOTES.md](../../NOTES.md) sets out in
+reduction the epidemic and flood environments use, which [docs/operational.md](../operational.md) sets out in
 full, in three moves. First, a constraint that must hold throughout becomes a dead end. The
 first state that blacks out is terminal, so no plan through it exists, and a check over the
 whole trajectory becomes a check at each state. Second, a quantity that accumulates becomes part
@@ -132,8 +130,7 @@ Instance `0` is chronic 0 at its start with line 11 tripped. After the trip the 
 the case's 209 topology actions, 64 touch a substation at either end of line 9, so the initial
 state has 65 successors with `do_nothing`. Two of them secure the grid: `topology_98` at
 0.996 and `topology_103` at 0.991. Dual BFWS, run as the benchmark runs `dual` (i.e., with the
-measure above and a width bound of 1000), solved it in 1 expansion and 7.7 seconds. Its
-one-move plan is
+measure above and a width bound of 1000), returns the one-move plan
 
 ```
 topology_98
@@ -141,8 +138,7 @@ topology_98
 
 which brings the worst loading from 1.013 to 0.996, four thousandths under the rating. That is
 enough, since the goal asks for every line under its rating and not for a margin; `topology_103`
-would have left more room. The expansion is the whole cost: one power-flow solve for each of the
-65 candidates.
+would have left more room.
 
 ![BFWS solving power_grid instance 0](../renders/power_grid_chart.gif)
 
@@ -184,8 +180,8 @@ text instead, and [docs/rendering.md](../rendering.md) covers the other output f
 ## Scenarios
 
 `set_index(i)` picks a time series (i.e., a *chronic*, grid2op's name for one recorded run of
-demand) together with the line that trips. The set came from N-1 analysis, meaning we tripped
-every line of every chronic in turn.
+demand) together with the line that trips. The set came from N-1 analysis, meaning every line
+of every chronic was tripped in turn.
 
 | Index | Chronic | Line | Loading after trip | Blackout in | Solved at |
 |---|---|---|---|---|---|
@@ -202,34 +198,17 @@ every line of every chronic in turn.
 Every scenario here blacks out if it is ignored, which is what makes them instances at all. On
 scenario 4, for instance, the trip leaves 1.078 with line 17 overloaded. Doing nothing leaves
 1.072 a step later, then 1.96 and 1.98, and the grid blacks out on the fourth step, whereas
-`topology_69` secures it at once at 0.921. Most overloads on this case clear themselves as
-demand moves: tripping line 1 on chronic 0 gives a loading of 1.019 that is back under the
-limit two steps later with no action whatsoever. An instance the null plan solves is not an
-instance, so we dropped 32 of the 60 line and chronic combinations for that. Another 18 black
-the grid out on the trip itself, which is not a planning problem either, and were dropped too.
-`rho_after_trip` and `blackout_in` are measurements, recorded so that a scenario which stops
-reproducing fails loudly rather than quietly becoming easy.
-
-Every scenario here is solved by a single reconfiguration, which is a property of the domain as
-bundled rather than a shortcoming of the setup, and we checked it rather than assuming it. Double
-contingencies (N-2) were tried across all pairs of the interesting lines on two chronics.
-Every one either blacks out immediately or causes no overload at all, so this 14-bus case has no
-survivable N-2. The larger bundled cases behave the same way: `l2rpn_neurips_2020_track1` (36
-substations, 59 lines, 66,811 topology actions) and `rte_case118_example` (118 substations, 186
-lines, 72,144 actions) both still fix a single trip with one action.
-
-So the challenge this environment poses is width rather than depth, in three parts. First, a
-large action space, with 209 topology actions on the small case, 45 to 119 of them relevant to
-any given overload, and tens of thousands on the bigger ones. Second, an expensive successor
-function, since every child is an AC power-flow solve of about 50 ms and one expansion takes 8
-to 19 seconds. Third, a hard deadline, two to four steps before the cascade. A heuristic that
-avoids simulating all 119 candidates is worth more here than any amount of lookahead. For depth
-instead, the [water distribution](water-distribution.md) environment has solution depths of 2
-to 7.
+`topology_69` secures it at once at 0.921. Tripping line 1 on chronic 0, by contrast, gives a
+loading of 1.019 that is back under the limit two steps later with no action whatsoever. An
+instance the null plan solves is not an instance, and one that blacks the grid out on the trip
+itself is not a planning problem either, so neither kind is here. `rho_after_trip` and
+`blackout_in` are measurements, recorded so that a scenario which stops reproducing fails
+loudly rather than quietly becoming easy. Every scenario is solved by a single
+reconfiguration (`solved_at` is 1 throughout).
 
 Indices `9` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`: the same N-1 test, at a step into the time series (`offset`) rather than at its
-start. The loading after the trip and the steps to blackout were measured the same way.
+start. The loading after the trip and the steps to blackout are recorded the same way.
 
 ## Generating contingencies
 
@@ -239,7 +218,7 @@ it, and returns it as a dict that `set_instance` accepts back:
 ```python
 env = PowerGridEnv()
 contingency = env.generate_instance(seed=7)     # or make("power_grid", seed=7)
-# {'chronic': 1, 'line': 9, 'offset': 122, 'rho_after_trip': 1.64, 'blackout_in': 2}
+# {'chronic': 1, 'line': 9, 'offset': 122, 'rho_after_trip': 1.64, 'blackout_in': 2, 'solved_at': 1}
 state, info = env.reset()
 ```
 
@@ -252,7 +231,7 @@ state, info = env.reset()
 | `blackout_within` | 6 | with the operator doing nothing, the grid must black out within this many steps |
 | `solvable` | `True` | search each draw and keep only one with a plan |
 | `search_limit` | 1 | expansions the check may spend per draw |
-| `attempts` | 80 | draws before giving up with `GenerationError`; about one draw in eleven passes both tests |
+| `attempts` | 80 | draws before giving up with `GenerationError` |
 
 The offset is what makes this more than a reshuffle of the bundled nine. The same line
 tripped at a different point of the same series meets different demand, and the case's
@@ -273,8 +252,9 @@ https://arxiv.org/abs/2003.07339): trip one line, and see whether the grid stand
 ## Determinism
 
 Grid2op is deterministic once the stochastic parts are pinned, and this environment pins them:
-`env.seed(0)` and `set_id(chronic)` fix the time series, and the opponent is not enabled. We
-verified this by replaying the same path twice and comparing every line's loading.
+`env.seed(0)` and `set_id(chronic)` fix the time series, and the opponent is not enabled. The
+tests check this by replaying the same path twice and comparing every line's loading.
+
 
 That makes the action path the state. `__eq__` and `__hash__` are on the path, results are
 memoised on it, and `simulate` replaying from scratch is an independent check on `successors`

@@ -113,8 +113,8 @@ terminal(s) ≡ false
 ```
 
 `is_goal` asks `env.network.all_sensitive_hosts_compromised(state)`. `is_terminal` is always
-`False`, and the source comment flags this as a known gap: stuck states exist in this environment
-but are not detected, so a planner must bound its own search.
+`False`: stuck states exist in this environment but are not detected, so a planner must bound its
+own search.
 
 NASim as played is an episode. An agent takes an action, receives an observation of what it
 revealed and a reward of the value gained less the action's cost, and the episode ends at the goal
@@ -148,8 +148,7 @@ action space holds 24 ground actions, eight per host, and the initial state's te
 host (1, 0): discovered, reachable
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 8 expansions and under a tenth of a second. Its six-action plan is
+The six-action plan the render below shows is
 
 ```
 Exploit: target=(1, 0), service=ssh
@@ -308,11 +307,10 @@ formats.
 
 ## Notes and limits
 
-Three notes before building on this environment. First, `reset()` rebuilds the
-environment every call, re-running `make_benchmark`; it is not cheap, so do not call it inside a
-loop. Second, `successors` needs `reset()` first, because it reads `self.actionslist`, which is
-`None` until reset. Third, `is_terminal` is always `False`; see
-[Planning problem](#planning-problem).
+Three notes before building on this environment. First, `reset()` rebuilds the environment
+every call, re-running `make_benchmark`. Second, `successors` needs `reset()` first, because it
+reads `self.actionslist`, which is `None` until reset. Third, `is_terminal` is always `False`;
+see [Planning problem](#planning-problem).
 
 ## Files
 

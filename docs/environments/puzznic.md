@@ -26,9 +26,8 @@ cleared, and the round is lost from that moment however many moves remain (i.e.,
 that no later move can undo). The skill of the game is in the order of the clears, since a block
 that is needed as a landing for another must not be matched away too early.
 
-We re-implemented the game rather than run the cartridge, so plans are cheap to expand (a
-successor costs microseconds) and the rules are ours to read. The cost is fidelity. We know of two
-differences from the cartridge. First, the cursor starts on the nearest empty cell rather than on
+We re-implemented the game rather than run the cartridge, so the rules are ours to read. It
+differs from the cartridge in two ways. First, the cursor starts on the nearest empty cell rather than on
 a block, because a level string marks the cursor's cell as empty and cannot also put a block
 there, so a plan found here does not transfer to the cartridge move for move. Second, the
 re-implementation rescans the whole board after every step and clears every adjacent same-colour
@@ -120,8 +119,7 @@ Instance `0` is the cartridge's first round, a six-by-seven grid with two blocks
 ######
 ```
 
-Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width bound of
-1000), solved it in 122 expansions and a tenth of a second. Its twelve-move plan is
+A twelve-move plan for it is
 
 ```
 left, right-hold, down, down, down, left-hold, left, up, up, up, right-hold, right-hold
@@ -160,9 +158,8 @@ env.render_trace(trace, "puzznic.png", actions=result.plan, env=env)     # conta
 
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_puzznic")`, whose `apply_action` advances a state (see [Through
-OpenSpiel](../../README.md#through-openspiel)). Note that consecutive identical states are
-collapsed there, so the printed step numbers do not line up with plan indices. See
-[docs/rendering.md](../rendering.md) for the other output formats.
+OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for
+the other output formats.
 
 ## Levels
 
@@ -209,16 +206,14 @@ Blocks are dropped in at rest, so the board starts settled; no two blocks of a c
 nothing clears itself; and no colour has a single block, so no draw is born terminal. The check is
 a breadth-first search over positions, so `min_plan_length` is a lower bound on the shortest plan
 and a fair difficulty knob. A draw the search cannot decide within `search_limit` is rejected,
-which biases the generator towards levels a small search can solve. Larger boards mostly reject,
-so give them a larger limit and some patience, or pass `solvable=False` for an unchecked draw. The
-same seed and options always give the same level.
+which biases the generator towards levels a small search can solve; `solvable=False` gives an
+unchecked draw. The same seed and options always give the same level.
 
 Left unset, the layout options come from the profile of a cartridge round drawn at random
 (`PROFILES`, one per round): its interior size, its number of colours, how many blocks each
 colour has and how much of it is wall. A generated level is therefore the shape of a real one
 rather than a shape of the generator's own. Only rounds of at most `max_blocks` blocks (10) are
-drawn from, because a breadth-first check cannot decide the shapes of the larger rounds within
-its budget; `max_blocks=None` draws from all 100, and any option given explicitly wins over the
+drawn from; `max_blocks=None` draws from all 100, and any option given explicitly wins over the
 profile. The method is generate-and-test, which the procedural content generation literature
 calls search-based PCG (Togelius, Yannakakis, Stanley and Browne, 2011,
 https://doi.org/10.1109/TCIAIG.2011.2148116; Shaker, Togelius and Nelson, *Procedural Content

@@ -10,7 +10,7 @@ model driven by the actual weather, so what a decision was worth is only known a
 - **Import:** `from planiverse.environments.operational.crop_management.environment import CropEnv`
 - **Source:** [`environment.py`](../../planiverse/environments/operational/crop_management/environment.py)
 - **Instances:** 100 seasons, indices `0` to `99`: the 22 gap-free years at the usual sowing date, then 78 the generator drew
-- **Generator:** `generate_instance(seed, year=None, sow_shift=14)`; see [Generating seasons](#generating-seasons)
+- **Generator:** `generate_instance(seed, year=None, sow_shift=14, attempts=20)`; see [Generating seasons](#generating-seasons)
 - **Dependencies:** `pcse`. The weather ships inside it and the crop parameters are cached locally
   by PCSE itself, so a season runs offline.
 
@@ -44,9 +44,8 @@ Early on the soil is already at capacity and the crop is tiny, so the water drai
 through. The value climbs to a peak around day 80 and then falls away again, which makes it
 non-monotone in timing alone. No delete-list carries that, because the effect of the action is a
 function of a growth stage which is itself the integral of every decision before it. The cost of
-the simulator is that a successor is a replay of the season so far, a fraction of a second
-rather than a microsecond. Nor is the yield known until the season has been replayed to its
-end.
+the simulator is that a successor is a replay of the season so far. Nor is the yield known until
+the season has been replayed to its end.
 
 The rules are four. First, the season is the year's weather at PCSE's station `NL1`, on a
 potato sown on 15 April and harvested on 15 October. The same schedule in the same year
@@ -77,9 +76,8 @@ Applying an action replays the schedule from sowing rather than advancing a snap
 PCSE model carries its whole output history. The model is run to the day of this decision, and
 the water is applied through PCSE's irrigation signal at 70 per cent efficiency. The model is
 then run on to the day of the next decision, so the state describes the crop as the farmer sees
-it when deciding. After the tenth decision it is run to harvest instead. A full season takes
-under half a second, and the state a schedule leads to is memoised, since the same schedule in
-the same year cannot give two yields.
+it when deciding. After the tenth decision it is run to harvest instead. The state a schedule
+leads to is memoised, since the same schedule in the same year cannot give two yields.
 
 ## Planning problem
 
@@ -94,13 +92,12 @@ A `CropState` holds the schedule and what the crop has done so far:
 | `finished` | the season has ended |
 | `depth`, `stage` | decisions taken |
 
-The schedule tuple is the whole state. We verified rather than assumed the determinism this
-rests on: the same schedule in the same year produces the same yield to the last digit. So
-`__eq__` and `__hash__` are on the tuple, results memoise on it, and `simulate` replaying from
-scratch is an independent check on `successors` rather than a restatement of it. States hold
-the schedule rather than a model snapshot because a PCSE model carries its whole output history.
-Replaying is cheap, under half a second for a full season, and exactly reproducible. The
-literals name each application, the decisions taken, the water used, and the biomass and the
+The schedule tuple is the whole state. The determinism this rests on is checked by the tests:
+the same schedule in the same year produces the same yield to the last digit. So `__eq__` and
+`__hash__` are on the tuple, results memoise on it, and `simulate` replaying from scratch is an
+independent check on `successors` rather than a restatement of it. States hold the schedule
+rather than a model snapshot because a PCSE model carries its whole output history, and
+replaying is exactly reproducible. The literals name each application, the decisions taken, the water used, and the biomass and the
 yield in hundreds of kg/ha, since the raw floats would make every state novel:
 
 ```
@@ -127,7 +124,7 @@ than a modelling choice. Both are absorbing, so `successors` returns `[]`.
 Note that the problem as a farmer would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end). The water must last the season,
 and the crop must be worth harvesting at the end of it. We turn it into the goal above with the
-reduction the grid and flood environments use, which [NOTES.md](../../NOTES.md) sets out in
+reduction the grid and flood environments use, which [docs/operational.md](../operational.md) sets out in
 full, in three moves. First, a constraint that must hold throughout becomes a dead end. A
 schedule that overspends the budget is terminal and, as `successors` shows, never generated, so
 a check over the whole trajectory becomes a check at each state. Second, a quantity that
@@ -144,10 +141,7 @@ simulations per instance. A season in which the calendar gains nothing therefore
 the rainfed crop already meets, and the right plan there applies no water.
 
 That gives a finite-horizon problem of fixed depth 10 and branching up to 4, about a million
-schedules, where the objective is only observable at the leaves. It is a different shape from
-the [water network](water-distribution.md), which has cheap goal tests at every node, and from
-the [power grid](power-grid.md), which is wide and shallow. This one is narrow, deep, and blind
-until the end.
+schedules, where the objective is only observable at the leaves.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.crop_management`)
 is the decisions still to make, since the yield is only known once the season ends. A planner
@@ -158,19 +152,16 @@ is thus pulled towards the harvest and told nothing about the yield until it get
 Instance `0` is the 1976 season, a drought year. The crop yields 4241 kg/ha rainfed, the
 reference schedule reaches 5678 kg/ha on its 8 cm, and the target is 98 per cent of that, 5564
 kg/ha. The decisions fall on days 10 to 100 after the sowing on 15 April. Dual BFWS, run as
-the benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), solved it in 10
-expansions and 3.4 seconds. Its ten-decision plan is
+the benchmark runs `dual` (i.e., with the measure above and a width bound of 1000), returns the
+ten-decision plan
 
 ```
 wait, wait, wait, wait, wait, wait, wait, wait, wait, irrigate_4cm
 ```
 
 which harvests 6055 kg/ha on 4 cm of water, applied on day 100, and so beats the reference
-calendar with half its water. That a single late application does better than four spread
-through the season is consistent with the 1986 table above, where the value of water climbs
-late in the season. The mechanism, though, is the model's to know. Note that the measure counts
-decisions only, so the search was not looking for a cheap plan. A schedule of ten waits
-completes the season too, but harvests 4241 kg/ha, short of the target, and is a dead end.
+calendar with half its water. A schedule of ten waits completes the season too, but harvests
+4241 kg/ha, short of the target, and is a dead end.
 
 ![BFWS solving crop_management instance 0](../renders/crop_management_chart.gif)
 
@@ -225,7 +216,7 @@ quietly changing difficulty:
 |---|---|---|---|---|
 | 1976 | 4241 | 5678 | +1436 | drought year |
 | 1980 | 13363 | 13363 | +0 | wet enough on its own |
-| 1983 | 4969 | 6749 | +1781 | |
+| 1983 | 4969 | 6749 | +1780 | |
 | 1985 | 14957 | 14989 | +31 | wet |
 | 1986 | 6758 | 9456 | +2698 | irrigation worth most |
 | 1999 | 10662 | 12811 | +2149 | |
@@ -246,7 +237,7 @@ nothing.
 
 Indices `22` to `99` were drawn by `generate_instance` at the seeds they record (`seed`) in
 `SCENARIOS`: a bundled year with the sowing date moved by up to two weeks. The rainfed and
-reference yields were measured the same way.
+reference yields are measured the same way.
 
 ## Generating seasons
 
@@ -264,6 +255,8 @@ state, info = env.reset()
 |---|---|---|
 | `year` | `None` | one of the twenty-two bundled years, or one at random; the weather PCSE ships has no others without gaps |
 | `sow_shift` | 14 | the sowing date is the usual 15 April moved by up to this many days either way |
+| `attempts` | 20 | sowing dates tried, each kept only if the reference schedule yields at least the rainfed crop, before giving up with `GenerationError` |
+
 
 Moving the sowing date changes which weather the crop meets at each growth stage, which is
 what decides whether and when irrigation pays. The rainfed and reference yields are then

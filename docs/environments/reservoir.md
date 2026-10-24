@@ -22,20 +22,16 @@ things: how much the turbine lets down from the upper reservoir to the lower, an
 farm gets its full demand or is rationed to half. Which demand gets what each month is pywr's
 allocation by priority; when to hold water back and when to let it through is the plan. What
 makes it hard is that the decisions are coupled across the year. Water released in January is
-in the lower reservoir, where the city and the farm draw on it, and no longer in the upper one
-for July. Water held back keeps the upper reservoir above its reserve but leaves the lower one
+in the lower reservoir, where the city and the farm draw on it, and out of the upper one for
+July. Water held back keeps the upper reservoir above its reserve but leaves the lower one
 to run short, and a single month that shorts the city or the river ends the year.
 
 [pywr](https://github.com/pywr/pywr) (GPL-3.0-or-later; Tomlinson, Arnott and Harou 2020,
 https://doi.org/10.1016/j.envsoft.2020.104635) is the water resource system simulator from the
 University of Manchester used across the UK water industry. It models a network of storages,
 demands and links, and allocates each step's flows by a linear programme over the nodes'
-priorities (i.e., each node carries a cost, and the flows chosen minimise the total). It is a dependency installed from PyPI; nothing of it is included here. Of the four
-operational environments added together it is the one a numeric planner could model most
-nearly, since a mass balance with priorities is a small linear system. It is here for what it
-is, a real water-industry simulator with a year's worth of coupled decisions. What the simulator buys is
-an allocation the water industry recognises; what it costs is only a few milliseconds a month,
-which makes this the cheapest of the four to expand.
+priorities (i.e., each node carries a cost, and the flows chosen minimise the total). It is a
+dependency installed from PyPI; nothing of it is included here.
 
 The rules are four. First, the network is built in code from the instance: the hills feed the
 upper reservoir, the turbine and the valley the lower, and the river, city, farm and sea come
@@ -62,7 +58,7 @@ one month, and reads what the city, the farm, the river and the turbine got. It 
 three running shortfalls: the farm's against its full demand, the city's against ninety per
 cent of its demand, and the river's against its minimum. Note that the environment keeps the
 model for the settings it last applied and steps it on when the next settings extend them;
-otherwise it replays the year from January, which takes a few milliseconds. The model is built
+otherwise it replays the year from January. The model is built
 once per instance, as twelve steps of pywr's clock standing for the months.
 
 ## Planning problem
@@ -98,7 +94,7 @@ trajectory problem (i.e., one whose requirements hold over the whole run rather 
 end). The river and the city must be met every month, the farm should be rationed little over
 the year, and the reserves must be in hand at its end. We turn it into the goal above with the
 reduction the epidemic, traffic and airspace environments share, which
-[NOTES.md](../../NOTES.md) sets out in full, in three moves. First, a constraint that must hold
+[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must hold
 throughout becomes a dead end: the first month that shorts the river or the city is terminal,
 so no plan through it exists. A check over the whole trajectory thus becomes a check at each
 state. Second, a quantity that accumulates becomes part of the state and is bounded at the
@@ -121,8 +117,7 @@ Instance `0` is a year with reservoirs of 80 and 40 units, starting at 40 and 29
 hold 28 and 19 at the end. The city wants 5.4 a month, the river 1.0, and the farm 48.0 over the
 year, from 0.9 in November to 8.7 in June. The hills bring 70.4 over the year, from 9.5 in
 January down to 1.7 in August, and the valley 22.1. The target allows a farm shortfall of
-18.15. Dual BFWS, run as the benchmark runs `dual` (i.e., with the measure above and a width
-bound of 1000), solved it in 151 expansions and 2.3 seconds. Its twelve-month plan is
+18.15. The twelve-month plan the render below shows is
 
 ```
 release(2, full), release(2, full), release(2, full), release(2, full),
@@ -131,14 +126,10 @@ release(8, full), release(8, half), release(10, full), release(8, half)
 ```
 
 which holds the release at 2 through the winter, when the hills are high and the farm wants
-little, so the upper reservoir fills from 40 to 64 while the lower drains to 15. It then opens
-the turbine to 8 or 10 for the rest of the year, rationing the farm through May, June and July
-and again in October and December. The year ends with the upper at 30 and the lower at 20, two
-and one above their reserves, and a shortfall of 13.2 against the 18.15 allowed. The seasonal
-policy the year was accepted on (4 through the winter, 10 with the farm on half through the
-summer) ends at 18.15, which is where the target comes from. Note that no steady release works
-here: 2 and 4 short the city by the
-summer, and 6, 8 and 10 leave one reservoir under its reserve.
+little, then opens the turbine to 8 or 10 for the rest of the year, rationing the farm through
+May, June and July and again in October and December. The seasonal policy the year was accepted
+on (4 through the winter, 10 with the farm on half through the summer) ends at 18.15, which is
+where the target comes from.
 
 ![BFWS solving reservoir instance 0](../renders/reservoir_chart.gif)
 
@@ -170,12 +161,10 @@ env.render_trace(trace, "reservoir_chart.png", actions=result.plan, env=env)    
 
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_reservoir")`, whose `apply_action` advances a state (see [Through
-OpenSpiel](../../README.md#through-openspiel)). It returns the state and the change in the
-farm's shortfall, as before minus after, so zero for a month that rations nothing.
-`successors(state)` returns the action and state pairs for all ten actions. The readings a state
-charts, and the panels they go on, are its own `readings()` and `panels`; `charts=False` asks
-`render_trace` for the state's text instead, and [docs/rendering.md](../rendering.md) covers the
-other output formats.
+OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
+pairs for all ten actions. The readings a state charts, and the panels they go on, are its own
+`readings()` and `panels`; `charts=False` asks `render_trace` for the state's text instead, and
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Years
 

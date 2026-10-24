@@ -32,11 +32,11 @@ open air traffic simulator. It flies on the [OpenAP](https://github.com/junzis/o
 performance model (LGPL-3.0; i.e., the model that gives each aircraft type its performance,
 such as its speeds and turn rates) over its own navigation data (GPL-3.0). All three are dependencies installed from PyPI
 by [`scripts/install_bluesky.sh`](../../scripts/install_bluesky.sh), which steps round a
-requirement of the simulator's that no longer builds; nothing of them is included here. The
+requirement of the simulator's that does not build; nothing of them is included here. The
 environment runs it with its own conflict resolution off, so the planner is the only thing
 keeping the aircraft apart. The cost of a real flight model is time. BlueSky's state is a set
 of module globals rather than an object, so a successor replays the sector from the aircraft's
-entry; the Actions section below says what that costs.
+entry, as the Actions section below says.
 
 The rules are four. First, the aircraft are A320s at flight level 300 and 230 to 270 knots,
 created at the instance's positions and headings with a single waypoint at their exits and
@@ -69,10 +69,6 @@ exit, adding the second it left to the sum of exit times. The minute stops at th
 separation is lost. Note that the successor is not obtained by advancing a copy of the running
 simulation. BlueSky flies the same instructions to the same positions, but its state is module
 globals, so the environment replays the sector from the aircraft's entry for every successor.
-A minute of four aircraft takes about fifty milliseconds, so a deep state costs a second or so
-to expand. [NOTES.md](../../NOTES.md) measured 1.4 seconds an expansion at the start, rising to
-about 4 seconds at depth seven. That is why the aircraft are three or four and the horizons
-twelve to fifteen minutes.
 
 ## Planning problem
 
@@ -111,7 +107,7 @@ Note that the problem as a controller would state it is not an initial-to-goal p
 trajectory problem (i.e., one whose requirements hold over the whole run rather than at its
 end). Separation must hold at every second, everyone must be out by the horizon, and nobody
 should dawdle. We turn it into the goal above with the reduction the epidemic, traffic and
-reservoir environments share, which [NOTES.md](../../NOTES.md) sets out in full, in three
+reservoir environments share, which [docs/operational.md](../operational.md) sets out in full, in three
 moves. First, a constraint that must hold throughout becomes a dead end: the second that loses
 separation makes its state terminal, so no plan through it exists. The horizon passing with
 aircraft still in the sector is terminal too. A check over the whole trajectory thus
@@ -133,23 +129,16 @@ hundreds.
 Instance `0` is a sector of three aircraft with a horizon of 15 decisions and a target of 1,267
 seconds of exit time. `AC1` enters from the east on heading 272 at 270 knots, `AC2` from the
 south on heading 356 at 230 knots and `AC3` from the south-west on heading 26 at 250 knots.
-Each is about 38 nautical miles from its exit. Dual BFWS, run as the benchmark runs `dual` (i.e.,
-with the measure above and a width bound of 1000), solved it in 18 expansions and 44.3
-seconds. Its nine-instruction plan is
+Each is about 38 nautical miles from its exit. The nine-instruction plan the render below shows
+is
 
 ```
 turn(AC2, right), turn(AC3, right), turn(AC2, right), direct(AC3), direct(AC2),
 turn(AC1, left), hold, hold, hold
 ```
 
-which turns the two aircraft converging from the south right onto the same heading, so that
-they cross `AC1`'s track one behind the other and come no closer than 5.0 nautical miles, the
-standard exactly. It then puts each back on course once the crossing is behind it and holds
-while `AC2` flies out. The late turn of `AC1` changes nothing, since `AC1` is three miles from
-its exit and out within that minute. `AC1` and `AC3` are out by the sixth minute and `AC2` at
-512 seconds, for 1,172 seconds of exit time. Note that this is 20 seconds more than the
-scripted controller's 1,152, and one instruction longer, but within the tenth the target
-allows.
+which turns the two aircraft converging from the south right, puts each back on course, turns
+`AC1` left and then holds.
 
 ![BFWS solving airspace instance 0](../renders/airspace_chart.gif)
 
@@ -215,7 +204,7 @@ A draw places the aircraft on a ring sixteen to twenty nautical miles from the c
 bearings at least twenty-five degrees apart. Each is bound for a point twenty miles out on the
 far side, within twenty degrees of straight across. It is kept when flying straight loses
 separation, so there is something to resolve, and a scripted controller gets everyone out. The
-controller turns the lower-numbered aircraft of the first predicted conflict, right or left,
+controller turns the lower-numbered aircraft of the closest predicted conflict, right or left,
 and puts aircraft back on course once nothing is predicted. The better of the right-turning and
 the left-turning controller sets the target, its sum of exit times with a tenth in hand, and
 its instructions are the witness. The same seed and options always give the same sector.
