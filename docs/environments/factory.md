@@ -127,17 +127,18 @@ terminal(s) ≡ tick(s) ≥ H ∧ ¬goal(s)
 Note that the problem as a player would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end): bring the plates back before the
 deadline. We turn it into the goal above with the reduction the epidemic and flood environments
-use, which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that
-must hold throughout becomes a dead end. The first state at the horizon without the plates is
-terminal, so no plan through it exists, and a check over the whole trajectory becomes a check at
-each state. Second, a quantity that accumulates becomes part of the state and is bounded at the
-goal: the plates in hand are carried on the state, and the goal is a lower bound on them. Third,
-the horizon becomes time in the state: the tick is a state variable, so "before the deadline" is
-a condition on a state rather than on a trajectory. The cost of the reduction is that the goal
-depends on a target, and a target has to come from somewhere. Here it is the most plates any of
-the scripted lines brings back (see [Generating patches](#generating-patches)). Every instance
-is therefore solvable by construction, and the planner is asked to do at least as well as a rule
-of thumb. The plates over the target are not rewarded, since a plan is judged by reaching it.
+use, which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a
+constraint that must hold throughout becomes a dead end. The first state at the horizon without
+the plates is terminal, so no plan through it exists, and a check over the whole trajectory
+becomes a check at each state. Second, a quantity that accumulates becomes part of the state and
+is bounded at the goal: the plates in hand are carried on the state, and the goal is a lower
+bound on them. Third, the horizon becomes time in the state: the tick is a state variable, so
+"before the deadline" is a condition on a state rather than on a trajectory. The cost of the
+reduction is that the goal depends on a target, and a target has to come from somewhere. Here it
+is the most plates any of the scripted lines brings back (see [Generating
+patches](#generating-patches)). Every instance is therefore solvable by construction, and the
+planner is asked to do at least as well as a rule of thumb. The plates over the target are not
+rewarded, since a plan is judged by reaching it.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.factory`) is the
 plates still to bring back, counting from the target carried on the state.

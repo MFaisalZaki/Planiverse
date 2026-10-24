@@ -124,21 +124,21 @@ than a modelling choice. Both are absorbing, so `successors` returns `[]`.
 Note that the problem as a farmer would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end). The water must last the season,
 and the crop must be worth harvesting at the end of it. We turn it into the goal above with the
-reduction the grid and flood environments use, which [docs/operational.md](../operational.md) sets out in
-full, in three moves. First, a constraint that must hold throughout becomes a dead end. A
-schedule that overspends the budget is terminal and, as `successors` shows, never generated, so
-a check over the whole trajectory becomes a check at each state. Second, a quantity that
-accumulates becomes part of the state and is bounded at the goal. The water used is carried on
-the state and compared with the budget, and the yield, which the model accumulates from every
-decision before it, is compared with the target at harvest. Third, the horizon becomes time in
-the state. The number of decisions taken is a state variable, the tenth ends the season, and a
-harvest short of the target is a dead end, since nothing can improve afterwards. The cost of the
-reduction is that the goal depends on a target, and a target has to come from somewhere. Here it
-is 98 per cent of what the reference schedule achieves, so every season is solvable by
-construction, with that schedule as its witness. The planner is asked to do at least about as
-well as a calendar that ignores the weather. Note that the target is measured per season, two
-simulations per instance. A season in which the calendar gains nothing therefore sets a target
-the rainfed crop already meets, and the right plan there applies no water.
+reduction the grid and flood environments use, which [docs/operational.md](../operational.md)
+sets out in full, in three moves. First, a constraint that must hold throughout becomes a dead
+end. A schedule that overspends the budget is terminal and, as `successors` shows, never
+generated, so a check over the whole trajectory becomes a check at each state. Second, a
+quantity that accumulates becomes part of the state and is bounded at the goal. The water used
+is carried on the state and compared with the budget, and the yield, which the model accumulates
+from every decision before it, is compared with the target at harvest. Third, the horizon
+becomes time in the state. The number of decisions taken is a state variable, the tenth ends the
+season, and a harvest short of the target is a dead end, since nothing can improve afterwards.
+The cost of the reduction is that the goal depends on a target, and a target has to come from
+somewhere. Here it is 98 per cent of what the reference schedule achieves, so every season is
+solvable by construction, with that schedule as its witness. The planner is asked to do at least
+about as well as a calendar that ignores the weather. Note that the target is measured per
+season, two simulations per instance. A season in which the calendar gains nothing therefore
+sets a target the rainfed crop already meets, and the right plan there applies no water.
 
 That gives a finite-horizon problem of fixed depth 10 and branching up to 4, about a million
 schedules, where the objective is only observable at the leaves.

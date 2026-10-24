@@ -5,8 +5,7 @@ network, a power grid, a crop, a flooding city, a Micropolis city and a factory)
 a goal state. What they ask for is a property of the whole trajectory: a hospital load never
 over capacity, separation never lost, a river never short, and a cost accumulated over the
 horizon kept small. A search planner asks for an initial state, a successor function and a goal
-test. The reduction that bridges the two has three parts, and every operational environment
-uses all three.
+test. The reduction that bridges the two has three parts.
 
 **A constraint that must hold throughout becomes a dead end.** `is_terminal` is true of the
 first state that breaks it. A planner never expands a dead end, so any plan it returns respects
@@ -23,8 +22,8 @@ the optimisation is turned into a decision problem by fixing the bound, and the 
 the bound is the quality measure. The bound comes from reference policies: the generator runs
 a few scripted policies (fixed cycles, steady releases, a rule-based controller, the town left
 open), takes the best feasible one as the target, and keeps that policy's plan as the witness.
-Every instance is therefore solvable by construction, and the planner is asked to do at least
-as well as the best rule of thumb.
+Every such instance is therefore solvable by construction, and the planner is asked to do at
+least as well as the best rule of thumb.
 
 **The horizon is time in the state.** "By week twelve" is then a goal condition like any other,
 and "the horizon passed without the goal" is a dead end, since nothing can improve afterwards.
@@ -41,9 +40,9 @@ declarative action descriptions are overrated: classical planning with simulator
 
 Two properties follow from the reduction:
 
-- **A plan is open-loop for one seeded scenario.** Covasim, SUMO and the crop model are
-  stochastic; each environment pins its seed, so a plan is a plan for that morning, that
-  outbreak, that season.
+- **A plan is open-loop for one seeded scenario.** Covasim and SUMO are stochastic and each
+  environment pins its seed, and the crop model runs on one year's weather, so a plan is a plan
+  for that morning, that outbreak, that season.
 - **The decisions are per-period macro decisions**: a level for the week, a switch every thirty
   seconds, an instruction a minute, a release for the month, a zone a year. They keep the
   number of decisions in a horizon small, and with it the depth a planner has to search.

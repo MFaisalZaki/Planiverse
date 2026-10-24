@@ -94,17 +94,17 @@ trajectory problem (i.e., one whose requirements hold over the whole run rather 
 end). The river and the city must be met every month, the farm should be rationed little over
 the year, and the reserves must be in hand at its end. We turn it into the goal above with the
 reduction the epidemic, traffic and airspace environments share, which
-[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must hold
-throughout becomes a dead end: the first month that shorts the river or the city is terminal,
-so no plan through it exists. A check over the whole trajectory thus becomes a check at each
-state. Second, a quantity that accumulates becomes part of the state and is bounded at the
-goal. The farm's shortfall is carried on the state, added to every month it is rationed, and
-compared with the target when the year is done. Third, the horizon becomes time in the state:
-the month is a state variable, so "by the end of the year" is a condition on a state. The
-reserves are a condition on that final state too. The cost of the reduction is that the goal
-depends on a target, and a target has to come from somewhere. Here it is the least shortfall
-any fixed policy manages inside the constraints (see [Generating years](#generating-years)), and
-a draw that a steady release all year already solves is thrown back. Every instance is thus
+[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint
+that must hold throughout becomes a dead end: the first month that shorts the river or the city
+is terminal, so no plan through it exists. A check over the whole trajectory thus becomes a
+check at each state. Second, a quantity that accumulates becomes part of the state and is
+bounded at the goal. The farm's shortfall is carried on the state, added to every month it is
+rationed, and compared with the target when the year is done. Third, the horizon becomes time in
+the state: the month is a state variable, so "by the end of the year" is a condition on a state.
+The reserves are a condition on that final state too. The cost of the reduction is that the goal
+depends on a target, and a target has to come from somewhere. Here it is the least shortfall any
+fixed policy manages inside the constraints (see [Generating years](#generating-years)), and a
+draw that a steady release all year already solves is thrown back. Every instance is thus
 solvable by construction, and the planner is asked to do at least as well as the best rule by
 varying the release month by month.
 

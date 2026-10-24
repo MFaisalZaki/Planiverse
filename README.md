@@ -49,7 +49,8 @@ season or city, so a benchmark is not limited to what ships.
 from planiverse.environments import list_environments, make
 
 [spec.name for spec in list_environments(tag="operational")]
-# ['crop_management', 'flood_transport', 'power_grid', 'water_network']
+# ['airspace', 'crop_management', 'epidemic', 'factory', 'flood_transport', 'micropolis',
+#  'power_grid', 'reservoir', 'traffic', 'water_network']
 
 env = make("water_network", index=8)       # the ninth bundled scenario
 env = make("puzznic", seed=7)              # a freshly generated level
@@ -76,8 +77,7 @@ themselves.
 
 ## Installation
 
-Requires Python 3.11, 3.12 or 3.13: numba and scipy have no 3.14 wheels yet, and building them
-from source needs a system OpenBLAS. Linux, macOS and Windows are all supported, and the
+Requires Python 3.11, 3.12 or 3.13. Linux, macOS and Windows are all supported, and the
 [CI workflow](.github/workflows/ci.yml) installs and tests on each of them.
 
 ```bash
@@ -104,7 +104,7 @@ Game Boy cartridge for `game_boy`, which is copyrighted and comes from you.
 if anything it reaches is undeclared, so a dependency that only works because another package
 happens to pull it in cannot go missing silently.
 
-Three dependencies are not declared the plain way, because their publishers do not cover
+These dependencies are not declared the plain way, because their publishers do not cover
 every platform. `tools/check_install.py` prints what the install in front of you covers and
 what is missing.
 
@@ -119,18 +119,20 @@ what is missing.
   `CFLAGS="-I$(brew --prefix glpk)/include" LDFLAGS="-L$(brew --prefix glpk)/lib" PYWR_BUILD_LPSOLVE=false pip install pywr`.
 - **Stable-Retro** publishes no Windows wheels and supports Windows through WSL2, so the
   dependency list leaves it out on Windows. The Game Boy environment under PyBoy is unaffected.
+- **OpenSpiel** publishes wheels for Linux and macOS only, so the dependency list leaves it out
+  on Windows, and with it `planiverse.spiel`.
 - **libsumo**'s Windows wheel does not import on its own (a library of the same name earlier
   on the system's search path shadows one of SUMO's), so `planiverse.environments` loads the
-  SUMO libraries by path first on Windows. Nothing to do; it is noted here in case the
-  message "DLL load failed while importing _libsumo" ever shows up anyway.
+  SUMO libraries by path first on Windows. Nothing to do; without it the import fails with
+  "DLL load failed while importing _libsumo".
 
-Two simulators are built or installed by the scripts under `scripts/` rather than from PyPI:
-the Micropolis engine (`build_micropolis.sh`, needs a C++ compiler, the Python headers,
-`perl` and `swig`) and BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows
-run them from WSL2 or Git Bash. An environment whose dependency is missing is skipped by the tests and recorded as
-`UNSUPPORTED` by the benchmark; everything else runs. The Micropolis engine builds on macOS
-too, but its arithmetic there differs from Linux, where the bundled cities were drawn; see
-[its doc](docs/environments/micropolis.md).
+Two simulators are built or installed by the scripts under `scripts/` rather than from PyPI: the
+Micropolis engine (`build_micropolis.sh`, needs `git`, a C++ compiler, the Python headers,
+`perl` and `swig`) and BlueSky (`install_bluesky.sh`). They are shell scripts, so on Windows run
+them from WSL2 or Git Bash. An environment whose dependency is missing is skipped by the tests
+and recorded as `UNSUPPORTED` by the benchmark; everything else runs. The Micropolis engine
+builds on macOS too, but its arithmetic there differs from Linux, where the bundled cities were
+drawn; see [its doc](docs/environments/micropolis.md).
 
 ## Tests
 
@@ -197,39 +199,35 @@ print(env.witness)                    # the plan the draw was accepted on
 
 Three things hold everywhere. First, the draw is a function of the seed: the same seed and
 options give the same instance on any machine, because everything random comes from one
-`random.Random(seed)`. Second, the instance is plain data of the same shape as the bundled
-ones (a level string, a `[stage, target]` pair, a tuple of rows, a dict of scenario fields),
-so `json.dumps` writes it down and `set_instance` takes it back, and a generated benchmark
-replays exactly. Third, a draw is checked before it is handed out, the way the bundled
-instances were, because a random board is usually unsolvable and an unsolvable instance is
-not an instance: a planner cannot tell "no plan" from "not yet". The generators reuse the
-checks the shipped instances passed. Flipull's stages were drawn at random and explored
-exhaustively, with the fewest blocks reachable as the target, and the generator does the
-same; Amazing Tater's stored solutions came from its
-`solve`, which the generator checks a drawn room with; the simulator environments draw by the
-tests their bundled scenarios were chosen by and then search the draw; the crop season's
-reference schedule and the flood scenario's reference policy are solutions by construction.
-Everywhere, the plan is left in `env.witness` and what the search spent in
-`env.witness_expansions`, and `min_plan_length` turns the first into a difficulty knob.
-The check is a bias, since it favours instances a small search can solve,
-and it is a knob too: `solvable=False` hands out the raw draw.
+`random.Random(seed)`. Second, the instance is plain data of the same shape as the bundled ones
+(a level string, a `[stage, target]` pair, a tuple of rows, a dict of scenario fields), so
+`json.dumps` writes it down and `set_instance` takes it back, and a generated benchmark replays
+exactly. Third, a draw is checked before it is handed out, because a random board is usually
+unsolvable and an unsolvable instance is not an instance: a planner cannot tell "no plan" from
+"not yet". Most generators search the draw within a bounded budget; Flipull's, given a size and
+no target, explores the draw exhaustively and takes the fewest blocks reachable as the target;
+and the operational environments whose target is the best of a few reference policies (see
+[docs/operational.md](docs/operational.md)) are solvable by construction. Everywhere, the plan
+is left in `env.witness` and what the search spent in `env.witness_expansions`, and
+`min_plan_length` turns the first into a difficulty knob. The check is a bias, since it favours
+instances a small search can solve, and it is a knob too: `solvable=False` hands out the raw
+draw.
 
-What each generator varies is in the catalogue above, and the options are in each
-environment's doc. A generator draws to the shape of the originals: a game takes the layout
-options a caller leaves unset from the profile of one of its bundled instances (its size, its
-counts of blocks or hearts, its share of scenery), and a simulator draws on the simulator's own
-data (WNTR's networks, grid2op's time series, PCSE's weather, NASim's scenario generator).
-Every environment ships a hundred instances. Where the originals fall short of that (Flipull
-and the five simulator environments) the set is made up with instances the generator drew,
-after the originals, with the seed each came from recorded with it and the plan it was
-accepted on in the tests, so they can be re-derived. The techniques are the standard ones,
-and each environment's doc gives the
-references: generate-and-test with a solvability check is search-based procedural content
-generation ([Togelius et al., 2011](https://doi.org/10.1109/TCIAIG.2011.2148116);
-[Shaker et al., 2016](https://pcgbook.com/)), and the check is breadth-first search. The
-shared machinery is
-[`planiverse/environments/generation.py`](planiverse/environments/generation.py): the seeded
-draw, the bounded breadth-first search, the retry loop, and the board helpers the
+What each generator varies is in the catalogue above, and the options are in each environment's
+doc. A generator draws to the shape of the originals: a game takes the layout options a caller
+leaves unset from the profile of one of its bundled instances (its size, its counts of blocks or
+hearts, its share of scenery), and a simulator draws on the simulator's own data (WNTR's
+networks, grid2op's time series, PCSE's weather, NASim's scenario generator). Every environment
+but the two emulators ships a hundred instances. Where the originals fall short of that (Flipull
+and the five simulator environments) the set is made up with instances the generator drew, after
+the originals, with the seed each came from recorded with it and the plan it was accepted on in
+the tests, so they can be re-derived. The techniques are the standard ones, and each
+environment's doc gives the references: generate-and-test with a solvability check is
+search-based procedural content generation
+([Togelius et al., 2011](https://doi.org/10.1109/TCIAIG.2011.2148116);
+[Shaker et al., 2016](https://pcgbook.com/)), and the check is breadth-first search by default.
+The shared machinery is [`planiverse/environments/generation.py`](planiverse/environments/generation.py):
+the seeded draw, the bounded breadth-first search, the retry loop, and the board helpers the
 four grid games draw with.
 
 ## The environment interface
@@ -252,7 +250,7 @@ eight rows below, plus whichever of the optional ones it can. Registration is an
 | `validate(plan)` | `bool` | Optional. |
 | `get_actions()` | `[action, ...]` | Optional. |
 
-What is actually there today:
+What each environment provides:
 
 | | `reset` | `set_index` | `successors` | `is_goal` | `is_terminal` | `simulate` | `generate_instance` | `validate` | `get_actions` | `close` |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -260,6 +258,18 @@ What is actually there today:
 | `FlipullGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `LoloGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `AmazingTaterGame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `SlingshotEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `TowerDefenceEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `FluidEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `PipeDreamEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `BilliardsEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `LemmingsEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `MicropolisEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `EpidemicEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| `TrafficEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `AirspaceEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `ReservoirEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `FactoryEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `WaterNetworkEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `PowerGridEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `CropEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -268,8 +278,8 @@ What is actually there today:
 | `GameBoyEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `RetroEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-⚠️ `is_terminal` returns a hard-coded `False` in the network attack: it has no dead ends, or
-detecting them is left to the planner. Puzznic and Flipull compute a
+⚠️ `is_terminal` returns a hard-coded `False` in the network attack, so detecting its dead
+ends is left to the planner. Puzznic and Flipull compute a
 positional dead end, and Flipull's is exact, because the rules are known in Python and it can
 ask outright whether any throw would connect. The simulator environments compute real ones
 too: a water network whose service has collapsed, a blacked-out grid, a growing season whose
@@ -372,8 +382,8 @@ env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 ```
 
 Rendering a trace is one image per state: a board's own text, typeset, or, for an environment
-whose state is a handful of readings (the city, the factory, the crop, the grid, the water
-network, the flood city, the tower defence), a chart of those readings over the plan so far,
+whose state is a handful of readings (the ten operational environments and the tower
+defence), a chart of those readings over the plan so far,
 one panel per quantity, with the actions along the bottom. See
 [docs/rendering.md](docs/rendering.md).
 
@@ -400,15 +410,12 @@ if result:
 The width-based family is documented in [docs/planners/width-based.md](docs/planners/width-based.md),
 including three things that change when the task is a simulator: (1) there is no goal conjunction
 to count, so SIW and BFWS take a `progress` callback instead; (2) expansions are expensive, so
-every search takes a budget and reports what it spent; and (3) dead ends are real, and detecting
-them is most of what makes a simulator task searchable.
+every search takes a budget and reports what it spent; and (3) dead ends are real.
 
 Future State Maximization is in
 [docs/planners/sampling-based.md](docs/planners/sampling-based.md). FSX is the odd one: it is
 given no goal and no heuristic at all and picks whichever action leaves the most futures
-open. That makes `option_count` a goal-free measure of how close a state is to being stuck,
-useful as a heuristic for the other planners precisely when heuristics are hardest to
-write.
+open. That makes `option_count` a goal-free measure of how close a state is to being stuck.
 
 Every planner, with its reference, what it needs from an environment, its benchmark tag and
 the choices its implementation makes, is in
@@ -481,7 +488,7 @@ One package, one base class, a registry, and two families of subpackages:
 
 ```
 planiverse/environments/
-├── base.py          # Environment: the eight-method contract, and nothing else
+├── base.py          # Environment: the eight-method contract
 ├── registry.py      # EnvironmentSpec per environment: instances, tags, deps, state identity
 ├── generation.py    # what the generators share: a seeded draw, a bounded search, a retry loop
 ├── games/           # every game, one subpackage each, its environment in environment.py
@@ -648,7 +655,7 @@ What is in the tree:
   factory on factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.
-- Forty-five planner configurations over thirty-seven planner classes: the width-based
+- Forty-five planner configurations: the width-based
   family, Future State Maximization, heuristic search, sampling and population planners, the
   blind baselines and two add-ons, catalogued in
   [docs/planners/catalogue.md](docs/planners/catalogue.md). No planner takes a reward or learns.
@@ -656,12 +663,6 @@ What is in the tree:
   seeds for each that takes one, and a report that writes the tables, figures and quoted
   numbers from the results.
 - A test suite that skips what it cannot build.
-
-Open:
-
-- [ ] Optional dependency groups, so one environment does not pull in all of them. Today there is
-      one dependency list and a `dev` extra.
-- [ ] A generated benchmark: `planiverse-bench` runs the bundled instances only.
 
 ## Licence
 

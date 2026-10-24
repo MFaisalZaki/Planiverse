@@ -167,27 +167,28 @@ terminal(s) ≡ cost(s) > T
 The dead end is sound, because every part of the total is non-negative, so a state past the
 target can never come back under it. Both are absorbing, so `successors` returns `[]`.
 
-Note that the problem as a city's planners would state it is a trajectory problem (i.e., one whose
-requirements hold over the whole run rather than at its end). The total must stay within the
-target throughout, and the horizon must be reached. We turn it into the goal above with the
-reduction the grid and epidemic environments use, which [docs/operational.md](../operational.md) sets out in
-full, in three moves. First, a constraint that must hold throughout becomes a dead end. The
-first state whose total passes the target is terminal, so no plan through it exists, and a
-check over the whole trajectory becomes a check at each state. Second, a quantity that
+Note that the problem as a city's planners would state it is a trajectory problem (i.e., one
+whose requirements hold over the whole run rather than at its end). The total must stay within
+the target throughout, and the horizon must be reached. We turn it into the goal above with the
+reduction the grid and epidemic environments use, which [docs/operational.md](../operational.md)
+sets out in full, in three moves. First, a constraint that must hold throughout becomes a dead
+end. The first state whose total passes the target is terminal, so no plan through it exists,
+and a check over the whole trajectory becomes a check at each state. Second, a quantity that
 accumulates becomes part of the state and is bounded at the goal. The damage, the delays, the
 trips not made and the money spent on measures are carried on the state and summed into the
 total, and the total is compared with the target. Third, the horizon becomes time in the state:
-the step and the year are state variables, and the horizon reached under the target is the
-goal. The cost of the reduction is that the goal depends on a target, and a target has to come
-from somewhere. Here it is set from a reference policy, the way the
-[crop environment](crop-management.md) sets its yield target, so that every instance has a
-solution by construction. A measure pays for itself only over decades, so a policy that looks
-one period ahead never acts; the reference instead looks to the end of the horizon. At each
-decision it takes the action that leaves the lowest total if nothing more is done afterwards,
-over the storms the instance holds, and waits when no action improves on waiting. The target is
-that policy's cost plus a slack of 2%, and `reference_plan()` returns its plan, which is also
-the `witness` of a generated instance. A plan therefore has to do at least about as well as the reference, and
-an instance on which doing nothing would pass is not an instance: the generator redraws it.
+the step and the year are state variables, and the horizon reached under the target is the goal.
+The cost of the reduction is that the goal depends on a target, and a target has to come from
+somewhere. Here it is set from a reference policy, the way the [crop
+environment](crop-management.md) sets its yield target, so that every instance has a solution by
+construction. A measure pays for itself only over decades, so a policy that looks one period
+ahead never acts; the reference instead looks to the end of the horizon. At each decision it
+takes the action that leaves the lowest total if nothing more is done afterwards, over the
+storms the instance holds, and waits when no action improves on waiting. The target is that
+policy's cost plus a slack of 2%, and `reference_plan()` returns its plan, which is also the
+`witness` of a generated instance. A plan therefore has to do at least about as well as the
+reference, and an instance on which doing nothing would pass is not an instance: the generator
+redraws it.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.flood_transport`)
 is the years still to plan plus the share of the target already spent, with a state past the

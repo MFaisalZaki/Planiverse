@@ -28,8 +28,7 @@ planiverse-bench report --sandbox-dir sandbox
 ```
 
 Without a cluster, `bash sandbox/run_local.sh 8` runs the same commands eight at a time. The
-benchmark applies the same limits either way, so the outcomes are comparable; wall-clock times from
-a loaded laptop are not comparable with a cluster's.
+benchmark applies the same limits either way.
 
 ### `generate`
 
@@ -50,22 +49,21 @@ writers, it writes:
   35 minutes and 9 GB so the benchmark records its own `TIMEOUT` or `MEMOUT` before SLURM steps
   in. SLURM caps an array at the site's `MaxArraySize`, commonly 1001 elements and often less,
   so a group over more than 1,000 instances becomes several arrays,
-  `pypmteval-<group>.1.sbatch` onward, each over its own slice of the command file; with the
-  suite's 2,000 instances every group is two.
+  `pypmteval-<group>.1.sbatch` onward, each over its own slice of the command file.
 - `sandbox/slurm/submit_all.sh` and `sandbox/run_local.sh`.
 
-The suite's 2,000 instances, a hundred in each of the twenty environments, make one group per
-unseeded planner and five per seeded one: 25 unseeded and 20 seeded planners, so 125 groups,
-250,000 runs in 250 arrays. `--reference` writes the four reference planners alone, 8 groups
-(three for the deterministic width planners and five for FSX), 16,000 runs in 16 arrays. The
-commands call the interpreter that ran `generate` by absolute path, so the jobs need no
-activation and cannot pick up a different install. An environment that cannot be built here (a
-missing dependency) is skipped, and `generate` says so.
+Every environment but the two emulators has a hundred instances; the Game Boy has as many as the
+cartridge's wrapper offers, and Stable-Retro one per save state of its integration. There is one
+group per unseeded planner and five per seeded one: 25 unseeded and 20 seeded planners, so 125
+groups, each over every instance. `--reference` writes the four reference planners alone, 8
+groups (three for the deterministic width planners and five for FSX). The commands call the
+interpreter that ran `generate` by absolute path, so the jobs need no activation and cannot pick
+up a different install. An environment that cannot be built here (a missing dependency) is
+skipped, and `generate` says so.
 
 The benchmark runs the bundled instances. Each environment can also generate its own (see
-[Generating instances](../README.md#generating-instances)); a generated benchmark is a matter of
-writing the instances to a file and looping `set_instance` over them, which `generate` does not
-do for you.
+[Generating instances](../README.md#generating-instances)), and `generate` does not include
+those.
 
 ### `solve`
 
@@ -147,10 +145,8 @@ followed by `pypmtevalcli report --sandbox-dir sandbox`:
   runtime and plan-length scatters per pair of planners, as PDF and PNG.
 
 A seeded planner's seeds are separate groups (`fsx-s0` to `fsx-s4`), so the tables list them
-side by side rather than as a mean over seeds. The toolkit's line figures draw at most six
-planners and its scatters the first six pairs, so on the full sweep the figures are worth
-drawing over a selection: a sandbox generated with `--reference`, or the toolkit run on a
-copy of `results/` holding the groups to compare.
+side by side rather than as a mean over seeds. The toolkit's line figures draw the first six
+planners and its scatters the first six pairs.
 
 ## The other planners
 

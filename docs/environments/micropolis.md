@@ -107,22 +107,21 @@ terminal(s) ≡ year(s) = Y ∧ population(s) < P
 ```
 
 Note that the problem as a mayor would state it is a trajectory problem (i.e., one whose
-requirement is a property of the whole run): grow the city over the horizon. We turn it into
-the goal above with the reduction the epidemic, traffic, airspace and reservoir environments
-share, which [docs/operational.md](../operational.md) sets out in full, in three moves, of which this
+requirement is a property of the whole run): grow the city over the horizon. We turn it into the
+goal above with the reduction the epidemic, traffic, airspace and reservoir environments share,
+which [docs/operational.md](../operational.md) sets out in full, in three moves, of which this
 environment needs the lightest form. First, a constraint that must hold throughout becomes a
 dead end. Here the only constraint is the horizon itself, so the only dead end is a city short
 of its target when the horizon comes, and nothing earlier is one. Second, a quantity that
 accumulates becomes part of the state and is bounded at the goal. Here the quantity is the
-population, which the engine accumulates for us and the state reads back. The bound is a
-floor rather than a ceiling: a target to reach rather than a budget to keep under. Third, the
-horizon becomes time in the state: the year is a state variable, so "when the horizon comes" is
-a condition on a state rather than on a trajectory. The cost of the reduction is that the goal
-depends on a target, and a target has to come from somewhere. Here it is fifteen per cent
-above the best of three thoughtless zoning plans, and the draw is kept only if a search finds
-a plan that meets it (see [Generating cities](#generating-cities)). Every instance is thus
-solvable by construction, and the planner is asked to beat the plans that need no thought by a
-margin.
+population, which the engine accumulates for us and the state reads back. The bound is a floor
+rather than a ceiling: a target to reach rather than a budget to keep under. Third, the horizon
+becomes time in the state: the year is a state variable, so "when the horizon comes" is a
+condition on a state rather than on a trajectory. The cost of the reduction is that the goal
+depends on a target, and a target has to come from somewhere. Here it is fifteen per cent above
+the best of three thoughtless zoning plans, and the draw is kept only if a search finds a plan
+that meets it (see [Generating cities](#generating-cities)). Every instance is thus solvable by
+construction, and the planner is asked to beat the plans that need no thought by a margin.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.micropolis`) is
 the population still short of the target.

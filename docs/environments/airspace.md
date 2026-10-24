@@ -107,18 +107,19 @@ Note that the problem as a controller would state it is not an initial-to-goal p
 trajectory problem (i.e., one whose requirements hold over the whole run rather than at its
 end). Separation must hold at every second, everyone must be out by the horizon, and nobody
 should dawdle. We turn it into the goal above with the reduction the epidemic, traffic and
-reservoir environments share, which [docs/operational.md](../operational.md) sets out in full, in three
-moves. First, a constraint that must hold throughout becomes a dead end: the second that loses
-separation makes its state terminal, so no plan through it exists. The horizon passing with
-aircraft still in the sector is terminal too. A check over the whole trajectory thus
-becomes a check at each state. Second, a quantity that accumulates becomes part of the state
-and is bounded at the goal. The exit times are summed on the state as each aircraft leaves and
-compared with the target once the sector is empty, which is what "without dawdling" becomes.
+reservoir environments share, which [docs/operational.md](../operational.md) sets out in full,
+in three moves. First, a constraint that must hold throughout becomes a dead end: the second
+that loses separation makes its state terminal, so no plan through it exists. The horizon
+passing with aircraft still in the sector is terminal too. A check over the whole trajectory
+thus becomes a check at each state. Second, a quantity that accumulates becomes part of the
+state and is bounded at the goal. The exit times are summed on the state as each aircraft leaves
+and compared with the target once the sector is empty, which is what "without dawdling" becomes.
 Third, the horizon becomes time in the state: the decision count is a state variable and a
-decision is a minute, so "by the horizon" is a condition on a state, not on a trajectory. The cost of the reduction is that the goal depends on a target, and a target has
-to come from somewhere. Here it is the sum of exit times of a scripted controller with a tenth
-in hand (see [Generating sectors](#generating-sectors)), so every instance is solvable by
-construction. The planner is asked to resolve the crossing at least as well as a simple rule.
+decision is a minute, so "by the horizon" is a condition on a state, not on a trajectory. The
+cost of the reduction is that the goal depends on a target, and a target has to come from
+somewhere. Here it is the sum of exit times of a scripted controller with a tenth in hand (see
+[Generating sectors](#generating-sectors)), so every instance is solvable by construction. The
+planner is asked to resolve the crossing at least as well as a simple rule.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.airspace`) is the
 number of aircraft still in the sector plus the miles they have to go, the miles counted in

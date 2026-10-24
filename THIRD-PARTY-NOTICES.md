@@ -96,7 +96,7 @@ Four environments drive simulators installed from PyPI, none of them included he
   (TU Delft, MIT), which flies aircraft on the [OpenAP](https://github.com/junzis/openap)
   performance model (LGPL-3.0) over BlueSky's navigation data package (GPL-3.0);
   `scripts/install_bluesky.sh` installs the three, since the simulator's own dependency list names
-  a package that no longer builds.
+  a placeholder package that does not build.
 - `planiverse/environments/operational/reservoir/` runs [pywr](https://github.com/pywr/pywr) (University of
   Manchester, GPL-3.0-or-later), the water resource system simulator, through a network this
   repository builds in code.

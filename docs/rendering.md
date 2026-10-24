@@ -37,14 +37,15 @@ is the only reason a font appears in the module at all.
 
 For an environment whose state is a handful of readings (a city's population and funds, a
 factory's plates and coal, a crop's biomass, a grid's line loadings, a water network's
-contamination, a flood city's costs, a tower defence's lives and gold) a line of numbers per
-frame is read better as a chart of those numbers over the plan, so a frame there is **a chart
-of the readings of every state up to the one shown**: one panel per quantity, the series that
-share a unit on one axis and never two scales on one panel, the action that produced each state
-along the bottom, a target as a dashed line, and the goal or dead end marked where the plan
-ends. The GIF grows the chart a state at a time; the sheet is the whole plan on one figure.
-The readings are part of the state: such a state carries `readings()`, its numbers by name, and
-`panels`, which of them share an axis (`Panel(title, series, target)`, from
+contamination, a flood city's costs, an outbreak's hospital load, a traffic grid's queues, an
+airspace's separation, a reservoir's volumes, a tower defence's lives and gold) a line of
+numbers per frame is read better as a chart of those numbers over the plan, so a frame there is
+**a chart of the readings of every state up to the one shown**: one panel per quantity, the
+series that share a unit on one axis and never two scales on one panel, the action that produced
+each state along the bottom, a target as a dashed line, and the goal or dead end marked where
+the plan ends. The GIF grows the chart a state at a time; the sheet is the whole plan on one
+figure. The readings are part of the state: such a state carries `readings()`, its numbers by
+name, and `panels`, which of them share an axis (`Panel(title, series, target)`, from
 `planiverse.environments`). `render_trace` charts whatever has them and needs no telling;
 `charts=False` asks for the text anyway. matplotlib draws it through its object API, so no
 display is involved.

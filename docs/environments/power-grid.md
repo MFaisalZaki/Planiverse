@@ -104,20 +104,21 @@ genuinely nothing further to plan from.
 Note that the problem as an operator would state it is a trajectory problem (i.e., one whose
 requirements hold over the whole run rather than at its end). The grid must stand at every step,
 and it must be secure before the cascade arrives. We turn it into the goal above with the
-reduction the epidemic and flood environments use, which [docs/operational.md](../operational.md) sets out in
-full, in three moves. First, a constraint that must hold throughout becomes a dead end. The
-first state that blacks out is terminal, so no plan through it exists, and a check over the
-whole trajectory becomes a check at each state. Second, a quantity that accumulates becomes part
-of the state and is bounded at the goal, and here the second move has little to do. Nothing
-accumulates but the path, and what the goal bounds is a reading, the worst loading, rather than
-a running total. Third, the horizon becomes time in the state. The step is a state variable
-counted from the trip, so a contingency that begins `offset` steps into the series has the same
-horizon as one that begins at its start. The horizon reached without security is a dead end,
-since nothing can improve afterwards. The cost of the reduction is that the horizon is ours. Ten
-steps is long enough to fix an overload and see it stay fixed and short enough that search
-terminates, but it is a choice. The goal's threshold, on the other hand, is the physical rating,
-so no reference policy is needed to set a target. The plan is also a plan for one pinned series
-at one step, and whether it holds elsewhere is a separate measurement.
+reduction the epidemic and flood environments use, which
+[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint
+that must hold throughout becomes a dead end. The first state that blacks out is terminal, so no
+plan through it exists, and a check over the whole trajectory becomes a check at each state.
+Second, a quantity that accumulates becomes part of the state and is bounded at the goal, and
+here the second move has little to do. Nothing accumulates but the path, and what the goal
+bounds is a reading, the worst loading, rather than a running total. Third, the horizon becomes
+time in the state. The step is a state variable counted from the trip, so a contingency that
+begins `offset` steps into the series has the same horizon as one that begins at its start. The
+horizon reached without security is a dead end, since nothing can improve afterwards. The cost
+of the reduction is that the horizon is ours. Ten steps is long enough to fix an overload and
+see it stay fixed and short enough that search terminates, but it is a choice. The goal's
+threshold, on the other hand, is the physical rating, so no reference policy is needed to set a
+target. The plan is also a plan for one pinned series at one step, and whether it holds
+elsewhere is a separate measurement.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.power_grid`) is
 the steps still to survive before the horizon, with a blackout worse than any of them. A

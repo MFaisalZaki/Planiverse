@@ -101,18 +101,18 @@ Note that the problem as a control room would state it is not an initial-to-goal
 trajectory problem (i.e., one whose requirements hold over the whole run rather than at its
 end). Everyone must be through by the horizon, and the travel time over the whole morning must
 be small. We turn it into the goal above with the reduction the epidemic, airspace and reservoir
-environments share, which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a
-constraint that must hold throughout becomes a dead end: the horizon passing with vehicles still
-on the road is terminal, and so is everyone arrived over the target, since nothing can then
-improve. A check over the whole trajectory thus becomes a check at each state. Second, a
-quantity that accumulates becomes part of the state and is bounded at the goal. The
-vehicle-seconds are carried on the state, added to every second, and compared with the target once the grid is
-clear. Third, the horizon becomes time in the state: the simulation clock is a state variable,
-so "by the horizon" is a condition on a state rather than on a trajectory. The cost of the
-reduction is that the goal depends on a target, and a target has to come from somewhere. Here
-it is the least travel any fixed cycle achieves with a tenth in hand (see
-[Generating mornings](#generating-mornings)), so every instance is solvable by construction.
-The planner is asked to come within a tenth of a timer by switching where the queues are.
+environments share, which [docs/operational.md](../operational.md) sets out in full, in three
+moves. First, a constraint that must hold throughout becomes a dead end: the horizon passing
+with vehicles still on the road is terminal, and so is everyone arrived over the target, since
+nothing can then improve. A check over the whole trajectory thus becomes a check at each state.
+Second, a quantity that accumulates becomes part of the state and is bounded at the goal. The
+vehicle-seconds are carried on the state, added to every second, and compared with the target
+once the grid is clear. Third, the horizon becomes time in the state: the simulation clock is a
+state variable, so "by the horizon" is a condition on a state rather than on a trajectory. The
+cost of the reduction is that the goal depends on a target, and a target has to come from
+somewhere. Here it is the least travel any fixed cycle achieves with a tenth in hand (see
+[Generating mornings](#generating-mornings)), so every instance is solvable by construction. The
+planner is asked to come within a tenth of a timer by switching where the queues are.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.traffic`) is the
 vehicles still to get through the grid plus those halted in a queue right now. A signal that

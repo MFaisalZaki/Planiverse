@@ -88,21 +88,22 @@ terminal(s) ≡ peak(s) > C ∨ points(s) > B ∨ (week(s) = H ∧ deaths(s) > D
 ```
 
 Note that the problem as a health office would state it is not an initial-to-goal problem but a
-trajectory problem (i.e., one whose requirements hold over the whole run rather than at its end).
-The hospital must never overflow, the budget must not be exceeded, and the deaths must be few by
-the end. We turn it into the goal above with the reduction the grid and flood environments use,
-which [docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must
-hold throughout becomes a dead end: the first week that overflows the hospital is terminal, so no
-plan through it exists, and a check over the whole trajectory becomes a check at each state.
-Second, a quantity that accumulates becomes part of the state and is bounded at the goal. The
-deaths and the points are carried on the state; the deaths are compared with the target when the
-horizon is reached, and the points are compared with the budget at every step and, as
-`get_actions` shows, never allowed to exceed it. Third, the horizon becomes time in the state:
-the week is a state variable, so "by the end" is a condition on a state rather than on a
-trajectory. The cost of the reduction is that the goal depends on a target, and a target has to
-come from somewhere. Here it is what the best of four scripted schedules achieves (see
-[Generating outbreaks](#generating-outbreaks)), so every instance is solvable by construction and
-the planner is asked to do at least as well as a simple policy.
+trajectory problem (i.e., one whose requirements hold over the whole run rather than at its
+end). The hospital must never overflow, the budget must not be exceeded, and the deaths must be
+few by the end. We turn it into the goal above with the reduction the grid and flood
+environments use, which [docs/operational.md](../operational.md) sets out in full, in three
+moves. First, a constraint that must hold throughout becomes a dead end: the first week that
+overflows the hospital is terminal, so no plan through it exists, and a check over the whole
+trajectory becomes a check at each state. Second, a quantity that accumulates becomes part of
+the state and is bounded at the goal. The deaths and the points are carried on the state; the
+deaths are compared with the target when the horizon is reached, and the points are compared
+with the budget at every step and, as `get_actions` shows, never allowed to exceed it. Third,
+the horizon becomes time in the state: the week is a state variable, so "by the end" is a
+condition on a state rather than on a trajectory. The cost of the reduction is that the goal
+depends on a target, and a target has to come from somewhere. Here it is what the best of four
+scripted schedules achieves (see [Generating outbreaks](#generating-outbreaks)), so every
+instance is solvable by construction and the planner is asked to do at least as well as a simple
+policy.
 
 The progress measure the width planners take (`planiverse.benchmark.measures.epidemic`) is the
 weeks still to get through plus every death over the target, so a planner is pulled towards the

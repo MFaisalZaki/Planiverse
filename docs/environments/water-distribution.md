@@ -120,17 +120,17 @@ Note that the problem as a water utility would state it is a trajectory problem 
 requirements hold over the whole run rather than at its end). The customers must keep their
 water at every step, and the contamination must be contained by the end. We turn it into the
 goal above with the reduction the grid and flood environments use, which
-[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint that must hold
-throughout becomes a dead end. The first closure that drops service below the floor is terminal,
-so no plan through it exists, and a check over the whole trajectory becomes a check at each
-state. Second, a quantity that accumulates becomes part of the state and is bounded at the goal:
-the closed set accumulates, the readings it determines are carried on the state, and the goal
-bounds them. Third, the horizon becomes time in the state, and here the third move is not
-needed. A closure is permanent, there is no clock, and the goal may be met at any depth, so
-`depth` is carried for reporting only. The cost of the reduction is that the goal depends on
-thresholds, and here they are constants of ours rather than what a reference policy achieves.
-Nothing therefore guarantees that an instance is solvable, which is why every scenario carries
-the depth a plan for it was found at (see [Scenarios](#scenarios)).
+[docs/operational.md](../operational.md) sets out in full, in three moves. First, a constraint
+that must hold throughout becomes a dead end. The first closure that drops service below the
+floor is terminal, so no plan through it exists, and a check over the whole trajectory becomes a
+check at each state. Second, a quantity that accumulates becomes part of the state and is
+bounded at the goal: the closed set accumulates, the readings it determines are carried on the
+state, and the goal bounds them. Third, the horizon becomes time in the state, and here the
+third move is not needed. A closure is permanent, there is no clock, and the goal may be met at
+any depth, so `depth` is carried for reporting only. The cost of the reduction is that the goal
+depends on thresholds, and here they are constants of ours rather than what a reference policy
+achieves. Nothing therefore guarantees that an instance is solvable, which is why every scenario
+carries the depth a plan for it was found at (see [Scenarios](#scenarios)).
 
 The progress measure the width planners take (`planiverse.benchmark.measures.water_network`) is
 the share of delivered water that is contaminated. A planner is thus pulled towards
