@@ -31,25 +31,14 @@ from the game itself (Factorio 2.0.60, through its FactorioRL harness). It has n
 in it: every rule and number was measured on the running game and written down, and no code,
 data, art or sound of Factorio's is copied. Factorio is a game by Wube Software Ltd and
 "Factorio" is Wube's trademark; neither factory-sim nor this environment is affiliated with or
-endorsed by Wube. Nothing of the simulator is included here: it has to be built from source
-(below), and the notice is in [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md).
+endorsed by Wube. Nothing of the simulator is included here: it is installed from PyPI, and the
+notice is in [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md). factory-sim is
 
-We wanted a factory game, and we wanted to wrap a maintained implementation rather than write
-one. The candidates were three. The [Factorio Learning
-Environment](https://github.com/JackHopkins/factorio-learning-environment) (MIT) drives the real
-game through its headless server and so needs Docker and Wube's server binary, free to download
-but not ours to ship. [Mindustry](https://github.com/Anuken/Mindustry) (GPL-3.0) is a Java game
-whose headless server takes console commands but has no simulation interface without a plugin of
-our own. factory-sim needs a C compiler and nothing else, runs a decision in microseconds, is
-deterministic to the byte, and is measured against the game rather than imagined. It covers the
-early game only (drills, furnaces, coal, walking and hand mining; no belts, inserters or
-assemblers yet), and it is young: the patches were drawn on an early commit, and the 0.3
-release on PyPI, which the dependency list names, reproduces every one of them. We took it,
-and the other two are noted in case the slice ever proves too small.
+deterministic to the byte, and it covers the early game only (drills, furnaces, coal, walking
+and hand mining; no belts, inserters or assemblers).
 
-The simulator installs with the library, as the wheel `factory-sim`, whose C core is the cffi
-extension `fsim._fsim`. A decision of thirty ticks takes about four microseconds, and
-expanding a state a millisecond or two.
+The simulator installs with the library, as the wheel `factory-sim` (0.3 or later), whose C core
+is the cffi extension `fsim._fsim`.
 
 The rules are seven. First, the scene is a rectangle of iron ore, ten thousand ore a tile, with
 walls in some families, in an arena sixty tiles square about the origin. The character starts
@@ -90,18 +79,15 @@ reaches, and three waits. Each costs 1. `get_actions(state)` lists what is open 
 simulator has its say on reach and collisions, and `FactoryAction.parse` reads one back from its
 name. A placement the simulator refuses (the character standing on it, out of reach) changes
 nothing and is not offered as a successor, and coal is offered only in amounts the hand holds
-and the machine's fuel slot takes. A start offers between fifteen and a hundred and fifty
-decisions, depending on how much of the patch is within reach. A factory that is built and
-fuelled offers the walks, the waits, and whatever coal, ore and plates are left to hand over.
+and the machine's fuel slot takes. A factory that is built and fuelled offers the walks, the
+waits, and whatever coal, ore and plates are left to hand over.
 
 Applying an action brings the simulator to the parent state and runs the decision's ticks. The
 simulator's whole state is one C struct with no pointers in it, so the environment snapshots it
 as bytes for the last 64 states expanded and restores the parent from its snapshot. A state with
 no snapshot is reached by replaying its decisions from the longest snapshotted prefix of its
 path, which is what `path` on the state is kept for. `successors` applies each open action and
-drops the ones the simulator refuses or that leave the state unchanged. A decision takes about
-four microseconds and an expansion a millisecond or two, so the replay is cheap where it
-happens.
+drops the ones the simulator refuses or that leave the state unchanged.
 
 ## Planning problem
 
@@ -163,8 +149,8 @@ walls. The character starts at `(5.4, -11.6)` carrying two drills, two furnaces 
 with a target of 26 plates by a horizon of 7,200 ticks (two minutes). Fifteen decisions are open
 at the start: the eight walks, a drill on the one anchor within reach in each of its four
 facings, and the three waits. Dual BFWS, run as the benchmark runs `dual` (i.e., with the
-measure above and a width bound of 1000), solved it in 71,727 expansions and 163 seconds. Its
-plan is thirty-six decisions:
+measure above and a width bound of 1000), returns a plan of thirty-six decisions:
+
 
 ```
 place(drill, 3, -2, north), give(3, -2, coal, 1), wait(40), place(furnace, 3, -4),

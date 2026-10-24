@@ -79,7 +79,7 @@ The engine reseeds its random numbers from the clock once it has generated a map
 environment pins the seed straight after and treats a state as its decisions. To expand one it
 builds a fresh engine, generates the map from the instance's seed, pins the random seed, lays
 the city out, and replays every decision so far, eight hundred ticks after each. This is what
-makes the same decisions always give the same city, and it is paid for in time.
+makes the same decisions always give the same city, at the cost of a replay per expansion.
 
 ## Planning problem
 
