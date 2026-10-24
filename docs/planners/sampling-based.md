@@ -38,27 +38,21 @@ the causal path temperature (`temperature`, which turns argmax selection into a 
 ### What it needs, and what it costs
 
 FSX asks the environment for exactly one thing, `successors`. It needs no goal decomposition, no
-distance-to-goal and no admissible heuristic, which are the three things a black-box simulator is
-worst at providing, so when there is no idea how to write a heuristic this still runs. It avoids
-dead ends structurally rather than by being told to: a state one move from losing has almost no
-futures, so it scores badly long before it is reached. FSX would steer away from those states even
-if it were never told they were terminal.
+distance-to-goal and no admissible heuristic. A walker stops at a terminal state or one with no
+successors, so a dead end costs an action its score without the scoring having to know it is one.
+Each decision costs up to `walkers * horizon` successor calls per candidate action.
 
 It is a policy rather than a search: it commits to one action at a time and never backtracks.
-On Puzznic level 1 it does solve, in a plan many times longer than IW(2)'s. That is not a bug
-to be tuned away but what a goal-free agent looks like. Its strength is the opposite case,
-staying alive and mobile where the danger is getting stuck rather than reaching a specific narrow
-target, since a goal down a corridor is by construction in a place with few futures.
 
 `option_count(env, state)` exposes the measure on its own: a goal-free signal saying how close a state is to being stuck.
 
 ## Choosing between them
 
-| | needs a goal | needs a heuristic | backtracks | good at |
-|---|---|---|---|---|
-| [IW / BFWS](width-based.md) | yes | helps a lot | yes | finding short plans |
-| [the sampling planners](catalogue.md#sampling-population-and-swarm-planners-planiverseplannerssampling) | yes | helps a lot | some | long horizons under a receding horizon |
-| FSX | no | no | no | staying alive; scoring how stuck a state is |
+| | needs a goal | needs a heuristic | backtracks |
+|---|---|---|---|
+| [IW / BFWS](width-based.md) | yes | no; BFWS takes an optional `progress` | yes |
+| [the sampling planners](catalogue.md#sampling-population-and-swarm-planners-planiverseplannerssampling) | yes | no; `progress` optional | some |
+| FSX | no | no | no |
 
 ## Files
 

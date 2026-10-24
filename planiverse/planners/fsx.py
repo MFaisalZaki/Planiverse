@@ -15,10 +15,8 @@ maximization of possible states".
 
 ## What this implementation is, and what is inferred
 
-The paper's full text was not reachable from this machine (the network proxy blocks MDPI,
-the IIASA repository, arXiv and alexwg.org alike), so this is built from the abstract's
-description of walkers plus the causal-entropic-forces formulation underneath it. Two things
-follow, and both are stated rather than hidden:
+This module follows the abstract's description of walkers and the causal-entropic-forces
+formulation underneath it:
 
 * **The walker scheme is faithful**: sample paths of bounded horizon from each candidate
   action, and prefer the action whose paths reach the most future states. That is the
@@ -27,18 +25,14 @@ follow, and both are stated rather than hidden:
   reads as a count of distinct reachable states; the theory underneath it is an entropy over
   the distribution of futures. They differ when some futures are much likelier than others.
   Both are implemented (`measure="count"` and `measure="entropy"`), and neither is claimed
-  to be *the* paper's, because its equations could not be read.
+  to be *the* paper's.
 
 ## Why it suits a simulator
 
-It asks the environment for exactly one thing: `successors`. No goal decomposition, no
-distance-to-goal, no admissible heuristic, which are the three things a black-box simulator
-is worst at providing. When you have no idea how to write a heuristic, this still runs.
-
-And it avoids dead ends structurally rather than by being told to. A state one move from
-losing has almost no futures, so it scores badly long before it is reached. The other
-planners here need `is_terminal` to be computed and correct; FSX would steer away from those
-states even if it were never told they were terminal.
+It asks the environment for `successors` and nothing else to score an action: no goal
+decomposition, no distance-to-goal, no admissible heuristic. A walker stops at a goal, a
+terminal state or a state with no successors, so an action whose futures end early scores
+low.
 """
 import math
 import random

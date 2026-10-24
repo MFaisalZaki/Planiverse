@@ -42,12 +42,11 @@ SIW(width=1, progress=lambda s: s.blocks_remaining).solve(env)
 ```
 
 Without one, BFWS becomes breadth-first search ordered by novelty alone and SIW becomes a single
-IW call, which both planners report rather than hiding.
+IW call, which SIW reports in the status of an unsolved result.
 
-**Expansions are expensive.** A power-grid expansion takes 8 to 19 seconds, and a water-network
-one is a full hydraulic and transport solve. So every search takes a `Budget` and returns
-`SearchStatistics`, because "found nothing" and "ran out of budget after four nodes" are different
-answers, and a planner treating them as the same is not usable here.
+**Expansions are expensive.** A water-network expansion is a full hydraulic and transport solve.
+So every search takes a `Budget` and returns `SearchStatistics`, because "found nothing" and "ran
+out of budget after four nodes" are different answers.
 
 **Dead ends are real.** A PDDL benchmark usually has none, whereas several environments here do,
 and `is_terminal` states are dropped rather than expanded; see [SIW](#siw-and-dead-ends) for what
@@ -61,32 +60,23 @@ here bucket deliberately for that reason.
 
 ## IW(k) is incomplete
 
-The incompleteness can be watched on Puzznic level 1, which needs no dependencies. IW(1)
-exhausts: it runs out of states rather than time, because everything reachable with a new
-atom has been seen and the plan needs a state that is only novel as a pair. IW(2) solves it,
-and so does iterated `IW`, at width 2 after the width-1 round fails. That is the
-incompleteness, and it is what `IW` exists for.
-
-Note the shape of the trade. BFWS(1) solves the level too, expanding fewer states but
-returning a longer plan, since it is not optimal, and iterated IW pays for the failed width-1
-round on top of the width-2 one, because each width restarts from scratch. Against a
-simulator that re-expansion is not free.
+IW(k) discards every state of novelty above k, so when the plan needs a state that is only
+novel as a pair, IW(1) runs out of states rather than time: everything reachable with a new
+atom has been seen. That is the incompleteness, and it is what iterated `IW` exists for: it
+runs width 1, then 2, and so on up to `max_width`. Each width restarts from scratch, so a
+failed round's expansions are paid again in the next.
 
 ## SIW and dead ends
 
 SIW chains short IW searches, each stopping at the first state that improves `progress`. It is
 incomplete because each leg commits irrevocably to that first improvement, and greedy progress can
-be a trap.
-
-That is not hypothetical here. On Puzznic level 1 the first leg clears a pair and lands on a board
-with one block of a colour left, which can never be matched. The position is a dead end and the
-whole search is over, so classical SIW fails the level that IW(2) solves. A simulator that
-computes `is_terminal` gives the leg a cheap way to refuse, since a dead end is not progress, and
-that alone turns the failure into a solved instance:
+be a trap: a leg can improve `progress` by landing in a dead end, which ends the whole search. A
+simulator that computes `is_terminal` gives the leg a cheap way to refuse, since a dead end is not
+progress:
 
 ```python
-SIW(width=2, progress=boxes, avoid_dead_ends=False).solve(env)   # fails
-SIW(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # solved
+SIW(width=2, progress=boxes, avoid_dead_ends=False).solve(env)   # classical SIW
+SIW(width=2, progress=boxes, avoid_dead_ends=True).solve(env)    # refuses dead-end progress
 ```
 
 `avoid_dead_ends` defaults to `True`. Set it `False` for the classical behaviour.
@@ -100,9 +90,7 @@ Geffner's 2017 paper.
 Its rounds run k-BFWS, `BFWS(prune=True)`, which keeps BFWS's `<novelty, progress,
 heuristic>` ordering but discards states whose novelty exceeds the width, the way IW does. Each
 round gets IW's bounded frontier, so it is cheap, while the ordering inside it heads for the goal
-instead of sweeping breadth-first. On Puzznic level 1 the pruned width-1 round exhausts after
-exactly IW(1)'s expansions, since it is the same filter over the same reach, and the width-2
-round solves it.
+instead of sweeping breadth-first.
 
 The rounds escalate width only while the filter is discarding something, and if every allowed
 width fails, the last of the budget goes to one unpruned round, plain BFWS(1), which is complete:
@@ -114,8 +102,7 @@ DualBFWS(max_width=2, progress=boxes).solve(env, Budget(max_expansions=500))
 `DualBFWS` reports `exhausted` only when it proved there is no plan: a pruned round that
 emptied its frontier without discarding anything saw the whole reachable space, and the unpruned
 round discards nothing by construction. Hitting `max_width` with the filter still biting proves
-nothing and reports `failed`, and `IW` draws the same line, because the benchmark reads
-`exhausted` as unsolvability (`catalogue.is_complete`).
+nothing and reports `failed`, and `IW` draws the same line.
 
 ## Two notes on novelty
 
@@ -125,9 +112,9 @@ pairs and 160,000 triples per state, against a simulator whose successor is alre
 `tuples_enumerated` so the cost is visible.
 
 **Two definitions of novelty are available**, and the standard one is the default. The
-[pyBehaviourPlanningLTL](https://github.com/MFaisalZaki/pyBehaviourPlanningLTL) planners this
-module was modelled on count how many atoms are new relative to the *path* taken to the state, and
-keep the state when that count is at least k, which is not the standard measure:
+[pyBehaviourPlanningLTL](https://github.com/MFaisalZaki/pyBehaviourPlanningLTL) planners count
+how many atoms are new relative to the *path* taken to the state, and keep the state when that
+count is at least k, which is not the standard measure:
 
 - At width 1 the two agree: does this state have an atom nobody has seen.
 - At width 2 they part company. The path rule asks for two new atoms; standard novelty asks for
