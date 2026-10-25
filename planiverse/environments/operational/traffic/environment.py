@@ -34,8 +34,9 @@ import random
 import subprocess
 import tempfile
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas
 
 #: The grid: three by three, 150 m blocks, 120 m stubs to the edge of the map.
 GRID, BLOCK, STUB = 3, 150, 120
@@ -98,6 +99,24 @@ def trips(instance):
         with open(path, "w") as handle:
             handle.write("\n".join(lines) + "\n")
     return path
+
+
+def approaches(junction):
+    """The four edges into a junction, from the north, east, south and west: SUMO names an
+    edge by the junctions at its ends, and a stub by its side and place along it."""
+    column, row = junction[0], int(junction[1])
+    k = "ABC".index(column)
+    north = f"{column}{row + 1}" if row < GRID - 1 else f"top{k}"
+    south = f"{column}{row - 1}" if row > 0 else f"bottom{k}"
+    east = f"{'ABC'[k + 1]}{row}" if k < GRID - 1 else f"right{row}"
+    west = f"{'ABC'[k - 1]}{row}" if k > 0 else f"left{row}"
+    return tuple(f"{start}{junction}" for start in (north, east, south, west))
+
+
+#: A picture's grid: columns between junctions, rows between them, the stubs' length in
+#: each, and how many halted vehicles one mark of a queue stands for.
+PICTURE_BLOCK, PICTURE_STUB = (16, 8), (8, 4)
+PER_MARK = 2
 
 
 def _stub_junction(side, k):
@@ -165,22 +184,18 @@ class TrafficState:
     on the road, halted in a queue and still to depart, the vehicle-seconds spent, and which
     green each junction shows. Identity is the path, since SUMO replays exactly."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("vehicles", ("on the road", "halted", "arrived", "to come"), None),
-        Panel("travel, vehicle-seconds", ("vehicle-seconds",), "target"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"on the road": self.running, "halted": self.halted, "arrived": self.arrived,
                 "to come": self.pending, "vehicle-seconds": self.travel, "target": self.target}
 
     def __init__(self, decisions, time, arrived, running, pending, travel, greens, target=0,
-                 horizon=0, total=0, halted=0, depth=0):
+                 horizon=0, total=0, halted=0, depth=0, queues=()):
         self.decisions = tuple(decisions)
+        #: For the picture only: the vehicles halted on each junction's approaches from the
+        #: north, east, south and west, in the order of `JUNCTIONS`.
+        self.queues = tuple(tuple(q) for q in queues)
         self.time, self.arrived, self.running, self.pending = time, arrived, running, pending
         self.travel, self.greens, self.halted = travel, tuple(greens), halted
         self.target, self.horizon, self.total, self.depth = target, horizon, total, depth
@@ -207,6 +222,49 @@ class TrafficState:
         return (f"t={self.time:.0f}s: {self.arrived} of {self.total} arrived, {self.running} on the road "
                 f"({self.halted} halted), {self.pending} to come; {self.travel:.0f} vehicle-seconds of "
                 f"{self.target}; greens {greens}")
+
+    def picture(self):
+        """The grid as streets, each junction showing the axis its green is on (═ east-west,
+        ║ north-south), each approach's queue as a row of ▪ back from the stop line (one for
+        every `PER_MARK` halted vehicles, as many as the block has room for), then a status
+        line."""
+        (bx, by), (sx, sy) = PICTURE_BLOCK, PICTURE_STUB
+        left, top = 2 + sx, 1 + sy
+        width, height = left + bx * (GRID - 1) + sx + 1, top + by * (GRID - 1) + sy + 1
+        canvas = Canvas(width, height)
+
+        def at(junction):
+            k, row = "ABC".index(junction[0]), int(junction[1])
+            return left + bx * k, top + by * (GRID - 1 - row)
+
+        for k in range(GRID):
+            x, y = at(f"{'ABC'[k]}0")[0], at(f"A{k}")[1]
+            canvas.hline(2, width - 1, y)
+            canvas.vline(x, 1, height - 1)
+            canvas.put(x, 0, "ABC"[k])
+            canvas.put(0, y, str(k))
+        queues = dict(zip(JUNCTIONS, self.queues))
+        for junction, green in zip(JUNCTIONS, self.greens):
+            x, y = at(junction)
+            for d in (-1, 0, 1):          # the green axis drawn double through the junction
+                if green == "A":
+                    canvas.put(x, y + d, "║")
+                else:
+                    canvas.put(x + d, y, "═")
+            north, east, south, west = queues.get(junction, (0, 0, 0, 0))
+            room = (by - 2, bx - 3)
+            # vehicles keep to the right: southbound queue on the street's west side, coming
+            # down from the north; westbound on the north side, back to the east; and so on
+            for n, (dx, dy, side) in ((north, (0, -1, (-1, 0))), (south, (0, 1, (1, 0))),
+                                      (east, (1, 0, (0, -1))), (west, (-1, 0, (0, 1)))):
+                marks = min(room[dx != 0], -(-n // PER_MARK))
+                for m in range(2, marks + 2):
+                    canvas.put(x + dx * m + side[0], y + dy * m + side[1], "▪")
+        lines = [str(canvas), ""]
+        lines.append(f"t={self.time:.0f}s · {self.arrived} of {self.total} arrived, {self.running} "
+                     f"on the road, {self.halted} halted · {self.travel:.0f} of {self.target} "
+                     f"vehicle-seconds")
+        return "\n".join(lines)
 
     def __repr__(self):
         return f"<TrafficState(t={self.time:.0f}, arrived={self.arrived}, travel={self.travel:.0f})>"
@@ -346,7 +404,9 @@ class TrafficEnv(Environment):
         return TrafficState(decisions, ls.simulation.getTime(), self.__reading__["arrived"], running,
                             pending, self.__reading__["travel"], [("A", "B")[self.__greens__[j]] for j in JUNCTIONS],
                             target=self.instance["target"], horizon=self.instance["horizon"],
-                            total=self.instance["vehicles"], halted=halted, depth=depth)
+                            total=self.instance["vehicles"], halted=halted, depth=depth,
+                            queues=[[ls.edge.getLastStepHaltingNumber(edge) for edge in approaches(j)]
+                                    for j in JUNCTIONS])
 
     def close(self):
         if self.__loaded__ is not None:

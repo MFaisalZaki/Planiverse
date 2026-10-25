@@ -30,8 +30,11 @@ leaves behind: the month, the two volumes and the shortfalls so far. Two release
 leave the same volumes are one state, and the environment replays the year from January to
 expand one, which takes a few milliseconds.
 """
-from planiverse.environments.base import Environment, Panel
+from collections import namedtuple
+
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas, bar, tank
 
 MONTHS = 12
 #: The releases a month may be set to (volume units a month) and the farm's allocation.
@@ -42,6 +45,12 @@ CITY_FLOOR = 0.9
 #: A seasonal shape for the hills' inflow and the farm's demand, January to December.
 INFLOW_SHAPE = (9, 8, 7, 6, 4, 3, 2, 2, 3, 5, 7, 8)
 FARM_SHAPE = (1, 1, 2, 4, 6, 8, 8, 7, 5, 2, 1, 1)
+
+#: What a picture of a state needs of its year and nothing in the state holds: the
+#: capacities, the reserves, the demands and the inflows. Built once per year and shared by
+#: every state of it, outside the state's identity.
+Site = namedtuple("Site", ["capacity", "reserves", "city", "farm", "river", "inflow_upper",
+                           "inflow_lower"])
 
 
 def _pywr():
@@ -91,24 +100,17 @@ class ReservoirState:
     """A month's end: the volumes, the shortfalls so far and the last month's deliveries.
     Identity is the month, the volumes and the shortfalls; `settings` is kept for replay."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("volume", ("upper", "lower"), None),
-        Panel("flows a month", ("released", "city", "farm", "river"), None),
-        Panel("farm shortfall", ("farm shortfall",), "allowed"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         city, farm, river, turbine = self.delivered
         return {"upper": self.upper, "lower": self.lower, "released": turbine, "city": city,
                 "farm": farm, "river": river, "farm shortfall": self.farm_short,
                 "allowed": self.target}
 
     def __init__(self, settings, upper, lower, farm_short, city_short, river_short, delivered,
-                 target=0, reserves=(0, 0), depth=0):
+                 target=0, reserves=(0, 0), depth=0, site=None):
+        self.site = site
         self.settings = tuple(settings)
         self.month = len(self.settings)
         self.upper, self.lower = round(upper, 2), round(lower, 2)
@@ -138,6 +140,60 @@ class ReservoirState:
         return (f"month {self.month}: upper {self.upper:.0f}, lower {self.lower:.0f}; last month released "
                 f"{turbine:.0f}, city got {city:.1f}, farm {farm:.1f}, river {river:.1f}; farm short "
                 f"{self.farm_short:.1f} of {self.target} allowed")
+
+    def picture(self):
+        """The two reservoirs as tanks filled against their capacity, each reserve marked
+        beside its wall, the month's inflows coming in, the release let down from the upper
+        to the lower, and what the city, the farm and the river got off the lower one, then
+        the farm's shortfall against the allowance and a status line."""
+        site = self.site
+        capacity = site.capacity if site else (max(self.upper, 1.0), max(self.lower, 1.0))
+        reserves = site.reserves if site else self.reserves
+        city, farm, river, turbine = self.delivered
+        last = self.month - 1
+        rows, inside, top = 10, 10, 2
+        canvas = Canvas(64, top + rows + 1)
+        lefts = (5, 31)
+        inflows = (site.inflow_upper, site.inflow_lower) if site else None
+        for k, (name, volume) in enumerate((("upper", self.upper), ("lower", self.lower))):
+            left = lefts[k]
+            inflow = f"{inflows[k][last]:.1f}" if inflows and last >= 0 else "–"
+            canvas.write(left + 1, 0, f"↓ {('hills', 'valley')[k]} {inflow}")
+            canvas.write(left + 1, 1, f"{name} {volume:.0f} of {capacity[k]:.0f}")
+            for row, line in enumerate(tank(volume / capacity[k] if capacity[k] else 0, rows, inside)):
+                canvas.write(left, top + row, line)
+            if reserves[k]:
+                level = int(round(max(0.0, min(1.0, reserves[k] / capacity[k])) * rows))
+                canvas.write(left - 4, top + rows - max(level, 1), f"{reserves[k]:>3.0f}▸"[-4:])
+        # the turbine, from the foot of the upper reservoir into the lower
+        y = top + rows - 1
+        canvas.write(lefts[0] + inside + 3, y - 1, f"turbine {turbine:.0f}")
+        canvas.hline(lefts[0] + inside + 2, lefts[1] - 2, y, "─")
+        canvas.put(lefts[1] - 1, y, "→")
+        # the lower reservoir's three outlets
+        wants = (site.city if site else None,
+                 site.farm[last] if site and last >= 0 else None,
+                 site.river if site else None)
+        x = lefts[1] + inside + 2
+        for k, (name, got, want) in enumerate((("city", city, wants[0]), ("farm", farm, wants[1]),
+                                              ("river", river, wants[2]))):
+            canvas.write(x, top + 3 + 3 * k, f"──→ {name:<6}{got:4.1f}"
+                         + (f" of {want:.1f}" if want is not None else ""))
+        lines = [str(canvas), ""]
+        allowed = self.target or max(self.farm_short, 1.0)
+        lines.append(f"farm shortfall {bar(self.farm_short, max(allowed, self.farm_short), 30)} "
+                     f"{self.farm_short:.1f} of {self.target:g} allowed")
+        lines.append("")
+        action = self.settings[-1] if self.settings else None
+        if isinstance(action, ReservoirAction):
+            decision = f"{action}: {turbine:.0f} let down, farm on {action.share}"
+        elif self.month:
+            decision = f"{turbine:.0f} let down"
+        else:
+            decision = "nothing released yet"
+        lines.append(f"month {self.month} of {MONTHS} · {decision} · farm short "
+                     f"{self.farm_short:.1f} of {self.target:g} allowed")
+        return "\n".join(lines)
 
     def __repr__(self):
         return f"<ReservoirState(month={self.month}, upper={self.upper:.0f}, lower={self.lower:.0f}, farm_short={self.farm_short:.1f})>"
@@ -180,6 +236,7 @@ class ReservoirEnv(Environment):
     def __init__(self):
         super().__init__("reservoir")
         self.instance = None
+        self._site = None
         self.index = None
         self.state = None
         self.witness = None
@@ -215,6 +272,10 @@ class ReservoirEnv(Environment):
         self.witness = self.witness_expansions = None
         self.__model__ = None
         self.__loaded__ = None
+        inst = self.instance
+        self._site = Site(tuple(inst["capacity"]), tuple(inst["reserves"]), inst["city"],
+                          tuple(inst["farm"]), inst["river"], tuple(inst["inflow_upper"]),
+                          tuple(inst["inflow_lower"]))
 
     def generate_instance(self, seed=None, attempts=60):
         """Draw a year, select it, and return it as the dict `set_instance` takes.
@@ -331,7 +392,7 @@ class ReservoirEnv(Environment):
         m = self.__model__
         return ReservoirState(settings, float(m["upper"].volume[0]), float(m["lower"].volume[0]),
                               *self.__totals__, delivered=self.__last__, target=self.instance["target"],
-                              reserves=self.instance["reserves"], depth=depth)
+                              reserves=self.instance["reserves"], depth=depth, site=self._site)
 
     # ------------------------------------------------------------------- contract
 

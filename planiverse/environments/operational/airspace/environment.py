@@ -31,8 +31,9 @@ sector from the aircraft's entry. A minute of four aircraft takes about fifty mi
 """
 import math
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas
 
 #: Seconds of flying per decision, the turn an instruction makes, and the separation standard.
 DECISION, TURN = 60, 30
@@ -49,6 +50,10 @@ HORIZONS = (12, 15)
 #: How far ahead the scripted controller looks for a conflict, and how close counts as one.
 LOOKAHEAD, CONFLICT_NM = 180, 6.0
 SLACK = 0.1
+#: A picture's radar scope: the nautical miles from its centre to its edge, and the columns
+#: and rows a nautical mile takes (a character is about twice as tall as it is wide).
+SCOPE_NM, SCOPE_COLUMNS, SCOPE_ROWS = 22, 1.0, 0.5
+ARROWS = "↑↗→↘↓↙←↖"
 
 _bluesky = {}
 
@@ -125,25 +130,18 @@ class AirspaceState:
     heading, distance to its exit and whether it is out, the closest any pair came, the sum of
     exit times, and whether separation was lost. Identity is the path."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("aircraft in the sector", ("in the sector",), None),
-        Panel("closest pair, nautical miles", ("closest, nm",), "standard"),
-        Panel("miles still to fly", ("miles to go",), None),
-        Panel("exit times, seconds", ("exit times, s",), "target"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"in the sector": len(self.flying), "closest, nm": min(self.closest, 30.0),
                 "standard": 5.0, "miles to go": sum(a[5] for a in self.flying),
                 "exit times, s": self.exit_sum, "target": self.target}
 
     def __init__(self, instructions, time, aircraft, closest, exit_sum, lost, target=0,
-                 horizon=0, depth=0):
+                 horizon=0, depth=0, exits=()):
         self.instructions = tuple(instructions)
+        #: For the picture only: each aircraft's exit, as (id, lat, lon), from the sector.
+        self.exits = tuple(tuple(e) for e in exits)
         self.time = time
         self.aircraft = tuple(aircraft)      # (id, lat, lon, feet, heading, to_go, out, on_course)
         self.closest, self.exit_sum, self.lost = closest, exit_sum, lost
@@ -180,6 +178,45 @@ class AirspaceState:
             parts.append(f"{name} out" if out else
                          f"{name} hdg {heading:.0f} FL{feet / 100:.0f} {to_go:.1f} nm to go" + (" on course" if on_course else ""))
         return "; ".join(parts)
+
+    def picture(self):
+        """A radar scope: the sector's ring at the exits' range and a ring at half of it,
+        each exit as ◇ and its aircraft's number (◆ once
+        it is out), each aircraft as an arrow along its heading with its callsign beside it,
+        then a status line."""
+        reach = SCOPE_NM
+        cx, cy = reach * SCOPE_COLUMNS + 1, reach * SCOPE_ROWS
+        canvas = Canvas(int(2 * cx) + 6, int(2 * cy) + 1)
+
+        def spot(lat, lon):
+            east, north = offset(lat, lon)
+            return cx + east * SCOPE_COLUMNS, cy - north * SCOPE_ROWS
+
+        for step in range(48):
+            angle = math.radians(step * 7.5)
+            canvas.put(cx + RING_NM[1] * SCOPE_COLUMNS * math.sin(angle),
+                       cy - RING_NM[1] * SCOPE_ROWS * math.cos(angle), "·")
+        canvas.put(cx, cy, "+")
+        for step in range(16):
+            angle = math.radians(step * 22.5)
+            canvas.put(cx + RING_NM[1] / 2 * SCOPE_COLUMNS * math.sin(angle),
+                       cy - RING_NM[1] / 2 * SCOPE_ROWS * math.cos(angle), "·")
+        canvas.write(cx - 1, 0, " N ")
+        out = {a[0] for a in self.aircraft if a[6]}
+        for name, lat, lon in self.exits:
+            x, y = spot(lat, lon)
+            canvas.write(x, y, ("◆" if name in out else "◇") + name.replace("AC", ""))
+        for name, lat, lon, feet, heading, to_go, gone, on_course in self.aircraft:
+            if gone:
+                continue
+            x, y = spot(lat, lon)
+            canvas.write(x, y, ARROWS[int(round(heading / 45)) % 8] + name)
+        closest = f"{self.closest:.1f} nm" if self.closest < 99 else "–"
+        status = (f"t={self.time:.0f}s · {len(self.flying)} of {len(self.aircraft)} in the sector · "
+                  f"closest pair {closest} (standard {SEPARATION_NM:g})"
+                  + (", separation lost" if self.lost else "")
+                  + f" · exit times {self.exit_sum} of {self.target} s")
+        return str(canvas) + "\n\n" + status
 
     def __repr__(self):
         return f"<AirspaceState(t={self.time:.0f}, flying={len(self.flying)}, closest={self.closest:.1f})>"
@@ -395,7 +432,8 @@ class AirspaceEnv(Environment):
                              flight["on_course"].get(name, True)))
         return AirspaceState(instructions, flight["time"], aircraft, round(flight["closest"], 2),
                              flight["exit_sum"], flight["lost"], target=self.instance["target"],
-                             horizon=self.instance["horizon"], depth=depth)
+                             horizon=self.instance["horizon"], depth=depth,
+                             exits=[(a[0], a[6], a[7]) for a in self.instance["aircraft"]])
 
     # ------------------------------------------------------------------- contract
 

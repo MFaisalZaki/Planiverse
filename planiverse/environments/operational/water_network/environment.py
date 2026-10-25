@@ -42,8 +42,9 @@ import tempfile
 from collections import namedtuple
 from copy import deepcopy
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
+from planiverse.rendering.text import Canvas
 
 #: Hydraulics are run pressure-driven rather than demand-driven. It matters here: under the
 #: demand-driven model a node takes its full demand no matter how little pressure is left,
@@ -91,6 +92,17 @@ def network_library():
 #: `seed` is the draw a generated scenario came from, and None for the chosen ones.
 Scenario = namedtuple("Scenario", ["network", "source", "baseline", "solved_at", "seed"],
                       defaults=(None,))
+
+#: The most columns and rows a picture of a network takes; its coordinates are scaled to fit,
+#: a column being half a row's height. A junction counts as contaminated in a picture when
+#: at least `TRACE_SHOWN` of the water it held over the run came from the source.
+PICTURE_SIZE = (72, 28)
+TRACE_SHOWN = 0.01
+
+#: A network as a picture draws it, built once per scenario and shared by its states: the
+#: grid's size, each node as (name, column, row, kind) with kind `junction`, `tank` or
+#: `reservoir`, each link as (name, column, row, column, row), and the source junction.
+Layout = namedtuple("Layout", ["width", "height", "nodes", "links", "source"])
 
 #: The networks `generate_instance` draws from. `Net2` is left out: no source on it has been
 #: solved (see the module tests), so a scenario drawn on it could not be checked.
@@ -271,22 +283,17 @@ class WaterNetworkState:
     close over them without simulating anything twice.
     """
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("contaminated water delivered, %", ("contaminated",), None),
-        Panel("service, %", ("service",), None),
-        Panel("pipes closed", ("closed",), None),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"contaminated": 100 * float(self.contaminated),
                 "service": 100 * float(self.service), "closed": len(self.closed)}
 
-    def __init__(self, closed, service, contaminated, pressure_deficit, depth=0):
+    def __init__(self, closed, service, contaminated, pressure_deficit, depth=0, layout=None,
+                 reached=frozenset()):
         self.closed = frozenset(closed)
+        #: For the picture only: the network's layout, and the junctions the trace reached.
+        self.layout, self.reached = layout, frozenset(reached)
         self.service = service
         self.contaminated = contaminated
         self.pressure_deficit = pressure_deficit
@@ -314,6 +321,39 @@ class WaterNetworkState:
         return (f"closed: {closed}\n"
                 f"contaminated delivered: {self.contaminated:.1%}\n"
                 f"service: {self.service:.1%}")
+
+    def picture(self):
+        """The network as a schematic: each link drawn along its nodes' coordinates, a closed
+        pipe marked ╳, junctions ○ clean or ● contaminated, the source ◉, tanks ▣ and
+        reservoirs ≋, then a status line."""
+        status = (f"{len(self.closed)} pipe{'' if len(self.closed) == 1 else 's'} closed"
+                  + (f" ({', '.join(sorted(self.closed))})" if self.closed else "")
+                  + f" · contaminated delivered {self.contaminated:.1%} · service {self.service:.1%}")
+        layout = self.layout
+        if layout is None:
+            return status
+        canvas = Canvas(layout.width, layout.height)
+        marks = []
+        for name, x0, y0, x1, y1 in layout.links:
+            # along, then down: box-drawing that joins where pipes meet
+            canvas.hline(x0, x1, y0)
+            canvas.vline(x1, y0, y1)
+            if name in self.closed:
+                if abs(x1 - x0) >= abs(y1 - y0):
+                    marks.append(((x0 + x1) // 2, y0))
+                else:
+                    marks.append((x1, (y0 + y1) // 2))
+        for x, y in marks:
+            canvas.put(x, y, "╳")
+        glyphs = {"tank": "▣", "reservoir": "≋"}
+        for name, x, y, kind in layout.nodes:
+            if name == layout.source:
+                continue
+            canvas.put(x, y, glyphs.get(kind) or ("●" if name in self.reached else "○"))
+        for name, x, y, kind in layout.nodes:
+            if name == layout.source:
+                canvas.put(x, y, "◉")
+        return str(canvas) + "\n\n" + status
 
     def __repr__(self):
         return (f"<WaterNetworkState(closed={len(self.closed)}, "
@@ -352,6 +392,9 @@ class WaterNetworkEnv(Environment):
 
         self._wn = None
         self._cache = {}
+        self._layout = None
+        #: The junctions each solve's trace reached, keyed by network, source and closed set.
+        self._reached = {}
         # EpanetSimulator writes temp.inp/.bin/.rpt beside the process's working directory
         # unless told otherwise, and expansion runs it hundreds of times. Everything goes in
         # here instead, and `close()` removes it.
@@ -387,6 +430,7 @@ class WaterNetworkEnv(Environment):
         self.witness = self.witness_expansions = None
         self._wn = None
         self._cache = {}
+        self._layout = None
 
     def generate_instance(self, seed=None, network=None, min_baseline=MIN_BASELINE,
                           solvable=True, search_limit=SEARCH_LIMIT, min_plan_length=1,
@@ -470,6 +514,32 @@ class WaterNetworkEnv(Environment):
             self._wn = wn
         return self._wn
 
+    def __layout__(self):
+        """The network scaled onto a picture's grid, once per scenario."""
+        if self._layout is None:
+            wn = self.__model__()
+            where = {name: wn.get_node(name).coordinates for name in wn.node_name_list}
+            xs, ys = [p[0] for p in where.values()], [p[1] for p in where.values()]
+            span_x, span_y = (max(xs) - min(xs)) or 1.0, (max(ys) - min(ys)) or 1.0
+            columns, rows = PICTURE_SIZE
+            scale = min((columns - 1) / (2 * span_x), (rows - 1) / span_y)
+
+            def cell(name):
+                x, y = where[name]
+                return (int(round((x - min(xs)) * 2 * scale)),
+                        int(round((max(ys) - y) * scale)))
+
+            kinds = {**{n: "tank" for n in wn.tank_name_list},
+                     **{n: "reservoir" for n in wn.reservoir_name_list}}
+            nodes = tuple((name, *cell(name), kinds.get(name, "junction"))
+                          for name in wn.node_name_list)
+            links = tuple((name, *cell(wn.get_link(name).start_node_name),
+                           *cell(wn.get_link(name).end_node_name)) for name in wn.link_name_list)
+            width = max(n[1] for n in nodes) + 1
+            height = max(n[2] for n in nodes) + 1
+            self._layout = Layout(width, height, nodes, links, self.source)
+        return self._layout
+
     def __candidates__(self):
         """Pipes close enough to the incident to be worth closing.
 
@@ -538,11 +608,15 @@ class WaterNetworkEnv(Environment):
         # demand over the window; clamping keeps the goal test meaning what it says.
         measured = (min(service, 1.0), max(contaminated, 0.0), deficit)
         self._cache[key] = measured
+        self._reached[(self.network_file, self.source, key)] = frozenset(
+            name for name, share in trace.mean().items() if share >= TRACE_SHOWN)
         return measured
 
     def __state__(self, closed, depth):
         service, contaminated, deficit = self.__simulate__(closed)
-        return WaterNetworkState(closed, service, contaminated, deficit, depth)
+        reached = self._reached.get((self.network_file, self.source, frozenset(closed)), ())
+        return WaterNetworkState(closed, service, contaminated, deficit, depth,
+                                 layout=self.__layout__(), reached=reached)
 
     # ------------------------------------------------------------------ interface
 

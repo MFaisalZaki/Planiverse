@@ -316,3 +316,28 @@ def test_a_generated_scenario_reproduces_from_its_seed():
         assert (instance["network"], instance["source"]) == (scenario.network, scenario.source)
         assert instance["baseline"] == pytest.approx(scenario.baseline, abs=1e-3)
         assert instance["solved_at"] == scenario.solved_at
+
+
+def test_a_state_draws_the_network_as_a_schematic(env):
+    """The picture is the pipe network with the source, the tank and the reservoir marked, a
+    closed pipe crossed out and the junctions the trace reached filled in, then the numbers."""
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    picture = state.picture()
+    assert isinstance(picture, str) and not missing_glyphs(picture)
+    assert state.picture() == picture
+    other = WaterNetworkEnv()
+    try:
+        other.set_index(0)
+        assert other.reset()[0].picture() == picture, "the same state draws the same picture"
+    finally:
+        other.close()
+    for glyph in ("◉", "▣", "≋", "○", "─", "│"):
+        assert glyph in picture, glyph
+    assert "╳" not in picture
+    assert picture.splitlines()[-1] == "0 pipes closed · contaminated delivered 13.6% · service 100.0%"
+    after = env.__advance__(state, WaterNetworkAction("11"))
+    assert "╳" in after.picture() and "●" in after.picture() and after.picture() != picture
+    assert str(state) == "closed: nothing\ncontaminated delivered: 13.6%\nservice: 100.0%"
+    assert not hasattr(WaterNetworkState, "panels")

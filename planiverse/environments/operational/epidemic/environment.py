@@ -32,8 +32,12 @@ random stream with it, so a state is its schedule (the levels chosen so far) and
 expansion replays the epidemic from day zero. Twelve weeks of ten thousand people take a
 third of a second.
 """
-from planiverse.environments.base import Environment, Panel
+import math
+import random
+
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas
 
 #: The levels a week may be set to: the factor on the model's transmission rate, and the
 #: disruption each costs against the budget.
@@ -43,6 +47,14 @@ DAYS = 7
 #: What the generator draws when not told.
 POPULATIONS = (5000, 8000, 10000)
 WEEKS = (10, 12, 14)
+#: A picture's town: this many characters wide and high, each standing for an equal share of
+#: the people, in an order fixed once so that a character only ever moves on through
+#: susceptible, infected, recovered and dead as the weeks go by.
+TOWN = (40, 10)
+_ORDER = list(range(TOWN[0] * TOWN[1]))
+random.Random(0).shuffle(_ORDER)
+#: The hospital ward is at most this many marks wide, one mark for one or a few beds.
+WARD = 40
 
 
 def _covasim():
@@ -88,25 +100,21 @@ class EpidemicState:
     """The levels chosen so far and what the epidemic reads at the end of them. Identity is the
     schedule, since the model replays exactly from its seed."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("people", ("infectious",), None),
-        Panel("in hospital", ("in hospital",), "beds"),
-        Panel("deaths", ("deaths",), "allowed"),
-        Panel("disruption points", ("points spent",), "budget"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"infectious": self.infectious, "in hospital": self.load, "beds": self.capacity,
                 "deaths": self.deaths, "allowed": self.target, "points spent": self.points,
                 "budget": self.budget}
 
     def __init__(self, schedule, day, infectious, load, peak, deaths, infections, points,
-                 capacity=0, target=0, budget=0, weeks=0, depth=0):
+                 capacity=0, target=0, budget=0, weeks=0, depth=0, exposed=None,
+                 recovered=0, population=0):
         self.schedule = tuple(schedule)
+        #: For the picture only: the people infected now (incubating or infectious) and
+        #: recovered, and the town's size.
+        self.exposed = infectious if exposed is None else exposed
+        self.recovered, self.population = recovered, population
         self.week = len(self.schedule)
         self.day = day
         self.infectious, self.load, self.peak = infectious, load, peak
@@ -136,6 +144,44 @@ class EpidemicState:
                 f"hospital (peak {self.peak} of {self.capacity} beds), {self.deaths} dead of "
                 f"{self.target} allowed; {self.points} of {self.budget} points spent; {chosen}")
 
+    def picture(self):
+        """The town as a block of characters, each an equal share of the people (· still
+        susceptible, ● infected, ○ recovered, † dead), the hospital as a ward of beds (▪
+        occupied, ▫ empty), and a status line."""
+        width, height = TOWN
+        cells = width * height
+        people = self.population or cells
+        per = people / cells
+        infected, recovered = self.exposed, self.recovered
+        susceptible = max(0, people - infected - recovered - self.deaths)
+        dead = min(cells, math.ceil(self.deaths / per))
+        ill = min(cells - dead, math.ceil(infected / per))
+        well = min(cells - dead - ill, round(recovered / per))
+        recovered_to, affected = dead + well, dead + well + ill
+        town = Canvas(width, height)
+        for k, cell in enumerate(_ORDER):
+            char = "†" if k < dead else "○" if k < recovered_to else "●" if k < affected else "·"
+            town.put(cell % width, cell // width, char)
+        lines = [f"town of {people:,} people, one character for {per:g}", str(town),
+                 f"· {susceptible:,} susceptible  ● {infected:,} infected  ○ {recovered:,} "
+                 f"recovered  † {self.deaths:,} dead", ""]
+        beds = max(self.capacity, 1)
+        each = max(1, math.ceil(beds / (2 * WARD)))
+        marks = math.ceil(beds / each)
+        full = min(marks, math.ceil(self.load / each))
+        rows = math.ceil(marks / WARD)
+        ward = Canvas(WARD + 2, rows + 2)
+        ward.rect(0, 0, WARD + 1, rows + 1)
+        for k in range(marks):
+            ward.put(1 + k % WARD, 1 + k // WARD, "▪" if k < full else "▫")
+        over = f", {self.load - self.capacity} over" if self.load > self.capacity else ""
+        lines += [f"hospital: {self.load} in {self.capacity} beds{over}, one mark for "
+                  f"{each} bed{'s' if each > 1 else ''}", str(ward), ""]
+        decision = f"{self.schedule[-1]} in force" if self.schedule else "nothing decided"
+        lines.append(f"week {self.week} of {self.weeks} · {decision} · {self.deaths} dead of "
+                     f"{self.target} allowed · {self.points} of {self.budget} points spent")
+        return "\n".join(lines)
+
     def __repr__(self):
         return f"<EpidemicState(week={self.week}, deaths={self.deaths}, peak={self.peak})>"
 
@@ -158,7 +204,8 @@ def replay(instance, schedule):
             peak = max(peak, load)
     people = sim.people
     return dict(day=int(sim.t), infectious=int(people.infectious.sum()), load=load, peak=peak,
-                deaths=int(people.dead.sum()),
+                deaths=int(people.dead.sum()), exposed=int(people.exposed.sum()),
+                recovered=int((people.recovered & ~people.exposed & ~people.dead).sum()),
                 infections=int(np.nansum(sim.results["new_infections"][:sim.t])), points=points)
 
 
@@ -259,7 +306,7 @@ class EpidemicEnv(Environment):
         readings = replay(self.instance, schedule)
         return EpidemicState(schedule, capacity=self.instance["capacity"], target=self.instance["target"],
                              budget=self.instance["budget"], weeks=self.instance["weeks"], depth=depth,
-                             **readings)
+                             population=self.instance["population"], **readings)
 
     def reset(self):
         if self.instance is None:
