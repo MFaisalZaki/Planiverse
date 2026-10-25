@@ -136,9 +136,12 @@ class ReservoirState:
         return self.depth < other.depth
 
     def __str__(self):
-        """The two reservoirs as tanks filled against their capacity, each reserve marked
-        beside its wall, the month's inflows coming in, the release let down from the upper
-        to the lower, and what the city, the farm and the river got off the lower one, then
+        """The valley: the two reservoirs as tanks filled against their capacity, each reserve
+        marked beside its wall, the month's inflow pouring into each; the turbine ⚙ at the
+        foot of the upper one with its channel down to the lower, running ≈ while water is let
+        down and dry · when none is; and off the lower one the city as buildings lit █ in the
+        share of its demand it got and dark ░ for the rest, the farm as a field of crops ♣
+        watered and · dry, and the river running on ≈ as far as its share was met. Under it,
         the farm's shortfall as a gauge against the allowance."""
         site = self.site
         capacity = site.capacity if site else (max(self.upper, 1.0), max(self.lower, 1.0))
@@ -146,33 +149,50 @@ class ReservoirState:
         city, farm, river, turbine = self.delivered
         last = self.month - 1
         rows, inside, top = 10, 10, 2
-        canvas = Canvas(64, top + rows + 1)
+        canvas = Canvas(90, top + rows + 1)
         lefts = (5, 31)
         inflows = (site.inflow_upper, site.inflow_lower) if site else None
         for k, (name, volume) in enumerate((("upper", self.upper), ("lower", self.lower))):
             left = lefts[k]
-            inflow = f"{inflows[k][last]:.1f}" if inflows and last >= 0 else "–"
-            canvas.write(left + 1, 0, f"↓ {('hills', 'valley')[k]} {inflow}")
+            inflow = inflows[k][last] if inflows and last >= 0 else 0.0
+            canvas.write(left + 1, 0, f"{('hills', 'valley')[k]} {inflow:.1f}" if last >= 0
+                         else ("hills", "valley")[k])
             canvas.write(left + 1, 1, f"{name} {volume:.0f} of {capacity[k]:.0f}")
-            for row, line in enumerate(tank(volume / capacity[k] if capacity[k] else 0, rows, inside)):
+            share = volume / capacity[k] if capacity[k] else 0
+            for row, line in enumerate(tank(share, rows, inside)):
                 canvas.write(left, top + row, line)
+            surface = top + rows - int(round(max(0.0, min(1.0, share)) * rows))
+            if inflow > 0:                                   # the inflow pouring in
+                for y in range(top, surface):
+                    canvas.write(left + inside // 2, y, "≈")
             if reserves[k]:
                 level = int(round(max(0.0, min(1.0, reserves[k] / capacity[k])) * rows))
                 canvas.write(left - 4, top + rows - max(level, 1), f"{reserves[k]:>3.0f}▸"[-4:])
-        # the turbine, from the foot of the upper reservoir into the lower
+
+        def channel(x0, x1, y, amount):
+            canvas.write(x0, y, ("≈" if amount > 0 else "·") * (x1 - x0) + "▶")
+
+        def served(got, want, width, on, off):
+            share = 1.0 if not want else max(0.0, min(1.0, got / want))
+            done = int(round(share * width))
+            return on * done + off * (width - done)
+
+        # the turbine at the foot of the upper reservoir, its channel down to the lower
         y = top + rows - 1
-        canvas.write(lefts[0] + inside + 3, y - 1, f"turbine {turbine:.0f}")
-        canvas.hline(lefts[0] + inside + 2, lefts[1] - 2, y, "─")
-        canvas.put(lefts[1] - 1, y, "→")
-        # the lower reservoir's three outlets
+        canvas.write(lefts[0] + inside + 3, y - 1, f"⚙ turbine {turbine:.0f}")
+        channel(lefts[0] + inside + 2, lefts[1] - 1, y, turbine)
+        # the lower reservoir's three outlets, and what each served
         wants = (site.city if site else None,
                  site.farm[last] if site and last >= 0 else None,
                  site.river if site else None)
         x = lefts[1] + inside + 2
-        for k, (name, got, want) in enumerate((("city", city, wants[0]), ("farm", farm, wants[1]),
-                                              ("river", river, wants[2]))):
-            canvas.write(x, top + 3 + 3 * k, f"──→ {name:<6}{got:4.1f}"
-                         + (f" of {want:.1f}" if want is not None else ""))
+        scenes = (("city", city, wants[0], "█", "░"), ("farm", farm, wants[1], "♣", "·"),
+                  ("river", river, wants[2], "≈", "·"))
+        for k, (name, got, want, on, off) in enumerate(scenes):
+            row = top + 3 + 3 * k
+            channel(x, x + 4, row, got)
+            canvas.write(x + 6, row, served(got, want, 10, on, off))
+            canvas.write(x + 17, row, f"{name} {got:.1f}" + (f" of {want:.1f}" if want is not None else ""))
         lines = [str(canvas), ""]
         allowed = self.target or max(self.farm_short, 1.0)
         lines.append(f"farm short {bar(self.farm_short, max(allowed, self.farm_short), 30)}")

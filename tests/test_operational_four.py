@@ -291,4 +291,4 @@ def test_a_reservoir_state_draws_the_two_tanks_and_the_flows(reservoir):
     after = reservoir.__advance__(state, ReservoirAction(10, "half"))
     inst = reservoir.instance
     assert_a_picture(reservoir, state, after, ["upper 40 of 80", "lower 29 of 40", "city", "farm",
-                                               "river", "turbine", "28▸", "19▸", "farm short"])
+                                               "river", "turbine", "28▸", "19▸", "farm short", "⚙", "♣"]))
