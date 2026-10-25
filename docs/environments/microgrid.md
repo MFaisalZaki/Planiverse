@@ -152,8 +152,10 @@ thing, and where solar meets the load `store` and `cover` do too.
 Each frame is the state's picture, the microgrid as a site through the day. The sky keeps the
 clock: the sun crosses it by day and the moon and stars are out at night. Under it stand the
 sources the microgrid has, the solar panels, the genset's hut, smoking while it runs, and the
-grid's pylon, each linked down to the load bus with the last period's energy in kWh and an arrow for
-its direction, dashed when nothing flowed. Below the bus hang the battery, its cell filled to its
+grid's pylon, each linked down to the load bus by a power line with the last period's energy in kWh.
+A line is heavy when it carried much of the hour's energy, carries more pulses the more it carried,
+each an arrow the way the energy went, and is dashed when nothing flowed; the pulses move on from
+frame to frame, and arrows along the bus point the energy to the load. Below the bus hang the battery, its cell filled to its
 state of charge with the reserve it must end at or above marked under it, and the load, a row of
 houses with their windows lit for the share of the load served and dark for any left unmet.
 
@@ -164,7 +166,9 @@ houses with their windows lit for the share of the load served and dark for any 
 | `▄█▄▄` with `≋` | the genset, smoking while it runs |
 | `╲┃╱ ─╋─` | the grid's pylon |
 | `━━┷━━` `━━┯━━` | the load bus, and a link joining it from above or below |
-| `▼ 120 kWh` | a link and the energy it carried last period, in the arrow's direction |
+| `│`, `┃` | a power line, heavy when it carried much of the hour's energy |
+| `▼`, `▲` on a line | a pulse of energy, the way it went; more pulses for more energy |
+| `▸`, `◂` on the bus | the energy's way along the bus, to the load |
 | `╎ 0 kWh` | a link that carried nothing |
 | `│█████   ├▌` | the battery, filled to its state of charge |
 | `▴` | the charge the battery must be at or above when the horizon ends |

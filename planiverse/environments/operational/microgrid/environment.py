@@ -177,17 +177,27 @@ class MicrogridState:
                 canvas.put(x, y, "·")
             canvas.put(width - 8, 0, "☾")
 
+        biggest = max(abs(flow) for flow in self.flows) or 1.0
+        phase = (self.hour // PERIOD) % 2                    # pulses move on frame to frame
+
         def link(x, top, bottom, into_bus, above):
-            """A link at column `x` from row `top` to `bottom`, above or below the bus, with
-            the energy it carried towards the bus (negative when away from it)."""
+            """A power line at column `x` from row `top` to `bottom`, above or below the bus,
+            with the energy it carried towards the bus (negative when away from it): heavy
+            when it carried much of the hour's energy, with more pulses the more it carried,
+            each an arrow along the way the energy went; dashed when it carried none."""
             middle = (top + bottom) // 2
             if abs(into_bus) < 0.05:
                 canvas.vline(x, top, bottom, char="╎")
                 canvas.write(x + 2, middle, "0 kWh")
             else:
-                canvas.vline(x, top, bottom, char="│")
-                towards, away = ("▼", "▲") if above else ("▲", "▼")
-                canvas.put(x, middle, towards if into_bus > 0 else away)
+                share = abs(into_bus) / biggest
+                canvas.vline(x, top, bottom, char="┃" if share > 0.5 else "│")
+                down = (into_bus > 0) == above
+                pulses = 1 + int(share > 0.34) + int(share > 0.67)
+                rows = list(range(top, bottom + 1))
+                for k in range(pulses):
+                    at = rows[(phase + 2 * k) % len(rows)] if down else rows[-1 - (phase + 2 * k) % len(rows)]
+                    canvas.put(x, at, "▼" if down else "▲")
                 canvas.write(x + 2, middle, f"{abs(into_bus):.0f} kWh")
             junctions.append((x, "┷" if above else "┯"))
 
@@ -213,6 +223,9 @@ class MicrogridState:
         link(10, bus + 1, 11, battery, False)
         link(50, bus + 1, 11, -load, False)
         canvas.hline(0, width - 1, bus, char="━")
+        for x in range(2 + phase * 3, width - 1, 6):            # the bus carries it to the load
+            if abs(x - 50) > 1:
+                canvas.put(x, bus, "▸" if x < 50 else "◂")
         for x, char in junctions:
             canvas.put(x, bus, char)
         # the battery, its cells filled to its charge, its reserve marked under it
