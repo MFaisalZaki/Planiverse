@@ -47,14 +47,23 @@ DAYS = 7
 #: What the generator draws when not told.
 POPULATIONS = (5000, 8000, 10000)
 WEEKS = (10, 12, 14)
-#: A picture's town: this many characters wide and high, each standing for an equal share of
-#: the people, in an order fixed once so that a character only ever moves on through
-#: susceptible, infected, recovered and dead as the weeks go by.
-TOWN = (40, 10)
-_ORDER = list(range(TOWN[0] * TOWN[1]))
+#: A picture's town: blocks of homes, this many across and down, each this many characters
+#: wide and high, with streets between them. Every character is an equal share of the people,
+#: in an order fixed once so that a character only ever moves on through susceptible,
+#: infected, recovered and dead as the weeks go by.
+BLOCKS, BLOCK = (5, 2), (7, 4)
+_HOMES = [(1 + bx * (BLOCK[0] + 1) + x, 1 + by * (BLOCK[1] + 1) + y)
+          for by in range(BLOCKS[1]) for bx in range(BLOCKS[0])
+          for y in range(BLOCK[1]) for x in range(BLOCK[0])]
+_ORDER = list(range(len(_HOMES)))
 random.Random(0).shuffle(_ORDER)
-#: The hospital ward is at most this many marks wide, one mark for one or a few beds.
-WARD = 40
+#: The streets by the level in force: solid while the town is open, dashed under distancing,
+#: and heavy, a cordon, under lockdown. Each turns the town's joined light lines into its own.
+STREETS = {"open": {}, "distancing": {"─": "╌", "│": "╎"},
+           "lockdown": dict(zip("─│┌┐└┘├┤┬┴┼", "━┃┏┓┗┛┣┫┳┻╋"))}
+#: The hospital: a building beside the town with a cross on its roof, its beds inside this
+#: many to a row, one mark for one or a few beds.
+WARD = 8
 
 
 def _covasim():
@@ -139,34 +148,44 @@ class EpidemicState:
         return self.depth < other.depth
 
     def __str__(self):
-        """The town as a block of characters, each an equal share of the people (· still
-        susceptible, ● infected, ○ recovered, † dead), the hospital as a ward of beds (▪
-        occupied, ▫ empty)."""
-        width, height = TOWN
-        cells = width * height
+        """The town as a map: blocks of homes, each character an equal share of the people
+        (· still susceptible, ● infected, ○ recovered, † dead), with streets between them drawn
+        by the level in force (solid open, dashed distancing, heavy for a lockdown); and beside
+        it the hospital, a building with ✚ on its roof joined to the streets, its beds inside
+        (▪ taken, ▫ free)."""
+        width = BLOCKS[0] * (BLOCK[0] + 1) + 1
+        height = BLOCKS[1] * (BLOCK[1] + 1) + 1
+        cells = len(_HOMES)
         people = self.population or cells
         per = people / cells
-        infected, recovered = self.exposed, self.recovered
         dead = min(cells, math.ceil(self.deaths / per))
-        ill = min(cells - dead, math.ceil(infected / per))
-        well = min(cells - dead - ill, round(recovered / per))
+        ill = min(cells - dead, math.ceil(self.exposed / per))
+        well = min(cells - dead - ill, round(self.recovered / per))
         recovered_to, affected = dead + well, dead + well + ill
-        town = Canvas(width, height)
-        for k, cell in enumerate(_ORDER):
-            char = "†" if k < dead else "○" if k < recovered_to else "●" if k < affected else "·"
-            town.put(cell % width, cell // width, char)
-        lines = [str(town), ""]
+        style = STREETS[self.schedule[-1] if self.schedule else "open"]
+        rows = height - 2
         beds = max(self.capacity, 1)
-        each = max(1, math.ceil(beds / (2 * WARD)))
+        each = max(1, math.ceil(beds / (WARD * rows)))
         marks = math.ceil(beds / each)
         full = min(marks, math.ceil(self.load / each))
-        rows = math.ceil(marks / WARD)
-        ward = Canvas(WARD + 2, rows + 2)
-        ward.rect(0, 0, WARD + 1, rows + 1)
+        left = width + 1
+        canvas = Canvas(left + WARD + 4, height)
+        for y in range(0, height, BLOCK[1] + 1):
+            canvas.hline(0, width - 1, y)
+        for x in range(0, width, BLOCK[0] + 1):
+            canvas.vline(x, 0, height - 1)
+        canvas.rect(left, 0, left + WARD + 3, height - 1)
+        canvas.hline(width - 1, left, height // 2)                   # the road to the hospital
+        for y in range(height):
+            for x in range(left):
+                canvas.put(x, y, style.get(canvas.get(x, y), canvas.get(x, y)))
+        for k, cell in enumerate(_ORDER):
+            char = "†" if k < dead else "○" if k < recovered_to else "●" if k < affected else "·"
+            canvas.put(*_HOMES[cell], char)
+        canvas.put(left + (WARD + 3) // 2 + 1, 0, "✚")
         for k in range(marks):
-            ward.put(1 + k % WARD, 1 + k // WARD, "▪" if k < full else "▫")
-        lines.append(str(ward))
-        return "\n".join(lines)
+            canvas.put(left + 2 + k % WARD, 1 + k // WARD, "▪" if k < full else "▫")
+        return str(canvas)
 
     def __repr__(self):
         return f"<EpidemicState(week={self.week}, deaths={self.deaths}, peak={self.peak})>"
