@@ -166,6 +166,7 @@ the other output formats.
 |---|---|
 | `┌─┐ │ ┼` | walls, joined into lines |
 | `●` `▲` `■` `◆` `★` `♠` `♣` `♥` `♦` | a block of colour `1` to `9` |
+| `·` | an empty cell |
 | `[ ]` | the cursor, around the cell it is on |
 
 ## Levels

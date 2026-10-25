@@ -95,6 +95,8 @@ def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per
 #: The symbol a block of each colour is drawn as in a picture, so a match reads without colour.
 BLOCK_SYMBOLS = {"1": "●", "2": "▲", "3": "■", "4": "◆", "5": "★", "6": "♠", "7": "♣",
                  "8": "♥", "9": "♦"}
+#: An empty cell, drawn so the grid shows and every block sits in a cell of it.
+EMPTY_SYMBOL = "·"
 
 
 class Element:
@@ -168,14 +170,17 @@ class PuzznicState:
     
     def __str__(self):
         """The grid in black-and-white text: walls joined into lines, each colour of block a
-        symbol of its own (`BLOCK_SYMBOLS`), and the cursor's cell bracketed `[ ]`."""
+        symbol of its own (`BLOCK_SYMBOLS`), an empty cell as a dot, and the cursor's cell
+        bracketed `[ ]`."""
         rows = ["".join(str(cell) for cell in row) for row in self.grid]
-        lines = boxed(rows, wall="#", glyphs=BLOCK_SYMBOLS).split("\n")
+        lines = boxed(rows, wall="#", glyphs={**BLOCK_SYMBOLS, " ": EMPTY_SYMBOL}).split("\n")
         width = 2 * self.shape[1]
         lines = [list(line.ljust(width)) for line in lines]
         row, col = self.cursor.pos
         lines[row][2 * col - 1] = "["
         lines[row][2 * col + 1] = "]"
+        if lines[row][2 * col] == EMPTY_SYMBOL:
+            lines[row][2 * col] = " "
         return "\n".join("".join(line).rstrip() for line in lines)
 
     def __eq__(self, value):

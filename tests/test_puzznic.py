@@ -317,7 +317,7 @@ def test_the_picture_draws_the_grid_in_symbols_the_renderer_has():
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
     assert len(lines) == 7                      # seven rows
-    assert lines[1] == "│ ● ▲[ ]  │"           # the cursor's cell, bracketed
+    assert lines[1] == "│ ● ▲[ ]· │"           # the cursor's cell, bracketed; empty cells dotted
 
 
 def test_the_picture_follows_the_cursor_and_the_clears():
