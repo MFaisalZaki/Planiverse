@@ -269,6 +269,7 @@ give the same stage.
 | `●` `▲` `■` `✖` | a block of type `1`, `2`, `3`, `4` |
 | `◀` | the player, outside the right-hand wall on the row they stand on, aimed along it |
 | the shape before `◀` | the block in the player's hand |
+| `╫` | the ladder the player climbs, one rung a row |
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

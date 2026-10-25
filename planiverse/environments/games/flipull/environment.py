@@ -85,6 +85,8 @@ BLOCK_TYPES = ("1", "2", "3", "4")
 #: front of them.
 BLOCK_SYMBOLS = {"1": "●", "2": "▲", "3": "■", "4": "✖"}
 PLAYER = "◀"
+#: The ladder the player climbs beside the board, one rung a row.
+LADDER = "╫"
 
 #: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
@@ -520,13 +522,16 @@ class FlipullState:
 
     def __str__(self):
         """The board in black-and-white text: the walls joined into lines, each block type a
-        shape (`BLOCK_SYMBOLS`), the player outside the right-hand wall on their row with the
-        held block in front of them."""
+        shape (`BLOCK_SYMBOLS`), and a ladder down the outside of the right-hand wall with
+        the player on the rung of their row, the held block in front of them."""
         lines = boxed(["".join(cells) for cells in self.grid], wall=WALL,
                       glyphs=BLOCK_SYMBOLS).split("\n")
-        if self.row is not None and 0 <= self.row < len(lines):
-            lines[self.row] = (lines[self.row].ljust(2 * len(self.grid[self.row]))
-                               + BLOCK_SYMBOLS.get(self.held, self.held) + PLAYER)
+        for row in range(1, len(lines) - 1):
+            width = 2 * len(self.grid[row])
+            if row == self.row:
+                lines[row] = lines[row].ljust(width) + BLOCK_SYMBOLS.get(self.held, self.held) + PLAYER
+            else:
+                lines[row] = lines[row].ljust(width + 1) + LADDER
         return "\n".join(lines)
 
     def __repr__(self):
