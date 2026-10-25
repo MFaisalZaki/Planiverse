@@ -125,12 +125,10 @@ which spends the whole budget on four lockdowns, three of them early.
 
 ![BFWS solving epidemic instance 0](../renders/epidemic.gif)
 
-Each frame is the state's picture, a map of the town. Its homes stand in ten blocks with streets
-between them, and every character is an equal share of the people, in an order fixed for the
-instance so that a character moves on from susceptible to infected to recovered or dead as the weeks
-go by. The streets show the level in force: solid while the town is open, dashed under distancing
-and heavy, a cordon, under lockdown. Beside the town, at the end of its road, is the hospital, a
-building with a cross on its roof and its beds inside, one mark for a bed or for a few of them.
+Each frame is the state's picture. The town is a block of forty characters by ten, each standing for
+an equal share of the people, in an order fixed for the instance so that a character moves on from
+susceptible to infected to recovered or dead as the weeks go by. The
+hospital is a ward of beds against its capacity, one mark for a bed or for a few of them.
 
 | Mark | Meaning |
 |---|---|
@@ -138,11 +136,7 @@ building with a cross on its roof and its beds inside, one mark for a bed or for
 | `●` | people infected now, incubating or infectious |
 | `○` | people recovered |
 | `†` | the dead |
-| `─ │ ┼` | the streets, the town open |
-| `╌ ╎` | the streets under distancing |
-| `━ ┃ ╋` | the streets cordoned, under lockdown |
-| `✚` | the hospital, on its roof |
-| `▪` `▫` | a hospital bed taken, or free |
+| `▪` `▫` | a hospital bed occupied, or empty |
 
 The same plan is also a [sheet](../renders/epidemic.png), every state on one figure, each
 captioned with the action that produced it and the goal marked where the plan ends. Both were

@@ -100,12 +100,9 @@ def test_an_epidemic_state_draws_the_town_and_the_ward(epidemic):
     state, _ = epidemic.reset()
     after = epidemic.__advance__(state, "open")
     inst = epidemic.instance
-    assert_a_picture(epidemic, state, after, ["·", "▫", "✚", "┼"])
-    from planiverse.environments.operational.epidemic.environment import _HOMES
-    assert sum(str(state).count(c) for c in "·●○†") == len(_HOMES), "a mark for every home"
-    locked = epidemic.__advance__(state, "lockdown")
-    assert "╋" in str(locked) and "┼" not in str(locked).split("✚")[0], "a lockdown cordons it"
-    assert "╌" in str(epidemic.__advance__(state, "distancing"))
+    assert_a_picture(epidemic, state, after, ["·", "▫"])
+    town = str(state).splitlines()[0:10]
+    assert all(len(line) == 40 for line in town), "the town is forty characters by ten"
 
 
 # ------------------------------------------------------------------------------- traffic
