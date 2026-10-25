@@ -293,6 +293,7 @@ for arms and `o` for a pivot; the tests compare those.
 |---|---|
 | `◉`, `◎` | the tater with the controls, and any other still on the board |
 | `⚑` | the exit flag |
+| `·` | open floor a tater can move onto |
 | `█` | a block square, run into its neighbour on the right when they are one block |
 | `▒` | a block square settled into a pit |
 | `◌` | an open pit |

@@ -494,7 +494,7 @@ def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart()
                          "#E....#",
                          "#######"))
     drawn = str(state).split("\n")
-    assert drawn[1] == "│ ◉   ███   │"
+    assert drawn[1] == "│ ◉ · ███ · │"
     assert drawn[2] == "│       █   │"
 
 

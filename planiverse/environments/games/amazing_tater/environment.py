@@ -1859,8 +1859,10 @@ def friendly(rows):
 
 
 #: The symbols of a picture: a block square solid, one settled into a pit shaded, an open pit a
-#: dotted ring, the flag, a pivot, and its arms as heavy lines (dashed while over a pit).
+#: dotted ring, the flag, a pivot, and its arms as heavy lines (dashed while over a pit); open
+#: floor is a dot, so the grid the taters move on shows.
 BLOCK_FILL, SETTLED_FILL, PIT_MARK, FLAG, PIVOT_MARK = "█", "▒", "◌", "⚑", "●"
+FLOOR_MARK = "·"
 ARM_MARK = {UP: "┃", DOWN: "┃", LEFT: "━", RIGHT: "━"}
 ARM_OVER_PIT_MARK = {UP: "╏", DOWN: "╏", LEFT: "╍", RIGHT: "╍"}
 #: The tater with the controls, and any other still on the board.
@@ -1882,7 +1884,7 @@ def _closed(rows):
 
 
 def picture(level, state):
-    """A position as a picture: walls joined into lines, floor blank, a block's squares solid
+    """A position as a picture: walls joined into lines, floor as dots, a block's squares solid
     and run together where they belong to one block, a turnstile's arms drawn out from its
     pivot."""
     rows = board(level, state)
@@ -1916,7 +1918,7 @@ def picture(level, state):
                     right = (row, col + 1)
                     joint = SETTLED_FILL if pit and is_pit(level, state, right) else BLOCK_FILL
             else:
-                glyph = PIT_MARK if pit else " "
+                glyph = PIT_MARK if pit else FLOOR_MARK
             lines[row][2 * col] = glyph
             if joint:
                 lines[row][2 * col + 1] = joint
