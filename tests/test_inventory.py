@@ -179,12 +179,13 @@ def test_the_picture_draws_the_chain(inventory):
     state, _ = inventory.reset()
     picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    for name in ("raw", "manufacturer", "distributor", "retailer", "customers", "▶"):
+    for name in ("raw", "manufacturer", "distributor", "retailer", "customers", "▣"):
         assert name in picture
-    assert f"{state.on_hand[0]} on hand" in picture
     child = inventory.__advance__(state, ACTIONS[4])
-    assert str(child) != picture
-    assert f"demand {child.last[0]}" in str(child)
+    assert str(child) != picture and "■▶" in str(child), "the shipments are trucks on the road"
+    demand, sold, lost, _ = child.last
+    queue = str(child).count("♟") + str(child).count("♙")
+    assert queue == -(-demand // 2), "a customer for every two units of demand"
     assert len(str(child).splitlines()) == len(picture.splitlines()), \
         "the geometry is the season's, so a GIF of a trace does not jump"
     assert "chain" not in state.key

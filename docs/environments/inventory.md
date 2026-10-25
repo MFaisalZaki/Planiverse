@@ -153,19 +153,21 @@ sixteen periods, then both low for four) ends at 270.76, which is where the targ
 
 ![BFWS solving inventory instance 0](../renders/inventory.gif)
 
-Each frame is the state's picture, the supply chain as a row of boxes: the raw material supplier,
-the manufacturer, the distributor, the retailer and its customers, with the goods flowing left to
-right. Each stage's box holds its stock on hand, as a number and as a bar against the stage's
-highest order-up-to level. The arrow into a stage carries the shipments in transit to it, one slot a
-period of its lead time, the one due soonest nearest the box. The customers' box is the last
-period's demand, what the retailer sold and what it lost.
+Each frame is the state's picture, the supply chain as a street of warehouses: the raw material, a
+heap, then the manufacturer, the distributor and the retailer, and the retailer's customers, with
+the goods travelling left to right. Each warehouse holds its stock on hand stacked as crates, filled
+against the stage's highest order-up-to level. Each shipment in transit to a stage is a truck on
+the road into it, at its place along the lead time with its load above it, the one due soonest
+nearest the door. At the end the last period's customers queue, those served and those turned away,
+one for every two units of demand.
 
 | Mark | Meaning |
 |---|---|
-| `│29 on hand│` | a stage's stock on hand |
-| `██████░░░░` | the same, against the stage's highest order-up-to level |
-| `15  20   0 ───▶` | the shipments in transit, the last due soonest |
-| `demand`, `sold`, `lost` | the last period's demand at the retailer, its sales and its lost sales |
+| `▲▲▲` | the raw material |
+| `▣`, `·` | a warehouse's crates, filled against its highest order-up-to level |
+| `■▶` with a number | a truck in transit with its load |
+| `♟` | a customer served |
+| `♙` | a customer turned away, a lost sale |
 
 The same plan is also a [sheet](../renders/inventory.png), every state on one figure, each
 captioned with the action that produced it and the goal marked where the plan ends. Both were
@@ -247,7 +249,7 @@ and `spaces.Box`) work.
 ## Rendering
 
 A frame typesets `str(state)`, the chain drawn as above: the stock on hand at each stage, the units
-in transit to each, the last period's demand, sales and lost sales; the bars' scale is the season's,
+in transit to each, the last period's demand, sales and lost sales; the crates' scale is the season's,
 held once per season in a `ChainMap` the states share, outside their identity and literals. Its
 numbers by name are its `readings()`, which the OpenSpiel game's observation is made of, and
 [docs/rendering.md](../rendering.md) covers the other output formats.

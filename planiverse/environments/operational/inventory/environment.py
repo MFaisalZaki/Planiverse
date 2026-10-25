@@ -46,7 +46,7 @@ from collections import namedtuple
 
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
-from planiverse.rendering.text import Canvas, bar
+from planiverse.rendering.text import Canvas
 
 #: The three stages that hold stock, downstream first; the fourth is the raw material supplier.
 STAGES = ("retailer", "distributor", "manufacturer")
@@ -145,8 +145,12 @@ ACTIONS = tuple(InventoryAction(r, u) for r in LEVELS for u in LEVELS)
 #: `STAGES`, its highest order-up-to level. One per season, shared by its states.
 ChainMap = namedtuple("ChainMap", ["scale"])
 
-#: The length of a stage's stock bar, in characters.
-BAR = 10
+#: A picture's warehouse: crates across and stacked high, filled against the stage's highest
+#: order-up-to level; how a crate, an empty space, a truck and a customer served or turned
+#: away are drawn; and how many units a customer stands for.
+CRATES, STACK = 5, 3
+CRATE, SPACE, TRUCK = "▣", "·", "■▶"
+SERVED, TURNED_AWAY, PER_CUSTOMER = "♟", "♙", 2
 
 
 class InventoryState:
@@ -203,43 +207,64 @@ class InventoryState:
                 f"profit={self.profit:.2f}, lost={self.lost})>")
 
     def __str__(self):
-        """The supply chain as a row of boxes.
+        """The supply chain as a street of warehouses.
 
-        Raw material flows from the supplier through the manufacturer and the distributor to
-        the retailer and its customers. Each stage's box holds its stock on hand, as a number
-        and as a bar against its highest order-up-to level; the arrow into it carries the
-        shipments in transit, the one due soonest nearest the box; the last box is this
-        period's demand, what was sold and what was lost.
+        Raw material, a heap, flows from the supplier through the manufacturer and the
+        distributor to the retailer and its customers. Each stage is a warehouse with its
+        stock stacked inside as crates ▣, filled against its highest order-up-to level; each
+        shipment in transit is a truck ■▶ on the road into it, at its place along the lead
+        time with its load above it; and at the end the customers queue, ♟ for each served and
+        ♙ for each turned away, one for every `PER_CUSTOMER` units.
         """
         demand, sold, lost, _ = self.last
         scale = (self.chain.scale if self.chain is not None
                  else (max(self.on_hand) or 1,) * len(STAGES))
-        boxes = [("raw", "supply", "", "")]
-        arrows = []
-        for stage in reversed(range(len(STAGES))):
-            arrows.append(self.pipeline[stage])
-            boxes.append((STAGES[stage], f"{self.on_hand[stage]} on hand",
-                          bar(self.on_hand[stage], scale[stage], BAR), ""))
-        arrows.append(())
-        boxes.append(("customers", f"demand {demand}", f"sold   {sold}", f"lost   {lost}"))
-        widths = [max(len(text) for text in box) + 2 for box in boxes]
-        gaps = [max(4, 4 * len(shipments) + 3) for shipments in arrows]
-        canvas = Canvas(sum(widths) + sum(gaps) + 2, 6)
-        x = 0
-        for number, box in enumerate(boxes):
-            width = widths[number]
-            canvas.rect(x, 0, x + width - 1, 5)
-            for row, text in enumerate(box):
-                canvas.write(x + 1, row + 1, text)
-            if number < len(arrows):
-                start, end = x + width, x + width + gaps[number] - 1
-                canvas.hline(start, end - 1, 3, char="─")
-                canvas.put(end, 3, "▶")
-                slot = start + 1
-                for quantity in reversed(arrows[number]):
-                    canvas.write(slot, 2, f"{quantity:>3}")
-                    slot += 4
-                x = end + 1
+        inside = max(2 * CRATES + 1, max(len(name) for name in STAGES))
+        margin = (inside - (2 * CRATES - 1)) // 2
+        floor = STACK + 3
+        height = floor + 1
+        stages = list(reversed(range(len(STAGES))))
+        roads = [5 * max(1, len(self.pipeline[stage])) + 2 for stage in stages]
+        queue = -(-demand // PER_CUSTOMER) if demand else 0
+        width = 8 + sum(inside + 2 + road for road in roads) + max(10, 2 * queue + 2)
+        canvas = Canvas(width, height)
+        # the raw material, a heap at the start of the street
+        canvas.write(0, floor - 2, " ▲▲▲")
+        canvas.write(0, floor - 1, "▲▲▲▲▲")
+        canvas.write(0, floor, "raw")
+        x = 6
+        for stage, road in zip(stages, roads):
+            # the road in, a truck for each shipment in transit, the soonest nearest the door
+            shipments = self.pipeline[stage]
+            canvas.hline(x, x + road - 1, floor - 1, "─")
+            for slot, quantity in enumerate(reversed(shipments)):
+                if quantity:
+                    at = x + 1 + 5 * slot
+                    canvas.write(at, floor - 1, TRUCK)
+                    canvas.write(at, floor - 2, f"{quantity}")
+            x += road
+            # the warehouse, its roof, its name and its crates
+            right = x + inside + 1
+            canvas.put(x, 1, "╱")
+            canvas.hline(x + 1, right - 1, 0, "─")
+            canvas.put(right, 1, "╲")
+            canvas.vline(x, 2, floor, "│")
+            canvas.vline(right, 2, floor, "│")
+            canvas.hline(x, right, floor, "─")
+            canvas.put(x, floor, "└")
+            canvas.put(right, floor, "┘")
+            canvas.write(x + 1, 1, STAGES[stage][:inside].center(inside))
+            full = int(round(min(1.0, self.on_hand[stage] / (scale[stage] or 1)) * CRATES * STACK))
+            for k in range(CRATES * STACK):
+                row, column = floor - 1 - k // CRATES, x + 1 + margin + 2 * (k % CRATES)
+                canvas.put(column, row, CRATE if k < full else SPACE)
+            x = right + 1
+        # the customers, queued at the retailer's door
+        canvas.hline(x, x + 1, floor - 1, "─")
+        served = -(-sold // PER_CUSTOMER) if sold else 0
+        for k in range(queue):
+            canvas.put(x + 3 + 2 * k, floor - 1, SERVED if k < served else TURNED_AWAY)
+        canvas.write(x + 3, floor, "customers")
         return str(canvas)
 
 
