@@ -484,7 +484,7 @@ def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
     assert len(lines) == len(board(state.level, state))
-    assert "◉" in drawn and "⚑" in drawn and "●" in drawn and "━" in drawn
+    assert "◉" in drawn and "⚑" in drawn and any(mark in drawn for mark in "╀╁╂╃╄╅╆╇╈╉╊╋┽┾┿") and "━" in drawn
 
 
 def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart():

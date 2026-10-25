@@ -297,7 +297,7 @@ for arms and `o` for a pivot; the tests compare those.
 | `█` | a block square, run into its neighbour on the right when they are one block |
 | `▒` | a block square settled into a pit |
 | `◌` | an open pit |
-| `●` | a turnstile pivot |
+| `╆`, `╃`, … | a turnstile pivot: a cross, heavy toward its arms so they join it |
 | `┃`, `━` | a turnstile arm, drawn out from its pivot; `╏`, `╍` while it hangs over a pit |
 
 See [docs/rendering.md](../rendering.md) for the other output formats.

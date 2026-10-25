@@ -1859,9 +1859,17 @@ def friendly(rows):
 
 
 #: The symbols of a picture: a block square solid, one settled into a pit shaded, an open pit a
-#: dotted ring, the flag, a pivot, and its arms as heavy lines (dashed while over a pit); open
+#: dotted ring, the flag, and a turnstile's arms as heavy lines (dashed while over a pit); open
 #: floor is a dot, so the grid the taters move on shows.
-BLOCK_FILL, SETTLED_FILL, PIT_MARK, FLAG, PIVOT_MARK = "█", "▒", "◌", "⚑", "●"
+BLOCK_FILL, SETTLED_FILL, PIT_MARK, FLAG = "█", "▒", "◌", "⚑"
+#: A pivot is a cross, heavy toward each of its arms so the arms join it and light the other
+#: ways so it still reads as the pivot, keyed by which of (up, right, down, left) are arms.
+PIVOT_MARK = {
+    (0, 0, 0, 0): "┼", (0, 0, 0, 1): "┽", (0, 1, 0, 0): "┾", (0, 1, 0, 1): "┿",
+    (1, 0, 0, 0): "╀", (0, 0, 1, 0): "╁", (1, 0, 1, 0): "╂", (1, 0, 0, 1): "╃",
+    (1, 1, 0, 0): "╄", (0, 0, 1, 1): "╅", (0, 1, 1, 0): "╆", (1, 1, 0, 1): "╇",
+    (0, 1, 1, 1): "╈", (1, 0, 1, 1): "╉", (1, 1, 1, 0): "╊", (1, 1, 1, 1): "╋",
+}
 FLOOR_MARK = "·"
 ARM_MARK = {UP: "┃", DOWN: "┃", LEFT: "━", RIGHT: "━"}
 ARM_OVER_PIT_MARK = {UP: "╏", DOWN: "╏", LEFT: "╍", RIGHT: "╍"}
@@ -1886,11 +1894,14 @@ def _closed(rows):
 def picture(level, state):
     """A position as a picture: walls joined into lines, floor as dots, a block's squares solid
     and run together where they belong to one block, a turnstile's arms drawn out from its
-    pivot."""
+    pivot, a cross that joins them."""
     rows = board(level, state)
     width = max(len(row) for row in rows)
     rows = [row.ljust(width) for row in rows]
     lines = [list(line.ljust(2 * width)) for line in boxed(_closed(rows), wall=WALL).split("\n")]
+    arms_of = {}
+    for pivot, offset in state.arms.values():
+        arms_of.setdefault(pivot, set()).add(offset)
     for row in range(len(rows)):
         for col in range(width):
             cell = (row, col)
@@ -1904,7 +1915,8 @@ def picture(level, state):
             elif cell == level.exit:
                 glyph = FLAG
             elif cell in state.pivots:
-                glyph = PIVOT_MARK
+                glyph = PIVOT_MARK[tuple(int(offset in arms_of.get(cell, ()))
+                                         for offset in (UP, RIGHT, DOWN, LEFT))]
             elif cell in state.arms:
                 offset = state.arms[cell][1]
                 glyph = (ARM_OVER_PIT_MARK if pit else ARM_MARK)[offset]
