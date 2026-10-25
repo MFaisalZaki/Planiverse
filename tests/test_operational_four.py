@@ -101,7 +101,8 @@ def test_an_epidemic_state_draws_the_town_and_the_ward(epidemic):
     after = epidemic.__advance__(state, "open")
     inst = epidemic.instance
     assert_a_picture(epidemic, state, after, ["·", "▫"])
-    town = str(state).splitlines()[0:10]
+    assert str(state).splitlines()[0].startswith("town of ") and "✚ hospital" in str(state)
+    town = str(state).splitlines()[1:11]
     assert all(len(line) == 40 for line in town), "the town is forty characters by ten"
 
 

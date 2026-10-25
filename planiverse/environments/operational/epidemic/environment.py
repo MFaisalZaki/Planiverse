@@ -140,8 +140,9 @@ class EpidemicState:
 
     def __str__(self):
         """The town as a block of characters, each an equal share of the people (· still
-        susceptible, ● infected, ○ recovered, † dead), the hospital as a ward of beds (▪
-        occupied, ▫ empty)."""
+        susceptible, ● infected, ○ recovered, † dead), labelled with its people and the level
+        in force; and the hospital as a ward of beds (▪ occupied, ▫ empty), labelled ✚ with
+        the beds taken."""
         width, height = TOWN
         cells = width * height
         people = self.population or cells
@@ -155,7 +156,8 @@ class EpidemicState:
         for k, cell in enumerate(_ORDER):
             char = "†" if k < dead else "○" if k < recovered_to else "●" if k < affected else "·"
             town.put(cell % width, cell // width, char)
-        lines = [str(town), ""]
+        level = self.schedule[-1] if self.schedule else "open"
+        lines = [f"town of {people:,} · {level}", str(town), ""]
         beds = max(self.capacity, 1)
         each = max(1, math.ceil(beds / (2 * WARD)))
         marks = math.ceil(beds / each)
@@ -163,6 +165,7 @@ class EpidemicState:
         rows = math.ceil(marks / WARD)
         ward = Canvas(WARD + 2, rows + 2)
         ward.rect(0, 0, WARD + 1, rows + 1)
+        ward.write(2, 0, f" ✚ hospital · {self.load} of {self.capacity} beds ")
         for k in range(marks):
             ward.put(1 + k % WARD, 1 + k // WARD, "▪" if k < full else "▫")
         lines.append(str(ward))

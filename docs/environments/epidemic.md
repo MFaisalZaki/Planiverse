@@ -127,8 +127,9 @@ which spends the whole budget on four lockdowns, three of them early.
 
 Each frame is the state's picture. The town is a block of forty characters by ten, each standing for
 an equal share of the people, in an order fixed for the instance so that a character moves on from
-susceptible to infected to recovered or dead as the weeks go by. The
-hospital is a ward of beds against its capacity, one mark for a bed or for a few of them.
+susceptible to infected to recovered or dead as the weeks go by; above it is the town's size and
+the level in force. The hospital is a ward of beds against its capacity, one mark for a bed or for
+a few of them, labelled `✚ hospital` with the beds taken.
 
 | Mark | Meaning |
 |---|---|
