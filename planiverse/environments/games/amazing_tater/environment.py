@@ -97,6 +97,7 @@ handed out, so a generated room always has a plan within the stated budget; see
 `generate_room` and `planiverse.environments.generation`.
 """
 from planiverse.environments.base import Environment
+from planiverse.rendering.text import boxed
 from planiverse.environments.generation import (
     bounded_search, from_profile, interior, place, rng, scatter, solvable_draw, walled_grid,
 )
@@ -1753,6 +1754,10 @@ class AmazingTaterState:
     def __str__(self):
         return "\n".join(friendly(board(self.level, self)))
 
+    def picture(self):
+        """The room in black-and-white text; see `picture`."""
+        return picture(self.level, self)
+
     def __repr__(self):
         return (f"<AmazingTaterState(home={len(self.home)}/"
                 f"{len(self.home) + len(self.taters)}, depth={self.depth})>")
@@ -1858,6 +1863,75 @@ def friendly(rows):
 
 def render(level, state):
     return "\n".join(friendly(board(level, state)))
+
+
+#: The symbols of a picture: a block square solid, one settled into a pit shaded, an open pit a
+#: dotted ring, the flag, a pivot, and its arms as heavy lines (dashed while over a pit).
+BLOCK_FILL, SETTLED_FILL, PIT_MARK, FLAG, PIVOT_MARK = "█", "▒", "◌", "⚑", "●"
+ARM_MARK = {UP: "┃", DOWN: "┃", LEFT: "━", RIGHT: "━"}
+ARM_OVER_PIT_MARK = {UP: "╏", DOWN: "╏", LEFT: "╍", RIGHT: "╍"}
+#: The tater with the controls, and any other still on the board.
+ACTIVE_TATER, WAITING_TATER = "☻", "☺"
+
+
+def _closed(rows):
+    """The rows with each outside cell that two walls meet at turned to wall, once over, so
+    that a room's outline, which steps diagonally on the cartridge, joins up as one line."""
+    def wall(r, c):
+        return 0 <= r < len(rows) and 0 <= c < len(rows[r]) and rows[r][c] == WALL
+    closed = [list(row) for row in rows]
+    for r, row in enumerate(rows):
+        for c, glyph in enumerate(row):
+            if glyph == OUTSIDE and sum((wall(r - 1, c), wall(r + 1, c), wall(r, c - 1),
+                                         wall(r, c + 1))) >= 2:
+                closed[r][c] = WALL
+    return ["".join(row) for row in closed]
+
+
+def picture(level, state):
+    """A position as a picture: walls joined into lines, floor blank, a block's squares solid
+    and run together where they belong to one block, a turnstile's arms drawn out from its
+    pivot, and a status line with the tater that has the controls and how many are home."""
+    rows = board(level, state)
+    width = max(len(row) for row in rows)
+    rows = [row.ljust(width) for row in rows]
+    lines = [list(line.ljust(2 * width)) for line in boxed(_closed(rows), wall=WALL).split("\n")]
+    for row in range(len(rows)):
+        for col in range(width):
+            cell = (row, col)
+            pit = is_pit(level, state, cell)
+            glyph, joint = None, None
+            if rows[row][col] in (WALL, OUTSIDE):
+                continue
+            if cell in state.taters_by_cell:
+                who = state.taters_by_cell[cell]
+                glyph = ACTIVE_TATER if who == state.active else WAITING_TATER
+            elif cell == level.exit:
+                glyph = FLAG
+            elif cell in state.pivots:
+                glyph = PIVOT_MARK
+            elif cell in state.arms:
+                offset = state.arms[cell][1]
+                glyph = (ARM_OVER_PIT_MARK if pit else ARM_MARK)[offset]
+                if offset == RIGHT:                    # the line runs on from the pivot
+                    lines[row][2 * col - 1] = glyph
+                elif offset == LEFT:
+                    joint = glyph
+            elif cell in state.block_of:
+                glyph = SETTLED_FILL if pit else BLOCK_FILL
+                if block_mask(state.block_of[cell], cell) & BLOCK_BIT[RIGHT]:
+                    right = (row, col + 1)
+                    joint = SETTLED_FILL if pit and is_pit(level, state, right) else BLOCK_FILL
+            else:
+                glyph = PIT_MARK if pit else " "
+            lines[row][2 * col] = glyph
+            if joint:
+                lines[row][2 * col + 1] = joint
+    on_board = len(state.taters)
+    total = on_board + len(state.home)
+    status = (f"tater {state.active + 1} to move · " if state.active is not None else "") \
+        + f"{len(state.home)} of {total} home"
+    return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
 
 
 # --------------------------------------------------------------------------- environment

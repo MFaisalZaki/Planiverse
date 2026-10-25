@@ -72,12 +72,18 @@ it can be reduced to becomes the target, so a generated stage is always clearabl
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, from_profile, rng, solvable_draw
+from planiverse.rendering.text import boxed
 
 #: `1`-`4` are block types, `#` is wall, and a space is empty. A wall inside the board turns
 #: a thrown block downward as the back wall does, which is what the cartridge's staircase of
 #: fixed bricks does; the bundled stages carry none.
 WALL, EMPTY = "#", " "
 BLOCK_TYPES = ("1", "2", "3", "4")
+
+#: The symbol each block type is drawn as in a picture, the cartridge's four shapes; the player
+#: stands outside the right-hand wall, holding the block in front of them.
+BLOCK_SYMBOLS = {"1": "●", "2": "▲", "3": "■", "4": "✖"}
+PLAYER = "☻"
 
 #: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage
@@ -518,6 +524,18 @@ class FlipullState:
             lines.append("".join(cells) + marker)
         lines.append(f"held: {self.held}   blocks: {self.blocks_remaining}"
                      f"/{self.clear_target}")
+        return "\n".join(lines)
+
+    def picture(self):
+        """The board in black-and-white text: the walls joined into lines, each block type a
+        shape (`BLOCK_SYMBOLS`), the player outside the right-hand wall on their row with the
+        held block in front of them, and a status line with the blocks left and the target."""
+        lines = boxed(["".join(cells) for cells in self.grid], wall=WALL,
+                      glyphs=BLOCK_SYMBOLS).split("\n")
+        if self.row is not None and 0 <= self.row < len(lines):
+            lines[self.row] = (lines[self.row].ljust(2 * len(self.grid[self.row]))
+                               + BLOCK_SYMBOLS.get(self.held, self.held) + PLAYER)
+        lines.append(f"blocks {self.blocks_remaining} left · clear at {self.clear_target}")
         return "\n".join(lines)
 
     def __repr__(self):

@@ -374,3 +374,27 @@ def test_states_hash_by_position_not_by_depth(env):
     twin = FlipullState([list(r) for r in state.grid], state.row, state.held,
                         state.clear_target, depth=99)
     assert twin == state and hash(twin) == hash(state)
+
+
+# ------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == len(state.grid) + 1
+    assert lines[state.row].endswith("│ ✖☻")      # the player, holding a 4, on the bottom row
+    assert lines[-1] == "blocks 25 left · clear at 9"
+    assert str(state).split("\n")[-1] == "held: 4   blocks: 25/9"
+
+
+def test_the_picture_follows_the_player_and_the_throws(env):
+    trace = env.simulate(["throw", "up"])
+    assert trace[0].picture() != trace[1].picture() != trace[2].picture()
+    assert trace[1].picture().split("\n")[-1] == "blocks 24 left · clear at 9"
+    assert trace[2].picture().split("\n")[trace[2].row].endswith("☻")

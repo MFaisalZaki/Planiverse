@@ -42,6 +42,7 @@ from collections import Counter, defaultdict
 from typing import Tuple, List
 
 from planiverse.environments.base import Environment
+from planiverse.rendering.text import boxed
 from planiverse.environments.generation import (
     from_profile, interior, rng, scatter, solvable_draw, walled_grid,
 )
@@ -89,6 +90,11 @@ def generate_level(random_, width=5, height=6, colours=3, walls=0.15, blocks_per
     r, c = random_.choice(empty)
     grid[r][c] = "c"
     return "\n".join("".join(row) for row in grid)
+
+
+#: The symbol a block of each colour is drawn as in a picture, so a match reads without colour.
+BLOCK_SYMBOLS = {"1": "●", "2": "▲", "3": "■", "4": "◆", "5": "★", "6": "♠", "7": "♣",
+                 "8": "♥", "9": "♦"}
 
 
 class Element:
@@ -164,6 +170,22 @@ class PuzznicState:
         _map = [[str(cell) for cell in row] for row in self.grid]
         _map[self.cursor.pos[0]][self.cursor.pos[1]] = 'c' if _map[self.cursor.pos[0]][self.cursor.pos[1]] == ' ' else '¢'
         return '\n'.join([''.join(row) for row in _map])
+
+    def picture(self):
+        """The grid in black-and-white text: walls joined into lines, each colour of block a
+        symbol of its own (`BLOCK_SYMBOLS`), the cursor's cell bracketed `[ ]`, and a status
+        line under it with the blocks left and the score."""
+        rows = ["".join(str(cell) for cell in row) for row in self.grid]
+        lines = boxed(rows, wall="#", glyphs=BLOCK_SYMBOLS).split("\n")
+        width = 2 * self.shape[1]
+        lines = [list(line.ljust(width)) for line in lines]
+        row, col = self.cursor.pos
+        lines[row][2 * col - 1] = "["
+        lines[row][2 * col + 1] = "]"
+        blocks = sum(isinstance(cell, Box) for cell in chain.from_iterable(self.grid))
+        score = sum(self.score)
+        status = f"blocks {blocks} left · score {score:g}"
+        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
 
     def __eq__(self, value):
         return self.grid == value.grid and self.cursor == value.cursor

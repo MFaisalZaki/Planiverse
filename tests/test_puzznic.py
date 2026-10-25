@@ -308,3 +308,30 @@ def test_state_equality_ignores_score_and_history():
     grid = Level("#####\n#1 c#\n#####\n#####\n#####").grid
     cursor = Cursor((1, 3))
     assert PuzznicState(grid, cursor, [10]) == PuzznicState(grid, cursor, [999])
+
+
+# --------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_grid_in_symbols_the_renderer_has():
+    from planiverse.rendering.text import missing_glyphs
+
+    game = build(LEVEL_0)
+    state = game.state
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == 8                      # seven rows and the status line
+    assert lines[1] == "│ ● ▲[ ]  │"           # the cursor's cell, bracketed
+    assert lines[-1] == "blocks 6 left · score 0"
+    assert str(state) == LEVEL_0
+
+
+def test_the_picture_follows_the_cursor_and_the_clears():
+    game = build(LEVEL_0)
+    plan = ["left", "right-hold", "down", "down", "down", "left-hold"]
+    trace = game.simulate(plan)
+    assert trace[0].picture() != trace[1].picture()
+    assert "[▲]" in trace[1].picture()
+    assert trace[-1].picture().split("\n")[-1] == "blocks 3 left · score 80"

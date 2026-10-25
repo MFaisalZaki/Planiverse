@@ -469,3 +469,42 @@ def test_simulate_returns_one_state_more_than_the_plan():
     trace = game.simulate(plan)
     assert len(trace) == len(plan) + 1
     assert game.is_goal(trace[-1])
+
+
+# ------------------------------------------------------------------------------ the picture
+
+def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
+    from planiverse.rendering.text import missing_glyphs
+
+    game = AmazingTaterGame()
+    game.set_index(0)
+    state, _ = game.reset()
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == len(board(state.level, state)) + 1
+    assert "☻" in drawn and "⚑" in drawn and "●" in drawn and "━" in drawn
+    assert lines[-1] == "tater 1 to move · 0 of 1 home"
+    assert str(state) == "\n".join(friendly(board(state.level, state)))
+
+
+def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart():
+    level, state = play(("#######",
+                         "#1.be.#",
+                         "#...a.#",
+                         "#E....#",
+                         "#######"))
+    drawn = state.picture().split("\n")
+    assert drawn[1] == "│ ☻   ███   │"
+    assert drawn[2] == "│       █   │"
+
+
+def test_the_picture_follows_the_tater_and_the_turnstiles():
+    game = AmazingTaterGame()
+    game.set_index(0)
+    trace = game.simulate(["left"] * 4 + ["up"])
+    assert trace[0].picture() != trace[1].picture()
+    assert trace[4].picture() != trace[5].picture()
+

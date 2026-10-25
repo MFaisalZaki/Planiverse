@@ -264,3 +264,35 @@ def test_a_generated_level_reproduces_from_its_seed():
     assert instance == LEVELS[0], "level 0 is seed 11000"
     assert game.validate(game.witness) and len(game.witness) >= 6
     assert PipeDreamEnv().generate_instance(seed=11000) == instance
+
+
+# ------------------------------------------------------------------------------ the picture
+
+def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == len(state.rows) + 3      # the frame round the board, and the status
+    assert lines[5] == "│ · · ■ · · · ▲ │"       # the start, facing north, and a wall
+    assert lines[-1] == "carried 0 of 11 · flow in 6 · next ┼ ─ ┼ ┌ └"
+    assert str(state).split("\n")[-1] == \
+        "carried 0 of 11; next ┼ ─ ┼ ┌ └; 6 ticks before the flow moves"
+
+
+def test_the_picture_joins_pipe_and_doubles_what_the_flow_has_run(tiny):
+    trace = tiny.simulate([PipeAction(1, 0), PipeAction(2, 0), PipeAction(2, 1), FLUSH])
+    assert trace[0].picture() != trace[1].picture()
+    assert trace[2].picture().split("\n")[1] == "│ ▶───┐ · │"
+    assert trace[-1].picture().split("\n")[1:3] == ["│ ▶═══╗ · │", "│ · · ╝ · │"]
+
+
+def test_the_picture_tells_a_cross_run_one_way_from_one_run_both():
+    game = PipeDreamEnv()
+    game.set_instance(level([">..", "..."], ["x"], 1, countdown=1, pace=1))
+    trace = game.simulate([PipeAction(1, 0)])
+    assert "╪" in trace[-1].picture() and "╬" in str(trace[-1])

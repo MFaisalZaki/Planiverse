@@ -184,3 +184,32 @@ def test_a_generated_level_reproduces_from_its_seed():
     assert instance["rows"] == LEVELS[0]["rows"], "level 0 is seed 6000"
     assert game.validate(game.witness)
     assert LemmingsEnv().generate_instance(seed=6000) == instance
+
+
+# ------------------------------------------------------------------------------ the picture
+
+def test_the_picture_draws_the_cave_in_symbols_the_renderer_has(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == len(state.rows) + 1
+    assert lines[1] == "    ▽"                    # the entrance at (2, 1)
+    assert lines[9].endswith("⌂")                  # the exit at (28, 9)
+    assert lines[-1] == ("tick 0 · 0 out · 0 saved of 5 · 0 lost · "
+                         "skills: basher 2, builder 1, digger 2")
+    assert str(state).split("\n")[-1] == \
+        "tick 0: 0 out, 0 saved, 0 lost; 2 basher, 0 blocker, 1 builder, 2 digger"
+
+
+def test_the_picture_shows_each_lemming_by_what_it_is_doing(env):
+    trace = env.simulate(["wait", "wait", "wait"])
+    assert trace[0].picture() != trace[1].picture()
+    drawn = trace[-1].picture().split("\n")
+    for x, y, direction, state, _ in trace[-1].lemmings:
+        assert drawn[y][2 * x] == {"walker": "◀▶", "faller": "↓↓"}[state][direction > 0]
+    assert drawn[-1].startswith("tick 24 · 4 out")

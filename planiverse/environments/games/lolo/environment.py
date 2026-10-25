@@ -95,6 +95,7 @@ has a plan within the stated budget; see `generate_room` and
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import from_profile, place, rng, scatter, solvable_draw
+from planiverse.rendering.text import boxed
 
 # ------------------------------------------------------------------------- the alphabet
 # The names are the cartridge's own: the object list at `$2CA9` is plain ASCII and reads
@@ -654,6 +655,10 @@ class LoloState:
     def __str__(self):
         return render(self)
 
+    def picture(self):
+        """The board in black-and-white text, its rocks joined into walls; see `PICTURE`."""
+        return picture(self)
+
     def __repr__(self):
         return (f"<LoloState(depth={self.depth}, hearts_left={self.hearts_left}, "
                 f"shots={self.shots}, lolo={self.lolo}, dead={self.dead})>")
@@ -672,6 +677,38 @@ def render(state):
         rows[row][col] = MAGIC_HEART if magic else HEART
     rows[state.lolo[0]][state.lolo[1]] = LOLO
     return "\n".join("".join(row) for row in rows)
+
+
+#: The symbol each glyph of `render` is drawn as in a picture; rocks become joined walls.
+PICTURE = {
+    FLOOR: " ", TREE: "♣", RIVER: "≈", BRIDGE: "═", FRAMER: "◆", HEART: "♥", MAGIC_HEART: "♡",
+    DESERT: "∴", BREAK_TILE: "×", FLOWER_BED: "✿", MARKER: "·", EGG: "○", LOLO: "☻",
+    "v": "▾", "<": "◂", "^": "▴", ">": "▸",
+    SNAKEY: "§", LEEPER: "∞", GOL: "Ω", ROCKY: "Я", ALMA: "◐", SKULL: "☠", MEDUSA: "Ψ",
+    DON_MEDUSA: "Ж",
+}
+#: A raft (an egg sunk into a river), the door shut and open, and Lolo once a Medusa has him.
+RAFT, DOOR_SHUT, DOOR_OPEN, LOLO_DEAD = "◍", "▮", "▯", "✝"
+
+
+def picture(state):
+    """A position as a picture: the rocks joined into walls, every piece a symbol, and a status
+    line under the board with the hearts still to collect, the shots and the facing."""
+    rows = render(state).split("\n")
+    rows = [list(row) for row in rows]
+    for row, col in state.sunk:
+        rows[row][col] = RAFT
+    door_row, door_col = state.room.door
+    if rows[door_row][door_col] == DOOR:
+        rows[door_row][door_col] = DOOR_OPEN if state.door_open else DOOR_SHUT
+    if state.dead:
+        rows[state.lolo[0]][state.lolo[1]] = LOLO_DEAD
+    board = boxed(["".join(row) for row in rows], wall=ROCK, glyphs=PICTURE)
+    status = (f"hearts {state.hearts_left} left · shots {state.shots} · "
+              f"facing {state.facing or 'none'}")
+    if state.dead:
+        status += " · caught"
+    return board + "\n" + status
 
 
 def move(state, direction):

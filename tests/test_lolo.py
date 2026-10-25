@@ -487,3 +487,30 @@ def test_render_draws_lolo_the_objects_and_the_enemies():
     instance = game(0)
     drawn = render(instance.state)
     assert drawn.split("\n") == list(ROOMS[0].split("|"))
+
+
+# ------------------------------------------------------------------------------ the picture
+
+def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
+    from planiverse.rendering.text import missing_glyphs
+
+    instance = game(0)
+    state = instance.state
+    drawn = state.picture()
+    assert isinstance(drawn, str) and drawn
+    assert not missing_glyphs(drawn)
+    assert drawn == state.picture()
+    lines = drawn.split("\n")
+    assert len(lines) == 9                      # eight rows and the status line
+    assert "☻" in drawn and "♥" in drawn and "♡" in drawn and "§" in drawn and "▮" in drawn
+    assert lines[-1] == "hearts 2 left · shots 0 · facing none"
+    assert str(state) == ROOMS[0].replace("|", "\n")
+
+
+def test_the_picture_follows_lolo_and_opens_the_door():
+    instance = game(0)
+    trace = instance.simulate([LoloAction(name) for name in (
+        "left left left up up up right right shoot shoot right right".split())])
+    assert trace[0].picture() != trace[1].picture()
+    assert "▮" in trace[0].picture() and "▯" in trace[-1].picture()
+    assert trace[-1].picture().split("\n")[-1] == "hearts 0 left · shots 0 · facing right"

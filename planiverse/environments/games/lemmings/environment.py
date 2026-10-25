@@ -27,6 +27,7 @@ Togelius et al. 2011, https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
+from planiverse.rendering.text import boxed
 
 WIDTH, HEIGHT = 32, 16
 ROCK, EARTH, AIR, ENTRANCE, EXIT = "#", ".", " ", "E", "X"
@@ -34,6 +35,11 @@ SKILLS = ("blocker", "digger", "basher", "builder")
 #: Ticks between two lemmings entering, ticks between two decisions, the most ticks a level
 #: may take, the fall that kills, and how many bricks a builder lays.
 RELEASE, DECISION, MAX_TICKS, FATAL_FALL, BRICKS = 6, 8, 320, 6, 8
+#: How a picture draws the terrain (rock becomes joined lines, and earth runs on into earth)
+#: and the lemmings, by what each is doing and, where it matters, the way it faces.
+PICTURE = {EARTH: "▒", AIR: " ", ENTRANCE: "▽", EXIT: "⌂"}
+LEMMING_PICTURE = {"walker": ("◀", "▶"), "faller": ("↓", "↓"), "blocker": ("Ж", "Ж"),
+                   "digger": ("⇓", "⇓"), "basher": ("⇐", "⇒"), "builder": ("↖", "↗")}
 
 
 class LemmingsAction:
@@ -117,6 +123,25 @@ class LemmingsState:
         skills = ", ".join(f"{count} {skill}" for skill, count in self.skills)
         return "\n".join("".join(row) for row in grid) + (
             f"\ntick {self.tick}: {self.released} out, {self.saved} saved, {self.lost} lost; {skills}")
+
+    def picture(self):
+        """The cave in black-and-white text, two columns a cell: rock as joined lines, earth
+        shaded, the entrance and the exit as symbols, every lemming as what it is doing and the
+        way it faces, and a status line with the tick, the tally and the skills left."""
+        lines = [list(line.ljust(2 * len(row)))
+                 for line, row in zip(boxed(self.rows, wall=ROCK, glyphs=PICTURE).split("\n"),
+                                      self.rows)]
+        for y, row in enumerate(self.rows):
+            for x in range(len(row) - 1):
+                if row[x] == EARTH and row[x + 1] == EARTH:
+                    lines[y][2 * x + 1] = PICTURE[EARTH]
+        for x, y, direction, state, _ in self.lemmings:
+            lines[y][2 * x] = LEMMING_PICTURE.get(state, LEMMING_PICTURE["walker"])[direction > 0]
+        skills = ", ".join(f"{skill} {count}" for skill, count in self.skills if count) or "none"
+        status = (f"tick {self.tick} · {self.released} out · {self.saved} saved"
+                  + (f" of {self.quota}" if self.quota else "")
+                  + f" · {self.lost} lost · skills: {skills}")
+        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
 
     def __repr__(self):
         return f"<LemmingsState(tick={self.tick}, out={len(self.lemmings)}, saved={self.saved}, lost={self.lost})>"

@@ -24,11 +24,15 @@ method is generate-and-test (search-based procedural content generation: Togeliu
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
+from planiverse.rendering.text import boxed
 
 WIDTH, HEIGHT = 16, 10
 ROCK, EARTH, AIR, WATER, SPRING, BASIN, DRAIN = "#", ".", " ", "~", "S", "T", "X"
 #: Ticks the water runs after each action, and the most ticks a game may take.
 PERIOD, MAX_TICKS = 12, 240
+#: The symbol each cell is drawn as in a picture; rock becomes joined walls, and earth and
+#: water run on through the spacing column into a neighbour of their own kind.
+PICTURE = {EARTH: "▒", AIR: " ", WATER: "≈", SPRING: "▼", BASIN: "⊔", DRAIN: "⊗"}
 
 
 class FluidAction:
@@ -101,6 +105,22 @@ class FluidState:
     def __str__(self):
         return "\n".join(self.rows) + (f"\nfilled {self.filled}, spring {self.supply} left, "
                                        f"{self.digs_left} digs left, tick {self.tick}")
+
+    def picture(self):
+        """The cave in black-and-white text: rock as joined walls, earth shaded, water as
+        waves, the spring, the basin and the drain as symbols, and a status line with the
+        tick, the basin against its need, the spring and the digs left."""
+        lines = [list(line.ljust(2 * len(row)))
+                 for line, row in zip(boxed(self.rows, wall=ROCK, glyphs=PICTURE).split("\n"),
+                                      self.rows)]
+        for y, row in enumerate(self.rows):
+            for x in range(len(row) - 1):
+                if row[x] == row[x + 1] and row[x] in (EARTH, WATER):
+                    lines[y][2 * x + 1] = PICTURE[row[x]]
+        status = (f"tick {self.tick} · basin {self.filled}"
+                  + (f" of {self.need}" if self.need else "")
+                  + f" · spring {self.supply} left · {self.digs_left} digs left")
+        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
 
     def __repr__(self):
         return f"<FluidState(filled={self.filled}, supply={self.supply}, digs={self.digs_left}, tick={self.tick})>"

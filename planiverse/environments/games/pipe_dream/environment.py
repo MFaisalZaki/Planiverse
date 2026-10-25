@@ -28,6 +28,7 @@ https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
+from planiverse.rendering.text import Canvas
 
 WIDTH, HEIGHT = 7, 7
 EMPTY, WALL = ".", "#"
@@ -52,6 +53,12 @@ PLACE_TICKS, REPLACE_TICKS = 1, 2
 #: How the board is drawn: single lines for pipe laid, double lines for pipe the flow has run.
 DRAW = {"ns": "│", "ew": "─", "ne": "└", "nw": "┘", "se": "┌", "sw": "┐", "x": "┼"}
 DRAW_FLOODED = {"ns": "║", "ew": "═", "ne": "╚", "nw": "╝", "se": "╔", "sw": "╗", "x": "╬"}
+#: A cross the flow has run through along one axis only: double along it, single across.
+DRAW_CROSS_HALF = {"ns": "╫", "ew": "╪"}
+#: How a picture draws the rest: the start piece as the way the flow leaves it, a wall, and
+#: an empty cell.
+DRAW_START = {E: "▶", W: "◀", N: "▲", S: "▼"}
+DRAW_WALL, DRAW_EMPTY = "■", "·"
 
 
 class PipeAction:
@@ -167,6 +174,58 @@ class PipeState:
                   f"{self.due} tick{'s' if self.due != 1 else ''} before the flow moves")
         lines.append(f"carried {self.carried} of {self.distance}; next {coming}; {status}")
         return "\n".join(lines)
+
+    def picture(self):
+        """The board in black-and-white text, framed, two columns a cell: pipe laid in single
+        lines and pipe the flow has run through in double ones, joined across to the next cell
+        where they meet, the start as the arrow the flow leaves by, walls as blocks, and a
+        status line with the distance carried, the ticks before the flow moves and the next
+        pieces of the queue."""
+        height, width = len(self.rows), len(self.rows[0])
+        axes = {}
+        for x, y, axis in self.flooded:
+            axes.setdefault((x, y), set()).add(axis)
+
+        def opens(x, y, side):
+            if not (0 <= y < height and 0 <= x < width):
+                return False
+            cell = self.rows[y][x]
+            return (cell in KIND and side in KINDS[KIND[cell]]) or START.get(cell) == side
+
+        def wet(x, y, side):
+            cell = self.rows[y][x] if 0 <= y < height and 0 <= x < width else None
+            if cell in START:
+                return True
+            if (x, y) not in axes:
+                return False
+            return KIND.get(cell) != CROSS or AXIS[side] in axes[(x, y)]
+
+        canvas = Canvas(2 * width + 3, height + 2)
+        canvas.rect(0, 0, 2 * width + 2, height + 1)
+        for y, row in enumerate(self.rows):
+            for x, cell in enumerate(row):
+                if cell in KIND:
+                    kind = KIND[cell]
+                    flooded = axes.get((x, y), set())
+                    if kind == CROSS and len(flooded) == 1:
+                        glyph = DRAW_CROSS_HALF[next(iter(flooded))]
+                    else:
+                        glyph = (DRAW_FLOODED if flooded else DRAW)[kind]
+                elif cell in START:
+                    glyph = DRAW_START[START[cell]]
+                elif cell == WALL:
+                    glyph = DRAW_WALL
+                else:
+                    glyph = DRAW_EMPTY
+                canvas.put(2 + 2 * x, 1 + y, glyph)
+                if x + 1 < width and opens(x, y, E) and opens(x + 1, y, W):
+                    joint = "═" if wet(x, y, E) and wet(x + 1, y, W) and (
+                        (x, y) in axes or (x + 1, y) in axes) else "─"
+                    canvas.put(3 + 2 * x, 1 + y, joint)
+        coming = " ".join(DRAW[kind] for kind in self.queue[self.placed:self.placed + 5]) or "none"
+        flow = "spilled" if self.spilled else f"flow in {self.due}"
+        return (str(canvas) + f"\ncarried {self.carried} of {self.distance} · {flow} · "
+                f"next {coming}")
 
     def __repr__(self):
         return (f"<PipeState(carried={self.carried}/{self.distance}, tick={self.tick}, "
