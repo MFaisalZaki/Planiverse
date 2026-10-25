@@ -149,21 +149,26 @@ thing, and where solar meets the load `store` and `cover` do too.
 
 ![BFWS solving microgrid instance 0](../renders/microgrid.gif)
 
-Each frame is the state's picture, a one-line diagram of the microgrid. Solar, the genset and the
-grid, those of them the microgrid has, feed the load bus from above, with the genset's switch and
-the grid's direction beside them; the battery and the load hang below it. Each link carries the last
-period's energy in kWh with an arrow for its direction, and is dashed when nothing flowed. The
-battery is a gauge filled to its state of charge, with the reserve it must end at or above marked
-beside it.
+Each frame is the state's picture, the microgrid as a site through the day. The sky keeps the
+clock: the sun crosses it by day and the moon and stars are out at night. Under it stand the
+sources the microgrid has, the solar panels, the genset's hut, smoking while it runs, and the
+grid's pylon, each linked down to the load bus with the last period's energy in kWh and an arrow for
+its direction, dashed when nothing flowed. Below the bus hang the battery, its cell filled to its
+state of charge with the reserve it must end at or above marked under it, and the load, a row of
+houses with their windows lit for the share of the load served and dark for any left unmet.
 
 | Mark | Meaning |
 |---|---|
+| `☼`, `☾` | the sun by day, at its hour, and the moon at night |
+| `▦▦▦` | the solar panels |
+| `▄█▄▄` with `≋` | the genset, smoking while it runs |
+| `╲┃╱ ─╋─` | the grid's pylon |
 | `━━┷━━` `━━┯━━` | the load bus, and a link joining it from above or below |
 | `▼ 120 kWh` | a link and the energy it carried last period, in the arrow's direction |
 | `╎ 0 kWh` | a link that carried nothing |
-| `│██│` | the battery, filled to its state of charge |
-| `◂ reserve` | the charge the battery must be at or above when the horizon ends |
-| `☼ solar`, `genset on`, `grid import`, `⌂ load` | the modules |
+| `│█████   ├▌` | the battery, filled to its state of charge |
+| `▴` | the charge the battery must be at or above when the horizon ends |
+| `▣`, `□` | a house's windows, lit for the load served or dark for the load unmet |
 
 The same plan is also a [sheet](../renders/microgrid.png), every state on one figure, each
 captioned with the action that produced it and the goal marked where the plan ends. Both were

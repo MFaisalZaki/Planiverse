@@ -183,9 +183,11 @@ def test_the_picture_draws_the_microgrid(env):
     state, info = env.reset()
     picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    for element in ("☼ solar", "battery", "⌂ load", "◂ reserve", "━"):
+    for element in ("▦", "solar", "battery", "▴", "load", "▣", "━"):
         assert element in picture
-    assert ("genset" in picture) == info["genset"] and ("grid " in picture) == info["grid"]
+    assert ("genset" in picture) == info["genset"] and ("╋" in picture) == info["grid"]
+    assert ("☼" in picture) == (6 <= (state.start + state.hour) % 24 <= 18), "the sky keeps time"
     child = env.__advance__(state, env.get_actions()[0])
     assert str(child) != picture and "kWh" in str(child)
+    assert ("□" in str(child)) == (child.lost > 0), "a house goes dark for the load unmet"
     assert len(str(child).splitlines()) == len(picture.splitlines())

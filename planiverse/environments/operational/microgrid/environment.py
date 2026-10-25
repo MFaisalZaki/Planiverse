@@ -39,7 +39,7 @@ from collections import namedtuple
 
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
-from planiverse.rendering.text import Canvas, tank
+from planiverse.rendering.text import Canvas
 
 #: Hours a decision holds for, and what the battery may be told to do for them.
 PERIOD = 3
@@ -105,8 +105,6 @@ class MicrogridAction:
 #: connection. One per instance, shared by its states and outside their identity.
 Site = namedtuple("Site", ["genset", "grid"])
 
-#: The battery gauge's height in the picture, in rows.
-GAUGE_ROWS = 5
 
 
 class MicrogridState:
@@ -155,17 +153,29 @@ class MicrogridState:
                 f"lost={self.lost:.1f})>")
 
     def __str__(self):
-        """A one-line diagram of the microgrid.
+        """The microgrid as a site through the day.
 
-        Solar, the genset and the grid feed the load bus from above, and the battery and the
-        load hang below it. Each link carries the last period's energy and an arrow for its
-        direction, dashed when nothing flowed; the battery is a gauge filled to its charge,
-        with its reserve marked.
+        The sky follows the clock: the sun crosses it by day, the moon and stars are out at
+        night. Under it stand the sources, the solar panels ▦, the genset's hut, smoking ≋
+        while it runs, and the grid's pylon where the site has one, each linked down to the
+        load bus with the last period's energy and an arrow for its direction (dashed when
+        nothing flowed). Below the bus hang the battery, its cells filled to its charge with
+        its reserve marked, and the load, a row of houses with their windows lit ▣ in the
+        share of the load served and dark □ for what went unmet.
         """
         load, solar, battery, genset, grid = self.flows
         site = self.site or Site(True, True)
-        canvas = Canvas(64, 17)
-        bus = 6
+        width = 66
+        canvas = Canvas(width, 18)
+        sky, ground, bus = 3, 5, 9
+        # the sky, by the hour of the day
+        clock = (self.start + self.hour) % 24
+        if 6 <= clock <= 18:
+            canvas.put(2 + round((clock - 6) / 12 * (width - 6)), abs(clock - 12) // 3, "☼")
+        else:
+            for x, y in ((5, 1), (17, 0), (29, 2), (41, 1), (53, 0), (61, 2)):
+                canvas.put(x, y, "·")
+            canvas.put(width - 8, 0, "☾")
 
         def link(x, top, bottom, into_bus, above):
             """A link at column `x` from row `top` to `bottom`, above or below the bus, with
@@ -176,35 +186,54 @@ class MicrogridState:
                 canvas.write(x + 2, middle, "0 kWh")
             else:
                 canvas.vline(x, top, bottom, char="│")
-                towards = "▼" if above else "▲"
-                away = "▲" if above else "▼"
+                towards, away = ("▼", "▲") if above else ("▲", "▼")
                 canvas.put(x, middle, towards if into_bus > 0 else away)
                 canvas.write(x + 2, middle, f"{abs(into_bus):.0f} kWh")
             junctions.append((x, "┷" if above else "┯"))
 
         junctions = []
-        canvas.write(2, 0, "☼ solar")
-        link(4, 1, bus - 1, solar, True)
+        # the sources
+        canvas.write(1, sky, "▦▦▦▦▦▦")
+        canvas.write(1, ground - 1, "solar")
+        link(4, ground, bus - 1, solar, True)
         if site.genset:
-            canvas.write(22, 0, f"genset {'on' if genset > 0.05 else 'off'}")
-            link(24, 1, bus - 1, genset, True)
+            running = genset > 0.05
+            if running:
+                canvas.write(24, sky - 2, "≋")
+                canvas.write(25, sky - 1, "≋")
+            canvas.write(22, sky, "▄█▄▄")
+            canvas.write(21, ground - 1, "genset")
+            link(24, ground, bus - 1, genset, True)
         if site.grid:
-            flow = "import" if grid > 0.05 else "export" if grid < -0.05 else "idle"
-            canvas.write(42, 0, f"grid {flow}")
-            link(44, 1, bus - 1, grid, True)
-        link(10, bus + 1, 9, battery, False)
-        link(50, bus + 1, 10, -load, False)
-        canvas.hline(0, 63, bus, char="━")
+            canvas.write(42, sky - 1, "╲┃╱")
+            canvas.write(42, sky, "─╋─")
+            canvas.write(42, ground - 1, "╱┃╲")
+            canvas.write(46, ground - 1, "grid")
+            link(43, ground, bus - 1, grid, True)
+        link(10, bus + 1, 11, battery, False)
+        link(50, bus + 1, 11, -load, False)
+        canvas.hline(0, width - 1, bus, char="━")
         for x, char in junctions:
             canvas.put(x, bus, char)
-        canvas.write(56, bus + 1, "load bus")
-        for row, line in enumerate(tank(self.soc, GAUGE_ROWS, 6)):
-            canvas.write(7, 10 + row, line)
-        reserve_row = 10 + GAUGE_ROWS - int(round(min(1.0, self.reserve) * GAUGE_ROWS))
-        canvas.write(16, min(reserve_row, 10 + GAUGE_ROWS - 1), "◂ reserve")
-        canvas.write(16, 10, f"battery {self.soc:.0%}" if reserve_row != 10 else
-                     f"battery {self.soc:.0%} ◂ reserve")
-        canvas.write(48, 11, "⌂ load")
+        # the battery, its cells filled to its charge, its reserve marked under it
+        cells = 10
+        full = int(round(min(1.0, self.soc) * cells))
+        reserve = int(round(min(1.0, self.reserve) * cells))
+        canvas.write(4, 12, "┌" + "─" * cells + "┐")
+        canvas.write(4, 13, "│" + "█" * full + " " * (cells - full) + "├▌")
+        canvas.write(4, 14, "└" + "─" * cells + "┘")
+        canvas.put(4 + max(1, reserve), 15, "▴")
+        canvas.write(4, 16, "battery")
+        # the load, houses lit in the share served
+        houses = 8
+        unmet = min(1.0, self.lost / load) if load > 0 and self.lost > 0 else 0.0
+        lit = houses - int(round(unmet * houses))
+        for k in range(houses):
+            x = 38 + 3 * k
+            canvas.write(x, 12, "▲▲")
+            canvas.write(x, 13, ("▣" if k < lit else "□") * 2)
+        canvas.write(38, 14, "─" * (3 * houses - 1))
+        canvas.write(38, 16, "load")
         return str(canvas)
 
 
