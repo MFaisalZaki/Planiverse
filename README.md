@@ -42,7 +42,6 @@ season or city, so a benchmark is not limited to what ships.
 | Tower defence | `tower_defence` | 100 maps | the path, the building slots, the waves, the gold and the lives | game | [docs](docs/environments/tower-defence.md) |
 | Fluid | `fluid` | 100 caves | the cave, the spring, the basin, the drain, the water needed and the digs allowed | game | [docs](docs/environments/fluid.md) |
 | Pipe Dream | `pipe_dream` | 100 levels | the board and its walls, the start, the queue of pieces, the distance, the countdown and the pace | game | [docs](docs/environments/pipe-dream.md) |
-| Billiards | `billiards` | 100 tables | where the balls lie, how many there are, and the shots | game, physics | [docs](docs/environments/billiards.md) |
 | Lemmings | `lemmings` | 100 levels | the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills | game | [docs](docs/environments/lemmings.md) |
 | Amazing Tater | `amazing_tater` | 100 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
@@ -87,7 +86,6 @@ Requires Python 3.11, 3.12 or 3.13. Linux, macOS and Windows are all supported, 
 git clone https://github.com/MFaisalZaki/Planiverse.git
 cd Planiverse
 pip install -e ".[dev]"              # the dev extra adds pytest
-python scripts/install_pooltool.py   # the billiards table; see below
 python scripts/install_flatland.py   # the railway
 python scripts/install_or_gym.py     # the inventory
 ```
@@ -97,7 +95,6 @@ Or, with poetry:
 ```bash
 poetry env use python3.12
 poetry install --extras dev
-poetry run python scripts/install_pooltool.py
 poetry run python scripts/install_flatland.py
 poetry run python scripts/install_or_gym.py
 ```
@@ -115,11 +112,6 @@ These dependencies are not declared the plain way, because their publishers do n
 every platform or declare bounds the rest of the dependencies cannot meet. `tools/check_install.py` prints what the install in front of you covers and
 what is missing.
 
-- **pooltool** (billiards) is installed by `scripts/install_pooltool.py`. On Linux and Windows its
-  own dependency list pins a Panda3D development build that PyPI does not carry, so a plain
-  `pip install` of it fails there with "No matching distribution found for panda3d". The
-  script installs its dependencies with the released Panda3D 1.10 from PyPI and then pooltool
-  without its list. Panda3D is pooltool's renderer; the physics is unaffected.
 - **Flatland** (railway) is installed by `scripts/install_flatland.py`. It declares `numpy<2`,
   which has no Python 3.13 wheels, and upper bounds on matplotlib, networkx, contourpy and
   rpds-py that the other dependencies exceed; the script installs it without its list and the
@@ -277,7 +269,6 @@ What each environment provides:
 | `TowerDefenceEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `FluidEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `PipeDreamEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `BilliardsEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `LemmingsEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `MicropolisEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `EpidemicEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
@@ -517,7 +508,6 @@ planiverse/environments/
 │   ├── tower_defence/   # waves fought by simulation, pure Python
 │   ├── fluid/           # a cellular automaton of water, pure Python
 │   ├── pipe_dream/      # a Pipe Dream-like, pure Python
-│   ├── billiards/       # pool on pooltool
 │   ├── lemmings/        # a crowd of walkers, pure Python
 │   ├── game_boy/        # any cartridge under PyBoy
 │   └── retro/           # any Stable-Retro integration
@@ -587,7 +577,6 @@ planiverse/
 │   │   ├── tower_defence/              # TowerDefenceEnv: waves fought by simulation
 │   │   ├── fluid/                      # FluidEnv: a cellular automaton of water
 │   │   ├── pipe_dream/                 # PipeDreamEnv: pipe laid from a queue ahead of a flow
-│   │   ├── billiards/                  # BilliardsEnv: pool on pooltool
 │   │   ├── lemmings/                   # LemmingsEnv: a crowd of walkers steered with skills
 │   │   ├── game_boy/                   # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
 │   │   └── retro/                      # RetroEnv: a Stable-Retro integration from its save states
@@ -643,7 +632,6 @@ Planiverse adapts several upstream simulators. Each is credited in its own doc; 
 | Power grid | [Grid2Op](https://github.com/Grid2Op/grid2op) (RTE) |
 | Crop management | [PCSE / WOFOST](https://github.com/ajwdewit/pcse) (Wageningen University) |
 | Slingshot | [pymunk](https://www.pymunk.org/) (MIT), the Python binding of Chipmunk2D (MIT) |
-| Billiards | [pooltool](https://github.com/ekiefl/pooltool) (Apache-2.0) |
 | Micropolis city | [MicropolisCore](https://github.com/SimHacker/micropolis) (GPL-3.0 with Electronic Arts' additional terms), built from source by `scripts/build_micropolis.sh` |
 | Factory | [factory-sim](https://github.com/divagr18/factory-sim) (MIT), a tick-exact C simulator of Factorio's early game measured on the game itself, from PyPI as `factory-sim` |
 | Epidemic | [Covasim](https://github.com/institutefordiseasemodeling/covasim) (Institute for Disease Modeling, MIT) |
@@ -671,10 +659,11 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Twenty-three environments: nine simulator-backed operational ones (water distribution, power
+- Twenty-five environments: twelve simulator-backed operational ones (water distribution, power
   grid, crop management, flood adaptation, a city on the Micropolis engine, an epidemic on
-  Covasim, traffic signals on SUMO, crossing aircraft on BlueSky, reservoirs on pywr), the NASim network attack, four games reimplemented
-  in pure Python, a slingshot physics puzzle on pymunk, billiards on pooltool, a tower
+  Covasim, traffic signals on SUMO, crossing aircraft on BlueSky, reservoirs on pywr, a railway
+  on Flatland, a supply chain on OR-Gym and a microgrid on python-microgrid), the NASim network
+  attack, four games reimplemented in pure Python, a slingshot physics puzzle on pymunk, a tower
   defence, a cellular fluid puzzle, a Pipe Dream-like, a Lemmings-like, an early-game
   factory on factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and

@@ -2,7 +2,7 @@
 # check that the install covers the environments it is meant to, and run the test suite.
 #
 # Two jobs. `install-and-test` is the documented install (`pip install -e ".[dev]"` and the
-# pooltool script) on Linux, macOS and Windows for Python 3.11 to 3.13, plus the macOS build
+# install scripts) on Linux, macOS and Windows for Python 3.11 to 3.13, plus the macOS build
 # of pywr from source that the README describes. `scripted-simulators` runs the scripts for
 # the two simulators pip cannot install on its own (Micropolis, BlueSky) on Linux and macOS
 # and tests the environments behind them.
@@ -41,9 +41,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-
-      - name: Install pooltool, the billiards table
-        run: python scripts/install_pooltool.py
 
       - name: Install Flatland and OR-Gym, the railway and the inventory
         run: |
@@ -92,7 +89,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          python scripts/install_pooltool.py
           python scripts/install_flatland.py
           python scripts/install_or_gym.py
 

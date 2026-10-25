@@ -19,7 +19,6 @@ PYPROJECT = REPO / "pyproject.toml"
 DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "sklearn": "scikit-learn", "cv2": "opencv-python",
                    "retro": "stable-retro",    # its import name before 1.0, kept as a fallback
-                   "pooltool": "pooltool-billiards",
                    "fsim": "factory-sim",
                    "sumo": "eclipse-sumo",      # the SUMO binaries; libsumo is the binding
                    "bluesky": "bluesky-simulator",
@@ -27,11 +26,11 @@ DISTRIBUTION_OF = {"pil": "pillow", "yaml": "pyyaml",
                    "pymgrid": "python-microgrid"}
 
 #: Installed by a script under `scripts/` rather than declared, so a plain install cannot be
-#: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), and
-#: BlueSky and pooltool each publish a dependency list that pip cannot satisfy
-#: (`install_bluesky.sh`, `install_pooltool.py`), and Flatland and OR-Gym each declare a bound
-#: the rest of the dependencies cannot meet (`install_flatland.py`, `install_or_gym.py`).
-INSTALLED_BY_SCRIPT = {"micropolisengine", "bluesky", "pooltool", "flatland", "or_gym"}
+#: asked for them: the Micropolis engine is built from source (`build_micropolis.sh`), BlueSky
+#: publishes a dependency list that pip cannot satisfy (`install_bluesky.sh`), and Flatland and
+#: OR-Gym each declare a bound the rest of the dependencies cannot meet (`install_flatland.py`,
+#: `install_or_gym.py`).
+INSTALLED_BY_SCRIPT = {"micropolisengine", "bluesky", "flatland", "or_gym"}
 
 pytestmark = pytest.mark.skipif(
     not PYPROJECT.is_file(), reason="not running from a source checkout")
@@ -47,7 +46,6 @@ ENTRY_POINTS = [
     "planiverse.environments.games.tower_defence.environment",
     "planiverse.environments.games.fluid.environment",
     "planiverse.environments.games.pipe_dream.environment",
-    "planiverse.environments.games.billiards.environment",
     "planiverse.environments.games.lemmings.environment",
     "planiverse.environments.operational.micropolis.environment",
     "planiverse.environments.operational.factory.environment",

@@ -59,13 +59,6 @@ def pipe_dream(state):
     return max(0, state.distance - state.carried - state.ahead)
 
 
-def billiards(state):
-    """Object balls still on the table; a sunk cue ball is pinned above any live count."""
-    if state.scratched:
-        return 99
-    return len(state.object_balls)
-
-
 def lemmings(state):
     """Lemmings still to save, counting from the level's quota carried on the state."""
     return max(0, state.quota - state.saved)
@@ -179,7 +172,6 @@ MEASURES = {
     "tower_defence": tower_defence,
     "fluid": fluid,
     "pipe_dream": pipe_dream,
-    "billiards": billiards,
     "lemmings": lemmings,
     "micropolis": micropolis,
     "factory": factory,

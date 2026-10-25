@@ -40,7 +40,7 @@ depends on the environment:
 
 - a board (Puzznic, Lolo, Lemmings and the other grid games) has its walls joined into
   box-drawing lines and its pieces as symbols, two columns to a cell so a cell is about square;
-- a field or a map (Slingshot, Billiards, the tower defence, the railway, the factory, the
+- a field or a map (Slingshot, the tower defence, the railway, the factory, the
   Micropolis city, the flood city) is laid out on a grid of characters;
 - a system (the reservoirs, the power grid, the microgrid, the water network, the supply chain,
   the airspace, the town of an outbreak, the streets of the traffic grid, the crop's field, the

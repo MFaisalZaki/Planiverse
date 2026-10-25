@@ -48,8 +48,6 @@ dependencies = [
     # BlueSky (the airspace environment) is installed by scripts/install_bluesky.sh: its
     # published dependency list names a placeholder package that does not build.
     "pymunk (>=7.0)",               # Chipmunk2D, for the slingshot physics puzzle
-    # pooltool (the billiards table) is installed by scripts/install_pooltool.py: on Linux and
-    # Windows its dependency list pins a Panda3D development build that PyPI does not carry.
     "factory-sim (>=0.3)",          # a tick-exact C simulator of Factorio's early game, for the factory
     # The two emulator-backed environments. PyBoy needs a cartridge you supply; Stable-Retro
     # ships one freely redistributable game (Airstriker) and takes ROMs you import into it.

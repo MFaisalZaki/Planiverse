@@ -161,18 +161,6 @@ REGISTRY = (
         tags=frozenset({"game", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="billiards",
-        factory="planiverse.environments.games.billiards.environment:BilliardsEnv",
-        summary="Billiards on pooltool: pot every ball within the shots given without sinking the cue ball",
-        instances="100 tables, generated",
-        generates="where the balls lie, how many there are, and the shots",
-        deterministic=True,
-        state_identity="value",
-        requires=("pooltool",),
-        docs="docs/environments/billiards.md",
-        tags=frozenset({"game", "physics"}),
-    ),
-    EnvironmentSpec(
         name="lemmings",
         factory="planiverse.environments.games.lemmings.environment:LemmingsEnv",
         summary="A Lemmings-like: steer a crowd of walkers to the exit with a few skills, in time",

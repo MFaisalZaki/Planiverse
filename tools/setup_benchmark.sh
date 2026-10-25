@@ -24,8 +24,6 @@ done
 
 [ -d "$VENV" ] || "$PYTHON" -m venv "$VENV"
 "$VENV/bin/python" -m pip install --quiet -e "$REPO"
-# The billiards table: pooltool is installed by its script rather than declared (see pyproject.toml).
-"$VENV/bin/python" "$REPO/scripts/install_pooltool.py" --quiet
 # The railway and the inventory: Flatland and OR-Gym are installed by their scripts too.
 "$VENV/bin/python" "$REPO/scripts/install_flatland.py" --quiet
 "$VENV/bin/python" "$REPO/scripts/install_or_gym.py" --quiet
