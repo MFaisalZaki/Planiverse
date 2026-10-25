@@ -130,14 +130,15 @@ def _caption_lines(title, width):
     return lines + ([line] if line else [])
 
 
-def _caption_width(titles):
-    """One caption column for every frame of a trace: as wide as its longest title, up to
-    `CAPTION_MAX_WIDTH`, so that every state starts the same distance from the left."""
+def _caption_width(titles, notes=()):
+    """One caption column for every frame of a trace: as wide as its longest title or note,
+    up to `CAPTION_MAX_WIDTH`, so that every state starts the same distance from the left."""
     from PIL import Image, ImageDraw
 
-    font = _font(13, bold=True)
+    font, small = _font(13, bold=True), _font(11)
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
-    widest = max((measure.textlength(title, font=font) for title in titles), default=0)
+    widest = max([measure.textlength(title, font=font) for title in titles]
+                 + [measure.textlength(note, font=small) for note in notes if note] + [0])
     return math.ceil(min(CAPTION_MAX_WIDTH, max(widest, measure.textlength("dead end", font=font))))
 
 
@@ -223,24 +224,26 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
         action = actions[index - 1] if actions and index - 1 < len(actions) else None
         return f"{index}. {action}" if action is not None else f"step {index}"
 
-    width = _caption_width([title(index) for index in indices]) if captions else None
     # One size for every picture of the trace, so that their frames line up.
     images = _uniform([_picture(frames[index]) if frames is not None
                        else render_state(states[index], font_size=font_size)
                        for index in indices])
     if not captions:
         return images
+
+    said = {index: outcome(states[index], env) for index in indices}
+
+    def note(index):
+        if len(indices) != len(states):
+            where = f"state {index} of {len(states) - 1}"
+            return f"{said[index]} · {where}" if said[index] else where
+        return said[index]
+
+    width = _caption_width([title(index) for index in indices], [note(i) for i in indices])
     pictures = []
     for index, image in zip(indices, images):
-        state = states[index]
-
-        note = outcome(state, env)
-        colour = {"goal": _GOAL, "dead end": _TERMINAL}.get(note, _INK)
-        if len(indices) != len(states):
-            note = f"{note} · state {index} of {len(states) - 1}" if note \
-                else f"state {index} of {len(states) - 1}"
-
-        pictures.append(_caption(image, title(index), note, colour, width=width))
+        colour = {"goal": _GOAL, "dead end": _TERMINAL}.get(said[index], _INK)
+        pictures.append(_caption(image, title(index), note(index), colour, width=width))
     return pictures
 
 
