@@ -319,7 +319,7 @@ class WaterNetworkState:
     def __str__(self):
         """The network as a schematic: each link drawn along its nodes' coordinates, a closed
         pipe marked ╳, junctions ○ clean or ● contaminated, the source ◉, tanks ▣ and
-        reservoirs ≋, then a status line."""
+        reservoirs ≋."""
         status = (f"{len(self.closed)} pipe{'' if len(self.closed) == 1 else 's'} closed"
                   + (f" ({', '.join(sorted(self.closed))})" if self.closed else "")
                   + f" · contaminated delivered {self.contaminated:.1%} · service {self.service:.1%}")
@@ -347,7 +347,7 @@ class WaterNetworkState:
         for name, x, y, kind in layout.nodes:
             if name == layout.source:
                 canvas.put(x, y, "◉")
-        return str(canvas) + "\n\n" + status
+        return str(canvas)
 
     def __repr__(self):
         return (f"<WaterNetworkState(closed={len(self.closed)}, "

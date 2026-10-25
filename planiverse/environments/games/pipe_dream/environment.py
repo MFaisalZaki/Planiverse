@@ -161,9 +161,7 @@ class PipeState:
     def __str__(self):
         """The board in black-and-white text, framed, two columns a cell: pipe laid in single
         lines and pipe the flow has run through in double ones, joined across to the next cell
-        where they meet, the start as the arrow the flow leaves by, walls as blocks, and a
-        status line with the distance carried, the ticks before the flow moves and the next
-        pieces of the queue."""
+        where they meet, the start as the arrow the flow leaves by, and walls as blocks."""
         height, width = len(self.rows), len(self.rows[0])
         axes = {}
         for x, y, axis in self.flooded:
@@ -205,10 +203,7 @@ class PipeState:
                     joint = "═" if wet(x, y, E) and wet(x + 1, y, W) and (
                         (x, y) in axes or (x + 1, y) in axes) else "─"
                     canvas.put(3 + 2 * x, 1 + y, joint)
-        coming = " ".join(DRAW[kind] for kind in self.queue[self.placed:self.placed + 5]) or "none"
-        flow = "spilled" if self.spilled else f"flow in {self.due}"
-        return (str(canvas) + f"\ncarried {self.carried} of {self.distance} · {flow} · "
-                f"next {coming}")
+        return str(canvas)
 
     def __repr__(self):
         return (f"<PipeState(carried={self.carried}/{self.distance}, tick={self.tick}, "

@@ -386,13 +386,11 @@ def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == len(state.grid) + 1
+    assert len(lines) == len(state.grid)
     assert lines[state.row].endswith("│ ✖☻")      # the player, holding a 4, on the bottom row
-    assert lines[-1] == "blocks 25 left · clear at 9"
 
 
 def test_the_picture_follows_the_player_and_the_throws(env):
     trace = env.simulate(["throw", "up"])
     assert str(trace[0]) != str(trace[1]) != str(trace[2])
-    assert str(trace[1]).split("\n")[-1] == "blocks 24 left · clear at 9"
     assert str(trace[2]).split("\n")[trace[2].row].endswith("☻")

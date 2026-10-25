@@ -220,8 +220,7 @@ class TrafficState:
     def __str__(self):
         """The grid as streets, each junction showing the axis its green is on (═ east-west,
         ║ north-south), each approach's queue as a row of ▪ back from the stop line (one for
-        every `PER_MARK` halted vehicles, as many as the block has room for), then a status
-        line."""
+        every `PER_MARK` halted vehicles, as many as the block has room for)."""
         (bx, by), (sx, sy) = PICTURE_BLOCK, PICTURE_STUB
         left, top = 2 + sx, 1 + sy
         width, height = left + bx * (GRID - 1) + sx + 1, top + by * (GRID - 1) + sy + 1
@@ -254,11 +253,7 @@ class TrafficState:
                 marks = min(room[dx != 0], -(-n // PER_MARK))
                 for m in range(2, marks + 2):
                     canvas.put(x + dx * m + side[0], y + dy * m + side[1], "▪")
-        lines = [str(canvas), ""]
-        lines.append(f"t={self.time:.0f}s · {self.arrived} of {self.total} arrived, {self.running} "
-                     f"on the road, {self.halted} halted · {self.travel:.0f} of {self.target} "
-                     f"vehicle-seconds")
-        return "\n".join(lines)
+        return str(canvas)
 
     def __repr__(self):
         return f"<TrafficState(t={self.time:.0f}, arrived={self.arrived}, travel={self.travel:.0f})>"

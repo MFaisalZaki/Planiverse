@@ -33,7 +33,7 @@ import math
 
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
-from planiverse.rendering.text import Canvas, side_by_side
+from planiverse.rendering.text import Canvas
 
 #: Seconds of flying per decision, the turn an instruction makes, and the separation standard.
 DECISION, TURN = 60, 30
@@ -175,9 +175,7 @@ class AirspaceState:
     def __str__(self):
         """A radar scope: the sector's ring at the exits' range and a ring at half of it,
         each exit as ◇ and its aircraft's number (◆ once
-        it is out), each aircraft as an arrow along its heading with its callsign beside it,
-        and the time, the aircraft in the sector, the closest pair and the exit times in a
-        column beside the scope."""
+        it is out), each aircraft as an arrow along its heading with its callsign beside it."""
         reach = SCOPE_NM
         cx, cy = reach * SCOPE_COLUMNS + 1, reach * SCOPE_ROWS
         canvas = Canvas(int(2 * cx) + 6, int(2 * cy) + 1)
@@ -205,16 +203,7 @@ class AirspaceState:
                 continue
             x, y = spot(lat, lon)
             canvas.write(x, y, ARROWS[int(round(heading / 45)) % 8] + name)
-        closest = f"{self.closest:.1f} nm" if self.closest < 99 else "–"
-        status = [f"t={self.time:.0f}s",
-                  f"{len(self.flying)} of {len(self.aircraft)} in the sector",
-                  f"closest pair {closest} (standard {SEPARATION_NM:g})",
-                  "separation lost" if self.lost else "",
-                  f"exit times {self.exit_sum} of {self.target} s"]
-        status = [line for line in status if line]
-        scope = [line.ljust(canvas.width) for line in str(canvas).split("\n")]
-        top = (len(scope) - len(status)) // 2
-        return side_by_side([scope, [""] * top + status], gap=4)
+        return str(canvas)
 
     def __repr__(self):
         return f"<AirspaceState(t={self.time:.0f}, flying={len(self.flying)}, closest={self.closest:.1f})>"

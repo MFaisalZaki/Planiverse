@@ -134,13 +134,12 @@ where the target comes from.
 
 ![BFWS solving reservoir instance 0](../renders/reservoir.gif)
 
-Each frame is the state's picture. The two reservoirs are tanks filled to their volume against
-their capacity, with the month's inflow above each and the reserve each must hold at the end of
-the year marked beside its wall. The turbine lets the release down from the foot of the upper
-one into the lower, and the city, the farm and the river each take an outlet off the lower one,
-labelled with what they got this month against what they wanted. Under it is the farm's
-shortfall so far against the allowance, and a status line with the month, the decision and its
-effect, and the shortfall of the allowance.
+Each frame is the state's picture. The two reservoirs are tanks filled to their volume against their
+capacity, with the month's inflow above each and the reserve each must hold at the end of the year
+marked beside its wall. The turbine lets the release down from the foot of the upper one into the
+lower, and the city, the farm and the river each take an outlet off the lower one, labelled with
+what they got this month against what they wanted. Under it is the farm's shortfall so far against
+the allowance.
 
 | Mark | Meaning |
 |---|---|

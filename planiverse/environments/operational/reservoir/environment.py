@@ -139,7 +139,7 @@ class ReservoirState:
         """The two reservoirs as tanks filled against their capacity, each reserve marked
         beside its wall, the month's inflows coming in, the release let down from the upper
         to the lower, and what the city, the farm and the river got off the lower one, then
-        the farm's shortfall against the allowance and a status line."""
+        the farm's shortfall as a gauge against the allowance."""
         site = self.site
         capacity = site.capacity if site else (max(self.upper, 1.0), max(self.lower, 1.0))
         reserves = site.reserves if site else self.reserves
@@ -175,18 +175,7 @@ class ReservoirState:
                          + (f" of {want:.1f}" if want is not None else ""))
         lines = [str(canvas), ""]
         allowed = self.target or max(self.farm_short, 1.0)
-        lines.append(f"farm shortfall {bar(self.farm_short, max(allowed, self.farm_short), 30)} "
-                     f"{self.farm_short:.1f} of {self.target:g} allowed")
-        lines.append("")
-        action = self.settings[-1] if self.settings else None
-        if isinstance(action, ReservoirAction):
-            decision = f"{action}: {turbine:.0f} let down, farm on {action.share}"
-        elif self.month:
-            decision = f"{turbine:.0f} let down"
-        else:
-            decision = "nothing released yet"
-        lines.append(f"month {self.month} of {MONTHS} · {decision} · farm short "
-                     f"{self.farm_short:.1f} of {self.target:g} allowed")
+        lines.append(f"farm short {bar(self.farm_short, max(allowed, self.farm_short), 30)}")
         return "\n".join(lines)
 
     def __repr__(self):

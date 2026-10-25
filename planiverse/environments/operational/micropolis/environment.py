@@ -138,8 +138,7 @@ class MicropolisState:
         zone as a box over its three by three tiles with its letter (R, C or I), filled with ░
         once something is built in it; the power plant as a box marked P; roads in double lines
         and power lines in single ones, ╪ where they cross; each site not yet zoned by its
-        number; trees as ♣ and water as ≈. Then the year, the population against the target
-        and the funds."""
+        number; trees as ♣ and water as ≈."""
         from planiverse.rendering.text import Canvas
 
         status = (f"year {self.year}   population {self.population} of {self.target}   "
@@ -193,7 +192,7 @@ class MicropolisState:
                 canvas.fill(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1, "░" if built else " ")
                 canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1)
                 canvas.put(2 * tx, ty, letter)
-        return f"{canvas}\n{status}"
+        return str(canvas)
 
 
 class CityPatch(namedtuple("CityPatch", "origin corner tiles")):

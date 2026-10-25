@@ -219,13 +219,11 @@ absorbs. The shallow `z01` and the expensive `z06` are left to flood.
 
 ![BFWS solving flood_transport instance 0](../renders/flood_transport.gif)
 
-Each frame is the state's picture, the city's zone map. The zones are boxes in the cells of the
-grid their coordinates round to, each with its id, marked `≈` when a storm floods it, and
-shaded by the depth of water the last period's worst storm left on its roads, after any raising
-a measure gives them. A protected zone is double-walled and names its measure. The roads join
-neighbouring zones, dashed where the water stands deeper than a road can be driven through. Under
-the map is a status line with the year of the horizon, the cost so far against the target and
-its parts (damage, delays and measures, in millions of kroner), and the period's worst storm.
+Each frame is the state's picture, the city's zone map. The zones are boxes in the cells of the grid
+their coordinates round to, each with its id, marked `≈` when a storm floods it, and shaded by the
+depth of water the last period's worst storm left on its roads, after any raising a measure gives
+them. A protected zone is double-walled and names its measure. The roads join neighbouring zones,
+dashed where the water stands deeper than a road can be driven through.
 
 | Mark | Meaning |
 |---|---|
@@ -298,7 +296,6 @@ series, the four measure sets above), each of three twists in about one draw in 
 to a decision, a later start in the Klimaatlas series, or six zones in ten flooding). They were
 drawn at the seeds recorded beside them in the module, and accepted by the same test as the
 fifteen.
-
 
 ## Generating scenarios
 

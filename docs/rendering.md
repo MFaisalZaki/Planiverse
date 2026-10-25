@@ -46,7 +46,7 @@ depends on the environment:
   the airspace, the town of an outbreak, the streets of the traffic grid, the crop's field, the
   attacked network) is drawn as a schematic of its parts.
 
-Each picture ends in one status line, the quantities that matter at that state. A picture keeps
+A picture is the drawing alone, with no line of figures under it. A picture keeps
 its size across a trace, so a GIF does not jump. The same text is what `print(state)` shows and
 what the state's OpenSpiel `observation_string` is; the operational states also carry
 `readings()`, their numbers by name, which the OpenSpiel observation tensor holds. A GIF is pixels, and typesetting is

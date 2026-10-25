@@ -206,14 +206,11 @@ def test_the_picture_draws_the_cave_in_symbols_the_renderer_has(env):
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == len(state.rows) + 1
+    assert len(lines) == len(state.rows)
     assert "▼" in drawn and "⊔" in drawn and "⊗" in drawn and "▒" in drawn
-    assert lines[-1] == "tick 0 · basin 0 of 12 · spring 15 left · 9 digs left"
 
 
 def test_the_picture_shows_the_water_and_the_digs(env):
     trace = env.simulate(["wait", "dig(10,8)"])
     assert "≈" not in str(trace[0]) and "≈" in str(trace[1])
     assert str(trace[1]) != str(trace[2])
-    assert str(trace[2]).split("\n")[-1] == \
-        "tick 24 · basin 6 of 12 · spring 3 left · 8 digs left"

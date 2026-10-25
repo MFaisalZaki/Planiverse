@@ -136,8 +136,7 @@ class TowerState:
     def __str__(self):
         """The map from above, two columns to a cell: the path as a line from the entrance ▶
         on the left wall to the exit ▶ on the right, an empty building slot by its number, a
-        built one by its tower (▲ an arrow tower, ● a cannon), open ground as ·; then the
-        waves fought, the lives and the gold."""
+        built one by its tower (▲ an arrow tower, ● a cannon), open ground as ·."""
         from planiverse.rendering.text import JOINS, Canvas
 
         waves = f" of {self.layout.waves}" if self.layout else ""
@@ -163,7 +162,7 @@ class TowerState:
         built = dict(self.towers)
         for slot, (x, y) in enumerate(self.layout.slots):
             canvas.put(1 + 2 * x, 1 + y, TOWER_GLYPHS[built[slot]] if slot in built else str(slot))
-        return f"{canvas}\n{status}"
+        return str(canvas)
 
 
 # ------------------------------------------------------------------------------- the wave

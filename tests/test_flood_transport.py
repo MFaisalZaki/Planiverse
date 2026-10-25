@@ -244,7 +244,7 @@ def test_the_successor_cache_tells_apart_states_spelled_the_same():
 
 # ------------------------------------------------------------------------- the picture
 
-def test_the_picture_draws_the_city_and_a_status_line(env):
+def test_the_picture_draws_the_city(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, info = env.reset()
@@ -252,11 +252,10 @@ def test_the_picture_draws_the_city_and_a_status_line(env):
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert all(zone["id"] in picture for zone in env.instance["zones"])
     assert picture.count("≈") == info["flooded"], "every zone a storm floods is marked"
-    assert picture.splitlines()[-1].startswith(f"year 0/{info['years']} · 0.0 of ")
     plan = env.reference_plan()
     child = env.__advance__(state, plan[0])
     drawn = str(child)
-    assert drawn != picture and f"storm {child.rain} mm" in drawn
+    assert drawn != picture
     if plan[0].kind != "wait":
         assert "╔" in drawn and plan[0].kind in drawn, "a protected zone shows its measure"
     assert any(shade in drawn for shade in "░▒▓█"), "the storm's water shades the zones"

@@ -500,9 +500,8 @@ def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == 9                      # eight rows and the status line
+    assert len(lines) == 8                      # eight rows
     assert "☻" in drawn and "♥" in drawn and "♡" in drawn and "§" in drawn and "▮" in drawn
-    assert lines[-1] == "hearts 2 left · shots 0 · facing none"
 
 
 def test_the_picture_follows_lolo_and_opens_the_door():
@@ -511,4 +510,3 @@ def test_the_picture_follows_lolo_and_opens_the_door():
         "left left left up up up right right shoot shoot right right".split())])
     assert str(trace[0]) != str(trace[1])
     assert "▮" in str(trace[0]) and "▯" in str(trace[-1])
-    assert str(trace[-1]).split("\n")[-1] == "hearts 0 left · shots 0 · facing right"

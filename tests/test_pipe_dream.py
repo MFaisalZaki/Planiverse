@@ -199,7 +199,7 @@ def test_literals_name_pipe_flow_and_queue(env):
 def test_the_text_draws_laid_and_run_pipe_differently(tiny):
     trace = tiny.simulate([PipeAction(1, 0), PipeAction(2, 0), PipeAction(2, 1), FLUSH])
     assert "─" in str(trace[1]) and "═" not in str(trace[1])
-    assert "═" in str(trace[-1]) and "carried 3 of 3" in str(trace[-1])
+    assert "═" in str(trace[-1])
 
 
 def test_simulate_and_successors_agree(tiny):
@@ -276,9 +276,8 @@ def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == len(state.rows) + 3      # the frame round the board, and the status
+    assert len(lines) == len(state.rows) + 2      # the frame round the board
     assert lines[5] == "│ · · ■ · · · ▲ │"       # the start, facing north, and a wall
-    assert lines[-1] == "carried 0 of 11 · flow in 6 · next ┼ ─ ┼ ┌ └"
 
 
 def test_the_picture_joins_pipe_and_doubles_what_the_flow_has_run(tiny):

@@ -115,7 +115,6 @@ def test_the_picture_draws_the_field_and_changes_with_a_shot(env):
     picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert picture.count("◎") == 3 and "▒" in picture and "█" in picture and "Y" in picture
-    assert picture.splitlines()[-1] == "shots left 3   targets standing 3"
     after = env.__advance__(state, SlingshotAction(20, 60))
     assert str(after) != picture and str(after).count("◎") == after.targets_left
     assert len(str(after).splitlines()) == len(picture.splitlines()), "the field keeps its size"

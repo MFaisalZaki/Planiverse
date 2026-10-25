@@ -125,12 +125,10 @@ which spends the whole budget on four lockdowns, three of them early.
 
 ![BFWS solving epidemic instance 0](../renders/epidemic.gif)
 
-Each frame is the state's picture. The town is a block of forty characters by ten, each
-standing for an equal share of the people, in an order fixed for the instance so that a
-character moves on from susceptible to infected to recovered or dead as the weeks go by; the
-counts are under it. The hospital is a ward of beds against its capacity, one mark for a bed
-or for a few of them. A status line follows with the week, the level in force, the deaths of
-those allowed and the points spent of the budget.
+Each frame is the state's picture. The town is a block of forty characters by ten, each standing for
+an equal share of the people, in an order fixed for the instance so that a character moves on from
+susceptible to infected to recovered or dead as the weeks go by. The
+hospital is a ward of beds against its capacity, one mark for a bed or for a few of them.
 
 | Mark | Meaning |
 |---|---|

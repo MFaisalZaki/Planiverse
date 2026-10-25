@@ -151,11 +151,10 @@ thing, and where solar meets the load `store` and `cover` do too.
 
 Each frame is the state's picture, a one-line diagram of the microgrid. Solar, the genset and the
 grid, those of them the microgrid has, feed the load bus from above, with the genset's switch and
-the grid's direction beside them; the battery and the load hang below it. Each link carries the
-last period's energy in kWh with an arrow for its direction, and is dashed when nothing flowed.
-The battery is a gauge filled to its state of charge, with the reserve it must end at or above
-marked beside it. Under the diagram is a status line with the hour of the horizon and the clock,
-the cost so far against the target, and the charge against the reserve, and any load unmet.
+the grid's direction beside them; the battery and the load hang below it. Each link carries the last
+period's energy in kWh with an arrow for its direction, and is dashed when nothing flowed. The
+battery is a gauge filled to its state of charge, with the reserve it must end at or above marked
+beside it.
 
 | Mark | Meaning |
 |---|---|

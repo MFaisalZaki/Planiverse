@@ -1884,7 +1884,7 @@ def _closed(rows):
 def picture(level, state):
     """A position as a picture: walls joined into lines, floor blank, a block's squares solid
     and run together where they belong to one block, a turnstile's arms drawn out from its
-    pivot, and a status line with the tater that has the controls and how many are home."""
+    pivot."""
     rows = board(level, state)
     width = max(len(row) for row in rows)
     rows = [row.ljust(width) for row in rows]
@@ -1920,11 +1920,7 @@ def picture(level, state):
             lines[row][2 * col] = glyph
             if joint:
                 lines[row][2 * col + 1] = joint
-    on_board = len(state.taters)
-    total = on_board + len(state.home)
-    status = (f"tater {state.active + 1} to move · " if state.active is not None else "") \
-        + f"{len(state.home)} of {total} home"
-    return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
+    return "\n".join("".join(line).rstrip() for line in lines)
 
 
 # --------------------------------------------------------------------------- environment

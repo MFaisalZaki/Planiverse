@@ -187,8 +187,7 @@ class RailwayState:
     def __str__(self):
         """Flatland's track from above in box-drawing lines, two columns to a cell: each
         train's target as ◎, a train out on the line as an arrow in its direction with its
-        number beside it, a train still waiting as its number at its start; then the step, the
-        trains arrived, running and waiting, and the train-steps against the target."""
+        number beside it, a train still waiting as its number at its start."""
         from planiverse.rendering.text import Canvas
 
         count = self.readings()
@@ -215,7 +214,7 @@ class RailwayState:
         for train, (status_, cell, direction) in enumerate(self.trains):
             if cell is not None and status_ != "arrived":
                 canvas.write(2 * cell[1], cell[0], HEADINGS[direction] + str(train)[-1])
-        return f"{canvas}\n{status}"
+        return str(canvas)
 
 
 class RailMap(namedtuple("RailMap", "width height track targets starts")):

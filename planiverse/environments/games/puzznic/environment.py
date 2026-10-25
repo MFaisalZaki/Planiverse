@@ -168,8 +168,7 @@ class PuzznicState:
     
     def __str__(self):
         """The grid in black-and-white text: walls joined into lines, each colour of block a
-        symbol of its own (`BLOCK_SYMBOLS`), the cursor's cell bracketed `[ ]`, and a status
-        line under it with the blocks left and the score."""
+        symbol of its own (`BLOCK_SYMBOLS`), and the cursor's cell bracketed `[ ]`."""
         rows = ["".join(str(cell) for cell in row) for row in self.grid]
         lines = boxed(rows, wall="#", glyphs=BLOCK_SYMBOLS).split("\n")
         width = 2 * self.shape[1]
@@ -177,10 +176,7 @@ class PuzznicState:
         row, col = self.cursor.pos
         lines[row][2 * col - 1] = "["
         lines[row][2 * col + 1] = "]"
-        blocks = sum(isinstance(cell, Box) for cell in chain.from_iterable(self.grid))
-        score = sum(self.score)
-        status = f"blocks {blocks} left · score {score:g}"
-        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
+        return "\n".join("".join(line).rstrip() for line in lines)
 
     def __eq__(self, value):
         return self.grid == value.grid and self.cursor == value.cursor

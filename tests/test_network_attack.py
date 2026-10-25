@@ -210,7 +210,6 @@ def test_the_picture_draws_each_subnet_and_marks_the_attack(tiny_env, tiny_state
     for subnet in ("subnet 1", "subnet 2", "subnet 3"):
         assert subnet in first
     assert "links internet─1" in first
-    assert first.splitlines()[-1] == "discovered 1 of 3 · rooted 0 · sensitive rooted 0 of 2"
     action, after = next((a, s) for a, s in tiny_env.successors(tiny_state)
                          if str(s) != first)
     assert len(str(after).splitlines()) == len(first.splitlines())

@@ -495,20 +495,16 @@ class FloodState:
         return f"<FloodState(step={self.step}, protected={sorted(self.protected)}, cost={self.cost:.0f})>"
 
     def __str__(self):
-        """The city's zone map, then a status line.
+        """The city's zone map.
 
         Each zone is a box with its id, marked `≈` when a storm floods it, and shaded by the
         depth the last period's worst storm left on its roads; a protected zone is double-
         walled and names its measure. Roads join neighbouring zones, dashed where the water
         has made them impassable.
         """
-        rows = [_zone_map(self, self.city)] if self.city is not None else []
-        million = lambda value: f"{value / 1e6:.1f}"  # noqa: E731
-        storm = f" · storm {self.rain} mm" if self.rain else ""
-        rows.append(f"year {self.year}/{self.years} · {million(self.cost)} of "
-                    f"{million(self.target)} M DKK: damage {million(self.damage)}, "
-                    f"delays {million(self.delay)}, measures {million(self.spent)}{storm}")
-        return "\n\n".join(rows)
+        if self.city is None:
+            return f"year {self.year}/{self.years}"
+        return _zone_map(self, self.city)
 
 
 class FloodTransportEnv(Environment):

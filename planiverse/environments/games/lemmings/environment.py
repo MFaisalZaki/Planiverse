@@ -118,7 +118,7 @@ class LemmingsState:
     def __str__(self):
         """The cave in black-and-white text, two columns a cell: rock as joined lines, earth
         shaded, the entrance and the exit as symbols, every lemming as what it is doing and the
-        way it faces, and a status line with the tick, the tally and the skills left."""
+        way it faces."""
         lines = [list(line.ljust(2 * len(row)))
                  for line, row in zip(boxed(self.rows, wall=ROCK, glyphs=PICTURE).split("\n"),
                                       self.rows)]
@@ -128,11 +128,7 @@ class LemmingsState:
                     lines[y][2 * x + 1] = PICTURE[EARTH]
         for x, y, direction, state, _ in self.lemmings:
             lines[y][2 * x] = LEMMING_PICTURE.get(state, LEMMING_PICTURE["walker"])[direction > 0]
-        skills = ", ".join(f"{skill} {count}" for skill, count in self.skills if count) or "none"
-        status = (f"tick {self.tick} · {self.released} out · {self.saved} saved"
-                  + (f" of {self.quota}" if self.quota else "")
-                  + f" · {self.lost} lost · skills: {skills}")
-        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
+        return "\n".join("".join(line).rstrip() for line in lines)
 
     def __repr__(self):
         return f"<LemmingsState(tick={self.tick}, out={len(self.lemmings)}, saved={self.saved}, lost={self.lost})>"

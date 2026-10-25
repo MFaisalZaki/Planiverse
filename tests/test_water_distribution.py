@@ -336,7 +336,6 @@ def test_a_state_draws_the_network_as_a_schematic(env):
     for glyph in ("◉", "▣", "≋", "○", "─", "│"):
         assert glyph in picture, glyph
     assert "╳" not in picture
-    assert picture.splitlines()[-1] == "0 pipes closed · contaminated delivered 13.6% · service 100.0%"
     after = env.__advance__(state, WaterNetworkAction("11"))
     assert "╳" in str(after) and "●" in str(after) and str(after) != picture
     assert not hasattr(WaterNetworkState, "panels")

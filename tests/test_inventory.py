@@ -48,7 +48,6 @@ def test_the_contract_on_the_initial_state(inventory):
     assert len(ACTIONS) == 9
     assert all(child.period == 1 for _, child in children)
     assert set(state.readings()) >= {"retailer", "demand", "lost sales", "profit"}
-    assert str(state).splitlines()[-1].startswith("period 0/")
 
 
 def test_actions_parse_and_refuse_unknown_levels():
@@ -174,7 +173,7 @@ def test_every_bundled_season_is_solved_by_its_plan_and_regenerates_from_its_see
 
 # ------------------------------------------------------------------------- the picture
 
-def test_the_picture_draws_the_chain_and_a_status_line(inventory):
+def test_the_picture_draws_the_chain(inventory):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = inventory.reset()
@@ -183,9 +182,6 @@ def test_the_picture_draws_the_chain_and_a_status_line(inventory):
     for name in ("raw", "manufacturer", "distributor", "retailer", "customers", "▶"):
         assert name in picture
     assert f"{state.on_hand[0]} on hand" in picture
-    assert picture.splitlines()[-1] == (
-        f"period 0/{state.horizon} · profit 0.00 of {state.target:.2f} · "
-        f"lost sales 0 of {state.allowed}")
     child = inventory.__advance__(state, ACTIONS[4])
     assert str(child) != picture
     assert f"demand {child.last[0]}" in str(child)

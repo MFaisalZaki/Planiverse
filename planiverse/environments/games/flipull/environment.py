@@ -520,13 +520,12 @@ class FlipullState:
     def __str__(self):
         """The board in black-and-white text: the walls joined into lines, each block type a
         shape (`BLOCK_SYMBOLS`), the player outside the right-hand wall on their row with the
-        held block in front of them, and a status line with the blocks left and the target."""
+        held block in front of them."""
         lines = boxed(["".join(cells) for cells in self.grid], wall=WALL,
                       glyphs=BLOCK_SYMBOLS).split("\n")
         if self.row is not None and 0 <= self.row < len(lines):
             lines[self.row] = (lines[self.row].ljust(2 * len(self.grid[self.row]))
                                + BLOCK_SYMBOLS.get(self.held, self.held) + PLAYER)
-        lines.append(f"blocks {self.blocks_remaining} left · clear at {self.clear_target}")
         return "\n".join(lines)
 
     def __repr__(self):

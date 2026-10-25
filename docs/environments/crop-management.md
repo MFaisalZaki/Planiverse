@@ -165,13 +165,12 @@ calendar with half its water. A schedule of ten waits completes the season too, 
 ![BFWS solving crop_management instance 0](../renders/crop_management.gif)
 
 Each frame is the state's picture, the field in profile on the day the next decision is taken.
-Across the top is the water budget as a row of drops, one a centimetre, filled as it is used,
-and under it the last decision's irrigation falls on the crop, a row for each centimetre. The
-crop stands as tall as its biomass above ground (the full height is 15 t/ha), in leaf while its
-leaf area index is at least 0.5, and below the ground line is a soil column filled to the water
-the crop can draw on, from the wilting point (empty) to field capacity (full). Once harvested,
-the tubers sit in the soil. Under it is a status line with the day after sowing, the decision,
-the biomass (or, at harvest, the yield against the target) and the water used of the budget.
+Across the top is the water budget as a row of drops, one a centimetre, filled as it is used, and
+under it the last decision's irrigation falls on the crop, a row for each centimetre. The crop
+stands as tall as its biomass above ground (the full height is 15 t/ha), in leaf while its leaf area
+index is at least 0.5, and below the ground line is a soil column filled to the water the crop can
+draw on, from the wilting point (empty) to field capacity (full). Once harvested, the tubers sit in
+the soil.
 
 | Mark | Meaning |
 |---|---|
@@ -268,7 +267,6 @@ state, info = env.reset()
 | `year` | `None` | one of the twenty-two bundled years, or one at random; the weather PCSE ships has no others without gaps |
 | `sow_shift` | 14 | the sowing date is the usual 15 April moved by up to this many days either way |
 | `attempts` | 20 | sowing dates tried, each kept only if the reference schedule yields at least the rainfed crop, before giving up with `GenerationError` |
-
 
 Moving the sowing date changes which weather the crop meets at each growth stage, which is
 what decides whether and when irrigation pays. The rainfed and reference yields are then

@@ -114,8 +114,7 @@ class BilliardsState:
 
     def __str__(self):
         """The table from above, its long side across: the cushions as a box, the six pockets
-        as ●, each object ball by its number and the cue ball as ○; then the shots left and the
-        balls to pot."""
+        as ●, each object ball by its number and the cue ball as ○."""
         from planiverse.rendering.text import Canvas
 
         cols, rows = PICTURE_COLS, PICTURE_ROWS
@@ -135,10 +134,7 @@ class BilliardsState:
                     break
             taken.add(spot)
             canvas.put(*spot, "○" if ball == "cue" else ball[-1])
-        status = f"shots left {self.shots_left}   balls to pot {len(self.object_balls)}"
-        if self.scratched:
-            status += "   cue ball sunk"
-        return f"{canvas}\n{status}"
+        return str(canvas)
 
 
 # ------------------------------------------------------------------------------ the physics

@@ -176,11 +176,10 @@ discovered 3 of 3 · rooted 2 · sensitive rooted 2 of 2
 
 ![BFWS's plan for network_attack instance 0](../renders/network_attack.png)
 
-The render is a contact sheet of the whole plan, one frame per state; there is no animated GIF
-for this environment. Each frame is `str(state)`: the network drawn subnet by subnet,
-each subnet a box of its hosts, the links between subnets under them, and one status line counting
-the hosts discovered and rooted. The frames show the attack advancing host by host, and the
-captions carry the actions and mark the goal.
+The render is a contact sheet of the whole plan, one frame per state; there is no animated GIF for
+this environment. Each frame is `str(state)`: the network drawn subnet by subnet, each subnet a box
+of its hosts, the links between subnets under them. The frames show the attack advancing host by
+host, and the captions carry the actions and mark the goal.
 
 | Mark | Meaning |
 |---|---|
@@ -201,7 +200,7 @@ from planiverse.planners.width import BFWS
 env = EnvNASim()
 env.set_index(0)                   # 'tiny'
 state, info = env.reset()          # info: instance, scenario, generated
-print(state)                       # the subnets, their hosts and a status line
+print(state)                       # the subnets and their hosts
 
 result = BFWS(width=1, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)

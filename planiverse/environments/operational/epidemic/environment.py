@@ -141,13 +141,12 @@ class EpidemicState:
     def __str__(self):
         """The town as a block of characters, each an equal share of the people (· still
         susceptible, ● infected, ○ recovered, † dead), the hospital as a ward of beds (▪
-        occupied, ▫ empty), and a status line."""
+        occupied, ▫ empty)."""
         width, height = TOWN
         cells = width * height
         people = self.population or cells
         per = people / cells
         infected, recovered = self.exposed, self.recovered
-        susceptible = max(0, people - infected - recovered - self.deaths)
         dead = min(cells, math.ceil(self.deaths / per))
         ill = min(cells - dead, math.ceil(infected / per))
         well = min(cells - dead - ill, round(recovered / per))
@@ -156,9 +155,7 @@ class EpidemicState:
         for k, cell in enumerate(_ORDER):
             char = "†" if k < dead else "○" if k < recovered_to else "●" if k < affected else "·"
             town.put(cell % width, cell // width, char)
-        lines = [f"town of {people:,} people, one character for {per:g}", str(town),
-                 f"· {susceptible:,} susceptible  ● {infected:,} infected  ○ {recovered:,} "
-                 f"recovered  † {self.deaths:,} dead", ""]
+        lines = [str(town), ""]
         beds = max(self.capacity, 1)
         each = max(1, math.ceil(beds / (2 * WARD)))
         marks = math.ceil(beds / each)
@@ -168,12 +165,7 @@ class EpidemicState:
         ward.rect(0, 0, WARD + 1, rows + 1)
         for k in range(marks):
             ward.put(1 + k % WARD, 1 + k // WARD, "▪" if k < full else "▫")
-        over = f", {self.load - self.capacity} over" if self.load > self.capacity else ""
-        lines += [f"hospital: {self.load} in {self.capacity} beds{over}, one mark for "
-                  f"{each} bed{'s' if each > 1 else ''}", str(ward), ""]
-        decision = f"{self.schedule[-1]} in force" if self.schedule else "nothing decided"
-        lines.append(f"week {self.week} of {self.weeks} · {decision} · {self.deaths} dead of "
-                     f"{self.target} allowed · {self.points} of {self.budget} points spent")
+        lines.append(str(ward))
         return "\n".join(lines)
 
     def __repr__(self):

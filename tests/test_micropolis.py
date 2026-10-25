@@ -69,7 +69,6 @@ def test_the_picture_draws_the_engines_map_of_the_layout(env):
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert "P" in picture and "═" in picture and "╪" in picture
     assert all(str(site) in picture for site in range(SITES)), "every site open, by number"
-    assert picture.splitlines()[-1] == "year 0   population 1 of 26   funds 16685"
     zoned = env.__advance__(state, MicropolisAction("R", 0))
     assert "R" in str(zoned) and "R" not in picture and "0" not in str(zoned).splitlines()[3]
     assert len(str(zoned).splitlines()) == len(picture.splitlines()), "the patch keeps its size"

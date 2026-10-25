@@ -145,11 +145,10 @@ would have left more room.
 
 Each frame is the state's picture, a one-line diagram of the case. The fourteen substations are
 boxes with their ids, laid out after the case's own diagram in Grid2Op and straightened so that
-every line runs along rows and columns, and each line is labelled with its loading as a share of
-its rating. A line within its rating is drawn light, an overloaded one heavy, and one out of
-service dashed, with the line the contingency tripped marked. A substation whose equipment the
-plan has split across two busbars is drawn double-walled. Under the diagram is a status line with
-the step, the worst loading and its line, the lines overloaded, and the reconfigurations taken.
+every line runs along rows and columns, and each line is labelled with its loading as a share of its
+rating. A line within its rating is drawn light, an overloaded one heavy, and one out of service
+dashed, with the line the contingency tripped marked. A substation whose equipment the plan has
+split across two busbars is drawn double-walled.
 
 | Mark | Meaning |
 |---|---|
@@ -269,7 +268,6 @@ Grid2op is deterministic once the stochastic parts are pinned, and this environm
 `env.seed(0)` and `set_id(chronic)` fix the time series, and the opponent is not enabled. The
 tests check this by replaying the same path twice and comparing every line's loading.
 
-
 That makes the action path the state. `__eq__` and `__hash__` are on the path, results are
 memoised on it, and `simulate` replaying from scratch is an independent check on `successors`
 rather than a restatement of it. States hold the path rather than a simulator snapshot because a
@@ -280,10 +278,8 @@ the parent once and then copies per child, so a path is never walked twice.
 
 `str(state)` draws the grid as the one-line diagram above, from the topology Grid2Op gives (each
 line's two substations, held once per instance in a `GridMap` the states share) and what the solve
-says about the state: every line's loading, which lines are in service, and which substations
-run on two busbars. None of it is part of the state's identity or its literals. The
-status line under it gives the step, the worst line loading, which lines are overloaded and the
-reconfigurations made.
+says about the state: every line's loading, which lines are in service, and which substations run on
+two busbars. None of it is part of the state's identity or its literals.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

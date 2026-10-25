@@ -320,7 +320,7 @@ class CropState:
                 f"{self.yield_kg if self.finished else self.biomass:.0f})>")
 
     def __str__(self):
-        """The field in profile, then a status line.
+        """The field in profile.
 
         The water allowance is a row of drops, one a centimetre, filled as it is used; the
         last decision's irrigation falls as rain over the crop. The crop stands as tall as
@@ -359,15 +359,7 @@ class CropState:
                 first[column] = "●"
             soil[0] = "".join(first)
         rows += soil
-        if self.finished:
-            target = f" of {field.target:.0f}" if field.target else ""
-            status = (f"harvest, day {crop.day} · yield {self.yield_kg:.0f}{target} kg/ha · "
-                      f"water {self.water_used:g}/{field.budget_cm:g} cm")
-        else:
-            status = (f"day {crop.day} · decision {self.depth + 1}/{DECISION_COUNT} · "
-                      f"biomass {self.biomass:.0f} kg/ha · "
-                      f"water {self.water_used:g}/{field.budget_cm:g} cm")
-        return "\n".join(rows) + "\n\n" + status
+        return "\n".join(rows)
 
 
 class CropEnv(Environment):

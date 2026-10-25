@@ -399,7 +399,7 @@ env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 Rendering a trace is one image per state: the state's text picture, typeset black on white. A
 board has its walls joined into lines and its pieces as symbols, a field or map is laid out on a
 grid of characters, and an operational system is drawn as a schematic of its parts (tanks,
-networks, a radar scope, a town), each with one status line. See
+networks, a radar scope, a town), with no figures under it. See
 [docs/rendering.md](docs/rendering.md).
 
 ## Planners

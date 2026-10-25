@@ -277,7 +277,7 @@ def test_a_generated_season_reproduces_from_its_seed():
 
 # ------------------------------------------------------------------------- the picture
 
-def test_the_picture_draws_the_field_and_a_status_line(env):
+def test_the_picture_draws_the_field(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, info = env.reset()
@@ -285,7 +285,6 @@ def test_the_picture_draws_the_field_and_a_status_line(env):
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert picture.splitlines()[0] == "water  " + " ".join("○" * int(info["budget_cm"]))
     assert "└" in picture and "═" in picture, "the soil column under the ground line"
-    assert picture.splitlines()[-1].startswith(f"day {decision_days()[0]} · decision 1/")
     child = env.__advance__(state, CropAction(2.0))
     drawn = str(child)
     assert drawn != picture and "╎" in drawn, "the irrigation falls on the field"

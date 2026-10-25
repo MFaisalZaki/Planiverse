@@ -144,8 +144,8 @@ def test_a_written_render_is_the_console_frames_captioned(counter, tmp_path):
     counter.set_index(0)
     path = counter.render_trace(counter.simulate(["right"]), tmp_path / "play.png")
     with Image.open(path) as sheet:
-        assert sheet.height < 300, "two captioned screens in a row, not the tile grid typeset"
-        assert sheet.width > 2 * 160
+        assert sheet.width > 160 and sheet.height < 2 * 144 + 100, \
+            "two captioned screens, not the tile grid typeset"
     trace = counter.simulate(["right", "right"])
     assert counter.render_trace(trace, tmp_path / "plan.gif", actions=["right", "right"]) \
         == tmp_path / "plan.gif"

@@ -104,8 +104,7 @@ class FluidState:
 
     def __str__(self):
         """The cave in black-and-white text: rock as joined walls, earth shaded, water as
-        waves, the spring, the basin and the drain as symbols, and a status line with the
-        tick, the basin against its need, the spring and the digs left."""
+        waves, and the spring, the basin and the drain as symbols."""
         lines = [list(line.ljust(2 * len(row)))
                  for line, row in zip(boxed(self.rows, wall=ROCK, glyphs=PICTURE).split("\n"),
                                       self.rows)]
@@ -113,10 +112,7 @@ class FluidState:
             for x in range(len(row) - 1):
                 if row[x] == row[x + 1] and row[x] in (EARTH, WATER):
                     lines[y][2 * x + 1] = PICTURE[row[x]]
-        status = (f"tick {self.tick} · basin {self.filled}"
-                  + (f" of {self.need}" if self.need else "")
-                  + f" · spring {self.supply} left · {self.digs_left} digs left")
-        return "\n".join("".join(line).rstrip() for line in lines) + "\n" + status
+        return "\n".join("".join(line).rstrip() for line in lines)
 
     def __repr__(self):
         return f"<FluidState(filled={self.filled}, supply={self.supply}, digs={self.digs_left}, tick={self.tick})>"

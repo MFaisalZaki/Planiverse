@@ -203,7 +203,7 @@ class InventoryState:
                 f"profit={self.profit:.2f}, lost={self.lost})>")
 
     def __str__(self):
-        """The supply chain as a row of boxes, then a status line.
+        """The supply chain as a row of boxes.
 
         Raw material flows from the supplier through the manufacturer and the distributor to
         the retailer and its customers. Each stage's box holds its stock on hand, as a number
@@ -240,9 +240,7 @@ class InventoryState:
                     canvas.write(slot, 2, f"{quantity:>3}")
                     slot += 4
                 x = end + 1
-        status = (f"period {self.period}/{self.horizon} · profit {self.profit:.2f} of "
-                  f"{self.target:.2f} · lost sales {self.lost} of {self.allowed}")
-        return f"{canvas}\n\n{status}"
+        return str(canvas)
 
 
 def reference_plans(periods):

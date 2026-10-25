@@ -689,8 +689,7 @@ RAFT, DOOR_SHUT, DOOR_OPEN, LOLO_DEAD = "◍", "▮", "▯", "✝"
 
 
 def picture(state):
-    """A position as a picture: the rocks joined into walls, every piece a symbol, and a status
-    line under the board with the hearts still to collect, the shots and the facing."""
+    """A position as a picture: the rocks joined into walls and every piece a symbol."""
     rows = render(state).split("\n")
     rows = [list(row) for row in rows]
     for row, col in state.sunk:
@@ -700,12 +699,7 @@ def picture(state):
         rows[door_row][door_col] = DOOR_OPEN if state.door_open else DOOR_SHUT
     if state.dead:
         rows[state.lolo[0]][state.lolo[1]] = LOLO_DEAD
-    board = boxed(["".join(row) for row in rows], wall=ROCK, glyphs=PICTURE)
-    status = (f"hearts {state.hearts_left} left · shots {state.shots} · "
-              f"facing {state.facing or 'none'}")
-    if state.dead:
-        status += " · caught"
-    return board + "\n" + status
+    return boxed(["".join(row) for row in rows], wall=ROCK, glyphs=PICTURE)
 
 
 def move(state, direction):

@@ -155,7 +155,7 @@ class MicrogridState:
                 f"lost={self.lost:.1f})>")
 
     def __str__(self):
-        """A one-line diagram of the microgrid, then a status line.
+        """A one-line diagram of the microgrid.
 
         Solar, the genset and the grid feed the load bus from above, and the battery and the
         load hang below it. Each link carries the last period's energy and an arrow for its
@@ -205,13 +205,7 @@ class MicrogridState:
         canvas.write(16, 10, f"battery {self.soc:.0%}" if reserve_row != 10 else
                      f"battery {self.soc:.0%} ◂ reserve")
         canvas.write(48, 11, "⌂ load")
-        clock = self.start + self.hour
-        status = (f"hour {self.hour}/{self.horizon} (day {clock // 24}, {clock % 24:02d}:00) · "
-                  f"cost {self.cost:.0f} of {self.target:.0f} · "
-                  f"charge {self.soc:.0%}, reserve {self.reserve:.0%}")
-        if self.lost > 0:
-            status += f" · {self.lost:.0f} kWh unmet"
-        return f"{canvas}\n\n{status}"
+        return str(canvas)
 
 
 # ------------------------------------------------------------------ reference policies

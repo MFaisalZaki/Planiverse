@@ -63,8 +63,6 @@ def test_the_picture_draws_the_track_and_the_trains_on_it(railway):
     picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert "◎" in picture and "┼" in picture and not any(arrow in picture for arrow in "▲▶▼◀")
-    assert picture.splitlines()[-1] == ("step 0   arrived 0  running 0  waiting 5   "
-                                        "train-steps 0 of 406")
     out = railway.simulate(["depart(0)", "wait"])[-1]
     assert any(arrow + "0" in str(out) for arrow in "▲▶▼◀"), "train 0 is out on the line"
     assert len(str(out).splitlines()) == len(picture.splitlines()), "the map keeps its size"

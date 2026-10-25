@@ -157,12 +157,10 @@ solution the bundled record refers to.
 
 ![BFWS solving water_network instance 0](../renders/water_network.gif)
 
-Each frame is the state's picture: the network as a schematic, each node at its coordinates in
-the network file scaled onto the grid and each link drawn along and then down between its two
-ends, so that pipes meeting at a junction join. A closed pipe is crossed out, and a junction is
-filled in once at least one per cent of the water it held over the twelve hours came from the
-source. A status line follows with the pipes closed, the share of contaminated water delivered
-and the service level.
+Each frame is the state's picture: the network as a schematic, each node at its coordinates in the
+network file scaled onto the grid and each link drawn along and then down between its two ends, so
+that pipes meeting at a junction join. A closed pipe is crossed out, and a junction is filled in
+once at least one per cent of the water it held over the twelve hours came from the source.
 
 | Mark | Meaning |
 |---|---|
@@ -285,8 +283,7 @@ could ever equal its parent, and the self-loop filter would be dead code.
 
 ## Rendering
 
-`str(state)` draws the network as the schematic [above](#an-example), with the pipes closed,
-the share of contaminated water delivered and the service level on its status line.
+`str(state)` draws the network as the schematic [above](#an-example).
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

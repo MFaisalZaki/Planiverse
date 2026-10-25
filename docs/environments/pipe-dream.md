@@ -181,12 +181,10 @@ ones, so the two strays, the elbow at (6,1) and the straight in the corner, show
 
 ![BFWS solving pipe_dream instance 0](../renders/pipe_dream.gif)
 
-Each frame is `str(state)`: the board in black-and-white text, framed
-and two columns a cell, with pipe joined across to its neighbour where the two meet. Pipe laid is
-drawn in single lines and pipe the flow has run through in double ones, and a cross the flow has
-run one way only is double along that way and single across it. One status line under the board
-gives the distance carried, the ticks before the flow moves (or `spilled`) and the next five
-pieces of the queue:
+Each frame is `str(state)`: the board in black-and-white text, framed and two columns a cell, with
+pipe joined across to its neighbour where the two meet. Pipe laid is drawn in single lines and pipe
+the flow has run through in double ones, and a cross the flow has run one way only is double along
+that way and single across it.
 
 | Symbol | What |
 |---|---|

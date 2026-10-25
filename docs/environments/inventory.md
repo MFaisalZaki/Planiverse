@@ -156,11 +156,9 @@ sixteen periods, then both low for four) ends at 270.76, which is where the targ
 Each frame is the state's picture, the supply chain as a row of boxes: the raw material supplier,
 the manufacturer, the distributor, the retailer and its customers, with the goods flowing left to
 right. Each stage's box holds its stock on hand, as a number and as a bar against the stage's
-highest order-up-to level. The arrow into a stage carries the shipments in transit to it, one
-slot a period of its lead time, the one due soonest nearest the box. The customers' box is the
-last period's demand, what the retailer sold and what it lost. Under the chain is a status line
-with the period of the season, the profit so far against the target, and the lost sales so far
-against the allowance.
+highest order-up-to level. The arrow into a stage carries the shipments in transit to it, one slot a
+period of its lead time, the one due soonest nearest the box. The customers' box is the last
+period's demand, what the retailer sold and what it lost.
 
 | Mark | Meaning |
 |---|---|
@@ -248,12 +246,11 @@ and `spaces.Box`) work.
 
 ## Rendering
 
-A frame typesets `str(state)`, the chain drawn as above: the stock on hand at each stage, the
-units in transit to each, the last period's demand, sales and lost sales, and a status line with
-the profit and the lost sales so far against the target and the allowance; the bars' scale is the season's, held once per season in a `ChainMap` the
-states share, outside their identity and literals. Its numbers by name are its `readings()`,
-which the OpenSpiel game's observation is made of, and [docs/rendering.md](../rendering.md)
-covers the other output formats.
+A frame typesets `str(state)`, the chain drawn as above: the stock on hand at each stage, the units
+in transit to each, the last period's demand, sales and lost sales; the bars' scale is the season's,
+held once per season in a `ChainMap` the states share, outside their identity and literals. Its
+numbers by name are its `readings()`, which the OpenSpiel game's observation is made of, and
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Files
 

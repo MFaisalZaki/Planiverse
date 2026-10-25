@@ -139,8 +139,7 @@ class SlingshotState:
 
     def __str__(self):
         """The field from the side, two units to a character each way: wood as ▒, stone as █,
-        targets as ◎, the sling as a Y on its post, the ground as a line; then the shots left
-        and the targets standing."""
+        targets as ◎, the sling as a Y on its post, the ground as a line."""
         from planiverse.rendering.text import Canvas
 
         cols = int(WIDTH / PICTURE_CELL)
@@ -176,8 +175,7 @@ class SlingshotState:
         canvas.put(sling_x, sling_y, "Y")
         canvas.vline(sling_x, sling_y + 1, rows - 1, "│")
         canvas.hline(0, cols - 1, rows, "─")
-        return (f"{canvas}\n"
-                f"shots left {self.shots_left}   targets standing {self.targets_left}")
+        return str(canvas)
 
 
 # ----------------------------------------------------------------------------- the physics

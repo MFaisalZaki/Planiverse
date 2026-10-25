@@ -316,9 +316,8 @@ def test_the_picture_draws_the_grid_in_symbols_the_renderer_has():
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == 8                      # seven rows and the status line
+    assert len(lines) == 7                      # seven rows
     assert lines[1] == "│ ● ▲[ ]  │"           # the cursor's cell, bracketed
-    assert lines[-1] == "blocks 6 left · score 0"
 
 
 def test_the_picture_follows_the_cursor_and_the_clears():
@@ -327,4 +326,3 @@ def test_the_picture_follows_the_cursor_and_the_clears():
     trace = game.simulate(plan)
     assert str(trace[0]) != str(trace[1])
     assert "[▲]" in str(trace[1])
-    assert str(trace[-1]).split("\n")[-1] == "blocks 3 left · score 80"

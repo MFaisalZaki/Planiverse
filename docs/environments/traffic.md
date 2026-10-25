@@ -135,13 +135,11 @@ early switch of its own, at junction `A2` alone.
 
 ![BFWS solving traffic instance 0](../renders/traffic.gif)
 
-Each frame is the state's picture: the three-by-three grid as streets, columns `A` to `C` and
-rows `0` to `2` as SUMO names them, with the stubs running off to the edge of the map. Each
-junction shows the axis its green is on as a double line through it, and each approach's queue
-is a row of marks back from the stop line on the side of the street its traffic keeps to, one
-mark for every two halted vehicles, as many as the block has room for. A status line follows
-with the time, the vehicles arrived, on the road and halted, and the vehicle-seconds spent of
-the target.
+Each frame is the state's picture: the three-by-three grid as streets, columns `A` to `C` and rows
+`0` to `2` as SUMO names them, with the stubs running off to the edge of the map. Each junction
+shows the axis its green is on as a double line through it, and each approach's queue is a row of
+marks back from the stop line on the side of the street its traffic keeps to, one mark for every two
+halted vehicles, as many as the block has room for.
 
 | Mark | Meaning |
 |---|---|

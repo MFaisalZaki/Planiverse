@@ -19,7 +19,7 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 
 def assert_a_picture(env, state, after, shows):
     """`str(state)` draws the state in the renderer's face, the same every time, with `shows`
-    in it, and differs once a step is taken."""
+    in it, differs once a step is taken, and is a drawing with no status line under it."""
     from planiverse.rendering.text import missing_glyphs
 
     picture = str(state)
@@ -30,7 +30,6 @@ def assert_a_picture(env, state, after, shows):
     for text in shows:
         assert text in picture, text
     assert str(after) != picture
-    assert len(picture.splitlines()[-1]) < 120, "one short status line under the picture"
     assert not hasattr(type(state), "panels")
 
 
@@ -101,10 +100,8 @@ def test_an_epidemic_state_draws_the_town_and_the_ward(epidemic):
     state, _ = epidemic.reset()
     after = epidemic.__advance__(state, "open")
     inst = epidemic.instance
-    assert_a_picture(epidemic, state, after, ["·", "●", "▫", "town of", "hospital",
-                                              f"week 0 of {inst['weeks']}", "nothing decided"])
-    assert "open in force" in str(after)
-    town = str(state).splitlines()[1:11]
+    assert_a_picture(epidemic, state, after, ["·", "▫"])
+    town = str(state).splitlines()[0:10]
     assert all(len(line) == 40 for line in town), "the town is forty characters by ten"
 
 
@@ -172,7 +169,7 @@ def test_a_traffic_state_draws_the_grid_its_greens_and_its_queues(traffic):
     assert approaches("A0") == ("A1A0", "B0A0", "bottom0A0", "left0A0")
     state, _ = traffic.reset()
     after = traffic.__advance__(state, TrafficAction("all"))
-    assert_a_picture(traffic, state, after, ["║", "t=0s", "vehicle-seconds"])
+    assert_a_picture(traffic, state, after, ["║"])
     assert "═" not in str(state).split("\n\n")[0] and "║" not in str(after).split("\n\n")[0]
     queued = traffic.simulate([HOLD] * 6)[-1]
     assert len(queued.queues) == 9 and sum(map(sum, queued.queues)) > 0
@@ -230,7 +227,7 @@ def test_an_airspace_state_draws_a_radar_scope(airspace):
     state, _ = airspace.reset()
     after = airspace.__advance__(state, HOLD)
     names = [a[0] for a in state.aircraft]
-    assert_a_picture(airspace, state, after, names + ["◇", "+", "t=0s", "standard 5"])
+    assert_a_picture(airspace, state, after, names + ["◇", "+", "N"])
     assert any(arrow in str(state) for arrow in "↑↗→↘↓↙←↖")
 
 
@@ -290,5 +287,4 @@ def test_a_reservoir_state_draws_the_two_tanks_and_the_flows(reservoir):
     after = reservoir.__advance__(state, ReservoirAction(10, "half"))
     inst = reservoir.instance
     assert_a_picture(reservoir, state, after, ["upper 40 of 80", "lower 29 of 40", "city", "farm",
-                                               "river", "turbine", "28▸", "19▸", "month 0 of 12"])
-    assert "release(10, half): 10 let down, farm on half" in str(after)
+                                               "river", "turbine", "28▸", "19▸", "farm short"])

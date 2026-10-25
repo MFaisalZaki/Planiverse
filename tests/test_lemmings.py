@@ -196,11 +196,9 @@ def test_the_picture_draws_the_cave_in_symbols_the_renderer_has(env):
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
-    assert len(lines) == len(state.rows) + 1
+    assert len(lines) == len(state.rows)
     assert lines[1] == "    ▽"                    # the entrance at (2, 1)
     assert lines[9].endswith("⌂")                  # the exit at (28, 9)
-    assert lines[-1] == ("tick 0 · 0 out · 0 saved of 5 · 0 lost · "
-                         "skills: basher 2, builder 1, digger 2")
 
 
 def test_the_picture_shows_each_lemming_by_what_it_is_doing(env):
@@ -209,4 +207,3 @@ def test_the_picture_shows_each_lemming_by_what_it_is_doing(env):
     drawn = str(trace[-1]).split("\n")
     for x, y, direction, state, _ in trace[-1].lemmings:
         assert drawn[y][2 * x] == {"walker": "◀▶", "faller": "↓↓"}[state][direction > 0]
-    assert drawn[-1].startswith("tick 24 · 4 out")

@@ -162,12 +162,9 @@ exactly what a quota of five out of seven allows.
 
 ![BFWS solving lemmings instance 0](../renders/lemmings.gif)
 
-Each frame is `str(state)`: the cave in black-and-white text, two
-columns a cell, with every lemming drawn as what it is doing and, where it matters, the way it
-faces. Rock is drawn as joined lines and earth runs on into earth, so a platform reads as one
-piece. One status line under it gives the tick, the lemmings out, saved against the quota and
-lost, and the skills left, as in `tick 40 · 7 out · 0 saved of 5 · 2 lost · skills: basher 1,
-builder 1, digger 1`:
+Each frame is `str(state)`: the cave in black-and-white text, two columns a cell, with every lemming
+drawn as what it is doing and, where it matters, the way it faces. Rock is drawn as joined lines and
+earth runs on into earth, so a platform reads as one piece.
 
 | Symbol | What |
 |---|---|

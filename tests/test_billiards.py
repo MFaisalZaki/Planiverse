@@ -107,7 +107,6 @@ def test_the_picture_draws_the_table_and_changes_with_a_shot(env):
     assert picture.count("●") == 6 and picture.count("○") == 1
     table = "\n".join(picture.splitlines()[:-1])
     assert all(ball in table for ball in state.object_balls)
-    assert picture.splitlines()[-1] == f"shots left 3   balls to pot {len(state.object_balls)}"
     after = env.__advance__(state, BilliardsAction("2", 0, 2.0))
     assert str(after) != picture
     assert len(str(after).splitlines()) == len(picture.splitlines()), "the table keeps its size"

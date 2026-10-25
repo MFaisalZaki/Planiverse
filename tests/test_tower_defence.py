@@ -128,7 +128,6 @@ def test_the_picture_draws_the_map_and_the_towers_built(env):
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
     assert picture.count("▶") == 2, "the entrance and the exit"
     assert all(str(slot) in picture for slot in range(len(env.instance["slots"])))
-    assert picture.splitlines()[-1] == "wave 0 of 4 fought   lives 4   gold 100"
     built = env.__advance__(state, TowerAction("arrow", 1))
     assert "▲" in str(built) and "▲" not in picture
     assert len(str(built).splitlines()) == len(picture.splitlines()), "the map keeps its size"

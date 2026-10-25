@@ -177,7 +177,7 @@ def test_the_same_seed_gives_the_same_instance_and_it_round_trips():
 
 # ------------------------------------------------------------------------- the picture
 
-def test_the_picture_draws_the_microgrid_and_a_status_line(env):
+def test_the_picture_draws_the_microgrid(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, info = env.reset()
@@ -186,8 +186,6 @@ def test_the_picture_draws_the_microgrid_and_a_status_line(env):
     for element in ("☼ solar", "battery", "⌂ load", "◂ reserve", "━"):
         assert element in picture
     assert ("genset" in picture) == info["genset"] and ("grid " in picture) == info["grid"]
-    assert picture.splitlines()[-1].startswith(f"hour 0/{state.horizon} ")
-    assert f"reserve {state.reserve:.0%}" in picture.splitlines()[-1]
     child = env.__advance__(state, env.get_actions()[0])
     assert str(child) != picture and "kWh" in str(child)
     assert len(str(child).splitlines()) == len(picture.splitlines())

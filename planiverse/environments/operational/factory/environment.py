@@ -236,8 +236,7 @@ class FactoryState:
         """The patch from above in a frame, two columns to a tile, north at the top: ore as ░,
         walls as ▓, each machine as a box over its two by two tiles (a drill marked D with an
         arrow the way it faces, a furnace marked F with the plates waiting in it), piles on the
-        ground as • and the character as ☻, held at the frame's edge when it walks beyond it;
-        then the tick, the plates brought back against the target, and what it holds."""
+        ground as • and the character as ☻, held at the frame's edge when it walks beyond it."""
         from planiverse.rendering.text import Canvas
 
         held = ", ".join(f"{item} {count}" for item, count in sorted(self.inventory.items()))
@@ -273,7 +272,7 @@ class FactoryState:
         cx = min(x1, max(x0, int(math.floor(self.position[0] / TILE))))
         cy = min(y1, max(y0, int(math.floor(self.position[1] / TILE))))
         canvas.put(1 + 2 * (cx - x0), 1 + cy - y0, "☻")
-        return f"{canvas}\n{status}"
+        return str(canvas)
 
 
 #: How a picture draws a drill's facing.

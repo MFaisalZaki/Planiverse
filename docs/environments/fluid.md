@@ -142,11 +142,9 @@ wait in its place would have done the same.
 
 ![BFWS solving fluid instance 0](../renders/fluid.gif)
 
-Each frame is `str(state)`: the cave in black-and-white text, two
-columns a cell, with one status line under it giving the tick, the basin against its need, the
-spring and the digs left. It shows the earth dug and the water where the ticks left it. Rock is
-drawn as joined walls, and earth and water run on into a neighbour of their own kind, so a mass of
-earth reads as one and a pool as one:
+Each frame is `str(state)`: the cave in black-and-white text, two columns a cell. It shows the earth
+dug and the water where the ticks left it. Rock is drawn as joined walls, and earth and water run on
+into a neighbour of their own kind, so a mass of earth reads as one and a pool as one:
 
 | Symbol | What |
 |---|---|

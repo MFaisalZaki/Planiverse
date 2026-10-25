@@ -128,7 +128,7 @@ class NASimState(State):
 
     def __str__(self):
         """The network drawn subnet by subnet, each a box of its hosts marked by how far the
-        attack has got, the links between subnets under them, and one status line.
+        attack has got, and the links between subnets under them.
 
         `?` a host not yet discovered, `○` discovered, `◐` compromised, `●` rooted, and `★`
         after a sensitive host. Subnet 0 is the internet the attack starts from.
@@ -152,14 +152,7 @@ class NASimState(State):
             lines.append(side_by_side(boxes[start:start + PICTURE_ROW], gap=2))
         links = [f"{'internet' if a == 0 else a}─{b}" for a in range(len(network.topology))
                  for b in range(a + 1, len(network.topology)) if network.topology[a][b]]
-        addresses = list(network.address_space)
-        discovered = sum(bool(self.host_discovered(addr)) for addr in addresses)
-        rooted = sum(bool(self.host_has_access(addr, AccessLevel.ROOT)) for addr in addresses)
-        owned = sum(bool(self.host_has_access(addr, AccessLevel.ROOT))
-                    for addr in network.sensitive_addresses)
         lines.append("links " + "  ".join(links))
-        lines.append(f"discovered {discovered} of {len(addresses)} · rooted {rooted} · "
-                     f"sensitive rooted {owned} of {len(network.sensitive_addresses)}")
         return "\n".join(lines)
 
     def __mark__(self, addr):

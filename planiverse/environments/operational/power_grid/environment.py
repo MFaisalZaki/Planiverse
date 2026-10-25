@@ -429,26 +429,15 @@ class PowerGridState:
         return f"<PowerGridState(depth={self.depth}, max_rho={loading})>"
 
     def __str__(self):
-        """A one-line diagram of the grid, then a status line.
+        """A one-line diagram of the grid.
 
         Each substation is a box with its id, double-walled when it runs on two busbars,
         and each line is labelled with its loading: drawn light within its rating, heavy
         when overloaded, dashed when out of service, the line that tripped marked `✕`.
         """
-        grid = self.grid
-        lines = []
-        if grid is not None:
-            lines.append(_one_line_diagram(self, grid))
-        reconfigurations = sum(1 for action_id in self.path if action_id)
-        acted = f"{reconfigurations} reconfiguration{'s' if reconfigurations != 1 else ''}"
-        if self.blackout:
-            lines.append(f"step {self.step} · BLACKOUT · {acted}")
-        else:
-            worst = max(range(len(self.rhos)), key=self.rhos.__getitem__) if self.rhos else 0
-            overloaded = ", ".join(str(line) for line in self.overloaded_lines()) or "none"
-            lines.append(f"step {self.step} · worst {_percent(self.max_rho)} on line {worst} · "
-                         f"overloaded: {overloaded} · {acted}")
-        return "\n\n".join(lines)
+        if self.grid is None:
+            return f"step {self.step}" + (" · BLACKOUT" if self.blackout else "")
+        return _one_line_diagram(self, self.grid)
 
 
 class PowerGridEnv(Environment):
