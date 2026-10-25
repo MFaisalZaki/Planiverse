@@ -21,7 +21,8 @@ dependencies = [
     "psutil (>=7.0.0)",
     "pymetasploit3 (>=1.0.6)",
     "python-nmap (>=0.7.1)",
-    "matplotlib (>=3.5)",           # readings charts, and the font the trace renderer borrows
+    "matplotlib (>=3.5)",           # the monospace face the trace renderer typesets in
+    "fonttools (>=4.22)",           # reads that face's glyphs, so a picture is checked to typeset
     # The benchmark harness: SLURM arrays, the results' analysis, tables and figures. Its runner
     # imports `resource` at import time, so `planiverse-bench solve` and `report` need Linux or
     # macOS, which is where the benchmark runs.
