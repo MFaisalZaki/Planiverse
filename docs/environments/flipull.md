@@ -162,7 +162,7 @@ thrown from one row, clear three blocks between them and leave 9, which is the t
 
 ![BFWS solving flipull instance 0](../renders/flipull.gif)
 
-Each frame is the state's picture, `state.picture()`: the board in black-and-white text, the
+Each frame is `str(state)`: the board in black-and-white text, the
 walls joined into lines and each block type a shape, with the player outside the right-hand wall
 on their row, holding the block in front of them, and one status line under it giving the blocks
 left and the target. The same plan is also a [contact sheet](../renders/flipull.png), every frame
@@ -177,7 +177,7 @@ from planiverse.planners.width import BFWS
 env = FlipullGame()
 env.set_index(0)
 state, info = env.reset()
-print(state)                       # the board above
+print(state)                       # the board as the render draws it
 print(info)                        # {'stage': 0, 'generated': False, 'blocks': 25,
                                    #  'clear_target': 9, 'rows': 6}
 
@@ -262,9 +262,7 @@ give the same stage.
 
 ## Rendering
 
-`str(state)` draws the board in the stage alphabet, with `<` marking the player's row and the
-hand and the count on a last line. `state.picture()` draws it for the renderer, two columns a
-cell, under a status line of the form `blocks 25 left · clear at 9`:
+`str(state)` draws the board two columns a cell, under a status line of the form `blocks 25 left · clear at 9`:
 
 | Symbol | What |
 |---|---|

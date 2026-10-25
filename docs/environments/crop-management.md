@@ -194,7 +194,7 @@ from planiverse.planners.width import BFWS
 env = make("crop_management")
 env.set_index(0)                   # the 1976 season
 state, info = env.reset()          # info: year, sow, rainfed, reference, target, budget_cm, decision_days, ...
-print(state)                       # growing: 60 kg/ha of biomass so far / water used: 0 cm / nothing applied
+print(state)                       # the field; last line day 10 · decision 1/10 · biomass 60 kg/ha · ...
 
 result = BFWS(width=1, progress=measures.crop_management).solve(env)
 trace = env.simulate(result.plan)
@@ -209,9 +209,9 @@ Stateful play goes through the environment's OpenSpiel game,
 [Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
 and state pairs for the amounts the budget still allows, and `get_actions()` lists all four
 whatever the budget. `reference_plan()` returns the calendar as a plan of ten actions, and
-`validate(plan)` replays a plan and says whether it reaches a goal. A frame typesets the state's
-`picture()`, and `str(state)` stays its text in a few lines; its numbers by name are its
-`readings()`, which the OpenSpiel game's observation is made of.
+`validate(plan)` replays a plan and says whether it reaches a goal. A frame typesets
+`str(state)`, the picture above; the state's numbers by name are its `readings()`, which the
+OpenSpiel game's observation is made of.
 [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Seasons
@@ -284,11 +284,11 @@ the reference schedule, a solution by construction.
 
 ## Rendering
 
-`picture()` draws the field as above, from the crop model's reading of the day the state
+`str(state)` draws the field as above, from the crop model's reading of the day the state
 describes (its days since sowing, development stage, leaf area index and soil moisture, kept in a
 `CropReading`) and the season's fixed terms (the budget, the target and the soil's wilting point
 and field capacity, kept once per instance in a `Field` the states share). Neither is part of the
-state's identity or its literals. `str(state)` describes the season in a few lines of numbers.
+state's identity or its literals.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

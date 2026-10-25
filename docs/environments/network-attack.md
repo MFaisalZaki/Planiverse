@@ -166,15 +166,18 @@ sensitive hosts, and roots `(3, 0)` before `(2, 0)`. The order is forced, becaus
 compromised. It is the optimal path the scenario file itself notes, and the final state reads
 
 ```
-host (1, 0): discovered, reachable, compromised
-host (2, 0) (sensitive): discovered, reachable, rooted
-host (3, 0) (sensitive): discovered, reachable, rooted
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│ subnet 1 │  │ subnet 2 │  │ subnet 3 │
+│ ◐ 0      │  │ ● 0 ★    │  │ ● 0 ★    │
+└──────────┘  └──────────┘  └──────────┘
+links internet─1  1─2  1─3  2─3
+discovered 3 of 3 · rooted 2 · sensitive rooted 2 of 2
 ```
 
 ![BFWS's plan for network_attack instance 0](../renders/network_attack.png)
 
 The render is a contact sheet of the whole plan, one frame per state; there is no animated GIF
-for this environment. Each frame is the state's `picture()`: the network drawn subnet by subnet,
+for this environment. Each frame is `str(state)`: the network drawn subnet by subnet,
 each subnet a box of its hosts, the links between subnets under them, and one status line counting
 the hosts discovered and rooted. The frames show the attack advancing host by host, and the
 captions carry the actions and mark the goal.
@@ -198,8 +201,7 @@ from planiverse.planners.width import BFWS
 env = EnvNASim()
 env.set_index(0)                   # 'tiny'
 state, info = env.reset()          # info: instance, scenario, generated
-print(state)                       # host (1, 0): discovered, reachable
-print(state.picture())             # the subnets, their hosts and a status line
+print(state)                       # the subnets, their hosts and a status line
 
 result = BFWS(width=1, progress=measures.network_attack).solve(env)
 trace = env.simulate(result.plan)
@@ -310,10 +312,8 @@ same interpreter, which matters if you also use NASim directly.
 
 ## Rendering
 
-`state.picture()` draws the network as described under the example above. `str(state)` lists
-the hosts discovered so far, one line each, with whether the host is reachable,
-compromised or rooted and whether it is sensitive. NASim's own `State.__str__` prints the address
-space and nothing that changes, so `NASimState` overrides it; the full state, every cell of the
+`str(state)` draws the network as described under the example above. NASim's own
+`State.__str__` prints the address space and nothing that changes, so `NASimState` overrides it; the full state, every cell of the
 tensor, is in `state.literals`. See [docs/rendering.md](../rendering.md) for the other output
 formats.
 

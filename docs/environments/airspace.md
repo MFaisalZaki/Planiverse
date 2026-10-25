@@ -169,7 +169,7 @@ from planiverse.planners.width import BFWS
 env = AirspaceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: sector, aircraft, horizon, target, generated
-print(state)                       # t=0s, closest 99.0 nm; AC1 hdg 272 FL300 38.3 nm to go on course; ...
+print(state)                       # the radar scope; last line t=0s · 3 of 3 in the sector · ...
 
 result = BFWS(width=1, progress=measures.airspace).solve(env)
 trace = env.simulate(result.plan)
@@ -181,9 +181,9 @@ env.render_trace(trace, "airspace.png", actions=result.plan, env=env)     # the 
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_airspace")`, whose `apply_action` advances a state (see [Through
 OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
-pairs for the instructions `get_actions` offers. A frame typesets the state's `picture()`, and
-`str(state)` stays its text in a line or two; its numbers by name are its `readings()`, which
-the OpenSpiel game's observation is made of. [docs/rendering.md](../rendering.md) covers the
+pairs for the instructions `get_actions` offers. A frame typesets `str(state)`, the picture
+above; the state's numbers by name are its `readings()`, which the OpenSpiel game's
+observation is made of. [docs/rendering.md](../rendering.md) covers the
 other output formats.
 
 ## Sectors

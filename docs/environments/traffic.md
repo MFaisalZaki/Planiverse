@@ -162,7 +162,7 @@ from planiverse.planners.width import BFWS
 env = TrafficEnv()
 env.set_index(0)
 state, info = env.reset()          # info: morning, vehicles, horizon, target, generated
-print(state)                       # t=0s: 0 of 200 arrived, 0 on the road (0 halted), 200 to come; ...
+print(state)                       # the street grid; last line t=0s · 0 of 200 arrived, 0 on the road, ...
 
 result = BFWS(width=1, progress=measures.traffic).solve(env)
 trace = env.simulate(result.plan)
@@ -175,9 +175,9 @@ env.close()                                                                    #
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_traffic")`, whose `apply_action` advances a state (see [Through
 OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
-pairs for all seventeen actions, and `close()` shuts the simulator down. A frame typesets the
-state's `picture()`, and `str(state)` stays its text in a line or two; its numbers by name are
-its `readings()`, which the OpenSpiel game's observation is made of.
+pairs for all seventeen actions, and `close()` shuts the simulator down. A frame typesets
+`str(state)`, the picture above; the state's numbers by name are its `readings()`, which the
+OpenSpiel game's observation is made of.
 [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Mornings

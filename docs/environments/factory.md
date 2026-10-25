@@ -172,8 +172,7 @@ from builds both lines at once, fuels them and waits, in eighteen decisions.
 
 ![BFWS solving factory instance 0](../renders/factory.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is the patch from above in a frame, two columns to a tile
+The render is `str(state)`, typeset, one frame per state. Here that is the patch from above in a frame, two columns to a tile
 with north at the top, taking in the ore, the walls and the start with two tiles to spare; a
 character that walks further is held at the frame's edge. A status line under it gives the tick,
 the plates brought back against the target, and what the character holds. The same plan is also
@@ -198,8 +197,7 @@ from planiverse.planners.width import BFWS
 env = FactoryEnv()
 env.set_index(0)
 state, info = env.reset()          # info: patch, family, target, horizon, generated
-print(state)                       # tick 0: at (5.4, -11.6); holds coal 6, drill 2, furnace 2; ...
-print(state.picture())             # the patch, the machines and the character
+print(state)                       # the patch, the machines and the character
 
 result = BFWS(width=1, progress=measures.factory).solve(env)
 trace = env.simulate(result.plan)

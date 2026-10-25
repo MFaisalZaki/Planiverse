@@ -206,7 +206,7 @@ door.
 
 ![BFWS solving lolo instance 0](../renders/lolo.gif)
 
-Each frame is the state's picture, `state.picture()`: the board in black-and-white text, the
+Each frame is `str(state)`: the board in black-and-white text, the
 rocks joined into walls and every piece a symbol (see [Rendering](#rendering) for the legend),
 with one status line under it giving the hearts still to collect, the shots and the way Lolo
 faces. The same plan is also a [contact sheet](../renders/lolo.png), every frame on one image,
@@ -220,7 +220,7 @@ from planiverse.planners.width import BFWS
 env = LoloGame()
 env.set_index(0)
 state, info = env.reset()
-print(state)                       # the room above
+print(state)                       # the room as the render draws it
 print(info)                        # {'room_index': 0, 'room': 'tutorial 1a', 'generated': False,
                                    #  'hearts': 2, 'shots': 0, 'door': (0, 2), 'start': (6, 5),
                                    #  'exact': True, 'unmodelled_enemies': (), 'rafts': True}
@@ -310,8 +310,7 @@ search, and the same seed and options always give the same room.
 
 ## Rendering
 
-`str(state)` draws the board in the glyphs listed under [Context](#context), with `e` for an egg
-and `@` for Lolo. `state.picture()` draws it for the renderer: two columns a cell, the rocks
+`str(state)` draws the board two columns a cell, the rocks
 joined into box-drawing walls, floor left blank, and under the board a status line of the form
 `hearts 2 left · shots 0 · facing none`.
 

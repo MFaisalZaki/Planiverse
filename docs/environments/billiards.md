@@ -139,8 +139,7 @@ by the top cushion, still up.
 
 ![BFWS solving billiards instance 0](../renders/billiards.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is the table from above with its long side across, the
+The render is `str(state)`, typeset, one frame per state. Here that is the table from above with its long side across, the
 end at `y = 0` on the left and the side at `x = 0` along the top, about five centimetres of cloth
 to a character across and ten down. A status line under it gives the shots left and the balls to
 pot, and says so when the cue ball is sunk. The same plan is also a [contact
@@ -163,8 +162,7 @@ from planiverse.planners.width import BFWS
 env = BilliardsEnv()
 env.set_index(0)
 state, info = env.reset()          # info: table, balls, shots, generated
-print(state)                       # where every ball lies, and the shots left
-print(state.picture())             # the table from above
+print(state)                       # the table from above, and the shots left
 for action, child in env.successors(state):
     print(action, len(child.object_balls), "balls left")
 

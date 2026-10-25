@@ -172,7 +172,7 @@ from planiverse.planners.width import BFWS
 env = make("power_grid")
 env.set_index(0)                   # chronic 0, line 11 trips
 state, info = env.reset()          # info: grid, chronic, offset, tripped_line, max_rho, overloaded, actions, ...
-print(state)                       # step 1, 0 actions / worst line loading: 1.013 / overloaded: [9]
+print(state)                       # the one-line diagram; last line step 1 · worst 101% on line 9 · ...
 
 result = BFWS(width=1, progress=measures.power_grid).solve(env)
 trace = env.simulate(result.plan)
@@ -186,9 +186,9 @@ Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_power_grid")`, whose `apply_action` advances a state (see
 [Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
 and state pairs for the relevant reconfigurations and doing nothing, and `get_actions()` lists
-all 209 topology actions whatever the state. A frame typesets the state's `picture()`, and
-`str(state)` stays its text in a few lines; its numbers by name are its `readings()`, which the
-OpenSpiel game's observation is made of. [docs/rendering.md](../rendering.md) covers the other
+all 209 topology actions whatever the state. A frame typesets `str(state)`, the diagram
+above; the state's numbers by name are its `readings()`, which the OpenSpiel game's observation
+is made of. [docs/rendering.md](../rendering.md) covers the other
 output formats.
 
 ## Scenarios
@@ -278,12 +278,12 @@ the parent once and then copies per child, so a path is never walked twice.
 
 ## Rendering
 
-`picture()` draws the grid as the one-line diagram above, from the topology Grid2Op gives (each
+`str(state)` draws the grid as the one-line diagram above, from the topology Grid2Op gives (each
 line's two substations, held once per instance in a `GridMap` the states share) and what the solve
 says about the state: every line's loading, which lines are in service, and which substations
-run on two busbars. None of it is part of the state's identity or its literals. `str(state)`
-describes the grid in a few lines: the step, the actions taken, the worst line loading and which
-lines are overloaded.
+run on two busbars. None of it is part of the state's identity or its literals. The
+status line under it gives the step, the worst line loading, which lines are overloaded and the
+reconfigurations made.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

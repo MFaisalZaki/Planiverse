@@ -131,7 +131,7 @@ right, where it falls onto the 1 beside the far wall and clears the board.
 
 ![BFWS solving puzznic instance 0](../renders/puzznic.gif)
 
-Each frame is the state's picture, `state.picture()`: the grid in black-and-white text, the walls
+Each frame is `str(state)`: the grid in black-and-white text, the walls
 joined into lines, each colour of block a symbol of its own and the cursor's cell bracketed, with
 one status line under it giving the blocks left and the score. The same plan is also a [contact
 sheet](../renders/puzznic.png), every frame on one image, captioned with the step number, the
@@ -146,7 +146,7 @@ from planiverse.planners.width import BFWS
 env = PuzznicGame()
 env.set_index(0)
 state, info = env.reset()
-print(state)                       # the grid above
+print(state)                       # the grid as the render draws it
 env.get_actions()                  # ['left', 'right', 'up', 'down', 'left-hold', 'right-hold']
 
 result = BFWS(width=1, progress=measures.puzznic).solve(env)
@@ -161,8 +161,8 @@ Stateful play goes through the environment's OpenSpiel game,
 OpenSpiel](../../README.md#through-openspiel)). See [docs/rendering.md](../rendering.md) for
 the other output formats.
 
-The picture draws the grid two columns a cell, under a status line of the form `blocks 6 left ·
-score 0`. `str(state)` stays the level alphabet below, with `c` or `¢` for the cursor.
+`str(state)` draws the grid two columns a cell, under a status line of the form `blocks 6 left ·
+score 0`.
 
 | Symbol | What |
 |---|---|

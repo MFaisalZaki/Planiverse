@@ -247,7 +247,7 @@ from planiverse.planners.width import BFWS
 env = make("flood_transport")
 env.set_index(0)                   # eight zones, thirty years, the design storm every year
 state, info = env.reset()          # info["target"], info["reference"], info["do_nothing"]: 162.8e6, 159.6e6, 246.5e6 kroner
-print(state)                       # year 0 of 30 / protected: nothing / cost 0.00 M of 162.84 M DKK: ...
+print(state)                       # the zone map; last line year 0/30 · 0.0 of 162.8 M DKK: ...
 
 result = BFWS(width=1, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)
@@ -262,10 +262,10 @@ Stateful play goes through the environment's OpenSpiel game,
 and state pairs for waiting and for each measure still open, and `get_actions()` lists `wait`
 and every measure on every flooding zone whatever the state. `reference_plan()` returns the
 policy that set the target as a plan, and `validate(plan)` replays a plan and says whether it
-reaches a goal, which it does for the reference. A frame typesets the state's `picture()`,
-drawn on the instance's zones and roads (held once per instance in a `CityMap` the states share,
-outside their identity and literals), and `str(state)` stays its text in three lines; its
-numbers by name are its `readings()`, which the OpenSpiel game's observation is made of.
+reaches a goal, which it does for the reference. A frame typesets `str(state)`, the
+zone map drawn on the instance's zones and roads (held once per instance in a `CityMap` the
+states share, outside their identity and literals); the state's numbers by name are its
+`readings()`, which the OpenSpiel game's observation is made of.
 [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios

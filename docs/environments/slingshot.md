@@ -158,8 +158,7 @@ and breaks the last target.
 
 ![BFWS solving slingshot instance 0](../renders/slingshot.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is the field from the side, two units to a character
+The render is `str(state)`, typeset, one frame per state. Here that is the field from the side, two units to a character
 each way, with the ground as a line along the bottom and a status line under it giving the shots
 left and the targets standing. A block is drawn at the angle it lies, so a toppled pillar lies
 flat. The same plan is also a [contact sheet](../renders/slingshot.png), every frame on one image,
@@ -182,8 +181,7 @@ from planiverse.planners.width import BFWS
 env = SlingshotEnv()
 env.set_index(0)
 state, info = env.reset()          # info: level, targets, shots, generated
-print(state)                       # what stands, where, and the shots left
-print(state.picture())             # the field from the side
+print(state)                       # the field from the side, and the shots left
 for action, child in env.successors(state):
     print(action, child.targets_left, "targets left")
 

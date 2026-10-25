@@ -144,8 +144,7 @@ cannon is bought: the purse never reaches 140 at any point of the plan.
 
 ![BFWS solving tower_defence instance 0](../renders/tower_defence.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is the map from above, two columns to a cell, with the
+The render is `str(state)`, typeset, one frame per state. Here that is the map from above, two columns to a cell, with the
 towers built so far in their slots and a status line under it giving the waves fought, the lives
 and the gold. The waves themselves run inside a decision, so no enemy is ever drawn. The same plan
 is also a [contact sheet](../renders/tower_defence.png), every frame on one image, captioned with
@@ -170,8 +169,7 @@ from planiverse.planners.width import BFWS
 env = TowerDefenceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: map, waves, slots, gold, lives, generated
-print(state)                       # wave 0 fought, 4 lives, 100 gold; nothing built
-print(state.picture())             # the map, the slots and the towers built
+print(state)                       # the map, the slots and the towers built
 
 result = BFWS(width=1, progress=measures.tower_defence).solve(env)
 trace = env.simulate(result.plan)

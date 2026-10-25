@@ -149,8 +149,7 @@ which zones three commercial sites among four residential and one industrial, re
 
 ![BFWS solving micropolis instance 0](../renders/micropolis.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is the engine's own map of the layout and one tile round
+The render is `str(state)`, typeset, one frame per state. Here that is the engine's own map of the layout and one tile round
 it, as it stands after the state's last year, two columns to a tile with north at the top. A
 zone is drawn as the engine stores it, so it shows once it is placed and fills once something is
 built in it. A status line under it gives the year, the population against the target, and the
@@ -177,8 +176,7 @@ from planiverse.planners.width import BFWS
 env = MicropolisEnv()
 env.set_index(0)
 state, info = env.reset()          # info: city, years, target, sites, generated
-print(state)                       # year 0: population 1 (residents 0, commerce 0, industry 0), funds 16685, score 500; nothing zoned
-print(state.picture())             # the engine's map of the layout
+print(state)                       # the engine's map of the layout; last line year 0   population 1 of 26   funds 16685
 
 result = BFWS(width=1, progress=measures.micropolis).solve(env)
 trace = env.simulate(result.plan)

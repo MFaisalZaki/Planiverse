@@ -30,9 +30,9 @@ Rendered plans for the first instance of each environment live in [`docs/renders
 
 ## Where the pixels come from
 
-A frame is **the state's text**, typeset in a monospace font, black on white: the state's
-`picture()` where it draws one, and `str(state)` otherwise (`state_text(state)` picks). Every
-environment but the two emulators draws a picture, and what it draws depends on the environment:
+A frame is **the state's text**, `str(state)`, typeset in a monospace font, black on white.
+Every environment but the two emulators draws its state as a picture in text, and what it draws
+depends on the environment:
 
 - a board (Puzznic, Lolo, Lemmings and the other grid games) has its walls joined into
   box-drawing lines and its pieces as symbols, two columns to a cell so a cell is about square;
@@ -43,9 +43,9 @@ environment but the two emulators draws a picture, and what it draws depends on 
   attacked network) is drawn as a schematic of its parts.
 
 Each picture ends in one status line, the quantities that matter at that state. A picture keeps
-its size across a trace, so a GIF does not jump. `str(state)` stays what it was, since it is
-the state's OpenSpiel `observation_string`; the operational states also carry `readings()`, their
-numbers by name, which the OpenSpiel observation tensor holds. A GIF is pixels, and typesetting is
+its size across a trace, so a GIF does not jump. The same text is what `print(state)` shows and
+what the state's OpenSpiel `observation_string` is; the operational states also carry
+`readings()`, their numbers by name, which the OpenSpiel observation tensor holds. A GIF is pixels, and typesetting is
 the one step that turns the text into them, which is the only reason a font appears in the module.
 
 The pictures draw in the helpers of `planiverse.rendering.text`, so that every environment draws
@@ -81,8 +81,8 @@ for action in actions:
 render_trace(trace, "plan.png")
 ```
 
-A frame is then what OpenSpiel says about the state. Its text is the simulator state's picture
-for a `planiverse_*` game, and `str(state)` otherwise.
+A frame is then what OpenSpiel says about the state. Its text is `str(state)`, which for a
+`planiverse_*` game is the simulator state's own picture.
 Without `env=`, the caption reads the end of the plan off the game itself: a terminal state with
 a positive return is a goal, and any other terminal state is a dead end. Any of OpenSpiel's own
 games renders the same way, as its text.
@@ -96,7 +96,7 @@ the captions go on as for text. `frames=` is open to any caller with a picture p
 
 | Path | What |
 |---|---|
-| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state`, `state_text`, `outcome` |
+| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state`, `outcome` |
 | [`text.py`](../planiverse/rendering/text.py) | `boxed`, `Canvas`, `bar`, `tank`, `side_by_side`, `missing_glyphs`: what pictures draw in |
 | [`tests/test_rendering.py`](../tests/test_rendering.py) | Tests |
 | [`renders/`](renders/) | Rendered plans, one per environment |

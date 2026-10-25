@@ -153,7 +153,7 @@ left along the floor to the flag.
 
 ![BFWS solving amazing_tater instance 0](../renders/amazing_tater.gif)
 
-Each frame is the state's picture, `state.picture()`: the room in black-and-white text, the walls
+Each frame is `str(state)`: the room in black-and-white text, the walls
 joined into one outline, a block's squares solid and run together, each turnstile a pivot with its
 arms drawn out from it, and one status line under it giving the tater with the controls and how
 many are home (see [Rendering](#rendering) for the legend). The same plan is also a [contact
@@ -169,7 +169,7 @@ from planiverse.planners.width import BFWS
 env = AmazingTaterGame()
 env.set_index(0)                   # choose the room before reset
 state, info = env.reset()
-print(state)                       # the room above
+print(state)                       # the room as the render draws it
 print(info)                        # {'level_index': 0, 'level': 'A-01', 'generated': False,
                                    #  'size': (15, 5), 'taters': 1, 'blocks': 0,
                                    #  'turnstiles': 3, 'pits': 0}
@@ -284,12 +284,12 @@ Generation in Games*, 2016, https://pcgbook.com/). The test is breadth-first sea
 
 ## Rendering
 
-`str(state)` prints the friendly board, with `$` for every block square, `&` for a settled one,
-`+` and `*` for arms, and `o` for a pivot. `board(level, state)` prints the exact board in the
-alphabet the levels are stored in, which is what the tests compare. `state.picture()` draws the
-room for the renderer, two columns a cell: the walls are joined into lines, an outside cell where
+`str(state)` draws the room two columns a cell: the walls are joined into lines, an outside cell where
 two walls meet is drawn as wall so that the room's stepped outline closes, the floor is blank,
 and a status line of the form `tater 1 to move · 0 of 1 home` sits under the board.
+`board(level, state)` is the exact board in the alphabet the levels are stored in, and
+`friendly(rows)` the same board with `$` for every block square, `&` for a settled one, `+` and
+`*` for arms and `o` for a pivot; the tests compare those.
 
 | Symbol | What |
 |---|---|

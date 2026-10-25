@@ -162,7 +162,7 @@ from planiverse.planners.width import BFWS
 env = ReservoirEnv()
 env.set_index(0)
 state, info = env.reset()          # info: year, target, reserves, generated
-print(state)                       # month 0: upper 40, lower 29; last month released 0, ...
+print(state)                       # the two tanks; last line month 0 of 12 · nothing released yet · ...
 
 result = BFWS(width=1, progress=measures.reservoir).solve(env)
 trace = env.simulate(result.plan)
@@ -174,9 +174,9 @@ env.render_trace(trace, "reservoir.png", actions=result.plan, env=env)     # the
 Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_reservoir")`, whose `apply_action` advances a state (see [Through
 OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action and state
-pairs for all ten actions. A frame typesets the state's `picture()`, and `str(state)` stays its
-text in a line or two; its numbers by name are its `readings()`, which the OpenSpiel game's
-observation is made of. [docs/rendering.md](../rendering.md) covers the other output formats.
+pairs for all ten actions. A frame typesets `str(state)`, the picture above; the
+state's numbers by name are its `readings()`, which the OpenSpiel game's observation is made
+of. [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Years
 

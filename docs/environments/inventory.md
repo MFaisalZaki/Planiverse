@@ -181,7 +181,7 @@ from planiverse.planners.width import BFWS
 env = InventoryEnv()
 env.set_index(0)
 state, info = env.reset()          # info: season, target, allowed, generated
-print(state)                       # period 0: on hand retailer 29, distributor 24, ...
+print(state)                       # the chain; last line period 0/20 · profit 0.00 of 270.76 · ...
 
 result = BFWS(width=1, progress=measures.inventory).solve(env)
 trace = env.simulate(result.plan)
@@ -248,10 +248,9 @@ and `spaces.Box`) work.
 
 ## Rendering
 
-`str(state)` describes a period in one line: the stock on hand at each stage, the units in
-transit to each, the last period's demand, sales and lost sales, and the lost sales and profit
-so far against the allowance and the target. A frame typesets the state's `picture()`, the
-chain drawn as above; the bars' scale is the season's, held once per season in a `ChainMap` the
+A frame typesets `str(state)`, the chain drawn as above: the stock on hand at each stage, the
+units in transit to each, the last period's demand, sales and lost sales, and a status line with
+the profit and the lost sales so far against the target and the allowance; the bars' scale is the season's, held once per season in a `ChainMap` the
 states share, outside their identity and literals. Its numbers by name are its `readings()`,
 which the OpenSpiel game's observation is made of, and [docs/rendering.md](../rendering.md)
 covers the other output formats.

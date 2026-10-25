@@ -149,8 +149,7 @@ in. One at a time, shortest route first, ends at 406, which is where the target 
 
 ![BFWS solving railway instance 0](../renders/railway.gif)
 
-The render is the state's picture, typeset, one frame per state: `render_trace` draws a state's
-`picture()` where it has one. Here that is Flatland's track from above, read from its transition
+The render is `str(state)`, typeset, one frame per state. Here that is Flatland's track from above, read from its transition
 map, two columns to a cell with north at the top. A status line under it gives the step, the
 trains arrived, running and waiting (and stopped, when any are), and the train-steps against the
 target. The same plan is also a [contact sheet](../renders/railway.png), every frame on one
@@ -174,8 +173,7 @@ from planiverse.planners.width import BFWS
 env = RailwayEnv()
 env.set_index(0)
 state, info = env.reset()          # info: timetable, trains, cities, horizon, target, generated
-print(state)                       # step 0: 0 of 5 arrived, 0 running, 0 stopped, 5 waiting; ...
-print(state.picture())             # the track, the targets and the trains
+print(state)                       # the track, the targets and the trains
 
 result = BFWS(width=1, progress=measures.railway).solve(env)
 trace = env.simulate(result.plan)
@@ -241,11 +239,9 @@ as one run straight through Flatland without restoring.
 
 ## Rendering
 
-`str(state)` describes the network in a line: the step, the trains arrived, running, stopped and
-waiting, the cells still to run, the train-steps against the target and any trains deadlocked,
-for example `step 44: 1 of 5 arrived, 2 running, 0 stopped, 2 waiting; 101 cells to go; 211
-train-steps of 406`. `state.picture()` draws the track with the trains on it, which is what
-`render_trace` typesets, as in the example above.
+`str(state)` draws the track with the trains on it, as in the example above, under a status
+line with the step, the trains arrived, running and waiting (and stopped, when any are), the
+train-steps against the target, and whether the trains are deadlocked.
 
 ## Files
 

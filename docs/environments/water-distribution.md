@@ -186,7 +186,7 @@ from planiverse.planners.width import BFWS
 env = WaterNetworkEnv()
 env.set_index(0)                   # Net1, contaminant at junction 23
 state, info = env.reset()          # info: network, source, pipes, candidates, contaminated, service, ...
-print(state)                       # closed: nothing / contaminated delivered: 13.6% / service: 100.0%
+print(state)                       # the schematic; last line 0 pipes closed · contaminated delivered 13.6% · ...
 
 result = BFWS(width=1, progress=measures.water_network).solve(env)
 trace = env.simulate(result.plan)
@@ -200,9 +200,8 @@ Stateful play goes through the environment's OpenSpiel game,
 `pyspiel.load_game("planiverse_water_network")`, whose `apply_action` advances a state (see
 [Through OpenSpiel](../../README.md#through-openspiel)). `successors(state)` returns the action
 and state pairs for the candidate pipes not yet closed, and `get_actions()` lists every
-candidate whatever the state. A frame typesets the state's `picture()`, and `str(state)` stays
-its text in a line or two; its numbers by name are its `readings()`, which the OpenSpiel game's
-observation is made of. [docs/rendering.md](../rendering.md) covers the other output formats.
+candidate whatever the state. A frame typesets `str(state)`, the schematic above; the state's
+numbers by name are its `readings()`, which the OpenSpiel game's observation is made of. [docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios
 
@@ -286,9 +285,8 @@ could ever equal its parent, and the self-loop filter would be dead code.
 
 ## Rendering
 
-`str(state)` describes the network in a few lines: which pipes are closed, the share of
-contaminated water delivered, and the service level. `picture()` draws it as the schematic
-[above](#an-example), with those numbers on its status line.
+`str(state)` draws the network as the schematic [above](#an-example), with the pipes closed,
+the share of contaminated water delivered and the service level on its status line.
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 

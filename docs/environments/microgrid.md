@@ -178,7 +178,7 @@ from planiverse.planners.width import BFWS
 env = MicrogridEnv()
 env.set_index(0)
 state, info = env.reset()          # info: index, microgrid, start, horizon, target, reserve, ...
-print(state)                       # hour 0 of 36 (day 255, 06:00): battery at 0.51; ...
+print(state)                       # the one-line diagram; last line hour 0/36 (day 255, 06:00) · ...
 
 result = BFWS(width=1, progress=measures.microgrid).solve(env)
 trace = env.simulate(result.plan)
@@ -242,10 +242,9 @@ not depend on the path to its parent, and `simulate` replaying a plan lands on t
 
 ## Rendering
 
-A frame typesets the state's `picture()`, the diagram above, drawn with the modules the
-microgrid has (held once per instance in a `Site` the states share, outside their identity and
-literals). `str(state)` stays its text in one line, and its numbers by name are its
-`readings()`, which the OpenSpiel game's observation is made of. See
+A frame typesets `str(state)`, the diagram above, drawn with the modules the microgrid
+has (held once per instance in a `Site` the states share, outside their identity and literals).
+The state's numbers by name are its `readings()`, which the OpenSpiel game's observation is made of. See
 [docs/rendering.md](../rendering.md) for the other output formats.
 
 ## Attribution
