@@ -44,6 +44,9 @@ KINDS = ("R", "C", "I")
 TICKS_PER_YEAR, SITES = 800, 8
 #: The flat patch the layout needs, in tiles.
 PATCH_W, PATCH_H = 20, 9
+#: How much of the land round the layout a picture shows, in tiles each side, and the map's size.
+MARGIN_X, MARGIN_Y = 6, 3
+WORLD_W, WORLD_H = 120, 100
 
 
 def _engine():
@@ -134,13 +137,14 @@ class MicropolisState:
         return f"<MicropolisState(year={self.year}, population={self.population}, funds={self.funds})>"
 
     def __str__(self):
-        """The engine's map of the layout and a tile round it, two columns to a tile: each
-        zone as its three by three tiles with its letter (R, C or I) in the middle, the tiles
-        empty lots · until something is built, a residential zone's first houses ⌂, and a
-        built zone shaded ░ ▒ ▓ █ by its density; the power plant as a box marked P; a zone or
-        plant without power by its letter in lower case; roads in double lines with ∙ beside a
-        tile of light traffic and ▪ of heavy, and power lines in single ones, ╪ where they
-        cross; each site not yet zoned as □; trees as ♣ and water as ≈."""
+        """The engine's map of the layout and the land round it, two columns to a tile, as
+        the game lays it out: an empty zone as its letter (R, C or I) amid empty lots ·, a
+        residential zone's first houses ⌂, and a built zone as its buildings (▤ apartments,
+        ▥ offices, ▩ factories) filling its three by three tiles from the centre out as its
+        density grows; ↯ at the centre of a zone the power does not reach; the power plant as
+        a box marked P (p without power); roads in double lines with ∙ beside a tile of light
+        traffic and ▪ of heavy, and power lines in single ones, ╪ where they cross; each site
+        not yet zoned as □; trees as ♣ and water as ≈."""
         from planiverse.rendering.text import Canvas
 
         status = (f"year {self.year}   population {self.population} of {self.target}   "
@@ -199,20 +203,29 @@ class MicropolisState:
                     canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 5, ty + 2)
                     canvas.put(2 * tx + 1, ty, letter)
                     continue
-                base, levels = DENSITY[letter.upper()]
-                fill = LOT if tile in EMPTY_ZONES else \
-                    DENSITY_FILL[min(len(DENSITY_FILL) - 1, (tile - base) // 9 % levels)]
+                kind = letter.upper()
+                base, levels = DENSITY[kind]
+                built = tile not in EMPTY_ZONES
+                count = 1 + round(8 * ((tile - base) // 9 % levels) / (levels - 1)) if built else 0
+                filled = set(FILL_ORDER[:count])
                 for dy in (-1, 0, 1):
                     for dx in (-1, 0, 1):
                         here = tiles[ty + dy][tx + dx] & me.LOMASK \
                             if 0 <= ty + dy < height and 0 <= tx + dx < width else 0
-                        house = fill == LOT and HOUSES[0] <= here <= HOUSES[1]
-                        canvas.put(2 * (tx + dx), ty + dy, HOUSE_MARK if house else fill)
+                        if (dx, dy) in filled:
+                            glyph = BUILDING[kind]
+                        elif HOUSES[0] <= here <= HOUSES[1]:
+                            glyph = HOUSE_MARK
+                        else:
+                            glyph = LOT
+                        canvas.put(2 * (tx + dx), ty + dy, glyph)
                         if dx < 1:
-                            canvas.put(2 * (tx + dx) + 1, ty + dy, " " if fill == LOT else fill)
-                canvas.put(2 * tx - 1, ty, " ")
-                canvas.put(2 * tx, ty, letter)
-                canvas.put(2 * tx + 1, ty, " ")
+                            joined = (dx, dy) in filled and (dx + 1, dy) in filled
+                            canvas.put(2 * (tx + dx) + 1, ty + dy, BUILDING[kind] if joined else " ")
+                if not built:
+                    canvas.put(2 * tx, ty, kind)
+                if letter.islower():
+                    canvas.put(2 * tx, ty, NO_POWER)
         return str(canvas)
 
 
@@ -235,8 +248,15 @@ EMPTY_ZONES = (244, 427, 616)
 #: (`LHTHR` to `HHTHR`) stand on its lots before it is built up.
 DENSITY = {"R": (265, 4), "C": (436, 5), "I": (625, 4)}
 HOUSES = (249, 260)
-#: A zone's tiles by its density, from least to most built up, and an empty lot; a house.
-DENSITY_FILL, LOT, HOUSE_MARK = "░▒▓█", "·", "⌂"
+#: How a built zone's buildings are drawn, by its kind: apartments, offices and factories. A
+#: zone fills its three by three tiles from the centre out as its density grows, the rest of
+#: them empty lots; a residential zone's first houses stand on its lots; and a zone the power
+#: does not reach shows the game's lightning mark at its centre.
+BUILDING = {"R": "▤", "C": "▥", "I": "▩"}
+LOT, HOUSE_MARK, NO_POWER = "·", "⌂", "↯"
+#: The order a zone's tiles fill in, from its centre out: the centre, the four beside it, then
+#: the corners.
+FILL_ORDER = ((0, 0), (0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1))
 #: A road tile with light traffic (`LTRFBASE` on) and heavy (`HTRFBASE` on), and the mark
 #: each puts beside the road.
 TRAFFIC = ((144, "▪"), (80, "∙"))
@@ -337,9 +357,10 @@ def replay(seed, origin, decisions):
         for _ in range(TICKS_PER_YEAR):
             engine.simTick()
     x0, y0 = origin
-    corner = (x0 - 1, y0 - 1)
-    tiles = [[engine.getTile(x, y) for x in range(x0 - 1, x0 + PATCH_W + 1)]
-             for y in range(y0 - 1, y0 + PATCH_H + 1)]
+    left, top = max(0, x0 - MARGIN_X), max(0, y0 - MARGIN_Y)
+    right, bottom = min(WORLD_W, x0 + PATCH_W + MARGIN_X), min(WORLD_H, y0 + PATCH_H + MARGIN_Y)
+    corner = (left, top)
+    tiles = [[engine.getTile(x, y) for x in range(left, right)] for y in range(top, bottom)]
     return dict(population=int(engine.totalPop), residents=int(engine.resPop),
                 commerce=int(engine.comPop), industry=int(engine.indPop),
                 funds=int(engine.totalFunds), score=int(engine.cityScore),
