@@ -90,56 +90,43 @@ def test_the_environment_offers_render_trace_as_a_convenience(tmp_path, env, tra
         assert gif.n_frames == len(trace)
 
 
-# ---------------------------------------------------------------------------- charts
+# ---------------------------------------------------------------------------- pictures
 
-def tower_trace():
-    """A short tower defence trace: a pure-Python environment whose state is readings."""
-    from planiverse.environments.games.tower_defence.environment import TowerDefenceEnv
+class Drawn:
+    """A state that draws a picture of itself, and spells itself otherwise."""
 
-    game = TowerDefenceEnv()
-    game.set_index(0)
-    state, _ = game.reset()
-    actions = [action for action, _ in game.successors(state)][:2]
-    return game, actions, game.simulate(actions)
+    def __str__(self):
+        return "spelled"
+
+    def picture(self):
+        return "┌──┐\n│☻ │\n└──┘"
 
 
-def test_a_readings_state_is_charted_and_a_board_is_not(env):
+def test_a_frame_typesets_the_states_picture_where_it_draws_one(env):
+    from planiverse.rendering import state_text
+
+    assert state_text(Drawn()) == Drawn().picture()
     board, _ = env.reset()
-    assert not hasattr(board, "readings"), "a board renders as its own text"
-    game, _, trace = tower_trace()
-    row = trace[-1].readings()
-    for panel in trace[0].panels:
-        assert all(isinstance(row[name], (int, float)) for name in panel.series), panel.title
-        assert panel.target is None or panel.target in row
+    assert state_text(board) == (board.picture() if hasattr(board, "picture") else str(board))
+    assert render_state(Drawn()).size != render_state("spelled").size
 
 
-def test_every_panel_draws_readings_its_state_has():
-    """A panel naming a reading the state does not give would draw nothing, silently."""
-    import importlib
+def test_the_text_helpers_join_their_lines():
+    from planiverse.rendering.text import Canvas, bar, boxed, side_by_side, tank
 
-    from planiverse.environments import list_environments
-
-    checked = 0
-    for spec in list_environments():
-        if not spec.available():
-            continue
-        module = importlib.import_module(spec.factory.split(":")[0])
-        for cls in vars(module).values():
-            panels = getattr(cls, "panels", None) if isinstance(cls, type) else None
-            if not panels:
-                continue
-            env = spec.build()
-            names = set(env.reset()[0].readings())
-            for panel in panels:
-                assert set(panel.series) <= names, f"{cls.__name__}: {panel.title}"
-                assert panel.target is None or panel.target in names
-            checked += 1
-    assert checked >= 1
+    assert boxed(["###", "#@#", "###"], glyphs={"@": "☻"}) == "┌───┐\n│ ☻ │\n└───┘"
+    canvas = Canvas(5, 3)
+    canvas.rect(0, 0, 4, 2)
+    canvas.vline(2, 0, 2)
+    assert str(canvas) == "┌─┬─┐\n│ │ │\n└─┴─┘"
+    assert bar(5, 10, 4) == "██░░" and bar(20, 10, 2) == "██" and bar(1, 0, 3) == "░░░"
+    assert tank(1.0, 2, 2) == ["│██│", "│██│", "└──┘"]
+    assert side_by_side(["a\nb", "cc"], gap=1) == "a cc\nb"
 
 
 def test_an_openspiel_trace_renders_and_its_end_is_captioned(tmp_path):
-    """A trace of OpenSpiel states renders like an environment's: the readings are the
-    simulator state's, and the caption reads the goal off the game's own return."""
+    """A trace of OpenSpiel states renders like an environment's, and the caption reads the
+    goal off the game's own return."""
     pyspiel = pytest.importorskip("pyspiel")
     import planiverse.spiel as spiel
 
@@ -156,40 +143,6 @@ def test_an_openspiel_trace_renders_and_its_end_is_captioned(tmp_path):
     assert render_trace(trace, tmp_path / "plan.png").exists()
     board = pyspiel.load_game("deep_sea").new_initial_state()
     assert render_trace([board], tmp_path / "deep_sea.png").exists(), "OpenSpiel's own text"
-
-
-def test_a_charted_gif_grows_one_frame_per_state(tmp_path):
-    game, actions, trace = tower_trace()
-    path = render_trace(trace, tmp_path / "plan.gif", actions=actions, env=game)
-    with Image.open(path) as gif:
-        assert gif.format == "GIF" and gif.n_frames == len(trace)
-        sizes = set()
-        for index in range(gif.n_frames):
-            gif.seek(index)
-            sizes.add(gif.size)
-        assert len(sizes) == 1, "the axes are sized for the whole trace, so frames agree"
-
-
-def test_a_charted_sheet_is_one_figure_with_ink_in_it(tmp_path):
-    game, actions, trace = tower_trace()
-    path = render_trace(trace, tmp_path / "plan.png", actions=actions, env=game)
-    with Image.open(path) as sheet:
-        assert sheet.format == "PNG"
-        colours = sheet.convert("RGB").getcolors(maxcolors=1000000)
-        assert len(colours) > 10, "a chart has lines, markers and text in it"
-        assert sheet.width < 1400, "one figure, not a strip of tiles"
-
-
-def test_the_text_can_still_be_asked_for(tmp_path):
-    from planiverse.rendering import trace_frames
-
-    game, actions, trace = tower_trace()
-    path = render_trace(trace, tmp_path / "text.png", actions=actions, env=game, charts=False)
-    frames = trace_frames(trace, actions=actions, env=game)
-    with Image.open(path) as sheet:
-        assert sheet.height >= frames[0].height, "tiles of the typeset text"
-    with pytest.raises(ValueError, match="no readings"):
-        render_trace([object()], tmp_path / "none.png", charts=True)
 
 
 def test_supplied_frames_stand_in_for_the_typeset_text(tmp_path):

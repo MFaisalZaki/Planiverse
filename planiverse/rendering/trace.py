@@ -13,12 +13,12 @@ visible at once and each frame is captioned with the step number, the action tha
 it, and whether the state is a goal or a dead end. A GIF shows one frame at a time, which
 is the right thing for an animation and the wrong thing for reading a plan.
 
-Every frame is **the state's own text**: `str(state)`, typeset in a monospace font, which for
-an OpenSpiel state is the text OpenSpiel prints for it. Most of these environments were
-designed to be read as an ASCII board, and a GIF is pixels: typesetting is the one step that
-turns the board into them, which is the only reason a font appears in this file at all. A
-state whose text is a line of numbers instead says so by carrying `readings()` and `panels`,
-and is charted (`charts.py`).
+Every frame is **the state's own text**, typeset in a monospace font in black on white: its
+`picture()` where it draws one (a board in box-drawing characters, a field from the side, a
+system as a schematic, with a status line under it), and `str(state)` otherwise, which for an
+OpenSpiel state is the text OpenSpiel prints for it. A GIF is pixels, and typesetting is the
+one step that turns the text into them, which is the only reason a font appears in this file
+at all. The characters pictures share are in `text.py`.
 
 A trace is any list of states: an environment's, from `env.simulate(plan)`, or an OpenSpiel
 game's, from applying the plan to `game.new_initial_state()` and cloning as it goes.
@@ -72,11 +72,17 @@ def _font(size, bold=False):
     return ImageFont.load_default()
 
 
+def state_text(state):
+    """The text a frame typesets: the state's `picture()` where it draws one, else its `str`."""
+    picture = getattr(state, "picture", None)
+    return picture() if callable(picture) else str(state)
+
+
 def render_state(state, font_size=14, min_width=160):
     """One state as an image: its own text, typeset."""
     from PIL import Image, ImageDraw
 
-    text = str(state)
+    text = state_text(state)
     font = _font(font_size)
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     left, top, right, bottom = measure.multiline_textbbox((0, 0), text or " ", font=font)
@@ -231,7 +237,7 @@ def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
 
 def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_size=14,
                  max_states=None, columns=DEFAULT_COLUMNS, per_page=None, captions=None,
-                 charts=None, frames=None):
+                 frames=None):
     """Write every state of a trace to `target`. The extension decides the format.
 
     - `<name>.png` (or any other single-image extension): a **contact sheet**, `columns`
@@ -247,20 +253,10 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
     number is not much use, and off for the GIF and the directory unless you passed
     `actions` or `env`, which is a fair sign you want them labelled.
 
-    `charts` picks the frame: the state's text, or, for a state that carries `readings()` and
-    `panels`, a chart of those readings over the steps so far. It defaults to the chart
-    wherever the state has one; `False` asks for the text anyway, `True` for the chart and an
-    error where there is none. A chart
-    trace ignores `columns` and `per_page`: its sheet is one figure, not tiles.
-
     `frames`, one picture per state, replaces the typeset text with the state's own screen
     (see `trace_frames`); the emulator environments pass their consoles' frames this way.
     """
     extension = os.path.splitext(str(target))[1].lower()
-    if charts is None:
-        charts = bool(trace) and frames is None and getattr(trace[0], "panels", None) is not None
-    if charts:
-        return _render_charts(trace, target, extension, actions, env, duration_ms, max_states)
     if captions is None:
         captions = extension in (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff") \
             or actions is not None or env is not None
@@ -299,32 +295,3 @@ def render_trace(trace, target, actions=None, env=None, duration_ms=400, font_si
         paths.append(path)
     return paths
 
-
-def _render_charts(trace, target, extension, actions, env, duration_ms, max_states):
-    """The chart forms of `render_trace`: a growing GIF, one figure for the sheet and the
-    PDF, or a directory of the growing frames."""
-    from planiverse.rendering.charts import chart_frames, chart_image
-
-    states = list(trace)
-    if not states:
-        raise ValueError("nothing to render: the trace is empty")
-    if extension in (".gif", ""):
-        frames = chart_frames(states, actions, env, indices=kept_indices(len(states), max_states))
-        if extension == ".gif":
-            first, *rest = _uniform(frames)
-            first.save(target, save_all=True, append_images=rest, duration=duration_ms, loop=0)
-            return target
-        os.makedirs(target, exist_ok=True)
-        digits = max(3, len(str(len(frames) - 1)))
-        paths = []
-        for index, frame in enumerate(frames):
-            path = os.path.join(str(target), f"state-{index:0{digits}d}.png")
-            frame.save(path)
-            paths.append(path)
-        return paths
-    sheet = chart_image(states, actions, env)
-    if extension == ".pdf":
-        sheet.convert("RGB").save(target, "PDF", resolution=150.0)
-        return target
-    sheet.save(target)
-    return target

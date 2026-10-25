@@ -8,11 +8,10 @@
     render_trace(trace, "plan.gif")                          # one frame at a time
     render_trace(trace, "plan-frames/")                      # one PNG per state
 """
-from planiverse.rendering.charts import chart_frames, chart_image, readings_table
 from planiverse.rendering.trace import (
     DEFAULT_COLUMNS, contact_sheet, kept_indices, outcome, render_state, render_trace,
-    trace_frames,
+    state_text, trace_frames,
 )
 
-__all__ = ["DEFAULT_COLUMNS", "chart_frames", "chart_image", "contact_sheet", "kept_indices",
-           "outcome", "readings_table", "render_state", "render_trace", "trace_frames"]
+__all__ = ["DEFAULT_COLUMNS", "contact_sheet", "kept_indices", "outcome", "render_state",
+           "render_trace", "state_text", "trace_frames"]
