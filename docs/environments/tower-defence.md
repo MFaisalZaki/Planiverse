@@ -156,7 +156,7 @@ and handing the trace to `render_trace`:
 | line | the path, from the entrance to the exit |
 | `▶` on the left wall | the entrance |
 | `▶` on the right wall | the exit |
-| `0` to `7` | an empty building slot, by the number `build` names it by |
+| `□` | an empty building slot |
 | `▲` | an arrow tower |
 | `●` | a cannon |
 | `·` | open ground |

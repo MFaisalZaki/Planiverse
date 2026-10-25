@@ -43,8 +43,9 @@ TOWERS = {"arrow": dict(cost=60, range=1.6, damage=4, reload=2),
 #: Speed is in hundredths of a cell per tick; a wave is over when its last enemy is dead or
 #: through.
 SPEED_UNIT = 100
-#: How a picture draws each kind of tower.
+#: How a picture draws each kind of tower, and a slot nothing is built on yet.
 TOWER_GLYPHS = {"arrow": "▲", "cannon": "●"}
+EMPTY_SLOT = "□"
 MAX_TICKS = 4000
 
 
@@ -135,7 +136,7 @@ class TowerState:
 
     def __str__(self):
         """The map from above, two columns to a cell: the path as a line from the entrance ▶
-        on the left wall to the exit ▶ on the right, an empty building slot by its number, a
+        on the left wall to the exit ▶ on the right, an empty building slot as □, a
         built one by its tower (▲ an arrow tower, ● a cannon), open ground as ·."""
         from planiverse.rendering.text import JOINS, Canvas
 
@@ -161,7 +162,7 @@ class TowerState:
         canvas.put(2 * WIDTH + 1, 1 + path[-1][1], "▶")
         built = dict(self.towers)
         for slot, (x, y) in enumerate(self.layout.slots):
-            canvas.put(1 + 2 * x, 1 + y, TOWER_GLYPHS[built[slot]] if slot in built else str(slot))
+            canvas.put(1 + 2 * x, 1 + y, TOWER_GLYPHS[built[slot]] if slot in built else EMPTY_SLOT)
         return str(canvas)
 
 
