@@ -284,7 +284,7 @@ Generation in Games*, 2016, https://pcgbook.com/). The test is breadth-first sea
 ## Rendering
 
 `str(state)` draws the room two columns a cell: the walls are joined into lines, an outside cell
-where two walls meet is drawn as wall so that the room's stepped outline closes, the floor is blank.
+where two walls meet is drawn as wall so that the room's stepped outline closes, and open floor is a dot.
 `board(level, state)` is the exact board in the alphabet the levels are stored in, and
 `friendly(rows)` the same board with `$` for every block square, `&` for a settled one, `+` and `*`
 for arms and `o` for a pivot; the tests compare those.

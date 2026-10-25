@@ -495,7 +495,7 @@ def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart()
                          "#######"))
     drawn = str(state).split("\n")
     assert drawn[1] == "│ ◉ · ███ · │"
-    assert drawn[2] == "│       █   │"
+    assert drawn[2] == "│ · · · █ · │"
 
 
 def test_the_picture_follows_the_tater_and_the_turnstiles():
