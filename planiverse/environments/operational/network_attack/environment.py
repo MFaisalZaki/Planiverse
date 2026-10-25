@@ -8,6 +8,7 @@ from nasim.envs.network import Network
 
 from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, rng, solvable_draw
+from planiverse.rendering.text import Canvas, side_by_side
 
 
 def perform_action(self, state, action):
@@ -144,6 +145,53 @@ class NASimState(State):
             sensitive = " (sensitive)" if addr in self.network.sensitive_addresses else ""
             lines.append(f"host {addr}{sensitive}: {', '.join(marks)}")
         return "\n".join(lines) if lines else "nothing discovered"
+
+    def picture(self):
+        """The network drawn subnet by subnet, each a box of its hosts marked by how far the
+        attack has got, the links between subnets under them, and one status line.
+
+        `?` a host not yet discovered, `○` discovered, `◐` compromised, `●` rooted, and `★`
+        after a sensitive host. Subnet 0 is the internet the attack starts from.
+        """
+        network = self.network
+        boxes = []
+        for subnet in range(1, len(network.subnets)):
+            hosts = [addr for addr in network.address_space if addr[0] == subnet]
+            rows = [f"{self.__mark__(addr)} {addr[1]}" + (" ★" if addr in network.sensitive_addresses
+                                                         else "") for addr in hosts]
+            label = f"subnet {subnet}"
+            width = max(len(label), *(len(row) for row in rows)) + 3
+            canvas = Canvas(width + 1, len(rows) + 3)
+            canvas.rect(0, 0, width, len(rows) + 2)
+            canvas.write(2, 1, label)
+            for k, row in enumerate(rows):
+                canvas.write(2, 2 + k, row)
+            boxes.append(str(canvas))
+        lines = []
+        for start in range(0, len(boxes), PICTURE_ROW):
+            lines.append(side_by_side(boxes[start:start + PICTURE_ROW], gap=2))
+        links = [f"{'internet' if a == 0 else a}─{b}" for a in range(len(network.topology))
+                 for b in range(a + 1, len(network.topology)) if network.topology[a][b]]
+        addresses = list(network.address_space)
+        discovered = sum(bool(self.host_discovered(addr)) for addr in addresses)
+        rooted = sum(bool(self.host_has_access(addr, AccessLevel.ROOT)) for addr in addresses)
+        owned = sum(bool(self.host_has_access(addr, AccessLevel.ROOT))
+                    for addr in network.sensitive_addresses)
+        lines.append("links " + "  ".join(links))
+        lines.append(f"discovered {discovered} of {len(addresses)} · rooted {rooted} · "
+                     f"sensitive rooted {owned} of {len(network.sensitive_addresses)}")
+        return "\n".join(lines)
+
+    def __mark__(self, addr):
+        if not self.host_discovered(addr):
+            return "?"
+        if self.host_has_access(addr, AccessLevel.ROOT):
+            return "●"
+        return "◐" if self.host_compromised(addr) else "○"
+
+
+#: Subnet boxes set side by side in a picture before it starts a new row of them.
+PICTURE_ROW = 4
 
 #: Expansions the generator's search may spend proving a drawn network solvable. NASim's
 #: generated networks keep their sensitive hosts reachable, so this is a check on the

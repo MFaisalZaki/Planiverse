@@ -199,3 +199,19 @@ def test_a_goal_is_reachable_by_search(tiny_env, tiny_state):
             visited.add(successor.literals)
             frontier.append((successor, plan + [action]))
     pytest.fail("no goal found for the 'tiny' scenario within the search budget")
+
+
+def test_the_picture_draws_each_subnet_and_marks_the_attack(tiny_env, tiny_state):
+    from planiverse.rendering.text import missing_glyphs
+
+    first = tiny_state.picture()
+    assert first == tiny_env.reset()[0].picture()
+    assert not missing_glyphs(first)
+    for subnet in ("subnet 1", "subnet 2", "subnet 3"):
+        assert subnet in first
+    assert "links internet─1" in first
+    assert first.splitlines()[-1] == "discovered 1 of 3 · rooted 0 · sensitive rooted 0 of 2"
+    action, after = next((a, s) for a, s in tiny_env.successors(tiny_state)
+                         if s.picture() != first)
+    assert len(after.picture().splitlines()) == len(first.splitlines())
+    assert str(tiny_state).startswith("host (1, 0)")
