@@ -321,7 +321,8 @@ blank.
 | `◆` | an Emerald Framer |
 | `○`, `◍` | an egg, and an egg sunk into a river as a raft |
 | `♣`, `≈`, `═` | a tree, a river, a bridge |
-| `∴`, `✿`, `×`, `·` | desert, a flower bed, a break tile, a marker |
+| `·` | open floor Lolo can move onto |
+| `∴`, `✿`, `×`, `◇` | desert, a flower bed, a break tile, a marker |
 | `▾ ◂ ▴ ▸` | a one-way pass, pointing the way it lets Lolo through |
 | `§`, `Ψ`, `Ж` | Snakey, Medusa, Don Medusa |
 | `∞`, `Ω`, `Я`, `◐`, `☠` | Leeper, Gol, Rocky, Alma, Skull |

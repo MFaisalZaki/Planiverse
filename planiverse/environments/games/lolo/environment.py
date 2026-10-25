@@ -676,10 +676,11 @@ def render(state):
     return "\n".join("".join(row) for row in rows)
 
 
-#: The symbol each glyph of `render` is drawn as in a picture; rocks become joined walls.
+#: The symbol each glyph of `render` is drawn as in a picture; rocks become joined walls, and
+#: open floor is a dot so the grid Lolo moves on shows.
 PICTURE = {
-    FLOOR: " ", TREE: "♣", RIVER: "≈", BRIDGE: "═", FRAMER: "◆", HEART: "♥", MAGIC_HEART: "♡",
-    DESERT: "∴", BREAK_TILE: "×", FLOWER_BED: "✿", MARKER: "·", EGG: "○", LOLO: "☻",
+    FLOOR: "·", TREE: "♣", RIVER: "≈", BRIDGE: "═", FRAMER: "◆", HEART: "♥", MAGIC_HEART: "♡",
+    DESERT: "∴", BREAK_TILE: "×", FLOWER_BED: "✿", MARKER: "◇", EGG: "○", LOLO: "☻",
     "v": "▾", "<": "◂", "^": "▴", ">": "▸",
     SNAKEY: "§", LEEPER: "∞", GOL: "Ω", ROCKY: "Я", ALMA: "◐", SKULL: "☠", MEDUSA: "Ψ",
     DON_MEDUSA: "Ж",
