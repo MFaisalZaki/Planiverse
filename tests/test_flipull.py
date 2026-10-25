@@ -364,7 +364,7 @@ def test_get_actions_lists_the_whole_alphabet(env):
 def test_the_state_marks_the_row_the_player_is_on(env):
     state, _ = env.reset()
     lines = str(state).split("\n")
-    assert [k for k, line in enumerate(lines) if "☻" in line] == [state.row]
+    assert [k for k, line in enumerate(lines) if "◀" in line] == [state.row]
 
 
 def test_states_hash_by_position_not_by_depth(env):
@@ -387,10 +387,10 @@ def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
     assert len(lines) == len(state.grid)
-    assert lines[state.row].endswith("│ ✖☻")      # the player, holding a 4, on the bottom row
+    assert lines[state.row].endswith("│ ✖◀")      # the player, holding a 4, on the bottom row
 
 
 def test_the_picture_follows_the_player_and_the_throws(env):
     trace = env.simulate(["throw", "up"])
     assert str(trace[0]) != str(trace[1]) != str(trace[2])
-    assert str(trace[2]).split("\n")[trace[2].row].endswith("☻")
+    assert str(trace[2]).split("\n")[trace[2].row].endswith("◀")

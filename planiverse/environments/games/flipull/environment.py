@@ -81,9 +81,10 @@ WALL, EMPTY = "#", " "
 BLOCK_TYPES = ("1", "2", "3", "4")
 
 #: The symbol each block type is drawn as in a picture, the cartridge's four shapes; the player
-#: stands outside the right-hand wall, holding the block in front of them.
+#: stands outside the right-hand wall as an arrow aimed along their row, holding the block in
+#: front of them.
 BLOCK_SYMBOLS = {"1": "●", "2": "▲", "3": "■", "4": "✖"}
-PLAYER = "☻"
+PLAYER = "◀"
 
 #: `(stage, clear_target)`, matching the cartridge's own 32-entry stage table: the same
 #: board size (25, 30 or 36 blocks) and the same CLEAR target (9 down to 6) as each stage

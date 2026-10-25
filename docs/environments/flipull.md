@@ -267,8 +267,8 @@ give the same stage.
 |---|---|
 | `┌─┐ │` | the walls, joined into lines |
 | `●` `▲` `■` `✖` | a block of type `1`, `2`, `3`, `4` |
-| `☻` | the player, outside the right-hand wall on the row they stand on |
-| the shape before `☻` | the block in the player's hand |
+| `◀` | the player, outside the right-hand wall on the row they stand on, aimed along it |
+| the shape before `◀` | the block in the player's hand |
 
 See [docs/rendering.md](../rendering.md) for the other output formats.
 
