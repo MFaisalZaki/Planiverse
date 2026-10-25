@@ -291,7 +291,7 @@ for arms and `o` for a pivot; the tests compare those.
 
 | Symbol | What |
 |---|---|
-| `☻`, `☺` | the tater with the controls, and any other still on the board |
+| `◉`, `◎` | the tater with the controls, and any other still on the board |
 | `⚑` | the exit flag |
 | `█` | a block square, run into its neighbour on the right when they are one block |
 | `▒` | a block square settled into a pit |

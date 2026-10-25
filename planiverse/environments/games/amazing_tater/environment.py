@@ -1864,7 +1864,7 @@ BLOCK_FILL, SETTLED_FILL, PIT_MARK, FLAG, PIVOT_MARK = "█", "▒", "◌", "⚑
 ARM_MARK = {UP: "┃", DOWN: "┃", LEFT: "━", RIGHT: "━"}
 ARM_OVER_PIT_MARK = {UP: "╏", DOWN: "╏", LEFT: "╍", RIGHT: "╍"}
 #: The tater with the controls, and any other still on the board.
-ACTIVE_TATER, WAITING_TATER = "☻", "☺"
+ACTIVE_TATER, WAITING_TATER = "◉", "◎"
 
 
 def _closed(rows):
