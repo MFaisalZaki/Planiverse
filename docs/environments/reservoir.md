@@ -136,8 +136,9 @@ where the target comes from.
 
 Each frame is the state's picture, the valley. The two reservoirs are tanks filled to their volume
 against their capacity, with the month's inflow pouring into each and the reserve each must hold at
-the end of the year marked beside its wall. The turbine sits at the foot of the upper one, its
-channel running down to the lower one while water is let down and dry when none is. Off the lower
+the end of the year marked beside its wall, and the lower one lies lower in the valley. A penstock
+runs from the foot of the upper one down the slope and through the turbine into the lower one,
+running with water while water is let down and dry when none is. Off the lower
 one the city, the farm and the river each take an outlet, and each shows what it got this month
 against what it wanted: the city's buildings lit in that share, the farm's crops watered in it, and
 the river running on as far. Under it is the farm's shortfall so far against the allowance.
@@ -147,8 +148,9 @@ the river running on as far. Under it is the farm's shortfall so far against the
 | `│██│` | a reservoir, filled to its volume against its capacity |
 | `≈` pouring in | the month's inflow, from the hills or the valley |
 | `28▸` | the reserve the reservoir must hold at the end of the year, at its level |
-| `⚙` | the turbine, at the foot of the upper reservoir |
-| `≈≈≈▶`, `···▶` | a channel running with water, or dry |
+| `═║╗╚` with `≈`, or `─│┐└` | the penstock from the upper reservoir to the lower, running or dry |
+| `⚙` | the turbine, on the penstock |
+| `≈≈≈▶`, `···▶` | an outlet running with water, or dry |
 | `█`, `░` | the city's buildings, lit or dark, in the share of its demand it got |
 | `♣`, `·` | the farm's crops, watered or dry |
 | `≈`, `·` downstream | the river, running as far as its share was met |

@@ -137,9 +137,10 @@ class ReservoirState:
 
     def __str__(self):
         """The valley: the two reservoirs as tanks filled against their capacity, each reserve
-        marked beside its wall, the month's inflow pouring into each; the turbine ⚙ at the
-        foot of the upper one with its channel down to the lower, running ≈ while water is let
-        down and dry · when none is; and off the lower one the city as buildings lit █ in the
+        marked beside its wall, the month's inflow pouring into each, the lower one lying lower;
+        the penstock from the foot of the upper one down the slope through the turbine ⚙ into
+        the lower, double and running ≈ while water is let down and single and dry when none
+        is; and off the lower one the city as buildings lit █ in the
         share of its demand it got and dark ░ for the rest, the farm as a field of crops ♣
         watered and · dry, and the river running on ≈ as far as its share was met. Under it,
         the farm's shortfall as a gauge against the allowance."""
@@ -148,16 +149,17 @@ class ReservoirState:
         reserves = site.reserves if site else self.reserves
         city, farm, river, turbine = self.delivered
         last = self.month - 1
-        rows, inside, top = 10, 10, 2
-        canvas = Canvas(90, top + rows + 1)
+        rows, inside, top, drop = 10, 10, 2, 4
+        canvas = Canvas(90, top + drop + rows + 1)
         lefts = (5, 31)
+        tops = (top, top + drop)                             # the lower reservoir lies lower
         inflows = (site.inflow_upper, site.inflow_lower) if site else None
         for k, (name, volume) in enumerate((("upper", self.upper), ("lower", self.lower))):
-            left = lefts[k]
+            left, top = lefts[k], tops[k]
             inflow = inflows[k][last] if inflows and last >= 0 else 0.0
-            canvas.write(left + 1, 0, f"{('hills', 'valley')[k]} {inflow:.1f}" if last >= 0
+            canvas.write(left + 1, top - 2, f"{('hills', 'valley')[k]} {inflow:.1f}" if last >= 0
                          else ("hills", "valley")[k])
-            canvas.write(left + 1, 1, f"{name} {volume:.0f} of {capacity[k]:.0f}")
+            canvas.write(left + 1, top - 1, f"{name} {volume:.0f} of {capacity[k]:.0f}")
             share = volume / capacity[k] if capacity[k] else 0
             for row, line in enumerate(tank(share, rows, inside)):
                 canvas.write(left, top + row, line)
@@ -177,15 +179,24 @@ class ReservoirState:
             done = int(round(share * width))
             return on * done + off * (width - done)
 
-        # the turbine at the foot of the upper reservoir, its channel down to the lower
-        y = top + rows - 1
-        canvas.write(lefts[0] + inside + 3, y - 1, f"⚙ turbine {turbine:.0f}")
-        channel(lefts[0] + inside + 2, lefts[1] - 1, y, turbine)
+        # the penstock: from the foot of the upper reservoir down the slope, through the
+        # turbine, into the lower; double and running while water is let down, single and dry
+        flowing = turbine > 0
+        h, v, down, along = ("═", "║", "╗", "╚") if flowing else ("─", "│", "┐", "└")
+        x0, y0 = lefts[0] + inside + 2, tops[0] + rows - 1
+        x1, y1 = lefts[1] - 1, tops[1] + rows - 1
+        bend = x0 + 4
+        canvas.write(x0, y0, (("≈" if flowing else h) * (bend - x0)) + down)
+        for y in range(y0 + 1, y1):
+            canvas.put(bend, y, v)
+        canvas.write(bend, y1, along + ("≈" if flowing else h) * 3 + "⚙"
+                     + ("≈" if flowing else h) * (x1 - bend - 5) + "▶")
+        canvas.write(bend + 1, y1 + 1, f"turbine {turbine:.0f}")
         # the lower reservoir's three outlets, and what each served
         wants = (site.city if site else None,
                  site.farm[last] if site and last >= 0 else None,
                  site.river if site else None)
-        x = lefts[1] + inside + 2
+        x, top = lefts[1] + inside + 2, tops[1]
         scenes = (("city", city, wants[0], "█", "░"), ("farm", farm, wants[1], "♣", "·"),
                   ("river", river, wants[2], "≈", "·"))
         for k, (name, got, want, on, off) in enumerate(scenes):
