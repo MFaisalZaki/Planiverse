@@ -177,7 +177,7 @@ from planiverse.planners.width import BFWS
 env = MicrogridEnv()
 env.set_index(0)
 state, info = env.reset()          # info: index, microgrid, start, horizon, target, reserve, ...
-print(state)                       # the one-line diagram; last line hour 0/36 (day 255, 06:00) · ...
+print(state)                       # the one-line diagram
 
 result = BFWS(width=1, progress=measures.microgrid).solve(env)
 trace = env.simulate(result.plan)

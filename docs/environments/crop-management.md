@@ -193,7 +193,7 @@ from planiverse.planners.width import BFWS
 env = make("crop_management")
 env.set_index(0)                   # the 1976 season
 state, info = env.reset()          # info: year, sow, rainfed, reference, target, budget_cm, decision_days, ...
-print(state)                       # the field; last line day 10 · decision 1/10 · biomass 60 kg/ha · ...
+print(state)                       # the field
 
 result = BFWS(width=1, progress=measures.crop_management).solve(env)
 trace = env.simulate(result.plan)

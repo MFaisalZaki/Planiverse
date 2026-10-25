@@ -184,7 +184,7 @@ from planiverse.planners.width import BFWS
 env = WaterNetworkEnv()
 env.set_index(0)                   # Net1, contaminant at junction 23
 state, info = env.reset()          # info: network, source, pipes, candidates, contaminated, service, ...
-print(state)                       # the schematic; last line 0 pipes closed · contaminated delivered 13.6% · ...
+print(state)                       # the schematic
 
 result = BFWS(width=1, progress=measures.water_network).solve(env)
 trace = env.simulate(result.plan)

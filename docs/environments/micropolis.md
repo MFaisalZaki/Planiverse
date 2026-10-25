@@ -181,7 +181,7 @@ from planiverse.planners.width import BFWS
 env = MicropolisEnv()
 env.set_index(0)
 state, info = env.reset()          # info: city, years, target, sites, generated
-print(state)                       # the engine's map of the layout; last line year 0   population 1 of 26   funds 16685
+print(state)                       # the engine's map of the layout
 
 result = BFWS(width=1, progress=measures.micropolis).solve(env)
 trace = env.simulate(result.plan)

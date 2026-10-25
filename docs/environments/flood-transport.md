@@ -245,7 +245,7 @@ from planiverse.planners.width import BFWS
 env = make("flood_transport")
 env.set_index(0)                   # eight zones, thirty years, the design storm every year
 state, info = env.reset()          # info["target"], info["reference"], info["do_nothing"]: 162.8e6, 159.6e6, 246.5e6 kroner
-print(state)                       # the zone map; last line year 0/30 · 0.0 of 162.8 M DKK: ...
+print(state)                       # the zone map
 
 result = BFWS(width=1, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)

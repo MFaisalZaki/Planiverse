@@ -179,7 +179,7 @@ from planiverse.planners.width import BFWS
 env = InventoryEnv()
 env.set_index(0)
 state, info = env.reset()          # info: season, target, allowed, generated
-print(state)                       # the chain; last line period 0/20 · profit 0.00 of 270.76 · ...
+print(state)                       # the chain
 
 result = BFWS(width=1, progress=measures.inventory).solve(env)
 trace = env.simulate(result.plan)

@@ -151,7 +151,7 @@ from planiverse.planners.width import BFWS
 env = EpidemicEnv()
 env.set_index(0)
 state, info = env.reset()          # info: outbreak, weeks, capacity, budget, target, generated
-print(state)                       # the town and the ward; last line week 0 of 12 · nothing decided · ...
+print(state)                       # the town and the ward
 
 result = BFWS(width=1, progress=measures.epidemic).solve(env)
 trace = env.simulate(result.plan)

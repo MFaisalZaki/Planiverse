@@ -170,11 +170,14 @@ def test_a_traffic_state_draws_the_grid_its_greens_and_its_queues(traffic):
     assert approaches("A0") == ("A1A0", "B0A0", "bottom0A0", "left0A0")
     state, _ = traffic.reset()
     after = traffic.__advance__(state, TrafficAction("all"))
-    assert_a_picture(traffic, state, after, ["║"])
-    assert "═" not in str(state).split("\n\n")[0] and "║" not in str(after).split("\n\n")[0]
+    assert_a_picture(traffic, state, after, ["░", "○", "●"])
+    lights = lambda drawn: (drawn.count("○"), drawn.count("●"))  # noqa: E731
+    assert sum(lights(str(state))) == 4 * 9, "a light for every approach"
+    assert lights(str(after)) == lights(str(state))[::-1], "switching every junction swaps them"
     queued = traffic.simulate([HOLD] * 6)[-1]
     assert len(queued.queues) == 9 and sum(map(sum, queued.queues)) > 0
-    assert "▪" in str(queued)
+    assert len(queued.vehicles) == queued.running and "■" in str(queued)
+    assert any(arrow in str(queued) for arrow in "▲▶▼◀"), "vehicles on the move"
 
 
 # ------------------------------------------------------------------------------ airspace

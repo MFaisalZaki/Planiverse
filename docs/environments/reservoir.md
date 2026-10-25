@@ -161,7 +161,7 @@ from planiverse.planners.width import BFWS
 env = ReservoirEnv()
 env.set_index(0)
 state, info = env.reset()          # info: year, target, reserves, generated
-print(state)                       # the two tanks; last line month 0 of 12 · nothing released yet · ...
+print(state)                       # the two tanks
 
 result = BFWS(width=1, progress=measures.reservoir).solve(env)
 trace = env.simulate(result.plan)

@@ -113,10 +113,14 @@ def approaches(junction):
     return tuple(f"{start}{junction}" for start in (north, east, south, west))
 
 
-#: A picture's grid: columns between junctions, rows between them, the stubs' length in
-#: each, and how many halted vehicles one mark of a queue stands for.
-PICTURE_BLOCK, PICTURE_STUB = (16, 8), (8, 4)
-PER_MARK = 2
+#: A picture's scale: columns and rows to a metre of the network, which is `NET` metres square
+#: with its junctions `BLOCK` apart from `STUB` in. A street is two characters wide, a lane
+#: each way, vehicles keeping to the right.
+PICTURE_SCALE, NET = (0.1, 0.05), 2 * STUB + (GRID - 1) * BLOCK
+#: How a picture draws the city: a block of buildings, a light green and red, a vehicle moving
+#: by its heading (north, east, south, west) and one halted.
+BUILDINGS, GREEN, RED = "░", "○", "●"
+MOVING, HALTED = "▲▶▼◀", "■"
 
 
 def _stub_junction(side, k):
@@ -191,11 +195,13 @@ class TrafficState:
                 "to come": self.pending, "vehicle-seconds": self.travel, "target": self.target}
 
     def __init__(self, decisions, time, arrived, running, pending, travel, greens, target=0,
-                 horizon=0, total=0, halted=0, depth=0, queues=()):
+                 horizon=0, total=0, halted=0, depth=0, queues=(), vehicles=()):
         self.decisions = tuple(decisions)
         #: For the picture only: the vehicles halted on each junction's approaches from the
-        #: north, east, south and west, in the order of `JUNCTIONS`.
+        #: north, east, south and west, in the order of `JUNCTIONS`; and every vehicle on the
+        #: road as (x, y, heading in degrees, halted).
         self.queues = tuple(tuple(q) for q in queues)
+        self.vehicles = tuple(vehicles)
         self.time, self.arrived, self.running, self.pending = time, arrived, running, pending
         self.travel, self.greens, self.halted = travel, tuple(greens), halted
         self.target, self.horizon, self.total, self.depth = target, horizon, total, depth
@@ -218,41 +224,49 @@ class TrafficState:
         return self.depth < other.depth
 
     def __str__(self):
-        """The grid as streets, each junction showing the axis its green is on (═ east-west,
-        ║ north-south), each approach's queue as a row of ▪ back from the stop line (one for
-        every `PER_MARK` halted vehicles, as many as the block has room for)."""
-        (bx, by), (sx, sy) = PICTURE_BLOCK, PICTURE_STUB
-        left, top = 2 + sx, 1 + sy
-        width, height = left + bx * (GRID - 1) + sx + 1, top + by * (GRID - 1) + sy + 1
-        canvas = Canvas(width, height)
+        """The city from above: blocks of buildings ░ with streets between them, a lane each
+        way; at each junction a light for each approach on its corner, ○ green and ● red;
+        and every vehicle where it is, an arrow along its heading (▲ ▶ ▼ ◀) while it moves
+        and ■ once halted. The columns are lettered and the rows numbered as the junctions
+        are named."""
+        cx, cy = PICTURE_SCALE
+        width, height = round(NET * cx) + 3, round(NET * cy) + 2
+        canvas = Canvas(width, height, BUILDINGS)
 
-        def at(junction):
-            k, row = "ABC".index(junction[0]), int(junction[1])
-            return left + bx * k, top + by * (GRID - 1 - row)
+        def col(x):
+            return 2 + round(x * cx)
 
-        for k in range(GRID):
-            x, y = at(f"{'ABC'[k]}0")[0], at(f"A{k}")[1]
-            canvas.hline(2, width - 1, y)
-            canvas.vline(x, 1, height - 1)
-            canvas.put(x, 0, "ABC"[k])
-            canvas.put(0, y, str(k))
-        queues = dict(zip(JUNCTIONS, self.queues))
+        def row(y):
+            return 1 + round((NET - y) * cy)
+
+        lines = [STUB + k * BLOCK for k in range(GRID)]
+        for k, at in enumerate(lines):
+            canvas.fill(col(at), 1, col(at) + 1, height - 1, " ")
+            canvas.fill(2, row(at), width - 1, row(at) + 1, " ")
+        for k, at in enumerate(lines):
+            canvas.put(col(at), 0, "ABC"[k])
+            canvas.put(col(at) + 1, 0, " ")
+            canvas.put(0, row(at), str(k))
+            canvas.put(1, row(at), " ")
+            canvas.put(0, row(at) + 1, " ")
+            canvas.put(1, row(at) + 1, " ")
         for junction, green in zip(JUNCTIONS, self.greens):
-            x, y = at(junction)
-            for d in (-1, 0, 1):          # the green axis drawn double through the junction
-                if green == "A":
-                    canvas.put(x, y + d, "║")
-                else:
-                    canvas.put(x + d, y, "═")
-            north, east, south, west = queues.get(junction, (0, 0, 0, 0))
-            room = (by - 2, bx - 3)
-            # vehicles keep to the right: southbound queue on the street's west side, coming
-            # down from the north; westbound on the north side, back to the east; and so on
-            for n, (dx, dy, side) in ((north, (0, -1, (-1, 0))), (south, (0, 1, (1, 0))),
-                                      (east, (1, 0, (0, -1))), (west, (-1, 0, (0, 1)))):
-                marks = min(room[dx != 0], -(-n // PER_MARK))
-                for m in range(2, marks + 2):
-                    canvas.put(x + dx * m + side[0], y + dy * m + side[1], "▪")
+            x, y = col(lines["ABC".index(junction[0])]), row(lines[int(junction[1])])
+            across = RED if green == "A" else GREEN          # phase A is north-south
+            down = GREEN if green == "A" else RED
+            canvas.put(x - 1, y - 1, down)                   # from the north, southbound
+            canvas.put(x + 2, y + 2, down)                   # from the south, northbound
+            canvas.put(x + 2, y - 1, across)                 # from the east, westbound
+            canvas.put(x - 1, y + 2, across)                 # from the west, eastbound
+        for x, y, heading, halted in self.vehicles:
+            way = int(round(heading / 90)) % 4               # SUMO: 0 north, 90 east
+            if way in (1, 3):                                # along a street east or west
+                street = min(lines, key=lambda at: abs(at - y))
+                at = (col(x), row(street) + (1 if way == 1 else 0))
+            else:
+                street = min(lines, key=lambda at: abs(at - x))
+                at = (col(street) + (1 if way == 0 else 0), row(y))
+            canvas.put(*at, HALTED if halted else MOVING[way])
         return str(canvas)
 
     def __repr__(self):
@@ -395,7 +409,10 @@ class TrafficEnv(Environment):
                             target=self.instance["target"], horizon=self.instance["horizon"],
                             total=self.instance["vehicles"], halted=halted, depth=depth,
                             queues=[[ls.edge.getLastStepHaltingNumber(edge) for edge in approaches(j)]
-                                    for j in JUNCTIONS])
+                                    for j in JUNCTIONS],
+                            vehicles=[(*(round(c, 1) for c in ls.vehicle.getPosition(v)),
+                                       round(ls.vehicle.getAngle(v)), ls.vehicle.getSpeed(v) < 0.1)
+                                      for v in ls.vehicle.getIDList()])
 
     def close(self):
         if self.__loaded__ is not None:

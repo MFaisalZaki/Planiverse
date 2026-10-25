@@ -135,18 +135,21 @@ early switch of its own, at junction `A2` alone.
 
 ![BFWS solving traffic instance 0](../renders/traffic.gif)
 
-Each frame is the state's picture: the three-by-three grid as streets, columns `A` to `C` and rows
-`0` to `2` as SUMO names them, with the stubs running off to the edge of the map. Each junction
-shows the axis its green is on as a double line through it, and each approach's queue is a row of
-marks back from the stop line on the side of the street its traffic keeps to, one mark for every two
-halted vehicles, as many as the block has room for.
+Each frame is the state's picture: the city from above, blocks of buildings with the streets of
+the three-by-three grid between them, columns `A` to `C` and rows `0` to `2` as SUMO names them,
+and the stubs running off to the edge of the map. A street has a lane each way, its traffic keeping
+to the right. At each junction every approach has a light on its corner, green or red, and every
+vehicle on the road is drawn where it is: an arrow along its heading while it moves, a square once
+it has halted, so the frames show platoons moving through the greens and queues building at the
+reds.
 
 | Mark | Meaning |
 |---|---|
-| `═══` | a junction green east-west |
-| `║` (three rows tall) | a junction green north-south |
-| `▪` | two vehicles halted on the approach |
-| `─` `│` | a street |
+| `░` | a block of buildings |
+| `○` | a green light, on the corner of the approach it lets through |
+| `●` | a red light |
+| `▲` `▶` `▼` `◀` | a vehicle moving north, east, south or west |
+| `■` | a halted vehicle |
 
 The same plan is also a [sheet](../renders/traffic.png), every state on one figure, each
 captioned with the action that produced it and the goal marked where the plan ends. Both were
@@ -160,7 +163,7 @@ from planiverse.planners.width import BFWS
 env = TrafficEnv()
 env.set_index(0)
 state, info = env.reset()          # info: morning, vehicles, horizon, target, generated
-print(state)                       # the street grid; last line t=0s · 0 of 200 arrived, 0 on the road, ...
+print(state)                       # the city, its lights and its vehicles
 
 result = BFWS(width=1, progress=measures.traffic).solve(env)
 trace = env.simulate(result.plan)

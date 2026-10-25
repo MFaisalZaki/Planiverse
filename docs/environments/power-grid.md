@@ -171,7 +171,7 @@ from planiverse.planners.width import BFWS
 env = make("power_grid")
 env.set_index(0)                   # chronic 0, line 11 trips
 state, info = env.reset()          # info: grid, chronic, offset, tripped_line, max_rho, overloaded, actions, ...
-print(state)                       # the one-line diagram; last line step 1 · worst 101% on line 9 · ...
+print(state)                       # the one-line diagram
 
 result = BFWS(width=1, progress=measures.power_grid).solve(env)
 trace = env.simulate(result.plan)
