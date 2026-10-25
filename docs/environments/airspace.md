@@ -145,9 +145,9 @@ which turns the two aircraft converging from the south right, puts each back on 
 Each frame is the state's picture, a radar scope with north at the top: the ring the exits lie
 on, twenty nautical miles out, and a ring at half that range round the sector's centre. Each
 aircraft is an arrow along its heading, to the nearest forty-five degrees, with its callsign
-beside it, and each exit is marked with its aircraft's number. A status line follows with the
-time, the aircraft still in the sector, the closest any pair has come against the five-mile
-standard, and the sum of exit times of the target.
+beside it, and each exit is marked with its aircraft's number. Beside the scope, one to a line,
+are the time, the aircraft still in the sector, the closest any pair has come against the
+five-mile standard, and the sum of exit times against the target.
 
 | Mark | Meaning |
 |---|---|
@@ -169,7 +169,7 @@ from planiverse.planners.width import BFWS
 env = AirspaceEnv()
 env.set_index(0)
 state, info = env.reset()          # info: sector, aircraft, horizon, target, generated
-print(state)                       # the radar scope; last line t=0s · 3 of 3 in the sector · ...
+print(state)                       # the radar scope, the time and the sector's figures beside it
 
 result = BFWS(width=1, progress=measures.airspace).solve(env)
 trace = env.simulate(result.plan)
