@@ -95,7 +95,7 @@ class MicropolisState:
     Identity is the path: two states with the same decisions are the same city, since the
     engine is deterministic from the seed. The readings (`population`, `funds`, ...) are
     what the decisions produced and are carried for the planner to look at, and `patch`, a
-    `CityPatch`, is the engine's map around the layout at the end of them, which `picture`
+    `CityPatch`, is the engine's map around the layout at the end of them, which `str`
     draws; neither is compared, hashed or in the literals.
     """
 
@@ -130,16 +130,10 @@ class MicropolisState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        zoned = ", ".join(f"{kind} at {site}" for kind, site in self.decisions if kind is not None) or "nothing zoned"
-        return (f"year {self.year}: population {self.population} (residents {self.residents}, "
-                f"commerce {self.commerce}, industry {self.industry}), funds {self.funds}, "
-                f"score {self.score}; {zoned}")
-
     def __repr__(self):
         return f"<MicropolisState(year={self.year}, population={self.population}, funds={self.funds})>"
 
-    def picture(self):
+    def __str__(self):
         """The engine's map of the layout and a tile round it, two columns to a tile: each
         zone as a box over its three by three tiles with its letter (R, C or I), filled with ░
         once something is built in it; the power plant as a box marked P; roads in double lines

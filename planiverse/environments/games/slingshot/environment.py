@@ -134,20 +134,10 @@ class SlingshotState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        lines = [f"shots left: {self.shots_left}, targets standing: {self.targets_left}"]
-        for body in self.bodies:
-            if body[0] == "block":
-                lines.append(f"  {body[1]} {body[2]:g}x{body[3]:g} at ({body[4]:.1f}, {body[5]:.1f}) "
-                             f"turned {math.degrees(body[6]):.0f}°")
-            else:
-                lines.append(f"  target at ({body[1]:.1f}, {body[2]:.1f})")
-        return "\n".join(lines)
-
     def __repr__(self):
         return f"<SlingshotState(bodies={len(self.bodies)}, targets={self.targets_left}, shots={self.shots_left})>"
 
-    def picture(self):
+    def __str__(self):
         """The field from the side, two units to a character each way: wood as ▒, stone as █,
         targets as ◎, the sling as a Y on its post, the ground as a line; then the shots left
         and the targets standing."""

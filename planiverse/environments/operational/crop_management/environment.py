@@ -314,20 +314,12 @@ class CropState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        applied = ", ".join(f"day {day}: {amount:g}cm"
-                            for day, amount in zip(decision_days(), self.schedule)
-                            if amount) or "nothing applied"
-        head = (f"harvested: {self.yield_kg:.0f} kg/ha" if self.finished
-                else f"growing: {self.biomass:.0f} kg/ha of biomass so far")
-        return f"{head}\nwater used: {self.water_used:g} cm\n{applied}"
-
     def __repr__(self):
         return (f"<CropState(decisions={self.depth}, water={self.water_used:g}cm, "
                 f"{'yield' if self.finished else 'biomass'}="
                 f"{self.yield_kg if self.finished else self.biomass:.0f})>")
 
-    def picture(self):
+    def __str__(self):
         """The field in profile, then a status line.
 
         The water allowance is a row of drops, one a centimetre, filled as it is used; the

@@ -124,17 +124,14 @@ def test_the_picture_draws_the_map_and_the_towers_built(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = env.reset()
-    text = str(state)
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    assert picture == state.picture(), "the same state draws the same picture"
     assert picture.count("▶") == 2, "the entrance and the exit"
     assert all(str(slot) in picture for slot in range(len(env.instance["slots"])))
     assert picture.splitlines()[-1] == "wave 0 of 4 fought   lives 4   gold 100"
     built = env.__advance__(state, TowerAction("arrow", 1))
-    assert "▲" in built.picture() and "▲" not in picture
-    assert len(built.picture().splitlines()) == len(picture.splitlines()), "the map keeps its size"
-    assert str(state) == text, "the picture leaves the state's text alone"
+    assert "▲" in str(built) and "▲" not in picture
+    assert len(str(built).splitlines()) == len(picture.splitlines()), "the map keeps its size"
     assert TowerState(((2, "arrow"),), 40, 3, 1) == built.__class__(((2, "arrow"),), 40, 3, 1,
                                                                     layout=env.layout)
 

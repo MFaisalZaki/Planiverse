@@ -150,19 +150,11 @@ class MicrogridState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        load, solar, battery, genset, grid = self.flows
-        clock = self.start + self.hour
-        return (f"hour {self.hour} of {self.horizon} (day {clock // 24}, {clock % 24:02d}:00): "
-                f"battery at {self.soc:.2f}; last period load {load:.0f}, solar {solar:.0f}, "
-                f"battery {battery:+.0f}, genset {genset:.0f}, grid {grid:.0f} kWh; cost "
-                f"{self.cost:.2f} of {self.target} allowed")
-
     def __repr__(self):
         return (f"<MicrogridState(hour={self.hour}, soc={self.soc:.2f}, cost={self.cost:.2f}, "
                 f"lost={self.lost:.1f})>")
 
-    def picture(self):
+    def __str__(self):
         """A one-line diagram of the microgrid, then a status line.
 
         Solar, the genset and the grid feed the load bus from above, and the battery and the

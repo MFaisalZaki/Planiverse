@@ -364,7 +364,7 @@ def test_get_actions_lists_the_whole_alphabet(env):
 def test_the_state_marks_the_row_the_player_is_on(env):
     state, _ = env.reset()
     lines = str(state).split("\n")
-    assert sum(1 for line in lines if line.endswith("<")) == 1
+    assert [k for k, line in enumerate(lines) if "☻" in line] == [state.row]
 
 
 def test_states_hash_by_position_not_by_depth(env):
@@ -382,19 +382,17 @@ def test_the_picture_draws_the_board_in_symbols_the_renderer_has(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = env.reset()
-    drawn = state.picture()
+    drawn = str(state)
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
-    assert drawn == state.picture()
     lines = drawn.split("\n")
     assert len(lines) == len(state.grid) + 1
     assert lines[state.row].endswith("│ ✖☻")      # the player, holding a 4, on the bottom row
     assert lines[-1] == "blocks 25 left · clear at 9"
-    assert str(state).split("\n")[-1] == "held: 4   blocks: 25/9"
 
 
 def test_the_picture_follows_the_player_and_the_throws(env):
     trace = env.simulate(["throw", "up"])
-    assert trace[0].picture() != trace[1].picture() != trace[2].picture()
-    assert trace[1].picture().split("\n")[-1] == "blocks 24 left · clear at 9"
-    assert trace[2].picture().split("\n")[trace[2].row].endswith("☻")
+    assert str(trace[0]) != str(trace[1]) != str(trace[2])
+    assert str(trace[1]).split("\n")[-1] == "blocks 24 left · clear at 9"
+    assert str(trace[2]).split("\n")[trace[2].row].endswith("☻")

@@ -218,12 +218,6 @@ class TrafficState:
         return self.depth < other.depth
 
     def __str__(self):
-        greens = "".join(self.greens)
-        return (f"t={self.time:.0f}s: {self.arrived} of {self.total} arrived, {self.running} on the road "
-                f"({self.halted} halted), {self.pending} to come; {self.travel:.0f} vehicle-seconds of "
-                f"{self.target}; greens {greens}")
-
-    def picture(self):
         """The grid as streets, each junction showing the axis its green is on (═ east-west,
         ║ north-south), each approach's queue as a row of ▪ back from the stop line (one for
         every `PER_MARK` halted vehicles, as many as the block has room for), then a status

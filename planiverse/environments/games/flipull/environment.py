@@ -518,15 +518,6 @@ class FlipullState:
         return self.depth < other.depth
 
     def __str__(self):
-        lines = []
-        for index, cells in enumerate(self.grid):
-            marker = "<" if index == self.row else " "
-            lines.append("".join(cells) + marker)
-        lines.append(f"held: {self.held}   blocks: {self.blocks_remaining}"
-                     f"/{self.clear_target}")
-        return "\n".join(lines)
-
-    def picture(self):
         """The board in black-and-white text: the walls joined into lines, each block type a
         shape (`BLOCK_SYMBOLS`), the player outside the right-hand wall on their row with the
         held block in front of them, and a status line with the blocks left and the target."""

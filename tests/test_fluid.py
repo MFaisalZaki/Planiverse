@@ -202,21 +202,18 @@ def test_the_picture_draws_the_cave_in_symbols_the_renderer_has(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = env.reset()
-    drawn = state.picture()
+    drawn = str(state)
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
-    assert drawn == state.picture()
     lines = drawn.split("\n")
     assert len(lines) == len(state.rows) + 1
     assert "▼" in drawn and "⊔" in drawn and "⊗" in drawn and "▒" in drawn
     assert lines[-1] == "tick 0 · basin 0 of 12 · spring 15 left · 9 digs left"
-    assert str(state) == "\n".join(state.rows) + \
-        "\nfilled 0, spring 15 left, 9 digs left, tick 0"
 
 
 def test_the_picture_shows_the_water_and_the_digs(env):
     trace = env.simulate(["wait", "dig(10,8)"])
-    assert "≈" not in trace[0].picture() and "≈" in trace[1].picture()
-    assert trace[1].picture() != trace[2].picture()
-    assert trace[2].picture().split("\n")[-1] == \
+    assert "≈" not in str(trace[0]) and "≈" in str(trace[1])
+    assert str(trace[1]) != str(trace[2])
+    assert str(trace[2]).split("\n")[-1] == \
         "tick 24 · basin 6 of 12 · spring 3 left · 8 digs left"

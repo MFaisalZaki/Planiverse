@@ -424,20 +424,11 @@ class PowerGridState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        if self.blackout:
-            return f"step {self.step}: BLACKOUT after {self.depth} actions"
-        overloaded = self.overloaded_lines()
-        status = "secure" if self.is_secure() else f"overloaded: {list(overloaded)}"
-        return (f"step {self.step}, {self.depth} actions\n"
-                f"worst line loading: {self.max_rho:.3f}\n"
-                f"{status}")
-
     def __repr__(self):
         loading = "blackout" if self.blackout else f"{self.max_rho:.3f}"
         return f"<PowerGridState(depth={self.depth}, max_rho={loading})>"
 
-    def picture(self):
+    def __str__(self):
         """A one-line diagram of the grid, then a status line.
 
         Each substation is a box with its id, double-walled when it runs on two busbars,

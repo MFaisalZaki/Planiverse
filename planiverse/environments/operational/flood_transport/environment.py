@@ -491,21 +491,10 @@ class FloodState:
     def __lt__(self, other):
         return self.path < other.path
 
-    def __str__(self):
-        millions = lambda value: f"{value / 1e6:.2f} M"  # noqa: E731
-        protected = ", ".join(f"{zone} {kind}" for zone, kind in sorted(self.protected.items()))
-        status = "goal" if self.goal else "over target" if self.terminal else f"{self.years - self.year} years left"
-        return "\n".join([
-            f"year {self.year} of {self.years}" + (f", worst storm so far {self.rain} mm" if self.year else ""),
-            f"protected: {protected or 'nothing'}",
-            f"cost {millions(self.cost)} of {millions(self.target)} DKK: damage {millions(self.damage)}, "
-            f"delays {millions(self.delay)}, measures {millions(self.spent)}  [{status}]",
-        ])
-
     def __repr__(self):
         return f"<FloodState(step={self.step}, protected={sorted(self.protected)}, cost={self.cost:.0f})>"
 
-    def picture(self):
+    def __str__(self):
         """The city's zone map, then a status line.
 
         Each zone is a box with its id, marked `≈` when a storm floods it, and shaded by the

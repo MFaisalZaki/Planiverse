@@ -116,15 +116,6 @@ class LemmingsState:
         return self.depth < other.depth
 
     def __str__(self):
-        grid = [list(row) for row in self.rows]
-        for x, y, direction, state, _ in self.lemmings:
-            grid[y][x] = {"blocker": "B", "digger": "D", "basher": "H", "builder": "U"}.get(
-                state, ">" if direction > 0 else "<")
-        skills = ", ".join(f"{count} {skill}" for skill, count in self.skills)
-        return "\n".join("".join(row) for row in grid) + (
-            f"\ntick {self.tick}: {self.released} out, {self.saved} saved, {self.lost} lost; {skills}")
-
-    def picture(self):
         """The cave in black-and-white text, two columns a cell: rock as joined lines, earth
         shaded, the entrance and the exit as symbols, every lemming as what it is doing and the
         way it faces, and a status line with the tick, the tally and the skills left."""

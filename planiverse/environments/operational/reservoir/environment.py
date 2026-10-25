@@ -136,12 +136,6 @@ class ReservoirState:
         return self.depth < other.depth
 
     def __str__(self):
-        city, farm, river, turbine = self.delivered
-        return (f"month {self.month}: upper {self.upper:.0f}, lower {self.lower:.0f}; last month released "
-                f"{turbine:.0f}, city got {city:.1f}, farm {farm:.1f}, river {river:.1f}; farm short "
-                f"{self.farm_short:.1f} of {self.target} allowed")
-
-    def picture(self):
         """The two reservoirs as tanks filled against their capacity, each reserve marked
         beside its wall, the month's inflows coming in, the release let down from the upper
         to the lower, and what the city, the farm and the river got off the lower one, then

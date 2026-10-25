@@ -13,10 +13,9 @@ visible at once and each frame is captioned with the step number, the action tha
 it, and whether the state is a goal or a dead end. A GIF shows one frame at a time, which
 is the right thing for an animation and the wrong thing for reading a plan.
 
-Every frame is **the state's own text**, typeset in a monospace font in black on white: its
-`picture()` where it draws one (a board in box-drawing characters, a field from the side, a
-system as a schematic, with a status line under it), and `str(state)` otherwise, which for an
-OpenSpiel state is the text OpenSpiel prints for it. A GIF is pixels, and typesetting is the
+Every frame is **the state's own text**, `str(state)`, typeset in a monospace font in black on
+white: a board in box-drawing characters, a field from the side or a system as a schematic, with
+a status line under it, and for one of OpenSpiel's own games the text OpenSpiel prints for it. A GIF is pixels, and typesetting is the
 one step that turns the text into them, which is the only reason a font appears in this file
 at all. The characters pictures share are in `text.py`.
 
@@ -72,17 +71,11 @@ def _font(size, bold=False):
     return ImageFont.load_default()
 
 
-def state_text(state):
-    """The text a frame typesets: the state's `picture()` where it draws one, else its `str`."""
-    picture = getattr(state, "picture", None)
-    return picture() if callable(picture) else str(state)
-
-
 def render_state(state, font_size=14, min_width=160):
     """One state as an image: its own text, typeset."""
     from PIL import Image, ImageDraw
 
-    text = state_text(state)
+    text = str(state)
     font = _font(font_size)
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     left, top, right, bottom = measure.multiline_textbbox((0, 0), text or " ", font=font)

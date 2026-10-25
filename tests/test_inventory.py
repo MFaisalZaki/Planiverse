@@ -48,7 +48,7 @@ def test_the_contract_on_the_initial_state(inventory):
     assert len(ACTIONS) == 9
     assert all(child.period == 1 for _, child in children)
     assert set(state.readings()) >= {"retailer", "demand", "lost sales", "profit"}
-    assert str(state).startswith("period 0: on hand retailer")
+    assert str(state).splitlines()[-1].startswith("period 0/")
 
 
 def test_actions_parse_and_refuse_unknown_levels():
@@ -178,10 +178,8 @@ def test_the_picture_draws_the_chain_and_a_status_line(inventory):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = inventory.reset()
-    text = str(state)
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    assert picture == state.picture(), "the same state draws the same picture"
     for name in ("raw", "manufacturer", "distributor", "retailer", "customers", "▶"):
         assert name in picture
     assert f"{state.on_hand[0]} on hand" in picture
@@ -189,8 +187,8 @@ def test_the_picture_draws_the_chain_and_a_status_line(inventory):
         f"period 0/{state.horizon} · profit 0.00 of {state.target:.2f} · "
         f"lost sales 0 of {state.allowed}")
     child = inventory.__advance__(state, ACTIONS[4])
-    assert child.picture() != picture
-    assert f"demand {child.last[0]}" in child.picture()
-    assert len(child.picture().splitlines()) == len(picture.splitlines()), \
+    assert str(child) != picture
+    assert f"demand {child.last[0]}" in str(child)
+    assert len(str(child).splitlines()) == len(picture.splitlines()), \
         "the geometry is the season's, so a GIF of a trace does not jump"
-    assert str(state) == text and "chain" not in state.key
+    assert "chain" not in state.key

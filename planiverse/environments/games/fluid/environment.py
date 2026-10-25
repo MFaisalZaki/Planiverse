@@ -103,10 +103,6 @@ class FluidState:
         return self.depth < other.depth
 
     def __str__(self):
-        return "\n".join(self.rows) + (f"\nfilled {self.filled}, spring {self.supply} left, "
-                                       f"{self.digs_left} digs left, tick {self.tick}")
-
-    def picture(self):
         """The cave in black-and-white text: rock as joined walls, earth shaded, water as
         waves, the spring, the basin and the drain as symbols, and a status line with the
         tick, the basin against its need, the spring and the digs left."""

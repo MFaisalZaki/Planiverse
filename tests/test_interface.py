@@ -363,11 +363,11 @@ def test_every_state_draws_a_picture_the_face_can_typeset(factory):
 
     env = factory()
     state, _ = env.reset()
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and picture.strip()
     assert not missing_glyphs(picture)
     for _, successor in env.successors(state)[:3]:
-        assert not missing_glyphs(successor.picture())
+        assert not missing_glyphs(str(successor))
 
 
 @pytest.mark.parametrize("factory", environment_params())

@@ -479,15 +479,13 @@ def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
     game = AmazingTaterGame()
     game.set_index(0)
     state, _ = game.reset()
-    drawn = state.picture()
+    drawn = str(state)
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
-    assert drawn == state.picture()
     lines = drawn.split("\n")
     assert len(lines) == len(board(state.level, state)) + 1
     assert "☻" in drawn and "⚑" in drawn and "●" in drawn and "━" in drawn
     assert lines[-1] == "tater 1 to move · 0 of 1 home"
-    assert str(state) == "\n".join(friendly(board(state.level, state)))
 
 
 def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart():
@@ -496,7 +494,7 @@ def test_the_picture_runs_a_blocks_squares_together_and_keeps_two_blocks_apart()
                          "#...a.#",
                          "#E....#",
                          "#######"))
-    drawn = state.picture().split("\n")
+    drawn = str(state).split("\n")
     assert drawn[1] == "│ ☻   ███   │"
     assert drawn[2] == "│       █   │"
 
@@ -505,6 +503,6 @@ def test_the_picture_follows_the_tater_and_the_turnstiles():
     game = AmazingTaterGame()
     game.set_index(0)
     trace = game.simulate(["left"] * 4 + ["up"])
-    assert trace[0].picture() != trace[1].picture()
-    assert trace[4].picture() != trace[5].picture()
+    assert str(trace[0]) != str(trace[1])
+    assert str(trace[4]) != str(trace[5])
 

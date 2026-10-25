@@ -92,25 +92,6 @@ def test_the_environment_offers_render_trace_as_a_convenience(tmp_path, env, tra
 
 # ---------------------------------------------------------------------------- pictures
 
-class Drawn:
-    """A state that draws a picture of itself, and spells itself otherwise."""
-
-    def __str__(self):
-        return "spelled"
-
-    def picture(self):
-        return "┌──┐\n│☻ │\n└──┘"
-
-
-def test_a_frame_typesets_the_states_picture_where_it_draws_one(env):
-    from planiverse.rendering import state_text
-
-    assert state_text(Drawn()) == Drawn().picture()
-    board, _ = env.reset()
-    assert state_text(board) == (board.picture() if hasattr(board, "picture") else str(board))
-    assert render_state(Drawn()).size != render_state("spelled").size
-
-
 def test_the_text_helpers_join_their_lines():
     from planiverse.rendering.text import Canvas, bar, boxed, side_by_side, tank
 

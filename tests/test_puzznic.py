@@ -102,11 +102,6 @@ def test_reset_is_repeatable():
 
 # --------------------------------------------------------------------------- interface
 
-def test_initial_state_renders_as_the_level(puzznic_env):
-    state, _ = puzznic_env.reset()
-    assert str(state) == LEVEL_0
-
-
 def test_get_actions(puzznic_env):
     puzznic_env.reset()
     assert puzznic_env.get_actions() == ["left", "right", "up", "down", "left-hold", "right-hold"]
@@ -317,21 +312,19 @@ def test_the_picture_draws_the_grid_in_symbols_the_renderer_has():
 
     game = build(LEVEL_0)
     state = game.state
-    drawn = state.picture()
+    drawn = str(state)
     assert isinstance(drawn, str) and drawn
     assert not missing_glyphs(drawn)
-    assert drawn == state.picture()
     lines = drawn.split("\n")
     assert len(lines) == 8                      # seven rows and the status line
     assert lines[1] == "│ ● ▲[ ]  │"           # the cursor's cell, bracketed
     assert lines[-1] == "blocks 6 left · score 0"
-    assert str(state) == LEVEL_0
 
 
 def test_the_picture_follows_the_cursor_and_the_clears():
     game = build(LEVEL_0)
     plan = ["left", "right-hold", "down", "down", "down", "left-hold"]
     trace = game.simulate(plan)
-    assert trace[0].picture() != trace[1].picture()
-    assert "[▲]" in trace[1].picture()
-    assert trace[-1].picture().split("\n")[-1] == "blocks 3 left · score 80"
+    assert str(trace[0]) != str(trace[1])
+    assert "[▲]" in str(trace[1])
+    assert str(trace[-1]).split("\n")[-1] == "blocks 3 left · score 80"

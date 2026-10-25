@@ -653,9 +653,6 @@ class LoloState:
         return self.depth < other.depth
 
     def __str__(self):
-        return render(self)
-
-    def picture(self):
         """The board in black-and-white text, its rocks joined into walls; see `PICTURE`."""
         return picture(self)
 

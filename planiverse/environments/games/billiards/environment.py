@@ -109,16 +109,10 @@ class BilliardsState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        lines = [f"shots left: {self.shots_left}, balls to pot: {len(self.object_balls)}"
-                 + (", cue ball sunk" if self.scratched else "")]
-        lines += [f"  {ball} at ({x:.3f}, {y:.3f})" for ball, (x, y) in self.balls]
-        return "\n".join(lines)
-
     def __repr__(self):
         return f"<BilliardsState(balls={len(self.object_balls)}, shots={self.shots_left})>"
 
-    def picture(self):
+    def __str__(self):
         """The table from above, its long side across: the cushions as a box, the six pockets
         as ●, each object ball by its number and the cue ball as ○; then the shots left and the
         balls to pot."""

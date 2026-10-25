@@ -132,7 +132,7 @@ class RailwayState:
     """The network after the departures so far: the step, each train's status, cell and
     direction, the trains let go, the train-steps so far, the cells still to run and whether a
     deadlock has set in. Identity is the step, the trains and the train-steps; `snapshot` is
-    Flatland's agents, kept to expand from, and `layout`, a `RailMap`, is the track `picture`
+    Flatland's agents, kept to expand from, and `layout`, a `RailMap`, is the track `str`
     draws the trains on. Neither is compared, hashed or in the literals."""
 
     def readings(self):
@@ -180,20 +180,11 @@ class RailwayState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        count = self.readings()
-        text = (f"step {self.step}: {count['arrived']} of {len(self.trains)} arrived, {count['running']} "
-                f"running, {count['stopped']} stopped, {count['waiting']} waiting; {self.to_go} cells to "
-                f"go; {self.train_steps} train-steps of {self.target}")
-        if self.deadlocked:
-            text += f"; deadlocked {', '.join(str(i) for i in self.deadlocked)}"
-        return text
-
     def __repr__(self):
         return (f"<RailwayState(step={self.step}, arrived={self.arrived}, "
                 f"train_steps={self.train_steps})>")
 
-    def picture(self):
+    def __str__(self):
         """Flatland's track from above in box-drawing lines, two columns to a cell: each
         train's target as ◎, a train out on the line as an arrow in its direction with its
         number beside it, a train still waiting as its number at its start; then the step, the

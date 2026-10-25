@@ -10,8 +10,8 @@
 """
 from planiverse.rendering.trace import (
     DEFAULT_COLUMNS, contact_sheet, kept_indices, outcome, render_state, render_trace,
-    state_text, trace_frames,
+    trace_frames,
 )
 
 __all__ = ["DEFAULT_COLUMNS", "contact_sheet", "kept_indices", "outcome", "render_state",
-           "render_trace", "state_text", "trace_frames"]
+           "render_trace", "trace_frames"]

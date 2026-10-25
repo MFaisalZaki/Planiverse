@@ -1,4 +1,4 @@
-"""The characters a state's `picture()` is drawn in.
+"""The characters a state's text is drawn in.
 
 A picture is plain text, black on white once typeset: a board with its walls joined into lines,
 a field or a map laid out on a grid of characters, a system drawn as a schematic. What they

@@ -324,13 +324,13 @@ def test_a_state_draws_the_network_as_a_schematic(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = env.reset()
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and not missing_glyphs(picture)
-    assert state.picture() == picture
+    assert str(state) == picture
     other = WaterNetworkEnv()
     try:
         other.set_index(0)
-        assert other.reset()[0].picture() == picture, "the same state draws the same picture"
+        assert str(other.reset()[0]) == picture, "the same state draws the same picture"
     finally:
         other.close()
     for glyph in ("◉", "▣", "≋", "○", "─", "│"):
@@ -338,6 +338,5 @@ def test_a_state_draws_the_network_as_a_schematic(env):
     assert "╳" not in picture
     assert picture.splitlines()[-1] == "0 pipes closed · contaminated delivered 13.6% · service 100.0%"
     after = env.__advance__(state, WaterNetworkAction("11"))
-    assert "╳" in after.picture() and "●" in after.picture() and after.picture() != picture
-    assert str(state) == "closed: nothing\ncontaminated delivered: 13.6%\nservice: 100.0%"
+    assert "╳" in str(after) and "●" in str(after) and str(after) != picture
     assert not hasattr(WaterNetworkState, "panels")

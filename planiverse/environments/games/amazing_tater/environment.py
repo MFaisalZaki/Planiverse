@@ -84,9 +84,9 @@ half of these rooms, and a `$` for all of them would quietly weld them together.
                       joined to: `a` is joined to nothing, `p` to all four
     'A'-'V' (see `SETTLED_GLYPHS`)   the same sixteen, for a square settled into a pit
 
-`str(state)` prints a friendlier version of the same board (`$` for every block square, `+`
-for every arm, `o` for every pivot), which is what the docs show. `board(level, state)` is
-the exact one, and it is what the tests compare.
+`str(state)` draws the room in black-and-white text (see `picture`). `board(level, state)` is
+the exact board in this alphabet, and `friendly` the same board with every block square a `$`,
+every arm a `+` and every pivot an `o`; the tests compare those.
 
 ## Generating rooms
 
@@ -138,7 +138,7 @@ SWITCH = "switch"
 
 ACTIONS = tuple(DIRECTIONS) + (SWITCH,)
 
-#: The glyphs `str(state)` prints instead, for people rather than for tests.
+#: The glyphs `friendly` prints instead, for people reading a board in this alphabet.
 FRIENDLY = {glyph: "$" for glyph in BLOCK_GLYPHS}
 FRIENDLY.update({glyph: "&" for glyph in SETTLED_GLYPHS})
 FRIENDLY.update({glyph: "+" for glyph in ARM_GLYPHS})
@@ -1752,9 +1752,6 @@ class AmazingTaterState:
         return self.depth < other.depth
 
     def __str__(self):
-        return "\n".join(friendly(board(self.level, self)))
-
-    def picture(self):
         """The room in black-and-white text; see `picture`."""
         return picture(self.level, self)
 
@@ -1859,10 +1856,6 @@ def friendly(rows):
     information that tells two blocks apart.
     """
     return tuple("".join(FRIENDLY.get(glyph, glyph) for glyph in row) for row in rows)
-
-
-def render(level, state):
-    return "\n".join(friendly(board(level, state)))
 
 
 #: The symbols of a picture: a block square solid, one settled into a pit shaded, an open pit a

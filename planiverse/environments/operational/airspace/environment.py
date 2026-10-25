@@ -173,13 +173,6 @@ class AirspaceState:
         return self.depth < other.depth
 
     def __str__(self):
-        parts = [f"t={self.time:.0f}s, closest {self.closest:.1f} nm" + (", separation lost" if self.lost else "")]
-        for name, lat, lon, feet, heading, to_go, out, on_course in self.aircraft:
-            parts.append(f"{name} out" if out else
-                         f"{name} hdg {heading:.0f} FL{feet / 100:.0f} {to_go:.1f} nm to go" + (" on course" if on_course else ""))
-        return "; ".join(parts)
-
-    def picture(self):
         """A radar scope: the sector's ring at the exits' range and a ring at half of it,
         each exit as ◇ and its aircraft's number (◆ once
         it is out), each aircraft as an arrow along its heading with its callsign beside it,

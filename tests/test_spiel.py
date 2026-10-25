@@ -114,4 +114,4 @@ def test_a_state_is_observed_through_openspiels_observer():
 
     board = pyspiel.load_game("planiverse_lolo", {"index": 0})
     assert not board.get_type().provides_observation_tensor, "a board has no readings"
-    assert board.new_initial_state().observation_string(0).startswith("#")
+    assert board.new_initial_state().observation_string(0).startswith("┌")

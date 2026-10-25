@@ -198,19 +198,11 @@ class InventoryState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        demand, sold, lost, _ = self.last
-        stock = ", ".join(f"{stage} {v}" for stage, v in zip(STAGES, self.on_hand))
-        transit = ", ".join(str(sum(shipments)) for shipments in self.pipeline)
-        return (f"period {self.period}: on hand {stock}; in transit {transit}; last period "
-                f"demand {demand}, sold {sold}, lost {lost}; lost {self.lost} of {self.allowed} "
-                f"allowed; profit {self.profit:.2f} against {self.target:.2f}")
-
     def __repr__(self):
         return (f"<InventoryState(period={self.period}, on_hand={self.on_hand}, "
                 f"profit={self.profit:.2f}, lost={self.lost})>")
 
-    def picture(self):
+    def __str__(self):
         """The supply chain as a row of boxes, then a status line.
 
         Raw material flows from the supplier through the manufacturer and the distributor to

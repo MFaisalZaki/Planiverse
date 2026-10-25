@@ -317,12 +317,6 @@ class WaterNetworkState:
         return self.depth < other.depth
 
     def __str__(self):
-        closed = ", ".join(sorted(self.closed)) or "nothing"
-        return (f"closed: {closed}\n"
-                f"contaminated delivered: {self.contaminated:.1%}\n"
-                f"service: {self.service:.1%}")
-
-    def picture(self):
         """The network as a schematic: each link drawn along its nodes' coordinates, a closed
         pipe marked ╳, junctions ○ clean or ● contaminated, the source ◉, tanks ▣ and
         reservoirs ≋, then a status line."""

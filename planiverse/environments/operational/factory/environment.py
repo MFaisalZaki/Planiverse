@@ -180,7 +180,7 @@ class FactoryState:
     """The factory as it stands: the tick, the character, what it holds, the machines, the ore
     left under the patch and the piles on the ground, with the decisions that led here kept for
     replay. Identity is the contents; `path` and `depth` are bookkeeping, and `layout`, a
-    `FactoryMap`, is the ground `picture` draws the factory on."""
+    `FactoryMap`, is the ground `str` draws the factory on."""
 
     def readings(self):
         """The state's numbers by name, which its OpenSpiel game gives as the named pieces
@@ -229,23 +229,10 @@ class FactoryState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        x, y = self.position[0] / TILE, self.position[1] / TILE
-        held = ", ".join(f"{item} {count}" for item, count in sorted(self.inventory.items())) or "nothing"
-        parts = [f"tick {self.tick}: at ({x:.1f}, {y:.1f}); holds {held}"]
-        for m in self.machines:
-            text = f"{m.kind} ({m.x}, {m.y})" + (f" {m.facing}" if m.kind == "drill" else "")
-            text += f" {m.status}, fuel {m.fuel}"
-            if m.kind == "furnace":
-                text += f", ore {m.ore}, plates {m.plates}"
-            parts.append(text)
-        parts.append(f"made {self.produced}, brought back {self.plates} of {self.target}")
-        return "; ".join(parts)
-
     def __repr__(self):
         return f"<FactoryState(tick={self.tick}, plates={self.plates}, machines={len(self.machines)})>"
 
-    def picture(self):
+    def __str__(self):
         """The patch from above in a frame, two columns to a tile, north at the top: ore as ░,
         walls as ▓, each machine as a box over its two by two tiles (a drill marked D with an
         arrow the way it faces, a furnace marked F with the plates waiting in it), piles on the

@@ -18,19 +18,18 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 
 
 def assert_a_picture(env, state, after, shows):
-    """`picture()` draws the state in the renderer's face, the same every time, with `shows`
-    in it, differs once a step is taken, and leaves `str(state)` as it was."""
+    """`str(state)` draws the state in the renderer's face, the same every time, with `shows`
+    in it, and differs once a step is taken."""
     from planiverse.rendering.text import missing_glyphs
 
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and picture.strip()
     assert not missing_glyphs(picture), missing_glyphs(picture)
-    assert state.picture() == picture
     again, _ = env.reset()
-    assert again.picture() == picture, "the same state draws the same picture"
+    assert str(again) == picture, "the same state draws the same picture"
     for text in shows:
         assert text in picture, text
-    assert after.picture() != picture
+    assert str(after) != picture
     assert len(picture.splitlines()[-1]) < 120, "one short status line under the picture"
     assert not hasattr(type(state), "panels")
 
@@ -104,12 +103,9 @@ def test_an_epidemic_state_draws_the_town_and_the_ward(epidemic):
     inst = epidemic.instance
     assert_a_picture(epidemic, state, after, ["·", "●", "▫", "town of", "hospital",
                                               f"week 0 of {inst['weeks']}", "nothing decided"])
-    assert "open in force" in after.picture()
-    town = state.picture().splitlines()[1:11]
+    assert "open in force" in str(after)
+    town = str(state).splitlines()[1:11]
     assert all(len(line) == 40 for line in town), "the town is forty characters by ten"
-    assert str(state) == (f"week 0 of {inst['weeks']}: 0 infectious, 0 in hospital (peak 0 of "
-                          f"{inst['capacity']} beds), 0 dead of {inst['target']} allowed; 0 of "
-                          f"{inst['budget']} points spent; nothing decided")
 
 
 # ------------------------------------------------------------------------------- traffic
@@ -177,13 +173,10 @@ def test_a_traffic_state_draws_the_grid_its_greens_and_its_queues(traffic):
     state, _ = traffic.reset()
     after = traffic.__advance__(state, TrafficAction("all"))
     assert_a_picture(traffic, state, after, ["║", "t=0s", "vehicle-seconds"])
-    assert "═" not in state.picture().split("\n\n")[0] and "║" not in after.picture().split("\n\n")[0]
+    assert "═" not in str(state).split("\n\n")[0] and "║" not in str(after).split("\n\n")[0]
     queued = traffic.simulate([HOLD] * 6)[-1]
     assert len(queued.queues) == 9 and sum(map(sum, queued.queues)) > 0
-    assert "▪" in queued.picture()
-    assert str(state) == (f"t=0s: 0 of {traffic.instance['vehicles']} arrived, 0 on the road (0 "
-                          f"halted), {traffic.instance['vehicles']} to come; 0 vehicle-seconds of "
-                          f"{traffic.instance['target']}; greens AAAAAAAAA")
+    assert "▪" in str(queued)
 
 
 # ------------------------------------------------------------------------------ airspace
@@ -238,8 +231,7 @@ def test_an_airspace_state_draws_a_radar_scope(airspace):
     after = airspace.__advance__(state, HOLD)
     names = [a[0] for a in state.aircraft]
     assert_a_picture(airspace, state, after, names + ["◇", "+", "t=0s", "standard 5"])
-    assert any(arrow in state.picture() for arrow in "↑↗→↘↓↙←↖")
-    assert str(state).startswith("t=0s, closest 99.0 nm; AC1 hdg ")
+    assert any(arrow in str(state) for arrow in "↑↗→↘↓↙←↖")
 
 
 # ----------------------------------------------------------------------------- reservoir
@@ -299,6 +291,4 @@ def test_a_reservoir_state_draws_the_two_tanks_and_the_flows(reservoir):
     inst = reservoir.instance
     assert_a_picture(reservoir, state, after, ["upper 40 of 80", "lower 29 of 40", "city", "farm",
                                                "river", "turbine", "28▸", "19▸", "month 0 of 12"])
-    assert "release(10, half): 10 let down, farm on half" in after.picture()
-    assert str(state) == ("month 0: upper 40, lower 29; last month released 0, city got 0.0, farm "
-                          f"0.0, river 0.0; farm short 0.0 of {inst['target']} allowed")
+    assert "release(10, half): 10 let down, farm on half" in str(after)

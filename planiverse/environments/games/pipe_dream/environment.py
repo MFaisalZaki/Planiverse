@@ -159,23 +159,6 @@ class PipeState:
         return self.depth < other.depth
 
     def __str__(self):
-        wet = {(x, y) for x, y, _ in self.flooded}
-        lines = []
-        for y, row in enumerate(self.rows):
-            line = ""
-            for x, cell in enumerate(row):
-                if cell in KIND:
-                    line += (DRAW_FLOODED if (x, y) in wet else DRAW)[KIND[cell]]
-                else:
-                    line += cell
-            lines.append(line)
-        coming = " ".join(DRAW[kind] for kind in self.queue[self.placed:self.placed + 5]) or "none"
-        status = ("spilled" if self.spilled else
-                  f"{self.due} tick{'s' if self.due != 1 else ''} before the flow moves")
-        lines.append(f"carried {self.carried} of {self.distance}; next {coming}; {status}")
-        return "\n".join(lines)
-
-    def picture(self):
         """The board in black-and-white text, framed, two columns a cell: pipe laid in single
         lines and pipe the flow has run through in double ones, joined across to the next cell
         where they meet, the start as the arrow the flow leaves by, walls as blocks, and a

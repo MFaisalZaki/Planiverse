@@ -102,18 +102,15 @@ def test_the_picture_draws_the_table_and_changes_with_a_shot(env):
     from planiverse.rendering.text import missing_glyphs
 
     state, _ = env.reset()
-    text = str(state)
-    picture = state.picture()
+    picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    assert picture == state.picture(), "the same state draws the same picture"
     assert picture.count("●") == 6 and picture.count("○") == 1
     table = "\n".join(picture.splitlines()[:-1])
     assert all(ball in table for ball in state.object_balls)
     assert picture.splitlines()[-1] == f"shots left 3   balls to pot {len(state.object_balls)}"
     after = env.__advance__(state, BilliardsAction("2", 0, 2.0))
-    assert after.picture() != picture
-    assert len(after.picture().splitlines()) == len(picture.splitlines()), "the table keeps its size"
-    assert str(state) == text, "the picture leaves the state's text alone"
+    assert str(after) != picture
+    assert len(str(after).splitlines()) == len(picture.splitlines()), "the table keeps its size"
 
 
 # ------------------------------------------------------------------------------- instances

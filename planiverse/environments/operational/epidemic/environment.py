@@ -139,12 +139,6 @@ class EpidemicState:
         return self.depth < other.depth
 
     def __str__(self):
-        chosen = ", ".join(self.schedule) or "nothing decided"
-        return (f"week {self.week} of {self.weeks}: {self.infectious} infectious, {self.load} in "
-                f"hospital (peak {self.peak} of {self.capacity} beds), {self.deaths} dead of "
-                f"{self.target} allowed; {self.points} of {self.budget} points spent; {chosen}")
-
-    def picture(self):
         """The town as a block of characters, each an equal share of the people (· still
         susceptible, ● infected, ○ recovered, † dead), the hospital as a ward of beds (▪
         occupied, ▫ empty), and a status line."""

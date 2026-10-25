@@ -100,7 +100,7 @@ class TowerMap(namedtuple("TowerMap", "path slots waves")):
 class TowerState:
     """Which slots hold which towers, the gold, the lives, and the waves fought so far.
 
-    `layout`, a `TowerMap`, is what `picture` draws the towers on; it stays out of equality,
+    `layout`, a `TowerMap`, is what `str` draws the towers on; it stays out of equality,
     hashing and the literals.
     """
 
@@ -130,14 +130,10 @@ class TowerState:
     def __lt__(self, other):
         return self.depth < other.depth
 
-    def __str__(self):
-        built = ", ".join(f"{kind} at {slot}" for slot, kind in self.towers) or "nothing built"
-        return f"wave {self.wave} fought, {self.lives} lives, {self.gold} gold; {built}"
-
     def __repr__(self):
         return f"<TowerState(wave={self.wave}, lives={self.lives}, gold={self.gold}, towers={len(self.towers)})>"
 
-    def picture(self):
+    def __str__(self):
         """The map from above, two columns to a cell: the path as a line from the entrance ▶
         on the left wall to the exit ▶ on the right, an empty building slot by its number, a
         built one by its tower (▲ an arrow tower, ● a cannon), open ground as ·; then the

@@ -167,11 +167,6 @@ class PuzznicState:
         self.__update__()
     
     def __str__(self):
-        _map = [[str(cell) for cell in row] for row in self.grid]
-        _map[self.cursor.pos[0]][self.cursor.pos[1]] = 'c' if _map[self.cursor.pos[0]][self.cursor.pos[1]] == ' ' else '¢'
-        return '\n'.join([''.join(row) for row in _map])
-
-    def picture(self):
         """The grid in black-and-white text: walls joined into lines, each colour of block a
         symbol of its own (`BLOCK_SYMBOLS`), the cursor's cell bracketed `[ ]`, and a status
         line under it with the blocks left and the score."""
@@ -191,8 +186,9 @@ class PuzznicState:
         return self.grid == value.grid and self.cursor == value.cursor
 
     def __hash__(self):
-        # The text is the grid and the cursor, which is what `__eq__` compares.
-        return hash(str(self))
+        # The grid and the cursor, which is what `__eq__` compares.
+        return hash((tuple(tuple(str(cell) for cell in row) for row in self.grid),
+                     tuple(self.cursor.pos)))
 
     def __update__(self):
         # this function updates the boolean predicates of the state.
