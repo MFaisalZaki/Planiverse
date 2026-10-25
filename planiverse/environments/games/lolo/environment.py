@@ -680,7 +680,7 @@ def render(state):
 #: open floor is a dot so the grid Lolo moves on shows.
 PICTURE = {
     FLOOR: "·", TREE: "♣", RIVER: "≈", BRIDGE: "═", FRAMER: "◆", HEART: "♥", MAGIC_HEART: "♡",
-    DESERT: "∴", BREAK_TILE: "×", FLOWER_BED: "✿", MARKER: "◇", EGG: "○", LOLO: "☻",
+    DESERT: "∴", BREAK_TILE: "×", FLOWER_BED: "✿", MARKER: "◇", EGG: "○", LOLO: "◉",
     "v": "▾", "<": "◂", "^": "▴", ">": "▸",
     SNAKEY: "§", LEEPER: "∞", GOL: "Ω", ROCKY: "Я", ALMA: "◐", SKULL: "☠", MEDUSA: "Ψ",
     DON_MEDUSA: "Ж",

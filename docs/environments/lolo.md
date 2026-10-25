@@ -315,7 +315,7 @@ blank.
 
 | Symbol | What |
 |---|---|
-| `☻` | Lolo (`✝` once a Medusa has caught him) |
+| `◉` | Lolo (`✝` once a Medusa has caught him) |
 | `♥`, `♡` | a heart framer, and a magic one worth two shots |
 | `▮`, `▯` | the door, shut and open |
 | `◆` | an Emerald Framer |

@@ -501,7 +501,7 @@ def test_the_picture_draws_the_room_in_symbols_the_renderer_has():
     assert not missing_glyphs(drawn)
     lines = drawn.split("\n")
     assert len(lines) == 8                      # eight rows
-    assert "☻" in drawn and "♥" in drawn and "♡" in drawn and "§" in drawn and "▮" in drawn
+    assert "◉" in drawn and "♥" in drawn and "♡" in drawn and "§" in drawn and "▮" in drawn
 
 
 def test_the_picture_follows_lolo_and_opens_the_door():
