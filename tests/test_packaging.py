@@ -46,7 +46,6 @@ ENTRY_POINTS = [
     "planiverse.environments.games.tower_defence.environment",
     "planiverse.environments.games.fluid.environment",
     "planiverse.environments.games.pipe_dream.environment",
-    "planiverse.environments.games.lemmings.environment",
     "planiverse.environments.operational.micropolis.environment",
     "planiverse.environments.operational.factory.environment",
     "planiverse.environments.operational.epidemic.environment",

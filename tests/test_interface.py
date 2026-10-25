@@ -126,14 +126,6 @@ def pipe_dream():
     return env
 
 
-def lemmings():
-    from planiverse.environments.games.lemmings.environment import LemmingsEnv
-
-    env = LemmingsEnv()
-    env.set_index(0)
-    return env
-
-
 def micropolis():
     pytest.importorskip("micropolisengine", exc_type=ImportError, reason="the Micropolis engine is not built")
     from planiverse.environments.operational.micropolis.environment import MicropolisEnv
@@ -247,7 +239,6 @@ ENVIRONMENTS = {
     "tower_defence": tower_defence,
     "fluid": fluid,
     "pipe_dream": pipe_dream,
-    "lemmings": lemmings,
     "micropolis": micropolis,
     "factory": factory_env,
     "epidemic": epidemic,
@@ -316,7 +307,7 @@ def test_every_registered_environment_is_in_the_catalogue():
     assert {"puzznic", "flipull", "lolo", "amazing_tater",
             "network_attack", "water_network", "power_grid", "crop_management",
             "flood_transport", "slingshot", "tower_defence", "fluid", "pipe_dream",
-            "lemmings", "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir", "inventory", "microgrid", "railway",
+            "micropolis", "factory", "epidemic", "traffic", "airspace", "reservoir", "inventory", "microgrid", "railway",
             "game_boy", "retro"} == registered
 
 

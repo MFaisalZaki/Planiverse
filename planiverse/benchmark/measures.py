@@ -59,11 +59,6 @@ def pipe_dream(state):
     return max(0, state.distance - state.carried - state.ahead)
 
 
-def lemmings(state):
-    """Lemmings still to save, counting from the level's quota carried on the state."""
-    return max(0, state.quota - state.saved)
-
-
 def micropolis(state):
     """Population short of the target, carried on the state."""
     return max(0, state.target - state.population)
@@ -172,7 +167,6 @@ MEASURES = {
     "tower_defence": tower_defence,
     "fluid": fluid,
     "pipe_dream": pipe_dream,
-    "lemmings": lemmings,
     "micropolis": micropolis,
     "factory": factory,
     "epidemic": epidemic,

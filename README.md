@@ -1,7 +1,5 @@
 # Planiverse
 
-[![CI](https://github.com/MFaisalZaki/Planiverse/actions/workflows/ci.yml/badge.svg)](https://github.com/MFaisalZaki/Planiverse/actions/workflows/ci.yml)
-
 A Python library for **planning with simulators**.
 
 Classical planners need a declarative model of the world (i.e., a description of the actions
@@ -42,7 +40,6 @@ season or city, so a benchmark is not limited to what ships.
 | Tower defence | `tower_defence` | 100 maps | the path, the building slots, the waves, the gold and the lives | game | [docs](docs/environments/tower-defence.md) |
 | Fluid | `fluid` | 100 caves | the cave, the spring, the basin, the drain, the water needed and the digs allowed | game | [docs](docs/environments/fluid.md) |
 | Pipe Dream | `pipe_dream` | 100 levels | the board and its walls, the start, the queue of pieces, the distance, the countdown and the pace | game | [docs](docs/environments/pipe-dream.md) |
-| Lemmings | `lemmings` | 100 levels | the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills | game | [docs](docs/environments/lemmings.md) |
 | Amazing Tater | `amazing_tater` | 100 rooms | room size, walls, blocks, pits, turnstiles and taters | game | [docs](docs/environments/amazing-tater.md) |
 | Game Boy | `game_boy` | one per stage, level or room the cartridge's wrapper reaches | the stage, the timer seed, and an opening played from its first frame | game, emulator | [docs](docs/environments/game-boy.md) |
 | Stable-Retro | `retro` | one per save state the integration ships (Airstriker: 1) | the save state, an opening played from it, and the goal | game, emulator | [docs](docs/environments/stable-retro.md) |
@@ -79,8 +76,7 @@ themselves.
 
 ## Installation
 
-Requires Python 3.11, 3.12 or 3.13. Linux, macOS and Windows are all supported, and the
-[CI workflow](.github/workflows/ci.yml) installs and tests on each of them.
+Requires Python 3.11, 3.12 or 3.13. Linux, macOS and Windows are all supported.
 
 ```bash
 git clone https://github.com/MFaisalZaki/Planiverse.git
@@ -269,7 +265,6 @@ What each environment provides:
 | `TowerDefenceEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `FluidEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `PipeDreamEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| `LemmingsEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `MicropolisEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `EpidemicEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
 | `TrafficEnv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -508,7 +503,6 @@ planiverse/environments/
 │   ├── tower_defence/   # waves fought by simulation, pure Python
 │   ├── fluid/           # a cellular automaton of water, pure Python
 │   ├── pipe_dream/      # a Pipe Dream-like, pure Python
-│   ├── lemmings/        # a crowd of walkers, pure Python
 │   ├── game_boy/        # any cartridge under PyBoy
 │   └── retro/           # any Stable-Retro integration
 └── operational/     # every simulator-backed environment, one subpackage each
@@ -577,7 +571,6 @@ planiverse/
 │   │   ├── tower_defence/              # TowerDefenceEnv: waves fought by simulation
 │   │   ├── fluid/                      # FluidEnv: a cellular automaton of water
 │   │   ├── pipe_dream/                 # PipeDreamEnv: pipe laid from a queue ahead of a flow
-│   │   ├── lemmings/                   # LemmingsEnv: a crowd of walkers steered with skills
 │   │   ├── game_boy/                   # GameBoyEnv: a cartridge under PyBoy, read through its wrappers
 │   │   └── retro/                      # RetroEnv: a Stable-Retro integration from its save states
 │   └── operational/                    # every simulator-backed environment
@@ -659,12 +652,12 @@ unofficial and unaffiliated. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 What is in the tree:
 
-- Twenty-five environments: twelve simulator-backed operational ones (water distribution, power
+- Twenty-four environments: twelve simulator-backed operational ones (water distribution, power
   grid, crop management, flood adaptation, a city on the Micropolis engine, an epidemic on
   Covasim, traffic signals on SUMO, crossing aircraft on BlueSky, reservoirs on pywr, a railway
   on Flatland, a supply chain on OR-Gym and a microgrid on python-microgrid), the NASim network
   attack, four games reimplemented in pure Python, a slingshot physics puzzle on pymunk, a tower
-  defence, a cellular fluid puzzle, a Pipe Dream-like, a Lemmings-like, an early-game
+  defence, a cellular fluid puzzle, a Pipe Dream-like, an early-game
   factory on factory-sim, and two generic emulator environments, one for any Game Boy cartridge under
   PyBoy and one for any Stable-Retro integration. Every one ships its bundled instances and
   generates more from a seed.

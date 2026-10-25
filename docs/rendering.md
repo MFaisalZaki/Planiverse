@@ -38,7 +38,7 @@ A frame is **the state's text**, `str(state)`, typeset in a monospace font, blac
 Every environment but the two emulators draws its state as a picture in text, and what it draws
 depends on the environment:
 
-- a board (Puzznic, Lolo, Lemmings and the other grid games) has its walls joined into
+- a board (Puzznic, Lolo and the other grid games) has its walls joined into
   box-drawing lines and its pieces as symbols, two columns to a cell so a cell is about square;
 - a field or a map (Slingshot, the tower defence, the railway, the factory, the
   Micropolis city, the flood city) is laid out on a grid of characters;

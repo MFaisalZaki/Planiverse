@@ -32,7 +32,6 @@ FAST = {
     "tower_defence": dict(waves=3, slots=6, search_limit=300),
     "fluid": dict(need=8, search_limit=150),
     "pipe_dream": dict(width=5, height=5, distance=6, min_plan_length=4, search_limit=300),
-    "lemmings": dict(search_limit=300),
     "micropolis": dict(years=10, search_limit=20),
     "factory": dict(horizon=2400),
     "epidemic": dict(population=5000, weeks=10),

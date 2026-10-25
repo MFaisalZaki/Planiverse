@@ -6,8 +6,8 @@
 
 Every registered environment is listed with the third-party modules it needs and whether each
 imports here. With `--expect-missing`, the exit status is non-zero if any environment *other*
-than those named is missing a dependency, which is how the CI workflow checks that an install
-on each platform covers what the README says it covers.
+than those named is missing a dependency, which checks that an install on a platform covers
+what the README says it covers.
 """
 import argparse
 import importlib

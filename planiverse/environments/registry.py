@@ -161,17 +161,6 @@ REGISTRY = (
         tags=frozenset({"game", "dependency-free"}),
     ),
     EnvironmentSpec(
-        name="lemmings",
-        factory="planiverse.environments.games.lemmings.environment:LemmingsEnv",
-        summary="A Lemmings-like: steer a crowd of walkers to the exit with a few skills, in time",
-        instances="100 levels, generated",
-        generates="the platforms, gaps and walls, the entrance and exit, the crowd, the quota and the skills",
-        deterministic=True,
-        state_identity="value",
-        docs="docs/environments/lemmings.md",
-        tags=frozenset({"game", "dependency-free"}),
-    ),
-    EnvironmentSpec(
         name="micropolis",
         factory="planiverse.environments.operational.micropolis.environment:MicropolisEnv",
         summary="A city on the Micropolis engine: zone a site a year and reach the population by the horizon",
