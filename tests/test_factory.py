@@ -85,6 +85,22 @@ def test_a_built_line_shows_in_the_literals_and_the_text(env):
     assert "drill (" in str(built) and "furnace (" in str(built)
 
 
+def test_the_picture_draws_the_patch_the_machines_and_the_character(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert "░" in picture and picture.count("☻") == 1 and "D" not in picture
+    assert picture.splitlines()[-1] == "tick 0   plates 0 of 26   holds coal 6, drill 2, furnace 2"
+    built = env.simulate(["place(drill, 3, -2, north)", "place(furnace, 3, -4)"])[-1]
+    assert "┌D▲┐" in built.picture() and "┌F─┐" in built.picture()
+    assert len(built.picture().splitlines()) == len(picture.splitlines()), "the patch keeps its size"
+    assert str(state) == text, "the picture leaves the state's text alone"
+
+
 # ---------------------------------------------------------------------------- the rules
 
 def test_a_drill_goes_on_four_ore_tiles_and_a_furnace_where_it_drops(env):

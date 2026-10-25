@@ -58,6 +58,8 @@ DENSITY = {"wood": 0.4, "stone": 1.0}
 STATIC, BLOCK, TARGET, BIRD = 0, 1, 2, 3
 #: The grid the literals name positions on.
 CELL = 2.0
+#: The picture: units of the field to a character each way, and the rows it is at least tall.
+PICTURE_CELL, PICTURE_ROWS = 2.0, 12
 
 
 def _pymunk():
@@ -144,6 +146,48 @@ class SlingshotState:
 
     def __repr__(self):
         return f"<SlingshotState(bodies={len(self.bodies)}, targets={self.targets_left}, shots={self.shots_left})>"
+
+    def picture(self):
+        """The field from the side, two units to a character each way: wood as ▒, stone as █,
+        targets as ◎, the sling as a Y on its post, the ground as a line; then the shots left
+        and the targets standing."""
+        from planiverse.rendering.text import Canvas
+
+        cols = int(WIDTH / PICTURE_CELL)
+        top = max([body[5] + max(body[2], body[3]) / 2 for body in self.bodies
+                   if body[0] == "block"] + [0.0])
+        rows = max(PICTURE_ROWS, int(math.ceil(top / PICTURE_CELL)))
+        canvas = Canvas(cols, rows + 1)
+
+        def cell(x, y):
+            return int(x // PICTURE_CELL), rows - 1 - int(y // PICTURE_CELL)
+
+        for body in self.bodies:
+            if body[0] != "block":
+                continue
+            _, material, w, h, x, y, angle = body
+            char = "█" if material == "stone" else "▒"
+            cos, sin = math.cos(angle), math.sin(angle)
+            reach = math.hypot(w, h) / 2
+            drawn = False
+            for col in range(int((x - reach) // PICTURE_CELL), int((x + reach) // PICTURE_CELL) + 1):
+                for row in range(int((y - reach) // PICTURE_CELL), int((y + reach) // PICTURE_CELL) + 1):
+                    dx = (col + 0.5) * PICTURE_CELL - x
+                    dy = (row + 0.5) * PICTURE_CELL - y
+                    if abs(dx * cos + dy * sin) <= w / 2 and abs(dy * cos - dx * sin) <= h / 2:
+                        canvas.put(col, rows - 1 - row, char)
+                        drawn = True
+            if not drawn:
+                canvas.put(*cell(x, y), char)
+        for body in self.bodies:
+            if body[0] == "target":
+                canvas.put(*cell(body[1], body[2]), "◎")
+        sling_x, sling_y = cell(*LAUNCH)
+        canvas.put(sling_x, sling_y, "Y")
+        canvas.vline(sling_x, sling_y + 1, rows - 1, "│")
+        canvas.hline(0, cols - 1, rows, "─")
+        return (f"{canvas}\n"
+                f"shots left {self.shots_left}   targets standing {self.targets_left}")
 
 
 # ----------------------------------------------------------------------------- the physics

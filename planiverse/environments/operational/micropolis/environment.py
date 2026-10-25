@@ -34,7 +34,9 @@ is left in `witness`. The bundled cities are such draws, embedded as plain data 
 each came from. The method is generate-and-test (search-based procedural content generation:
 Togelius et al. 2011, https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
-from planiverse.environments.base import Environment, Panel
+from collections import namedtuple
+
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 KINDS = ("R", "C", "I")
@@ -92,27 +94,22 @@ class MicropolisState:
 
     Identity is the path: two states with the same decisions are the same city, since the
     engine is deterministic from the seed. The readings (`population`, `funds`, ...) are
-    what the decisions produced and are carried for the planner to look at.
+    what the decisions produced and are carried for the planner to look at, and `patch`, a
+    `CityPatch`, is the engine's map around the layout at the end of them, which `picture`
+    draws; neither is compared, hashed or in the literals.
     """
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("people", ("population", "residents", "commerce", "industry"), "target"),
-        Panel("funds", ("funds",), None),
-        Panel("score", ("score",), None),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"population": self.population, "residents": self.residents,
                 "commerce": self.commerce, "industry": self.industry,
                 "funds": self.funds, "score": self.score, "target": self.target}
 
     def __init__(self, decisions, population, residents, commerce, industry, funds, score,
-                 target=0, depth=0):
+                 target=0, depth=0, patch=None):
         self.decisions = tuple(decisions)
+        self.patch = patch
         self.year = len(self.decisions)
         self.population, self.residents = population, residents
         self.commerce, self.industry = commerce, industry
@@ -142,6 +139,130 @@ class MicropolisState:
     def __repr__(self):
         return f"<MicropolisState(year={self.year}, population={self.population}, funds={self.funds})>"
 
+    def picture(self):
+        """The engine's map of the layout and a tile round it, two columns to a tile: each
+        zone as a box over its three by three tiles with its letter (R, C or I), filled with ░
+        once something is built in it; the power plant as a box marked P; roads in double lines
+        and power lines in single ones, ╪ where they cross; each site not yet zoned by its
+        number; trees as ♣ and water as ≈. Then the year, the population against the target
+        and the funds."""
+        from planiverse.rendering.text import Canvas
+
+        status = (f"year {self.year}   population {self.population} of {self.target}   "
+                  f"funds {self.funds}")
+        if self.patch is None:
+            return status
+        me = _engine()
+        tiles, (wx, wy) = self.patch.tiles, self.patch.corner
+        height, width = len(tiles), len(tiles[0])
+        canvas = Canvas(2 * width, height)
+
+        def kind(tx, ty):
+            if 0 <= ty < height and 0 <= tx < width:
+                return _line_kind(tiles[ty][tx] & me.LOMASK)
+            return None
+
+        for ty, row in enumerate(tiles):
+            for tx, raw in enumerate(row):
+                tile, line = raw & me.LOMASK, kind(tx, ty)
+                if line is None:
+                    canvas.put(2 * tx, ty, _ground(tile))
+                    continue
+                if line in ("road-h", "road-v"):
+                    canvas.write(2 * tx, ty, ("╪═" if line == "road-h" else "╫ "))
+                    continue
+                arms = tuple(int(_joins(line, kind(tx + dx, ty + dy), vertical=dx == 0))
+                             for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)))
+                lines = DOUBLE if line == "road" else SINGLE
+                canvas.put(2 * tx, ty, lines.get(arms, lines[(0, 1, 0, 1)] if arms[1] or arms[3]
+                                                 else lines[(1, 0, 1, 0)]))
+                if arms[1]:
+                    canvas.put(2 * tx + 1, ty, lines[(0, 1, 0, 1)])
+        zoned = {site for kind_, site in self.decisions if kind_ is not None}
+        for site, (sx, sy) in enumerate(site_centres(*self.patch.origin)):
+            if site not in zoned:
+                canvas.put(2 * (sx - wx), sy - wy, str(site))
+        for ty, row in enumerate(tiles):
+            for tx, raw in enumerate(row):
+                if not raw & me.ZONEBIT:
+                    continue
+                tile = raw & me.LOMASK
+                letter = next((name for name, low, high in ZONES if low <= tile <= high), None)
+                if letter is None:
+                    continue
+                if letter == "P":
+                    canvas.fill(2 * tx - 2, ty - 1, 2 * tx + 5, ty + 2, " ")
+                    canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 5, ty + 2)
+                    canvas.put(2 * tx + 1, ty, "P")
+                    continue
+                built = tile not in EMPTY_ZONES
+                canvas.fill(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1, "░" if built else " ")
+                canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1)
+                canvas.put(2 * tx, ty, letter)
+        return f"{canvas}\n{status}"
+
+
+class CityPatch(namedtuple("CityPatch", "origin corner tiles")):
+    """The engine's tiles over the layout and one tile round it, as it stood after a state's
+    last year: `tiles` rows of raw tile values from the top-left `corner`, and the layout's
+    `origin`."""
+
+    __slots__ = ()
+
+
+#: The engine's tile numbers a picture reads (micropolisengine's `ROADBASE`, `POWERBASE`,
+#: `RESBASE` and the rest): zone centres by letter, and the centres of zones nothing is
+#: built in yet (`FREEZ`, `COMCLR`, `INDCLR`).
+ZONES = (("R", 240, 422), ("C", 423, 611), ("I", 612, 692), ("P", 745, 760), ("P", 811, 826))
+EMPTY_ZONES = (244, 427, 616)
+#: Box-drawing by (up, right, down, left) arms: double lines for roads, single for wires.
+DOUBLE = {(0, 1, 0, 1): "═", (1, 0, 1, 0): "║", (0, 1, 1, 0): "╔", (0, 0, 1, 1): "╗",
+          (1, 1, 0, 0): "╚", (1, 0, 0, 1): "╝", (1, 1, 1, 0): "╠", (1, 0, 1, 1): "╣",
+          (0, 1, 1, 1): "╦", (1, 1, 0, 1): "╩", (1, 1, 1, 1): "╬"}
+SINGLE = {(0, 1, 0, 1): "─", (1, 0, 1, 0): "│", (0, 1, 1, 0): "┌", (0, 0, 1, 1): "┐",
+          (1, 1, 0, 0): "└", (1, 0, 0, 1): "┘", (1, 1, 1, 0): "├", (1, 0, 1, 1): "┤",
+          (0, 1, 1, 1): "┬", (1, 1, 0, 1): "┴", (1, 1, 1, 1): "┼"}
+
+
+def _line_kind(tile):
+    """What a tile carries: a road, a power line, a road crossed by a power line (the road
+    running across, `road-h`, or down, `road-v`), or nothing drawn as a line."""
+    if tile == 77:                          # HROADPOWER
+        return "road-h"
+    if tile == 78:                          # VROADPOWER
+        return "road-v"
+    if 64 <= tile <= 206:                   # ROADBASE to LASTROAD, bridges and traffic
+        return "road"
+    if 208 <= tile <= 222:                  # POWERBASE to LASTPOWER
+        return "wire"
+    return None
+
+
+def _joins(line, other, vertical):
+    """Whether a line reaches a neighbour: a road meets a road, a wire a wire, and either
+    meets a crossing along its own direction (a road-h carries the road across, the wire
+    down)."""
+    if other is None:
+        return False
+    if other == line:
+        return True
+    if other in ("road-h", "road-v"):
+        road_across = (other == "road-h")
+        if line == "road":
+            return road_across != vertical
+        return road_across == vertical
+    return False
+
+
+def _ground(tile):
+    if 2 <= tile <= 20:                     # RIVER to WATER_HIGH
+        return "≈"
+    if 21 <= tile <= 43:                    # TREEBASE to WOODS5
+        return "♣"
+    if 44 <= tile <= 47:                    # RUBBLE
+        return "·"
+    return " "
+
 
 # ------------------------------------------------------------------------------- the engine
 
@@ -167,6 +288,11 @@ def lay_out(engine, x0, y0):
         engine.doTool(me.TOOL_WIRE, x, y0 + 8)
     for y in range(y0, y0 + PATCH_H):
         engine.doTool(me.TOOL_WIRE, x0 + 5, y)
+    return site_centres(x0, y0)
+
+
+def site_centres(x0, y0):
+    """The centres of the eight sites, four above the road and four below."""
     return [(x0 + 7 + 3 * k, y0 + 2) for k in range(4)] + [(x0 + 7 + 3 * k, y0 + 6) for k in range(4)]
 
 
@@ -185,9 +311,14 @@ def replay(seed, origin, decisions):
             engine.doTool(tools[kind], *sites[site])
         for _ in range(TICKS_PER_YEAR):
             engine.simTick()
+    x0, y0 = origin
+    corner = (x0 - 1, y0 - 1)
+    tiles = [[engine.getTile(x, y) for x in range(x0 - 1, x0 + PATCH_W + 1)]
+             for y in range(y0 - 1, y0 + PATCH_H + 1)]
     return dict(population=int(engine.totalPop), residents=int(engine.resPop),
                 commerce=int(engine.comPop), industry=int(engine.indPop),
-                funds=int(engine.totalFunds), score=int(engine.cityScore))
+                funds=int(engine.totalFunds), score=int(engine.cityScore),
+                patch=CityPatch(tuple(origin), corner, tuple(tuple(row) for row in tiles)))
 
 
 #: Zoning plans that need no thought, used to set a target above what they reach: all

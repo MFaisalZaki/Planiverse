@@ -36,6 +36,8 @@ RADIUS = 0.028575
 TABLE_W, TABLE_L = 0.9906, 1.9812
 #: Positions are rounded to a millimetre for the state record.
 MM = 3
+#: The picture: the table's length across in characters, and its width down.
+PICTURE_COLS, PICTURE_ROWS = 41, 10
 
 
 def _pooltool():
@@ -115,6 +117,34 @@ class BilliardsState:
 
     def __repr__(self):
         return f"<BilliardsState(balls={len(self.object_balls)}, shots={self.shots_left})>"
+
+    def picture(self):
+        """The table from above, its long side across: the cushions as a box, the six pockets
+        as ●, each object ball by its number and the cue ball as ○; then the shots left and the
+        balls to pot."""
+        from planiverse.rendering.text import Canvas
+
+        cols, rows = PICTURE_COLS, PICTURE_ROWS
+        canvas = Canvas(cols + 2, rows + 2)
+        canvas.rect(0, 0, cols + 1, rows + 1)
+        middle = 1 + cols // 2
+        for x, y in ((0, 0), (middle, 0), (cols + 1, 0), (0, rows + 1), (middle, rows + 1),
+                     (cols + 1, rows + 1)):
+            canvas.put(x, y, "●")
+        taken = set()
+        for ball, (x, y) in sorted(self.balls, key=lambda item: item[0] != "cue"):
+            col = 1 + min(cols - 1, max(0, int(y / TABLE_L * cols)))
+            row = 1 + min(rows - 1, max(0, int(x / TABLE_W * rows)))
+            for dc, dr in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (2, 0), (-2, 0)):
+                spot = (col + dc, row + dr)
+                if spot not in taken and 1 <= spot[0] <= cols and 1 <= spot[1] <= rows:
+                    break
+            taken.add(spot)
+            canvas.put(*spot, "○" if ball == "cue" else ball[-1])
+        status = f"shots left {self.shots_left}   balls to pot {len(self.object_balls)}"
+        if self.scratched:
+            status += "   cue ball sunk"
+        return f"{canvas}\n{status}"
 
 
 # ------------------------------------------------------------------------------ the physics

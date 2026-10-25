@@ -108,6 +108,22 @@ def test_simulate_replays_the_plan(env):
     assert len(trace) == 3 and trace[0] == env.reset()[0]
 
 
+def test_the_picture_draws_the_field_and_changes_with_a_shot(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert picture.count("◎") == 3 and "▒" in picture and "█" in picture and "Y" in picture
+    assert picture.splitlines()[-1] == "shots left 3   targets standing 3"
+    after = env.__advance__(state, SlingshotAction(20, 60))
+    assert after.picture() != picture and after.picture().count("◎") == after.targets_left
+    assert len(after.picture().splitlines()) == len(picture.splitlines()), "the field keeps its size"
+    assert str(state) == text, "the picture leaves the state's text alone"
+
+
 # ------------------------------------------------------------------------------- instances
 
 def test_every_level_has_shots_targets_and_a_plan():

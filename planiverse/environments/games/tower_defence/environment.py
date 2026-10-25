@@ -30,8 +30,9 @@ draws, embedded as plain data with the seed each came from. The method is genera
 https://doi.org/10.1109/TCIAIG.2011.2148116).
 """
 import math
+from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
 
 #: The map: `WIDTH` by `HEIGHT` cells.
@@ -42,6 +43,8 @@ TOWERS = {"arrow": dict(cost=60, range=1.6, damage=4, reload=2),
 #: Speed is in hundredths of a cell per tick; a wave is over when its last enemy is dead or
 #: through.
 SPEED_UNIT = 100
+#: How a picture draws each kind of tower.
+TOWER_GLYPHS = {"arrow": "▲", "cannon": "●"}
 MAX_TICKS = 4000
 
 
@@ -87,27 +90,30 @@ class TowerAction:
 START = TowerAction()
 
 
-class TowerState:
-    """Which slots hold which towers, the gold, the lives, and the waves fought so far."""
+class TowerMap(namedtuple("TowerMap", "path slots waves")):
+    """What a picture of a state needs from its map and nothing a state is compared on: the
+    path from entrance to exit, the building slots, and how many waves there are."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("lives", ("lives",), None),
-        Panel("gold", ("gold",), None),
-        Panel("towers built", ("arrow", "cannon"), None),
-        Panel("waves fought", ("wave",), None),
-    )
+    __slots__ = ()
+
+
+class TowerState:
+    """Which slots hold which towers, the gold, the lives, and the waves fought so far.
+
+    `layout`, a `TowerMap`, is what `picture` draws the towers on; it stays out of equality,
+    hashing and the literals.
+    """
 
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         kinds = [kind for _, kind in self.towers]
         return {"lives": self.lives, "gold": self.gold, "arrow": kinds.count("arrow"),
                 "cannon": kinds.count("cannon"), "wave": self.wave}
 
-    def __init__(self, towers, gold, lives, wave, depth=0):
+    def __init__(self, towers, gold, lives, wave, depth=0, layout=None):
         self.towers = tuple(sorted(towers))
+        self.layout = layout
         self.gold, self.lives, self.wave = gold, lives, wave
         self.depth = depth
         literals = [f"tower({kind}, {slot})" for slot, kind in self.towers]
@@ -130,6 +136,38 @@ class TowerState:
 
     def __repr__(self):
         return f"<TowerState(wave={self.wave}, lives={self.lives}, gold={self.gold}, towers={len(self.towers)})>"
+
+    def picture(self):
+        """The map from above, two columns to a cell: the path as a line from the entrance ▶
+        on the left wall to the exit ▶ on the right, an empty building slot by its number, a
+        built one by its tower (▲ an arrow tower, ● a cannon), open ground as ·; then the
+        waves fought, the lives and the gold."""
+        from planiverse.rendering.text import JOINS, Canvas
+
+        waves = f" of {self.layout.waves}" if self.layout else ""
+        status = f"wave {self.wave}{waves} fought   lives {self.lives}   gold {self.gold}"
+        if self.layout is None:
+            built = "  ".join(f"{TOWER_GLYPHS[kind]}{slot}" for slot, kind in self.towers)
+            return f"{built}\n{status}" if built else status
+        canvas = Canvas(2 * WIDTH + 2, HEIGHT + 2)
+        canvas.rect(0, 0, 2 * WIDTH + 1, HEIGHT + 1)
+        for x in range(WIDTH):
+            for y in range(HEIGHT):
+                canvas.put(1 + 2 * x, 1 + y, "·")
+        path = self.layout.path
+        for index, (x, y) in enumerate(path):
+            near = [path[index - 1] if index else (x - 1, y),
+                    path[index + 1] if index + 1 < len(path) else (x + 1, y)]
+            arms = tuple(int(cell in near) for cell in ((x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)))
+            canvas.put(1 + 2 * x, 1 + y, JOINS[arms])
+            if arms[1]:
+                canvas.put(2 + 2 * x, 1 + y, "─")
+        canvas.put(0, 1 + path[0][1], "▶")
+        canvas.put(2 * WIDTH + 1, 1 + path[-1][1], "▶")
+        built = dict(self.towers)
+        for slot, (x, y) in enumerate(self.layout.slots):
+            canvas.put(1 + 2 * x, 1 + y, TOWER_GLYPHS[built[slot]] if slot in built else str(slot))
+        return f"{canvas}\n{status}"
 
 
 # ------------------------------------------------------------------------------- the wave
@@ -224,6 +262,7 @@ class TowerDefenceEnv(Environment):
     def __init__(self):
         super().__init__("tower_defence")
         self.instance = None
+        self.layout = None
         self.index = None
         self.state = None
         self.witness = None
@@ -249,6 +288,8 @@ class TowerDefenceEnv(Environment):
                          "waves": [tuple(int(v) for v in wave) for wave in instance["waves"]],
                          "gold": int(instance["gold"]), "lives": int(instance["lives"]),
                          "bounty": int(instance["bounty"])}
+        self.layout = TowerMap(tuple(self.instance["path"]), tuple(self.instance["slots"]),
+                               len(self.instance["waves"]))
         self.index = None
         self.witness = self.witness_expansions = None
 
@@ -310,7 +351,8 @@ class TowerDefenceEnv(Environment):
     def reset(self):
         if self.instance is None:
             self.set_index(0)
-        self.state = TowerState((), self.instance["gold"], self.instance["lives"], 0)
+        self.state = TowerState((), self.instance["gold"], self.instance["lives"], 0,
+                                layout=self.layout)
         return self.state, {"map": self.index, "waves": len(self.instance["waves"]),
                             "slots": len(self.instance["slots"]), "gold": self.instance["gold"],
                             "lives": self.instance["lives"], "generated": self.index is None}
@@ -347,11 +389,12 @@ class TowerDefenceEnv(Environment):
                     or state.gold < cost:
                 return state
             return TowerState(state.towers + ((action.slot, action.kind),), state.gold - cost,
-                              state.lives, state.wave, state.depth + 1)
+                              state.lives, state.wave, state.depth + 1, layout=self.layout)
         wave = self.instance["waves"][state.wave]
         kills, leaks = run_wave(self.instance["path"], self.instance["slots"], state.towers, wave)
         return TowerState(state.towers, state.gold + kills * self.instance["bounty"],
-                          max(0, state.lives - leaks), state.wave + 1, state.depth + 1)
+                          max(0, state.lives - leaks), state.wave + 1, state.depth + 1,
+                          layout=self.layout)
 
 #: The bundled maps: `generate_instance(seed)` for the seed beside each, embedded as the
 #: plain data `set_instance` takes, with the plan each was accepted on in

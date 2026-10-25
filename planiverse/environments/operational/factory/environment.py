@@ -47,7 +47,7 @@ import re
 import struct
 from collections import OrderedDict, deque, namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
 
 DIRECTIONS = ("north", "east", "south", "west")
@@ -179,20 +179,12 @@ Machine = namedtuple("Machine", "kind x y facing status fuel ore plates dynamics
 class FactoryState:
     """The factory as it stands: the tick, the character, what it holds, the machines, the ore
     left under the patch and the piles on the ground, with the decisions that led here kept for
-    replay. Identity is the contents; `path` and `depth` are bookkeeping."""
-
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("plates", ("brought back", "made", "in furnaces"), "target"),
-        Panel("held", ("coal", "ore"), None),
-        Panel("machines working", ("drills", "furnaces"), None),
-        Panel("game time, seconds", ("seconds",), None),
-    )
+    replay. Identity is the contents; `path` and `depth` are bookkeeping, and `layout`, a
+    `FactoryMap`, is the ground `picture` draws the factory on."""
 
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         furnaces = [m for m in self.machines if m.kind == "furnace"]
         drills = [m for m in self.machines if m.kind == "drill"]
         return {"brought back": self.plates, "made": self.produced,
@@ -203,8 +195,9 @@ class FactoryState:
                 "seconds": self.tick / 60}
 
     def __init__(self, path, tick, position, inventory, machines, piles, ore, produced,
-                 target=0, horizon=0, depth=0):
+                 target=0, horizon=0, depth=0, layout=None):
         self.path = tuple(path)
+        self.layout = layout
         self.tick, self.position = tick, position
         self.inventory = dict(inventory)
         self.machines, self.piles, self.ore = tuple(machines), tuple(piles), tuple(ore)
@@ -251,6 +244,70 @@ class FactoryState:
 
     def __repr__(self):
         return f"<FactoryState(tick={self.tick}, plates={self.plates}, machines={len(self.machines)})>"
+
+    def picture(self):
+        """The patch from above in a frame, two columns to a tile, north at the top: ore as ░,
+        walls as ▓, each machine as a box over its two by two tiles (a drill marked D with an
+        arrow the way it faces, a furnace marked F with the plates waiting in it), piles on the
+        ground as • and the character as ☻, held at the frame's edge when it walks beyond it;
+        then the tick, the plates brought back against the target, and what it holds."""
+        from planiverse.rendering.text import Canvas
+
+        held = ", ".join(f"{item} {count}" for item, count in sorted(self.inventory.items()))
+        status = (f"tick {self.tick}   plates {self.plates} of {self.target}   "
+                  f"holds {held or 'nothing'}")
+        if self.layout is None:
+            return status
+        x0, y0, x1, y1 = self.layout.window
+        width, height = 2 * (x1 - x0 + 1), y1 - y0 + 1
+        canvas = Canvas(width + 2, height + 2)
+        canvas.rect(0, 0, width + 1, height + 1)
+
+        def put(tx, ty, text):
+            if x0 <= tx <= x1 and y0 <= ty <= y1:
+                canvas.write(1 + 2 * (tx - x0), 1 + ty - y0, text[:2 * (x1 - tx + 1)])
+
+        ox0, oy0, ox1, oy1 = self.layout.ore
+        for tx in range(ox0, ox1 + 1):
+            for ty in range(oy0, oy1 + 1):
+                put(tx, ty, "░░")
+        for tx, ty in self.layout.walls:
+            put(tx, ty, "▓▓")
+        for px, py, _, _ in self.piles:
+            put(px // TILE, py // TILE, "• ")
+        for m in self.machines:
+            if m.kind == "drill":
+                top = "┌D" + FACINGS[m.facing] + "┐"
+            else:
+                top = "┌F─┐"
+            bottom = "└" + (f"{m.plates:─>2}"[-2:] if m.kind == "furnace" and m.plates else "──") + "┘"
+            put(m.x - 1, m.y - 1, top)
+            put(m.x - 1, m.y, bottom)
+        cx = min(x1, max(x0, int(math.floor(self.position[0] / TILE))))
+        cy = min(y1, max(y0, int(math.floor(self.position[1] / TILE))))
+        canvas.put(1 + 2 * (cx - x0), 1 + cy - y0, "☻")
+        return f"{canvas}\n{status}"
+
+
+#: How a picture draws a drill's facing.
+FACINGS = {"north": "▲", "east": "▶", "south": "▼", "west": "◀"}
+
+
+class FactoryMap(namedtuple("FactoryMap", "ore walls window")):
+    """What a picture of a state needs from its patch and nothing a state is compared on: the
+    ore rectangle, the walls, and the window of tiles drawn, which takes in the ore, the walls
+    and the start with two tiles to spare. `FactoryMap.of(instance)` reads it off a patch."""
+
+    __slots__ = ()
+
+    @classmethod
+    def of(cls, instance):
+        ore = tuple(int(v) for v in instance["ore"])
+        walls = tuple(sorted((int(x), int(y)) for x, y in instance["walls"]))
+        start = (int(math.floor(instance["start"][0])), int(math.floor(instance["start"][1])))
+        xs = [ore[0], ore[2], start[0]] + [x for x, _ in walls]
+        ys = [ore[1], ore[3], start[1]] + [y for _, y in walls]
+        return cls(ore, walls, (min(xs) - 2, min(ys) - 2, max(xs) + 2, max(ys) + 2))
 
 
 # ----------------------------------------------------------------------------- scenes
@@ -305,6 +362,7 @@ class FactoryEnv(Environment):
         self.witness_expansions = None
         self.sim = None
         self.blueprint = None
+        self.layout = None
         self.tiles = ()
         self.walls = frozenset()
         self.anchors = ()
@@ -337,6 +395,7 @@ class FactoryEnv(Environment):
         self.index = None
         self.witness = self.witness_expansions = None
         self.blueprint = blueprint_of(self.instance)
+        self.layout = FactoryMap.of(self.instance)
         self.tiles = tuple((x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1))
         ore = set(self.tiles)
         self.walls = frozenset(map(tuple, self.instance["walls"]))
@@ -512,7 +571,7 @@ class FactoryEnv(Environment):
         return FactoryState(path, int(env.tick), (env.char_pos.x, env.char_pos.y), inventory,
                             machines, piles, amounts, int(env.produced[lib.IT_IRON_PLATE]),
                             target=self.instance["target"], horizon=self.instance["horizon"],
-                            depth=depth)
+                            depth=depth, layout=self.layout)
 
     # ------------------------------------------------------------------- contract
 

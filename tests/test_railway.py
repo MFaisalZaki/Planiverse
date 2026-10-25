@@ -50,10 +50,27 @@ def test_the_start_has_every_train_waiting(railway):
     assert state.step == 0 and state.train_steps == 0 and state.released == ()
     assert all(status == "waiting" for status, _, _ in state.trains)
     assert not railway.is_goal(state) and not railway.is_terminal(state)
-    assert set(state.readings()) >= {name for panel in state.panels for name in panel.series}
+    assert set(state.readings()) >= {"waiting", "running", "stopped", "arrived", "train-steps"}
     children = railway.successors(state)
     assert_successors_contract(children)
     assert [str(a) for a, _ in children] == [f"depart({i})" for i in range(len(state.trains))] + ["wait"]
+
+
+def test_the_picture_draws_the_track_and_the_trains_on_it(railway):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = railway.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert "◎" in picture and "┼" in picture and not any(arrow in picture for arrow in "▲▶▼◀")
+    assert picture.splitlines()[-1] == ("step 0   arrived 0  running 0  waiting 5   "
+                                        "train-steps 0 of 406")
+    out = railway.simulate(["depart(0)", "wait"])[-1]
+    assert any(arrow + "0" in out.picture() for arrow in "▲▶▼◀"), "train 0 is out on the line"
+    assert len(out.picture().splitlines()) == len(picture.splitlines()), "the map keeps its size"
+    assert str(state) == text, "the picture leaves the state's text alone"
 
 
 def test_expanding_twice_gives_the_same_children(railway):

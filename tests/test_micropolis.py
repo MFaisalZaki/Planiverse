@@ -61,6 +61,23 @@ def test_zoning_changes_what_the_city_becomes(env):
     assert nothing["population"] == 0 and zoned["population"] > 0
 
 
+def test_the_picture_draws_the_engines_map_of_the_layout(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert "P" in picture and "═" in picture and "╪" in picture
+    assert all(str(site) in picture for site in range(SITES)), "every site open, by number"
+    assert picture.splitlines()[-1] == "year 0   population 1 of 26   funds 16685"
+    zoned = env.__advance__(state, MicropolisAction("R", 0))
+    assert "R" in zoned.picture() and "R" not in picture and "0" not in zoned.picture().splitlines()[3]
+    assert len(zoned.picture().splitlines()) == len(picture.splitlines()), "the patch keeps its size"
+    assert str(state) == text, "the picture leaves the state's text alone"
+
+
 # ------------------------------------------------------------------------------- the rules
 
 def test_a_state_is_its_decisions(env):

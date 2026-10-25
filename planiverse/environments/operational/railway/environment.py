@@ -34,8 +34,9 @@ of a millisecond.
 """
 import pickle
 import warnings
+from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
 
 #: Steps a `wait` runs while a train is still to depart.
@@ -131,27 +132,21 @@ class RailwayState:
     """The network after the departures so far: the step, each train's status, cell and
     direction, the trains let go, the train-steps so far, the cells still to run and whether a
     deadlock has set in. Identity is the step, the trains and the train-steps; `snapshot` is
-    Flatland's agents, kept to expand from."""
-
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("trains", ("waiting", "running", "stopped", "arrived"), None),
-        Panel("cells to go", ("cells to go",), None),
-        Panel("train-steps", ("train-steps",), "target"),
-    )
+    Flatland's agents, kept to expand from, and `layout`, a `RailMap`, is the track `picture`
+    draws the trains on. Neither is compared, hashed or in the literals."""
 
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         count = {status: sum(1 for t in self.trains if t[0] == status)
                  for status in ("waiting", "running", "stopped", "arrived")}
         return {**count, "cells to go": self.to_go, "train-steps": self.train_steps,
                 "target": self.target}
 
     def __init__(self, step, trains, released, train_steps, to_go=0, deadlocked=(), snapshot=None,
-                 target=0, horizon=0, depth=0):
+                 target=0, horizon=0, depth=0, layout=None):
         self.step = step
+        self.layout = layout
         self.trains = tuple(tuple(t) for t in trains)          # (status, cell or None, direction or None)
         self.released = tuple(sorted(released))
         self.train_steps, self.to_go = train_steps, to_go
@@ -197,6 +192,85 @@ class RailwayState:
     def __repr__(self):
         return (f"<RailwayState(step={self.step}, arrived={self.arrived}, "
                 f"train_steps={self.train_steps})>")
+
+    def picture(self):
+        """Flatland's track from above in box-drawing lines, two columns to a cell: each
+        train's target as ◎, a train out on the line as an arrow in its direction with its
+        number beside it, a train still waiting as its number at its start; then the step, the
+        trains arrived, running and waiting, and the train-steps against the target."""
+        from planiverse.rendering.text import Canvas
+
+        count = self.readings()
+        status = (f"step {self.step}   arrived {count['arrived']}  running {count['running']}  "
+                  f"waiting {count['waiting']}")
+        if count["stopped"]:
+            status += f"  stopped {count['stopped']}"
+        status += f"   train-steps {self.train_steps} of {self.target}"
+        if self.deadlocked:
+            status += "   deadlocked"
+        if self.layout is None:
+            return status
+        canvas = Canvas(2 * self.layout.width, self.layout.height)
+        for row, line in enumerate(self.layout.track):
+            canvas.write(0, row, line)
+        for row, column in self.layout.targets:
+            canvas.put(2 * column, row, "◎")
+        waiting = {}
+        for train, (status_, cell, direction) in enumerate(self.trains):
+            if cell is None and status_ == "waiting":
+                waiting.setdefault(self.layout.starts[train], []).append(str(train))
+        for (row, column), trains in waiting.items():
+            canvas.write(2 * column, row, "".join(trains)[:2])
+        for train, (status_, cell, direction) in enumerate(self.trains):
+            if cell is not None and status_ != "arrived":
+                canvas.write(2 * cell[1], cell[0], HEADINGS[direction] + str(train)[-1])
+        return f"{canvas}\n{status}"
+
+
+class RailMap(namedtuple("RailMap", "width height track targets starts")):
+    """What a picture of a state needs from Flatland's network and nothing a state is
+    compared on: the track as lines of text, two columns to a cell, each train's target cell
+    and each train's start cell. `RailMap.of(env)` reads it from Flatland's transition map."""
+
+    __slots__ = ()
+
+    @classmethod
+    def of(cls, env):
+        from planiverse.rendering.text import JOINS
+
+        rail = env.rail
+        lines = []
+        for row in range(rail.height):
+            line = []
+            for column in range(rail.width):
+                sides = _sides(rail.get_full_transitions(row, column))
+                if not sides:
+                    line.append("  ")
+                    continue
+                key = tuple(int(side in sides) for side in range(4))
+                line.append(JOINS[key] + ("─" if 1 in sides else " "))
+            lines.append("".join(line))
+        targets = tuple(sorted({(int(cell[0]), int(cell[1]))
+                                for agent in env.agents for cell, _ in agent.targets}))
+        starts = tuple((int(agent.initial_configuration[0][0]), int(agent.initial_configuration[0][1]))
+                       for agent in env.agents)
+        return cls(rail.width, rail.height, tuple(lines), targets, starts)
+
+
+#: A train's direction as Flatland numbers it (north, east, south, west), as an arrow.
+HEADINGS = "▲▶▼◀"
+
+
+def _sides(transitions):
+    """The sides of a cell (0 north, 1 east, 2 south, 3 west) its track leaves by, from
+    Flatland's sixteen-bit transitions: four bits of exits for each heading a train may have
+    on entering, north first."""
+    sides = set()
+    for heading in range(4):
+        for exit_ in range(4):
+            if (transitions >> (4 * (3 - heading) + (3 - exit_))) & 1:
+                sides.update((exit_, (heading + 2) % 4))
+    return sides
 
 
 def reference_policies(trains, order):
@@ -345,6 +419,7 @@ class RailwayEnv(Environment):
                                    f"{self.instance['trains']}")
             env._max_episode_steps = self.instance["horizon"]
             self.__env__ = env
+            self.__layout__ = RailMap.of(env)
             self.__start__ = self._save(())
         return self.__env__
 
@@ -439,7 +514,8 @@ class RailwayEnv(Environment):
         snapshot = pickle.dumps((env.agents, env._elapsed_steps, env.dones, env.agent_positions,
                                  tuple(sorted(released)), train_steps))
         return RailwayState(env._elapsed_steps, trains, released, train_steps, to_go, stuck, snapshot,
-                            target=self.instance["target"], horizon=self.instance["horizon"], depth=depth)
+                            target=self.instance["target"], horizon=self.instance["horizon"], depth=depth,
+                            layout=self.__layout__)
 
     def close(self):
         self.__env__ = None
