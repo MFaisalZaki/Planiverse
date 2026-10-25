@@ -30,9 +30,10 @@ WIDTH, HEIGHT = 16, 10
 ROCK, EARTH, AIR, WATER, SPRING, BASIN, DRAIN = "#", ".", " ", "~", "S", "T", "X"
 #: Ticks the water runs after each action, and the most ticks a game may take.
 PERIOD, MAX_TICKS = 12, 240
-#: The symbol each cell is drawn as in a picture; rock becomes joined walls, and earth and
-#: water run on through the spacing column into a neighbour of their own kind.
-PICTURE = {EARTH: "▒", AIR: " ", WATER: "≈", SPRING: "▼", BASIN: "⊔", DRAIN: "⊗"}
+#: The symbol each cell is drawn as in a picture; rock becomes joined walls, earth and water
+#: run on through the spacing column into a neighbour of their own kind, and air is a dot so
+#: the grid the water moves through shows.
+PICTURE = {EARTH: "▒", AIR: "·", WATER: "≈", SPRING: "▼", BASIN: "⊔", DRAIN: "⊗"}
 
 
 class FluidAction:

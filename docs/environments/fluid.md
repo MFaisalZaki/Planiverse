@@ -150,7 +150,7 @@ into a neighbour of their own kind, so a mass of earth reads as one and a pool a
 |---|---|
 | `┌─┐ │` | rock, joined into walls |
 | `▒` | earth, which a dig removes |
-| (blank) | air |
+| `·` | air, which water can flow into |
 | `≈` | water |
 | `▼` | the spring |
 | `⊔` | the basin |
