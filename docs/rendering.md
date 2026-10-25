@@ -25,30 +25,46 @@ captions keep the real step numbers, so a thinned sheet still says which step is
 
 Rendered plans for the first instance of each environment live in [`docs/renders/`](renders/).
 
-- **Dependencies:** Pillow for the text frames and the files, and matplotlib for the readings
-  charts; the library already requires both.
+- **Dependencies:** Pillow for the frames and the files, and matplotlib for the monospace face it
+  ships (DejaVu Sans Mono); the library already requires both.
 
 ## Where the pixels come from
 
-For a board, a frame is **the state's own text**: `str(state)`, typeset in a monospace font.
-That is not a fallback, since an ASCII board is what most of the games were designed to be read
-as. A GIF is pixels, and typesetting is the one step that turns a text board into them, which
-is the only reason a font appears in the module at all.
+A frame is **the state's text**, typeset in a monospace font, black on white: the state's
+`picture()` where it draws one, and `str(state)` otherwise (`state_text(state)` picks). Every
+environment but the two emulators draws a picture, and what it draws depends on the environment:
 
-For an environment whose state is a handful of readings (a city's population and funds, a
-factory's plates and coal, a crop's biomass, a grid's line loadings, a water network's
-contamination, a flood city's costs, an outbreak's hospital load, a traffic grid's queues, an
-airspace's separation, a reservoir's volumes, a tower defence's lives and gold) a line of
-numbers per frame is read better as a chart of those numbers over the plan, so a frame there is
-**a chart of the readings of every state up to the one shown**: one panel per quantity, the
-series that share a unit on one axis and never two scales on one panel, the action that produced
-each state along the bottom, a target as a dashed line, and the goal or dead end marked where
-the plan ends. The GIF grows the chart a state at a time; the sheet is the whole plan on one
-figure. The readings are part of the state: such a state carries `readings()`, its numbers by
-name, and `panels`, which of them share an axis (`Panel(title, series, target)`, from
-`planiverse.environments`). `render_trace` charts whatever has them and needs no telling;
-`charts=False` asks for the text anyway. matplotlib draws it through its object API, so no
-display is involved.
+- a board (Puzznic, Lolo, Lemmings and the other grid games) has its walls joined into
+  box-drawing lines and its pieces as symbols, two columns to a cell so a cell is about square;
+- a field or a map (Slingshot, Billiards, the tower defence, the railway, the factory, the
+  Micropolis city, the flood city) is laid out on a grid of characters;
+- a system (the reservoirs, the power grid, the microgrid, the water network, the supply chain,
+  the airspace, the town of an outbreak, the streets of the traffic grid, the crop's field, the
+  attacked network) is drawn as a schematic of its parts.
+
+Each picture ends in one status line, the quantities that matter at that state. A picture keeps
+its size across a trace, so a GIF does not jump. `str(state)` stays what it was, since it is
+the state's OpenSpiel `observation_string`; the operational states also carry `readings()`, their
+numbers by name, which the OpenSpiel observation tensor holds. A GIF is pixels, and typesetting is
+the one step that turns the text into them, which is the only reason a font appears in the module.
+
+The pictures draw in the helpers of `planiverse.rendering.text`, so that every environment draws
+a wall, a gauge or a box the same way:
+
+```python
+from planiverse.rendering.text import Canvas, bar, boxed, missing_glyphs, side_by_side, tank
+
+boxed(["###", "#@#", "###"], glyphs={"@": "☻"})   # walls joined into lines
+canvas = Canvas(40, 12)                            # a grid of characters to draw on
+canvas.rect(0, 0, 10, 4, label="tank"); canvas.hline(10, 30, 2); str(canvas)
+bar(3.5, 10, 20)                                   # '███████░░░░░░░░░░░░░'
+tank(0.6, 5, 6)                                    # a vessel filled to 60%, as lines
+side_by_side([block_a, block_b])                   # blocks of text set next to each other
+missing_glyphs(text)                               # characters the face has no glyph for
+```
+
+Every character a picture uses is in DejaVu Sans Mono, so a picture prints in a terminal as it
+renders in a GIF; `missing_glyphs` is how the tests check it.
 
 ## Rendering OpenSpiel states
 
@@ -65,10 +81,8 @@ for action in actions:
 render_trace(trace, "plan.png")
 ```
 
-A frame is then what OpenSpiel says about the state. Its text is `str(state)`, and for a
-`planiverse_*` game that is the simulator state's own text, the same as its
-`observation_string`. Its readings are the ones the game's observation tensor holds, named in
-the `dict` of OpenSpiel's observer (`open_spiel.python.observation.make_observation(game)`).
+A frame is then what OpenSpiel says about the state. Its text is the simulator state's picture
+for a `planiverse_*` game, and `str(state)` otherwise.
 Without `env=`, the caption reads the end of the plan off the game itself: a terminal state with
 a positive return is a goal, and any other terminal state is a dead end. Any of OpenSpiel's own
 games renders the same way, as its text.
@@ -82,7 +96,7 @@ the captions go on as for text. `frames=` is open to any caller with a picture p
 
 | Path | What |
 |---|---|
-| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state`, `outcome` |
-| [`charts.py`](../planiverse/rendering/charts.py) | `chart_image`, `chart_frames`: the readings charts |
+| [`trace.py`](../planiverse/rendering/trace.py) | `render_trace`, `render_state`, `state_text`, `outcome` |
+| [`text.py`](../planiverse/rendering/text.py) | `boxed`, `Canvas`, `bar`, `tank`, `side_by_side`, `missing_glyphs`: what pictures draw in |
 | [`tests/test_rendering.py`](../tests/test_rendering.py) | Tests |
 | [`renders/`](renders/) | Rendered plans, one per environment |

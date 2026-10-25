@@ -352,6 +352,24 @@ def test_reset_returns_a_state_and_info(factory):
     assert isinstance(info, dict)
 
 
+#: The emulators draw their consoles' own screens rather than a text picture.
+SCREENS = ("game_boy", "retro")
+
+
+@pytest.mark.parametrize("factory", [param for param in environment_params()
+                                     if param.id not in SCREENS])
+def test_every_state_draws_a_picture_the_face_can_typeset(factory):
+    from planiverse.rendering.text import missing_glyphs
+
+    env = factory()
+    state, _ = env.reset()
+    picture = state.picture()
+    assert isinstance(picture, str) and picture.strip()
+    assert not missing_glyphs(picture)
+    for _, successor in env.successors(state)[:3]:
+        assert not missing_glyphs(successor.picture())
+
+
 @pytest.mark.parametrize("factory", environment_params())
 def test_reset_is_repeatable(factory):
     """Two resets of the same instance give the same state: expansion must not depend on

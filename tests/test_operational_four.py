@@ -19,7 +19,7 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 
 def assert_a_picture(env, state, after, shows):
     """`picture()` draws the state in the renderer's face, the same every time, with `shows`
-    in it, differs once a step is taken, and leaves `str(state)` and the chart panels gone."""
+    in it, differs once a step is taken, and leaves `str(state)` as it was."""
     from planiverse.rendering.text import missing_glyphs
 
     picture = state.picture()

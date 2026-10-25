@@ -297,7 +297,7 @@ left in `env.witness` and its cost in `env.witness_expansions`. This is off by d
 `frames(trace)` returns the console's own frames, one per state of a trace. `render_trace`
 writes a trace as a GIF, a contact sheet or a directory of PNGs of those frames. Each frame is
 captioned with its step, the action that produced it and whether it is a goal or a dead end.
-`charts=False` and the other `render_trace` options apply as elsewhere; the state's text (the
+The other `render_trace` options apply as elsewhere; the state's text (the
 tile grid and the fields) is `str(state)`.
 
 ## Caveats

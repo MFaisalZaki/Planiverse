@@ -396,10 +396,10 @@ env.render_trace(trace, "plan.gif")        # an animated GIF, one frame per stat
 env.render_trace(trace, "plan-frames/")    # a directory of independent PNGs
 ```
 
-Rendering a trace is one image per state: a board's own text, typeset, or, for an environment
-whose state is a handful of readings (the thirteen operational environments and the tower
-defence), a chart of those readings over the plan so far,
-one panel per quantity, with the actions along the bottom. See
+Rendering a trace is one image per state: the state's text picture, typeset black on white. A
+board has its walls joined into lines and its pieces as symbols, a field or map is laid out on a
+grid of characters, and an operational system is drawn as a schematic of its parts (tanks,
+networks, a radar scope, a town), each with one status line. See
 [docs/rendering.md](docs/rendering.md).
 
 ## Planners
@@ -613,7 +613,7 @@ planiverse/
 │   ├── common.py                       # SuccessorCache and the helpers the planners share
 │   └── pruning.py, macros.py           # dominated-action pruning, focused macro-actions
 ├── spiel.py                            # every environment a pyspiel game; solve(game, planner)
-├── rendering/                          # traces to GIF or PNG frames, text or readings charts (env.render_trace delegates here)
+├── rendering/                          # traces to GIF or PNG frames, state pictures typeset as text (env.render_trace delegates here)
 └── benchmark/                          # planiverse-bench: the evaluation protocol
     ├── __init__.py                     # generate / solve / report, and the protocol's constants
     ├── planners.py                     # every planner, as a benchmark configuration under its tag

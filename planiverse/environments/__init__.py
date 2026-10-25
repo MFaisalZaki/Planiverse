@@ -11,7 +11,7 @@ One flat namespace, one base class, and a registry that carries the differences 
 import sys
 
 from planiverse.environments.base import (
-    OPTIONAL_METHODS, REQUIRED_METHODS, Environment, Panel, implements_contract,
+    OPTIONAL_METHODS, REQUIRED_METHODS, Environment, implements_contract,
 )
 from planiverse.environments.registry import (
     REGISTRY, STATE_IDENTITIES, EnvironmentSpec, get_spec, list_environments, make, tags,
@@ -24,7 +24,7 @@ if sys.platform == "win32":
     preload_sumo_libraries()
 
 __all__ = [
-    "Environment", "EnvironmentSpec", "Panel", "REGISTRY", "REQUIRED_METHODS", "OPTIONAL_METHODS",
+    "Environment", "EnvironmentSpec", "REGISTRY", "REQUIRED_METHODS", "OPTIONAL_METHODS",
     "STATE_IDENTITIES", "get_spec", "implements_contract", "list_environments", "make",
     "tags",
 ]
