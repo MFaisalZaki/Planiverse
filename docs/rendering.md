@@ -14,7 +14,11 @@ env.render_trace(trace, "plan-frames/")                      # a directory of PN
 
 A contact sheet is the format that answers what the planner actually did, since the whole plan is
 visible at once. Passing `actions=` and `env=` captions each frame with its step number, the
-action that produced it, and a green `goal` or red `dead end` note. A `.pdf` paginates instead,
+action that produced it, and a green `goal` or red `dead end` note. The sheet stacks the frames
+top to bottom, each caption in a column to the left of its state; the caption column is one width
+for the whole trace and every picture is padded to one size, so the states line up one under
+another, and a long action name wraps within its column. `columns=` sets the frames side by side
+instead, each pinned to the top left of its cell. A `.pdf` paginates instead,
 and `per_page=` tiles several frames onto a page. A `.gif` animates, with `duration_ms=` per
 frame, looping, which is the right thing for watching a plan and the wrong thing for reading one.
 Anything without an extension is treated as a directory receiving `state-000.png` onward, in trace

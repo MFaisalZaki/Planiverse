@@ -6,7 +6,7 @@ pytest.importorskip("PIL", exc_type=ImportError, reason="Pillow is not installed
 from PIL import Image  # noqa: E402
 
 from planiverse.environments.games.puzznic.environment import PuzznicGame  # noqa: E402
-from planiverse.rendering import render_state, render_trace  # noqa: E402
+from planiverse.rendering import contact_sheet, render_state, render_trace  # noqa: E402
 
 
 @pytest.fixture
@@ -148,3 +148,18 @@ def test_kept_indices_thin_a_trace_but_keep_its_ends():
     assert kept_indices(5) == [0, 1, 2, 3, 4]
     assert kept_indices(11, max_states=3) == [0, 5, 10]
     assert kept_indices(11, max_states=1) == [0]
+
+
+def test_a_sheet_stacks_its_frames_with_every_caption_beside_its_state(tmp_path):
+    from PIL import Image
+
+    from planiverse.rendering import trace_frames
+
+    states = ["┌─┐\n└─┘", "┌───┐\n│ ☻ │\n└───┘", "x"]
+    frames = trace_frames(states, actions=["a short one", "a much longer action name"])
+    assert len({frame.size for frame in frames}) == 1, "one caption column, one picture size"
+    sheet = contact_sheet(frames)
+    assert sheet.height > 3 * frames[0].height and sheet.width < 2 * frames[0].width
+    path = tmp_path / "sheet.png"
+    render_trace(states, str(path), actions=["a short one", "a much longer action name"])
+    assert Image.open(path).size == sheet.size

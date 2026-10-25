@@ -22,14 +22,17 @@ at all. The characters pictures share are in `text.py`.
 A trace is any list of states: an environment's, from `env.simulate(plan)`, or an OpenSpiel
 game's, from applying the plan to `game.new_initial_state()` and cloning as it goes.
 """
+import math
 import os
 
-#: Columns in a contact sheet. Chosen so a ten-step plan lands on two tidy rows.
-DEFAULT_COLUMNS = 5
+#: Columns in a contact sheet: one, so the frames stack top to bottom, each caption beside its
+#: state and every picture starting at the same place.
+DEFAULT_COLUMNS = 1
 
-#: Room around a typeset text state, and for the caption above each frame.
+#: Room around a typeset text state, and between a caption and its state.
 PADDING = 12
-CAPTION_HEIGHT = 34
+#: The widest a caption column grows, in pixels, before a long action name wraps.
+CAPTION_MAX_WIDTH = 280
 
 _BACKGROUND = (255, 255, 255)
 _INK = (17, 17, 17)
@@ -99,25 +102,67 @@ def _uniform(frames):
             padded.append(frame)
             continue
         canvas = Image.new("RGB", (width, height), _BACKGROUND)
-        canvas.paste(frame, ((width - frame.width) // 2, (height - frame.height) // 2))
+        canvas.paste(frame, (0, 0))
         padded.append(canvas)
     return padded
 
 
-def _caption(image, title, subtitle=None, colour=_INK):
-    """Put a caption above a frame and a hairline around it."""
+def _caption_lines(title, width):
+    """The title broken into lines no wider than `width` pixels, at spaces where it can be."""
     from PIL import Image, ImageDraw
 
+    font = _font(13, bold=True)
+    measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    fits = lambda text: measure.textlength(text, font=font) <= width  # noqa: E731
+    lines, line = [], ""
+    for word in title.split(" "):
+        candidate = f"{line} {word}" if line else word
+        if fits(candidate):
+            line = candidate
+            continue
+        if line:
+            lines.append(line)
+        while not fits(word):
+            cut = max(1, next(k for k in range(len(word), 0, -1) if fits(word[:k])))
+            lines.append(word[:cut])
+            word = word[cut:]
+        line = word
+    return lines + ([line] if line else [])
+
+
+def _caption_width(titles):
+    """One caption column for every frame of a trace: as wide as its longest title, up to
+    `CAPTION_MAX_WIDTH`, so that every state starts the same distance from the left."""
+    from PIL import Image, ImageDraw
+
+    font = _font(13, bold=True)
+    measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    widest = max((measure.textlength(title, font=font) for title in titles), default=0)
+    return math.ceil(min(CAPTION_MAX_WIDTH, max(widest, measure.textlength("dead end", font=font))))
+
+
+def _caption(image, title, subtitle=None, colour=_INK, width=None):
+    """Set a caption in a column to the left of a frame, and a hairline round the frame.
+
+    `width` is the caption column's, shared by every frame of a trace so they line up; a
+    title too long for it wraps.
+    """
+    from PIL import Image, ImageDraw
+
+    width = width or _caption_width([title])
     title_font, subtitle_font = _font(13, bold=True), _font(11)
-    canvas = Image.new("RGB", (image.width + 2, image.height + CAPTION_HEIGHT + 2),
-                       _BACKGROUND)
+    lines = _caption_lines(title, width)
+    caption_height = 16 * len(lines) + (16 if subtitle else 0)
+    left = width + PADDING
+    canvas = Image.new("RGB", (left + image.width + 2,
+                               max(image.height + 2, caption_height + PADDING)), _BACKGROUND)
     draw = ImageDraw.Draw(canvas)
-    draw.text((1, 2), title, font=title_font, fill=colour)
+    for k, line in enumerate(lines):
+        draw.text((0, PADDING + 16 * k), line, font=title_font, fill=colour)
     if subtitle:
-        draw.text((1, 18), subtitle, font=subtitle_font, fill=_CAPTION_INK)
-    canvas.paste(image, (1, CAPTION_HEIGHT))
-    draw.rectangle([0, CAPTION_HEIGHT - 1, canvas.width - 1, canvas.height - 1],
-                   outline=_BORDER)
+        draw.text((0, PADDING + 16 * len(lines)), subtitle, font=subtitle_font, fill=_CAPTION_INK)
+    canvas.paste(image, (left + 1, 1))
+    draw.rectangle([left, 0, left + image.width + 1, image.height + 1], outline=_BORDER)
     return canvas
 
 
@@ -172,20 +217,22 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
             raise ValueError(f"{len(frames)} frames for {len(states)} states")
     indices = kept_indices(len(states), max_states)
 
-    pictures = []
-    for index in indices:
-        state = states[index]
-        image = _picture(frames[index]) if frames is not None \
-            else render_state(state, font_size=font_size)
-        if not captions:
-            pictures.append(image)
-            continue
-
+    def title(index):
         if index == 0:
-            title = "start"
-        else:
-            action = actions[index - 1] if actions and index - 1 < len(actions) else None
-            title = f"{index}. {action}" if action is not None else f"step {index}"
+            return "start"
+        action = actions[index - 1] if actions and index - 1 < len(actions) else None
+        return f"{index}. {action}" if action is not None else f"step {index}"
+
+    width = _caption_width([title(index) for index in indices]) if captions else None
+    # One size for every picture of the trace, so that their frames line up.
+    images = _uniform([_picture(frames[index]) if frames is not None
+                       else render_state(states[index], font_size=font_size)
+                       for index in indices])
+    if not captions:
+        return images
+    pictures = []
+    for index, image in zip(indices, images):
+        state = states[index]
 
         note = outcome(state, env)
         colour = {"goal": _GOAL, "dead end": _TERMINAL}.get(note, _INK)
@@ -193,7 +240,7 @@ def trace_frames(trace, actions=None, env=None, max_states=None, font_size=14,
             note = f"{note} · state {index} of {len(states) - 1}" if note \
                 else f"state {index} of {len(states) - 1}"
 
-        pictures.append(_caption(image, title, note, colour))
+        pictures.append(_caption(image, title(index), note, colour, width=width))
     return pictures
 
 
@@ -207,24 +254,27 @@ def _picture(frame):
 
 
 def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
-    """Tile frames into a single image, left to right and top to bottom."""
+    """Tile frames into a single image, left to right and top to bottom, each pinned to the
+    top left of its cell. A row is as tall as its tallest frame and a column as wide as its
+    widest, so with the default single column every frame keeps its own height."""
     from PIL import Image
 
     if not frames:
         raise ValueError("nothing to tile")
     columns = max(1, min(columns, len(frames)))
-    rows = (len(frames) + columns - 1) // columns
-    cell_width = max(frame.width for frame in frames)
-    cell_height = max(frame.height for frame in frames)
+    rows = [frames[start:start + columns] for start in range(0, len(frames), columns)]
+    widths = [max(row[k].width for row in rows if k < len(row)) for k in range(columns)]
+    heights = [max(frame.height for frame in row) for row in rows]
 
-    sheet = Image.new("RGB",
-                      (columns * cell_width + (columns + 1) * gap,
-                       rows * cell_height + (rows + 1) * gap),
+    sheet = Image.new("RGB", (sum(widths) + (columns + 1) * gap, sum(heights) + (len(rows) + 1) * gap),
                       _BACKGROUND)
-    for position, frame in enumerate(frames):
-        row, column = divmod(position, columns)
-        sheet.paste(frame, (gap + column * (cell_width + gap),
-                            gap + row * (cell_height + gap)))
+    y = gap
+    for row, height in zip(rows, heights):
+        x = gap
+        for frame, width in zip(row, widths):
+            sheet.paste(frame, (x, y))
+            x += width + gap
+        y += height + gap
     return sheet
 
 
