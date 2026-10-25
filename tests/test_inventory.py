@@ -47,7 +47,7 @@ def test_the_contract_on_the_initial_state(inventory):
     assert [action for action, _ in children] == list(ACTIONS) == inventory.get_actions()
     assert len(ACTIONS) == 9
     assert all(child.period == 1 for _, child in children)
-    assert set(state.readings()) >= {name for panel in state.panels for name in panel.series}
+    assert set(state.readings()) >= {"retailer", "demand", "lost sales", "profit"}
     assert str(state).startswith("period 0: on hand retailer")
 
 
@@ -170,3 +170,27 @@ def test_every_bundled_season_is_solved_by_its_plan_and_regenerates_from_its_see
         assert env.validate([InventoryAction.parse(text) for text in plans[index]]), index
     for index in (0, 99):
         assert InventoryEnv().generate_instance(seed=SEASONS[index]["seed"]) == SEASONS[index]
+
+
+# ------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_chain_and_a_status_line(inventory):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, _ = inventory.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    for name in ("raw", "manufacturer", "distributor", "retailer", "customers", "▶"):
+        assert name in picture
+    assert f"{state.on_hand[0]} on hand" in picture
+    assert picture.splitlines()[-1] == (
+        f"period 0/{state.horizon} · profit 0.00 of {state.target:.2f} · "
+        f"lost sales 0 of {state.allowed}")
+    child = inventory.__advance__(state, ACTIONS[4])
+    assert child.picture() != picture
+    assert f"demand {child.last[0]}" in child.picture()
+    assert len(child.picture().splitlines()) == len(picture.splitlines()), \
+        "the geometry is the season's, so a GIF of a trace does not jump"
+    assert str(state) == text and "chain" not in state.key

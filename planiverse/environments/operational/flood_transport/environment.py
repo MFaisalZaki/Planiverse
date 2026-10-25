@@ -44,13 +44,15 @@ policy's cost plus a small slack, so a plan has to do at least about as well, an
 which doing nothing would pass is not an instance.
 """
 import math
+from collections import namedtuple
 
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas
 
 # ---------------------------------------------------------------- what MAAT takes from the literature
 
@@ -353,6 +355,89 @@ class FloodAction:
     __repr__ = __str__
 
 
+#: What a picture of the city needs that a state does not hold: the zones' ids, the cell of
+#: the map each sits in (row, column), how deep the design storm floods each, and the roads
+#: between them as pairs of zone numbers. Built once per instance and shared by its states.
+CityMap = namedtuple("CityMap", ["ids", "cells", "design", "roads"])
+
+#: A zone's box on the map, and the gaps the roads cross between boxes.
+ZONE_W, ZONE_H, GAP_W, GAP_H = 11, 6, 4, 2
+
+#: The shading of a zone by the depth of water on its roads, in metres: the upper bound of
+#: each band and its character. Deeper than `IMPASSABLE` closes the roads.
+SHADES = ((0.0, " "), (0.1, "░"), (IMPASSABLE / 1000, "▒"), (0.6, "▓"), (float("inf"), "█"))
+
+
+def city_map(zones, edges):
+    """The map of a city: each zone in the grid cell its coordinates round to, or, where two
+    would share a cell, every zone in turn on a square grid."""
+    ids = tuple(zone["id"] for zone in zones)
+    cells = tuple((int(round(zone["y"])), int(round(zone["x"]))) for zone in zones)
+    if len(set(cells)) < len(cells) or min(min(cell) for cell in cells) < 0:
+        columns = math.ceil(math.sqrt(len(zones)))
+        cells = tuple(divmod(number, columns) for number in range(len(zones)))
+    index = {zone_id: number for number, zone_id in enumerate(ids)}
+    roads = tuple(sorted({tuple(sorted((index[a], index[b]))) for a, b, *_ in edges}))
+    return CityMap(ids, cells, tuple(float(zone["design_depth"]) for zone in zones), roads)
+
+
+def _shade(depth):
+    for bound, char in SHADES:
+        if depth <= bound:
+            return char
+    return SHADES[-1][1]
+
+
+def _zone_map(state, city):
+    depths = []
+    for zone_id, design in zip(city.ids, city.design):
+        measure = MEASURES.get(state.protected.get(zone_id))
+        depth = storm_depth(design, state.rain) if state.rain else 0.0
+        depths.append(max(0.0, depth - (measure["raise"] if measure else 0.0)))
+    rows = max(row for row, _ in city.cells) + 1
+    columns = max(column for _, column in city.cells) + 1
+    canvas = Canvas(columns * (ZONE_W + GAP_W) - GAP_W, rows * (ZONE_H + GAP_H) - GAP_H)
+    corner = {number: (column * (ZONE_W + GAP_W), row * (ZONE_H + GAP_H))
+              for number, (row, column) in enumerate(city.cells)}
+    impassable = IMPASSABLE / 1000
+    for a, b in city.roads:
+        cut = depths[a] > impassable or depths[b] > impassable
+        (ra, ca), (rb, cb) = city.cells[a], city.cells[b]
+        if (rb, cb) < (ra, ca):
+            a, b, (ra, ca), (rb, cb) = b, a, (rb, cb), (ra, ca)
+        x, y = corner[a]
+        if ra == rb and abs(cb - ca) == 1:
+            canvas.hline(x + ZONE_W, x + ZONE_W + GAP_W - 1, y + ZONE_H // 2,
+                         char="╌" if cut else "─")
+        elif ca == cb and abs(rb - ra) == 1:
+            canvas.vline(x + ZONE_W // 2, y + ZONE_H, y + ZONE_H + GAP_H - 1,
+                         char="╎" if cut else "│")
+        elif rb - ra == 1 and abs(cb - ca) == 1:
+            step = 1 if cb > ca else -1
+            start = x + ZONE_W + 1 if step > 0 else x - 2
+            for k in range(GAP_H):
+                at = (start + k * step, y + ZONE_H + k)
+                char = ("·" if cut else "╲") if step > 0 else ("·" if cut else "╱")
+                canvas.put(*at, char)
+    for number, zone_id in enumerate(city.ids):
+        x, y = corner[number]
+        x1, y1 = x + ZONE_W - 1, y + ZONE_H - 1
+        kind = state.protected.get(zone_id)
+        if kind:
+            canvas.write(x, y, "╔" + "═" * (ZONE_W - 2) + "╗")
+            canvas.write(x, y1, "╚" + "═" * (ZONE_W - 2) + "╝")
+            for row in range(y + 1, y1):
+                canvas.put(x, row, "║")
+                canvas.put(x1, row, "║")
+        else:
+            canvas.rect(x, y, x1, y1)
+        canvas.fill(x + 1, y + 2, x1 - 1, y1 - 1, _shade(depths[number]))
+        canvas.write(x + 1, y + 1, f"{zone_id}{' ≈' if city.design[number] > 0 else ''}")
+        if kind:
+            canvas.write(x + 1, y1 - 1, kind[:ZONE_W - 2])
+    return str(canvas)
+
+
 class FloodState:
     """The decisions so far, the measures they put in place, and what the years have cost.
 
@@ -361,17 +446,9 @@ class FloodState:
     decisions taken and is not part of the identity in any other way.
     """
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("cost, M DKK", ("total", "damage", "delays", "measures"), "target"),
-        Panel("worst storm so far, mm", ("storm",), None),
-        Panel("measures in place", ("in place",), None),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         million = 1e6
         return {"total": float(self.cost) / million, "damage": float(self.damage) / million,
                 "delays": float(self.delay) / million, "measures": float(self.spent) / million,
@@ -379,8 +456,11 @@ class FloodState:
                 "in place": len(self.protected)}
 
     def __init__(self, path, protected, cost, spent, damage, delay, no_travel, rain, years,
-                 period, target):
+                 period, target, city=None):
         self.path = tuple(path)
+        # The city a picture is drawn on (a `CityMap`, one per instance), outside the
+        # state's identity.
+        self.city = city
         self.step = len(self.path)
         self.year = min(years, self.step * period)
         self.steps = -(-years // period)
@@ -424,6 +504,22 @@ class FloodState:
 
     def __repr__(self):
         return f"<FloodState(step={self.step}, protected={sorted(self.protected)}, cost={self.cost:.0f})>"
+
+    def picture(self):
+        """The city's zone map, then a status line.
+
+        Each zone is a box with its id, marked `≈` when a storm floods it, and shaded by the
+        depth the last period's worst storm left on its roads; a protected zone is double-
+        walled and names its measure. Roads join neighbouring zones, dashed where the water
+        has made them impassable.
+        """
+        rows = [_zone_map(self, self.city)] if self.city is not None else []
+        million = lambda value: f"{value / 1e6:.1f}"  # noqa: E731
+        storm = f" · storm {self.rain} mm" if self.rain else ""
+        rows.append(f"year {self.year}/{self.years} · {million(self.cost)} of "
+                    f"{million(self.target)} M DKK: damage {million(self.damage)}, "
+                    f"delays {million(self.delay)}, measures {million(self.spent)}{storm}")
+        return "\n\n".join(rows)
 
 
 class FloodTransportEnv(Environment):
@@ -573,7 +669,8 @@ class FloodTransportEnv(Environment):
 
     def __initial__(self, target=None):
         return FloodState((), {}, 0.0, 0.0, 0.0, 0.0, 0.0, None, self.instance["years"],
-                          self.instance["period"], self.__target__() if target is None else target)
+                          self.instance["period"], self.__target__() if target is None else target,
+                          city=self.__city__()["map"])
 
     def __advance__(self, state, action):
         if not isinstance(action, FloodAction):
@@ -599,7 +696,7 @@ class FloodTransportEnv(Environment):
                 + weights["no_travel"] * no_travel + weights["measures"] * spent)
         return FloodState(state.path + (action.name,), protected, cost, state.spent + spent,
                           state.damage + damage, state.delay + delay, state.no_travel + no_travel,
-                          worst, state.years, state.period, state.target)
+                          worst, state.years, state.period, state.target, city=state.city)
 
     def __city__(self):
         """The instance's city as arrays, built once: exposures, depths, the trip table and
@@ -622,7 +719,8 @@ class FloodTransportEnv(Environment):
                  for a, b, d, ra, rb in self.instance["edges"]]
         self._city = {"ids": ids, "index": index, "n": n, "values": values, "design": design,
                       "trips": trips, "edges": edges,
-                      "flooded": [zone_id for zone_id, depth in zip(ids, design) if depth > 0]}
+                      "flooded": [zone_id for zone_id, depth in zip(ids, design) if depth > 0],
+                      "map": city_map(zones, self.instance["edges"])}
         self._city["dry"] = self.__lengths__(np.zeros(n))
         return self._city
 

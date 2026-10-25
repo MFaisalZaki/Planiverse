@@ -39,8 +39,9 @@ competitions: https://github.com/Grid2Op/grid2op
 """
 from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import bounded_search, draw_until, rng
+from planiverse.rendering.text import Canvas
 
 #: The bundled case. `test=True` uses the time series shipped inside grid2op, so nothing is
 #: downloaded and every run sees the same data.
@@ -192,6 +193,144 @@ SCENARIOS = (
 )
 
 
+#: What the picture of a state needs that the state does not hold: the substations, each
+#: line's two ends, and the line the contingency tripped. One per instance, shared by all its
+#: states and outside their identity.
+GridMap = namedtuple("GridMap", ["n_sub", "line_or", "line_ex", "tripped"])
+
+#: A substation's box in the picture, columns by rows.
+BOX_W, BOX_H = 5, 3
+
+#: The one-line diagram of the 14-bus case: where each substation's box sits (its top-left
+#: corner, in characters) and the path each line takes between them, as corner points from
+#: one box's edge to the other's. Drawn after the case's own layout in grid2op, straightened
+#: so that every line runs along rows and columns. `CASE14_LABELS` places the loading of a
+#: line whose longest run has no room for it, ending at the column and row given.
+CASE14_SUBS = {0: (0, 8), 1: (14, 0), 2: (50, 0), 3: (50, 8), 4: (14, 8), 5: (14, 18),
+               6: (58, 18), 7: (72, 18), 8: (44, 18), 9: (36, 24), 10: (24, 24),
+               11: (0, 30), 12: (14, 30), 13: (44, 30)}
+CASE14_ROUTES = {
+    0: ((2, 7), (2, 1), (13, 1)), 1: ((5, 9), (13, 9)), 2: ((19, 1), (49, 1)),
+    3: ((17, 3), (17, 5), (51, 5), (51, 7)), 4: ((15, 3), (15, 7)), 5: ((53, 3), (53, 7)),
+    6: ((19, 9), (49, 9)), 7: ((19, 19), (26, 19), (26, 23)),
+    8: ((13, 19), (2, 19), (2, 29)), 9: ((16, 21), (16, 29)),
+    10: ((45, 21), (45, 25), (41, 25)), 11: ((47, 21), (47, 29)), 12: ((29, 25), (35, 25)),
+    13: ((5, 31), (13, 31)), 14: ((19, 31), (43, 31)),
+    15: ((53, 11), (53, 14), (60, 14), (60, 17)), 16: ((51, 11), (51, 14), (46, 14), (46, 17)),
+    17: ((16, 11), (16, 17)), 18: ((63, 19), (71, 19)), 19: ((49, 19), (57, 19)),
+}
+CASE14_LABELS = {4: (13, 5), 10: (43, 22), 16: (44, 16)}
+
+#: Line styles: the straight runs and the corners, by the directions a corner joins.
+_STYLES = {
+    "light": ("─", "│", {"dr": "┌", "dl": "┐", "ur": "└", "ul": "┘"}),
+    "heavy": ("━", "┃", {"dr": "┏", "dl": "┓", "ur": "┗", "ul": "┛"}),
+    "dashed": ("╌", "╎", {"dr": "┌", "dl": "┐", "ur": "└", "ul": "┘"}),
+}
+
+
+def _layout(grid):
+    """Box positions and line routes: the drawn case14 diagram when the grid is that case,
+    otherwise substations on a square grid and each line bent once between them."""
+    if grid.n_sub == len(CASE14_SUBS) and len(grid.line_or) == len(CASE14_ROUTES) and all(
+            {grid.line_or[line], grid.line_ex[line]} == _ends(CASE14_SUBS, route)
+            for line, route in CASE14_ROUTES.items()):
+        return CASE14_SUBS, CASE14_ROUTES, CASE14_LABELS
+    columns = max(1, int(grid.n_sub ** 0.5 + 0.999))
+    subs = {sub: ((sub % columns) * 14, (sub // columns) * 8) for sub in range(grid.n_sub)}
+    routes = {}
+    for line, (a, b) in enumerate(zip(grid.line_or, grid.line_ex)):
+        (ax, ay), (bx, by) = subs[a], subs[b]
+        if ay == by:
+            left, right = sorted(((ax, a), (bx, b)))
+            routes[line] = ((left[0] + BOX_W, ay + 1), (right[0] - 1, ay + 1))
+        else:
+            (top, top_y), (low, low_y) = sorted(((ax, ay), (bx, by)), key=lambda p: p[1])
+            x = top + 1 + line % (BOX_W - 2)
+            routes[line] = ((x, top_y + BOX_H), (x, low_y + 1),
+                            (low - 1 if low > x else low + BOX_W, low_y + 1))
+    return subs, routes, {}
+
+
+def _ends(subs, route):
+    """The two substations a route starts and ends beside."""
+    def beside(point):
+        x, y = point
+        for sub, (bx, by) in subs.items():
+            if bx - 1 <= x <= bx + BOX_W and by - 1 <= y <= by + BOX_H:
+                return sub
+        return None
+    return {beside(route[0]), beside(route[-1])}
+
+
+def _percent(rho):
+    """A loading as a whole percentage, rounded down so that only an overload reads 100%."""
+    return f"{int(rho * 100)}%"
+
+
+def _direction(a, b):
+    (ax, ay), (bx, by) = a, b
+    if ax == bx:
+        return "d" if by > ay else "u"
+    return "r" if bx > ax else "l"
+
+
+def _route(canvas, points, style):
+    across, down, corners = _STYLES[style]
+    for a, b in zip(points, points[1:]):
+        if a[1] == b[1]:
+            canvas.hline(a[0], b[0], a[1], char=across)
+        else:
+            canvas.vline(a[0], a[1], b[1], char=down)
+    opposite = {"u": "d", "d": "u", "l": "r", "r": "l"}
+    for before, at, after in zip(points, points[1:], points[2:]):
+        arms = {opposite[_direction(before, at)], _direction(at, after)}
+        key = ("u" if "u" in arms else "d") + ("l" if "l" in arms else "r")
+        canvas.put(at[0], at[1], corners[key])
+
+
+def _one_line_diagram(state, grid):
+    subs, routes, label_at = _layout(grid)
+    width = max(x for x, _ in subs.values()) + BOX_W + 4
+    height = max(y for _, y in subs.values()) + BOX_H
+    canvas = Canvas(width, height)
+    connected = state.connected or (True,) * len(grid.line_or)
+    labels = []
+    for line, points in routes.items():
+        rho = state.rhos[line] if line < len(state.rhos) else 0.0
+        out = state.blackout or not connected[line]
+        style = "dashed" if out else ("heavy" if rho > SECURE_RHO else "light")
+        _route(canvas, points, style)
+        text = "✕" if line == grid.tripped else ("off" if out else _percent(rho))
+        if line in label_at:
+            x, y = label_at[line]
+            labels.append(((x - len(text) + 1, y), text))
+            continue
+        a, b = max(zip(points, points[1:]),
+                   key=lambda seg: abs(seg[1][0] - seg[0][0]) + abs(seg[1][1] - seg[0][1]))
+        if a[1] == b[1]:
+            low, high = sorted((a[0], b[0]))
+            start = max(low + 1, (low + high + 1) // 2 - (len(text) + 2) // 2)
+            labels.append(((start, a[1]), f" {text} "))
+        else:
+            labels.append(((a[0] + 2, (a[1] + b[1]) // 2), text))
+    for (x, y), text in labels:
+        canvas.write(x, y, text)
+    for sub, (x, y) in subs.items():
+        if sub in state.split:
+            canvas.fill(x, y, x + BOX_W - 1, y + BOX_H - 1, " ")
+            canvas.write(x, y, "╔" + "═" * (BOX_W - 2) + "╗")
+            canvas.write(x, y + BOX_H - 1, "╚" + "═" * (BOX_W - 2) + "╝")
+            for row in range(y + 1, y + BOX_H - 1):
+                canvas.put(x, row, "║")
+                canvas.put(x + BOX_W - 1, row, "║")
+        else:
+            canvas.fill(x, y, x + BOX_W - 1, y + BOX_H - 1, " ")
+            canvas.rect(x, y, x + BOX_W - 1, y + BOX_H - 1)
+        canvas.write(x + 1, y + 1, f"{sub:>2}")
+    return str(canvas)
+
+
 class PowerGridAction:
     """One substation reconfiguration, or doing nothing.
 
@@ -232,21 +371,21 @@ class PowerGridState:
     place, and two paths that agree are the same position.
     """
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("worst line loading, share of capacity", ("worst line loading",), "limit"),
-        Panel("lines overloaded", ("overloaded",), None),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"worst line loading": float(self.max_rho), "limit": 1.0,
                 "overloaded": sum(1 for rho in self.rhos if rho >= 1.0)}
 
-    def __init__(self, path, max_rho, rhos, blackout, step, survived):
+    def __init__(self, path, max_rho, rhos, blackout, step, survived, grid=None,
+                 connected=None, split=()):
         self.path = tuple(path)
+        # What the picture draws, none of it part of the state's identity: the grid's
+        # topology (a `GridMap`, the same object for every state of an instance), which
+        # lines are in service, and which substations run on two busbars.
+        self.grid = grid
+        self.connected = tuple(connected) if connected is not None else None
+        self.split = frozenset(split)
         self.max_rho = max_rho
         self.rhos = tuple(rhos)
         self.blackout = blackout
@@ -298,6 +437,28 @@ class PowerGridState:
         loading = "blackout" if self.blackout else f"{self.max_rho:.3f}"
         return f"<PowerGridState(depth={self.depth}, max_rho={loading})>"
 
+    def picture(self):
+        """A one-line diagram of the grid, then a status line.
+
+        Each substation is a box with its id, double-walled when it runs on two busbars,
+        and each line is labelled with its loading: drawn light within its rating, heavy
+        when overloaded, dashed when out of service, the line that tripped marked `✕`.
+        """
+        grid = self.grid
+        lines = []
+        if grid is not None:
+            lines.append(_one_line_diagram(self, grid))
+        reconfigurations = sum(1 for action_id in self.path if action_id)
+        acted = f"{reconfigurations} reconfiguration{'s' if reconfigurations != 1 else ''}"
+        if self.blackout:
+            lines.append(f"step {self.step} · BLACKOUT · {acted}")
+        else:
+            worst = max(range(len(self.rhos)), key=self.rhos.__getitem__) if self.rhos else 0
+            overloaded = ", ".join(str(line) for line in self.overloaded_lines()) or "none"
+            lines.append(f"step {self.step} · worst {_percent(self.max_rho)} on line {worst} · "
+                         f"overloaded: {overloaded} · {acted}")
+        return "\n\n".join(lines)
+
 
 class PowerGridEnv(Environment):
     """Fix an insecure grid with substation topology, before it cascades.
@@ -329,6 +490,7 @@ class PowerGridEnv(Environment):
         self._converter = None
         self._cache = {}
         self._cursor = None          # (path, live env) so expanding a parent replays once
+        self._grid_map = None
 
     # ------------------------------------------------------------------ instances
 
@@ -489,15 +651,30 @@ class PowerGridEnv(Environment):
     def __measure__(self, env, path):
         observation = env.current_obs
         blackout = observation is None or bool(env.done)
+        grid = self.__grid_map__(env)
         if blackout:
-            return PowerGridState(path, float("inf"), (), True, len(path) + 1, False)
+            return PowerGridState(path, float("inf"), (), True, len(path) + 1, False,
+                                  grid=grid)
         rhos = [float(value) for value in observation.rho]
         max_rho = max(rhos) if rhos else 0.0
         # Counted from the trip, not from the start of the time series: a contingency that
         # begins `offset` steps in has the same horizon as one that begins at the start.
         step = (int(observation.current_step) - self.instance["offset"]
                 if hasattr(observation, "current_step") else len(path) + 1)
-        return PowerGridState(path, max_rho, rhos, False, step, True)
+        connected = tuple(bool(status) for status in observation.line_status)
+        split = tuple(sub for sub in range(int(env.n_sub))
+                      if 2 in set(int(bus) for bus in observation.sub_topology(sub)))
+        return PowerGridState(path, max_rho, rhos, False, step, True, grid=grid,
+                              connected=connected, split=split)
+
+    def __grid_map__(self, env):
+        """The topology a state's picture is drawn on, one per instance."""
+        if self._grid_map is None or self._grid_map.tripped != self.instance["line"]:
+            self._grid_map = GridMap(int(env.n_sub),
+                                     tuple(int(sub) for sub in env.line_or_to_subid),
+                                     tuple(int(sub) for sub in env.line_ex_to_subid),
+                                     self.instance["line"])
+        return self._grid_map
 
     def __state__(self, path):
         """The state a path leads to. Memoised: deterministic, so it cannot differ."""

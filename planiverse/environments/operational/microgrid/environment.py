@@ -35,9 +35,11 @@ setting pymgrid's modules to the state's hour and charge and stepping the microg
 """
 import contextlib
 import io
+from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas, tank
 
 #: Hours a decision holds for, and what the battery may be told to do for them.
 PERIOD = 3
@@ -99,30 +101,33 @@ class MicrogridAction:
     __repr__ = __str__
 
 
+#: Which modules a microgrid has besides its load, solar and battery: a genset, a grid
+#: connection. One per instance, shared by its states and outside their identity.
+Site = namedtuple("Site", ["genset", "grid"])
+
+#: The battery gauge's height in the picture, in rows.
+GAUGE_ROWS = 5
+
+
 class MicrogridState:
     """A period's end: the hours elapsed, the battery's charge, the cost and the loss of load so
     far, and the last period's energy flows. Identity is the hour, the charge, the cost and the
     loss of load."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("energy a period (kWh)", ("load", "solar", "genset", "grid"), None),
-        Panel("battery state of charge", ("charge",), "reserve"),
-        Panel("operating cost", ("cost",), "allowed"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         load, solar, battery, genset, grid = self.flows
         return {"load": load, "solar": solar, "battery": battery, "genset": genset, "grid": grid,
                 "charge": self.soc, "reserve": self.reserve, "cost": self.cost,
                 "allowed": self.target, "hour": self.hour}
 
     def __init__(self, hour, charge, cost, lost, flows, capacity=1.0, target=0.0, reserve=0.0,
-                 horizon=0, start=0, depth=0):
+                 horizon=0, start=0, depth=0, site=None):
         self.hour = hour
+        #: Which modules the microgrid has (a `Site`, one per instance), for the picture;
+        #: outside the state's identity.
+        self.site = site
         self.charge, self.cost, self.lost = round(charge, 1), round(cost, 2), round(lost, 1)
         self.flows = tuple(round(v, 1) for v in flows)   # load, solar, battery out, genset, grid in
         self.capacity, self.target, self.reserve = capacity, target, reserve
@@ -156,6 +161,65 @@ class MicrogridState:
     def __repr__(self):
         return (f"<MicrogridState(hour={self.hour}, soc={self.soc:.2f}, cost={self.cost:.2f}, "
                 f"lost={self.lost:.1f})>")
+
+    def picture(self):
+        """A one-line diagram of the microgrid, then a status line.
+
+        Solar, the genset and the grid feed the load bus from above, and the battery and the
+        load hang below it. Each link carries the last period's energy and an arrow for its
+        direction, dashed when nothing flowed; the battery is a gauge filled to its charge,
+        with its reserve marked.
+        """
+        load, solar, battery, genset, grid = self.flows
+        site = self.site or Site(True, True)
+        canvas = Canvas(64, 17)
+        bus = 6
+
+        def link(x, top, bottom, into_bus, above):
+            """A link at column `x` from row `top` to `bottom`, above or below the bus, with
+            the energy it carried towards the bus (negative when away from it)."""
+            middle = (top + bottom) // 2
+            if abs(into_bus) < 0.05:
+                canvas.vline(x, top, bottom, char="╎")
+                canvas.write(x + 2, middle, "0 kWh")
+            else:
+                canvas.vline(x, top, bottom, char="│")
+                towards = "▼" if above else "▲"
+                away = "▲" if above else "▼"
+                canvas.put(x, middle, towards if into_bus > 0 else away)
+                canvas.write(x + 2, middle, f"{abs(into_bus):.0f} kWh")
+            junctions.append((x, "┷" if above else "┯"))
+
+        junctions = []
+        canvas.write(2, 0, "☼ solar")
+        link(4, 1, bus - 1, solar, True)
+        if site.genset:
+            canvas.write(22, 0, f"genset {'on' if genset > 0.05 else 'off'}")
+            link(24, 1, bus - 1, genset, True)
+        if site.grid:
+            flow = "import" if grid > 0.05 else "export" if grid < -0.05 else "idle"
+            canvas.write(42, 0, f"grid {flow}")
+            link(44, 1, bus - 1, grid, True)
+        link(10, bus + 1, 9, battery, False)
+        link(50, bus + 1, 10, -load, False)
+        canvas.hline(0, 63, bus, char="━")
+        for x, char in junctions:
+            canvas.put(x, bus, char)
+        canvas.write(56, bus + 1, "load bus")
+        for row, line in enumerate(tank(self.soc, GAUGE_ROWS, 6)):
+            canvas.write(7, 10 + row, line)
+        reserve_row = 10 + GAUGE_ROWS - int(round(min(1.0, self.reserve) * GAUGE_ROWS))
+        canvas.write(16, min(reserve_row, 10 + GAUGE_ROWS - 1), "◂ reserve")
+        canvas.write(16, 10, f"battery {self.soc:.0%}" if reserve_row != 10 else
+                     f"battery {self.soc:.0%} ◂ reserve")
+        canvas.write(48, 11, "⌂ load")
+        clock = self.start + self.hour
+        status = (f"hour {self.hour}/{self.horizon} (day {clock // 24}, {clock % 24:02d}:00) · "
+                  f"cost {self.cost:.0f} of {self.target:.0f} · "
+                  f"charge {self.soc:.0%}, reserve {self.reserve:.0%}")
+        if self.lost > 0:
+            status += f" · {self.lost:.0f} kWh unmet"
+        return f"{canvas}\n\n{status}"
 
 
 # ------------------------------------------------------------------ reference policies
@@ -401,7 +465,12 @@ class MicrogridEnv(Environment):
         inst = self.instance
         return MicrogridState(hour, charge, cost, lost, flows, capacity=self._capacity(),
                               target=inst["target"], reserve=inst["reserve"],
-                              horizon=inst["horizon"], start=inst["start"], depth=depth)
+                              horizon=inst["horizon"], start=inst["start"], depth=depth,
+                              site=self._site())
+
+    def _site(self):
+        modules = self._microgrid()[1]
+        return Site("genset" in modules, "grid" in modules)
 
     # ------------------------------------------------------------------- contract
 

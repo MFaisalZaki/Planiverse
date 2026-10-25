@@ -36,8 +36,9 @@ import datetime
 import os
 from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import tank
 
 #: A potato crop on a Dutch field, which is what the bundled weather describes.
 CROP, VARIETY = "potato", "Potato_701"
@@ -245,6 +246,24 @@ class CropAction:
         return str(self)
 
 
+#: The season's fixed terms a picture shows: the water budget in cm, the target yield in
+#: kg/ha, and the soil's wilting point and field capacity (volumetric), between which its
+#: water is available to the crop. One per instance, outside every state's identity.
+Field = namedtuple("Field", ["budget_cm", "target", "wilting", "capacity"])
+
+#: The crop model's reading of one day: days since sowing, development stage (None before
+#: emergence, 1 at flowering, 2 at maturity), leaf area index, and volumetric soil moisture.
+CropReading = namedtuple("CropReading", ["day", "dvs", "lai", "soil_moisture"])
+
+#: The picture's fixed geometry: the field's width inside the soil column, a plant every few
+#: columns, the rows the tallest crop and the soil take, and the rows irrigation falls
+#: through. A crop of `BIOMASS_SCALE` kg/ha above ground stands the full height, and one with
+#: a leaf area index of `CANOPY_LAI` or more is drawn in leaf.
+FIELD_WIDTH, PLANT_SPACING, PLANT_ROWS, SOIL_ROWS, RAIN_ROWS = 24, 4, 8, 5, 4
+BIOMASS_SCALE = 15000.0
+CANOPY_LAI = 0.5
+
+
 class CropState:
     """A season part-way through: the decisions taken, and what the crop has done so far.
 
@@ -254,21 +273,20 @@ class CropState:
     are the same state.
     """
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("biomass and yield, kg/ha", ("biomass", "yield"), None),
-        Panel("water used, cm", ("water used",), None),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         return {"biomass": float(self.biomass), "yield": float(self.yield_kg),
                 "water used": float(self.water_used)}
 
-    def __init__(self, schedule, biomass, yield_kg, water_used, finished, stage):
+    def __init__(self, schedule, biomass, yield_kg, water_used, finished, stage, field=None,
+                 crop=None):
         self.schedule = tuple(schedule)
+        # What the picture draws, neither part of the state's identity: the season's fixed
+        # terms (a `Field`, shared by every state of an instance), and the crop model's
+        # reading of the day the state describes (a `CropReading`).
+        self.field = field
+        self.crop = crop
         self.biomass = biomass
         self.yield_kg = yield_kg
         self.water_used = water_used
@@ -309,6 +327,56 @@ class CropState:
                 f"{'yield' if self.finished else 'biomass'}="
                 f"{self.yield_kg if self.finished else self.biomass:.0f})>")
 
+    def picture(self):
+        """The field in profile, then a status line.
+
+        The water allowance is a row of drops, one a centimetre, filled as it is used; the
+        last decision's irrigation falls as rain over the crop. The crop stands as tall as
+        its biomass, in leaf while it has a canopy, over a soil column filled to its plant-
+        available water, with tubers in it once harvested.
+        """
+        field = self.field or Field(WATER_BUDGET_CM, None, 0.1, 0.3)
+        crop = self.crop or CropReading(0, None, 0.0, field.wilting)
+        rows = []
+        drops = int(round(field.budget_cm))
+        used = min(drops, int(round(self.water_used)))
+        rows.append("water  " + " ".join("●" * used + "○" * (drops - used)))
+        last = self.schedule[-1] if self.schedule else 0.0
+        falling = min(RAIN_ROWS, int(round(last)))
+        for row in range(RAIN_ROWS):
+            rows.append(" " + " ".join("╎" * (FIELD_WIDTH // 2)) if row < falling else "")
+        height = int(round(min(1.0, self.biomass / BIOMASS_SCALE) * PLANT_ROWS))
+        if self.biomass > 0 and height == 0:
+            height = 1
+        plants = range(2, FIELD_WIDTH, PLANT_SPACING)
+        crown = "♣" if crop.lai >= CANOPY_LAI else "╿"
+        for row in range(PLANT_ROWS, 0, -1):
+            line = [" "] * (FIELD_WIDTH + 2)
+            for column in plants:
+                if row == height:
+                    line[column] = crown
+                elif row < height:
+                    line[column] = "│"
+            rows.append("".join(line).rstrip())
+        share = (crop.soil_moisture - field.wilting) / (field.capacity - field.wilting)
+        soil = tank(share, SOIL_ROWS, FIELD_WIDTH, full="▓", empty="░")
+        rows.append("═" * (FIELD_WIDTH + 2))
+        if self.finished and self.yield_kg > 0:
+            first = list(soil[0])
+            for column in plants:
+                first[column] = "●"
+            soil[0] = "".join(first)
+        rows += soil
+        if self.finished:
+            target = f" of {field.target:.0f}" if field.target else ""
+            status = (f"harvest, day {crop.day} · yield {self.yield_kg:.0f}{target} kg/ha · "
+                      f"water {self.water_used:g}/{field.budget_cm:g} cm")
+        else:
+            status = (f"day {crop.day} · decision {self.depth + 1}/{DECISION_COUNT} · "
+                      f"biomass {self.biomass:.0f} kg/ha · "
+                      f"water {self.water_used:g}/{field.budget_cm:g} cm")
+        return "\n".join(rows) + "\n\n" + status
+
 
 class CropEnv(Environment):
     """Schedule irrigation across a season so the crop makes its target.
@@ -337,6 +405,7 @@ class CropEnv(Environment):
         self.state = None
         self._cache = {}
         self._providers = None
+        self._field = None
 
     # ------------------------------------------------------------------ instances
 
@@ -398,8 +467,8 @@ class CropEnv(Environment):
 
     def __measure__(self):
         """Fill in the season's rainfed and reference yields by running it both ways."""
-        rainfed, _, _ = self.__run__((), True)
-        reference, _, _ = self.__run__(
+        rainfed, _, _, _ = self.__run__((), True)
+        reference, _, _, _ = self.__run__(
             tuple(action.amount for action in self.reference_plan()), True)
         self.instance.update(rainfed=round(rainfed, 1), reference=round(reference, 1))
         self._cache = {}
@@ -472,7 +541,8 @@ class CropEnv(Environment):
             model.run_till_terminate()
             summary = model.get_summary_output()
             harvest = summary[0] if summary else {}
-            return float(harvest.get("TWSO") or 0.0), float(harvest.get("TAGP") or 0.0), True
+            return (float(harvest.get("TWSO") or 0.0), float(harvest.get("TAGP") or 0.0), True,
+                    self.__reading__(model))
 
         # Advance to the day the *next* decision is taken, so the state describes the crop
         # as the farmer sees it when deciding.
@@ -484,7 +554,29 @@ class CropEnv(Environment):
         variables = model.get_output()
         latest = variables[-1] if variables else {}
         biomass = float(latest.get("TAGP") or 0.0)
-        return 0.0, biomass, False
+        return 0.0, biomass, False, self.__reading__(model)
+
+    def __reading__(self, model):
+        """The crop and its soil on the model's latest day, for the state's picture."""
+        variables = model.get_output()
+        latest = variables[-1] if variables else {}
+        day = (latest["day"] - self.sowing_date()).days if "day" in latest else 0
+        dvs = latest.get("DVS")
+        return CropReading(day, None if dvs is None else float(dvs),
+                           float(latest.get("LAI") or 0.0),
+                           float(latest.get("SM") or 0.0))
+
+    def __field__(self):
+        """The season's fixed terms, one object shared by all its states."""
+        key = (self.budget_cm, self.instance.get("reference"), self.target_fraction)
+        if self._field is None or self._field[0] != key:
+            from pcse.input import DummySoilDataProvider
+
+            soil = DummySoilDataProvider()
+            self._field = (key, Field(self.budget_cm,
+                                      self.target_yield() if key[1] is not None else None,
+                                      soil["SMW"], soil["SMFCF"]))
+        return self._field[1]
 
     def __state__(self, schedule):
         """The state a schedule leads to. Memoised: deterministic, so it cannot differ."""
@@ -492,8 +584,9 @@ class CropEnv(Environment):
         if key in self._cache:
             return self._cache[key]
         finished = len(key) >= DECISION_COUNT
-        yield_kg, biomass, harvested = self.__run__(key, finished)
-        state = CropState(key, biomass, yield_kg, sum(key), harvested, len(key))
+        yield_kg, biomass, harvested, reading = self.__run__(key, finished)
+        state = CropState(key, biomass, yield_kg, sum(key), harvested, len(key),
+                          field=self.__field__(), crop=reading)
         self._cache[key] = state
         return state
 

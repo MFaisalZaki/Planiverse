@@ -239,3 +239,26 @@ def test_a_generated_contingency_reproduces_from_its_seed():
         assert instance["rho_after_trip"] == pytest.approx(scenario.rho_after_trip, abs=1e-3)
         assert (instance["blackout_in"], instance["solved_at"]) == \
                (scenario.blackout_in, scenario.solved_at)
+
+
+# ------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_grid_and_a_status_line(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, info = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert all(f"│{sub:>2} │" in picture for sub in range(14)), "every substation is boxed"
+    assert "✕" in picture and ("╌" in picture or "╎" in picture), "the tripped line is out"
+    assert "━" in picture or "┃" in picture, "an overloaded line is heavy"
+    worst = max(range(len(state.rhos)), key=state.rhos.__getitem__)
+    assert picture.splitlines()[-1] == (
+        f"step 1 · worst {int(state.max_rho * 100)}% on line {worst} · overloaded: "
+        f"{', '.join(map(str, state.overloaded_lines()))} · 0 reconfigurations")
+    child = env.__advance__(state, PowerGridAction(0))
+    assert child.picture() != picture
+    assert len(child.picture().splitlines()) == len(picture.splitlines())
+    assert str(state) == text

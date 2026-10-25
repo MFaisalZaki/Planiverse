@@ -173,3 +173,24 @@ def test_the_same_seed_gives_the_same_instance_and_it_round_trips():
     assert other.validate(one.witness)
     one.set_index(0)
     assert one.witness is None and one.reset()[1]["generated"] is False
+
+
+# ------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_microgrid_and_a_status_line(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, info = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    for element in ("☼ solar", "battery", "⌂ load", "◂ reserve", "━"):
+        assert element in picture
+    assert ("genset" in picture) == info["genset"] and ("grid " in picture) == info["grid"]
+    assert picture.splitlines()[-1].startswith(f"hour 0/{state.horizon} ")
+    assert f"reserve {state.reserve:.0%}" in picture.splitlines()[-1]
+    child = env.__advance__(state, env.get_actions()[0])
+    assert child.picture() != picture and "kWh" in child.picture()
+    assert len(child.picture().splitlines()) == len(picture.splitlines())
+    assert str(state) == text

@@ -217,16 +217,27 @@ which ends the horizon at 160.95 M of the 162.84 M: 112.55 M of damage, 3.60 M o
 in the other order, and pays 1.3 M more in damage and delays for the order, which the 2% slack
 absorbs. The shallow `z01` and the expensive `z06` are left to flood.
 
-![BFWS solving flood_transport instance 0](../renders/flood_transport_chart.gif)
+![BFWS solving flood_transport instance 0](../renders/flood_transport.gif)
 
-The render draws the readings of each state over the plan rather than the state's text, since a
-state here is a path and a handful of sums. The panels are the cost and its parts (damage,
-delays and measures) against the target, the worst storm so far, and the measures in place,
-period by period. A frame of the GIF is the chart up to its state, so the animation grows a
-step at a time. The same plan is also a [sheet](../renders/flood_transport_chart.png), the
-whole plan on one figure. There the action that produced each state runs along the bottom, the
-target is a dashed line, and the goal is marked where the plan ends. Both were produced by
-solving the instance and handing the trace to `render_trace`:
+Each frame is the state's picture, the city's zone map. The zones are boxes in the cells of the
+grid their coordinates round to, each with its id, marked `≈` when a storm floods it, and
+shaded by the depth of water the last period's worst storm left on its roads, after any raising
+a measure gives them. A protected zone is double-walled and names its measure. The roads join
+neighbouring zones, dashed where the water stands deeper than a road can be driven through. Under
+the map is a status line with the year of the horizon, the cost so far against the target and
+its parts (damage, delays and measures, in millions of kroner), and the period's worst storm.
+
+| Mark | Meaning |
+|---|---|
+| `│z03 ≈│` | a zone and its id; `≈` when a storm floods it |
+| ` ░ ▒ ▓ █` | water on its roads: none, up to 0.1 m, up to 0.3 m (passable), up to 0.6 m, deeper |
+| `║elevate1║` | a protected zone and its measure |
+| `─` `│` `╲` `╱` | a road between neighbouring zones |
+| `╌` `╎` `·` | a road the water has closed |
+
+The same plan is also a [sheet](../renders/flood_transport.png), every state on one figure, each
+captioned with the action that produced it and the goal marked where the plan ends. Both were
+produced by solving the instance and handing the trace to `render_trace`:
 
 ```python
 from planiverse.environments import make
@@ -241,8 +252,8 @@ print(state)                       # year 0 of 30 / protected: nothing / cost 0.
 result = BFWS(width=1, progress=measures.flood_transport).solve(env)
 trace = env.simulate(result.plan)
 
-env.render_trace(trace, "flood_transport_chart.gif")                                   # animated
-env.render_trace(trace, "flood_transport_chart.png", actions=result.plan, env=env)     # the sheet
+env.render_trace(trace, "flood_transport.gif")                                   # animated
+env.render_trace(trace, "flood_transport.png", actions=result.plan, env=env)     # the sheet
 ```
 
 Stateful play goes through the environment's OpenSpiel game,
@@ -251,9 +262,11 @@ Stateful play goes through the environment's OpenSpiel game,
 and state pairs for waiting and for each measure still open, and `get_actions()` lists `wait`
 and every measure on every flooding zone whatever the state. `reference_plan()` returns the
 policy that set the target as a plan, and `validate(plan)` replays a plan and says whether it
-reaches a goal, which it does for the reference. The readings a state charts, and the panels
-they go on, are its own `readings()` and `panels`; `charts=False` asks `render_trace` for the
-state's text instead, and [docs/rendering.md](../rendering.md) covers the other output formats.
+reaches a goal, which it does for the reference. A frame typesets the state's `picture()`,
+drawn on the instance's zones and roads (held once per instance in a `CityMap` the states share,
+outside their identity and literals), and `str(state)` stays its text in three lines; its
+numbers by name are its `readings()`, which the OpenSpiel game's observation is made of.
+[docs/rendering.md](../rendering.md) covers the other output formats.
 
 ## Scenarios
 

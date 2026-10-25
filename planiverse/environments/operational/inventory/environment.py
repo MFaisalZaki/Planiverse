@@ -42,9 +42,11 @@ accumulators are one state.
 """
 import contextlib
 import io
+from collections import namedtuple
 
-from planiverse.environments.base import Environment, Panel
+from planiverse.environments.base import Environment
 from planiverse.environments.generation import draw_until, rng
+from planiverse.rendering.text import Canvas, bar
 
 #: The three stages that hold stock, downstream first; the fourth is the raw material supplier.
 STAGES = ("retailer", "distributor", "manufacturer")
@@ -139,23 +141,22 @@ class InventoryAction:
 ACTIONS = tuple(InventoryAction(r, u) for r in LEVELS for u in LEVELS)
 
 
+#: What a picture of the chain needs that a state does not hold: the bar scale of each of
+#: `STAGES`, its highest order-up-to level. One per season, shared by its states.
+ChainMap = namedtuple("ChainMap", ["scale"])
+
+#: The length of a stage's stock bar, in characters.
+BAR = 10
+
+
 class InventoryState:
     """A period's end: the stock on hand and in the pipeline at each stage, the profit and the
     lost sales so far, and the last period's demand, sales, lost sales and retailer's order.
     Identity is the period, the stock, the pipeline and the two accumulators."""
 
-    #: How a chart of a trace lays the readings out: one axis per quantity, the
-    #: series that share its unit, and the reading drawn across it as a target.
-    panels = (
-        Panel("units on hand", STAGES, None),
-        Panel("units a period", ("demand", "sold", "ordered"), None),
-        Panel("lost sales", ("lost sales",), "allowed"),
-        Panel("profit", ("profit",), "target"),
-    )
-
     def readings(self):
-        """What a chart of a trace plots, by name: the state's numbers, which its
-        OpenSpiel game also gives as the named pieces of its observation."""
+        """The state's numbers by name, which its OpenSpiel game gives as the named pieces
+        of its observation."""
         demand, sold, _, ordered = self.last
         values = dict(zip(STAGES, self.on_hand))
         values.update({"demand": demand, "sold": sold, "ordered": ordered,
@@ -164,8 +165,10 @@ class InventoryState:
         return values
 
     def __init__(self, period, on_hand, pipeline, profit, lost, last=(0, 0, 0, 0), target=0.0,
-                 allowed=0, horizon=0, worth=None, depth=0):
+                 allowed=0, horizon=0, worth=None, depth=0, chain=None):
         self.period, self.horizon = period, horizon
+        #: The chain a picture is drawn on (a `ChainMap`, one per season), outside identity.
+        self.chain = chain
         self.on_hand = tuple(int(v) for v in on_hand)
         self.pipeline = tuple(tuple(int(v) for v in shipments) for shipments in pipeline)
         self.profit, self.lost = round(profit, 2), int(lost)
@@ -206,6 +209,48 @@ class InventoryState:
     def __repr__(self):
         return (f"<InventoryState(period={self.period}, on_hand={self.on_hand}, "
                 f"profit={self.profit:.2f}, lost={self.lost})>")
+
+    def picture(self):
+        """The supply chain as a row of boxes, then a status line.
+
+        Raw material flows from the supplier through the manufacturer and the distributor to
+        the retailer and its customers. Each stage's box holds its stock on hand, as a number
+        and as a bar against its highest order-up-to level; the arrow into it carries the
+        shipments in transit, the one due soonest nearest the box; the last box is this
+        period's demand, what was sold and what was lost.
+        """
+        demand, sold, lost, _ = self.last
+        scale = (self.chain.scale if self.chain is not None
+                 else (max(self.on_hand) or 1,) * len(STAGES))
+        boxes = [("raw", "supply", "", "")]
+        arrows = []
+        for stage in reversed(range(len(STAGES))):
+            arrows.append(self.pipeline[stage])
+            boxes.append((STAGES[stage], f"{self.on_hand[stage]} on hand",
+                          bar(self.on_hand[stage], scale[stage], BAR), ""))
+        arrows.append(())
+        boxes.append(("customers", f"demand {demand}", f"sold   {sold}", f"lost   {lost}"))
+        widths = [max(len(text) for text in box) + 2 for box in boxes]
+        gaps = [max(4, 4 * len(shipments) + 3) for shipments in arrows]
+        canvas = Canvas(sum(widths) + sum(gaps) + 2, 6)
+        x = 0
+        for number, box in enumerate(boxes):
+            width = widths[number]
+            canvas.rect(x, 0, x + width - 1, 5)
+            for row, text in enumerate(box):
+                canvas.write(x + 1, row + 1, text)
+            if number < len(arrows):
+                start, end = x + width, x + width + gaps[number] - 1
+                canvas.hline(start, end - 1, 3, char="─")
+                canvas.put(end, 3, "▶")
+                slot = start + 1
+                for quantity in reversed(arrows[number]):
+                    canvas.write(slot, 2, f"{quantity:>3}")
+                    slot += 4
+                x = end + 1
+        status = (f"period {self.period}/{self.horizon} · profit {self.profit:.2f} of "
+                  f"{self.target:.2f} · lost sales {self.lost} of {self.allowed}")
+        return f"{canvas}\n\n{status}"
 
 
 def reference_plans(periods):
@@ -435,7 +480,7 @@ class InventoryEnv(Environment):
         worth = self._worth(n + 1, chain.I[n + 1, :], pipeline, profit)
         return InventoryState(n + 1, chain.I[n + 1, :], pipeline, profit,
                               state.lost + chain.LS[n, 0], last, state.target, state.allowed,
-                              state.horizon, worth, state.depth + 1)
+                              state.horizon, worth, state.depth + 1, chain=state.chain)
 
     def _worth(self, period, on_hand, pipeline, profit):
         """The profit with every unit in the chain counted at the raw material price. or-gym's
@@ -456,7 +501,9 @@ class InventoryEnv(Environment):
         pipeline = [(0,) * lead for lead in inst["lead_times"]]
         self.state = InventoryState(0, inst["initial"], pipeline, 0.0, 0, target=inst["target"],
                                     allowed=inst["allowed"], horizon=inst["periods"],
-                                    worth=self._worth(0, inst["initial"], pipeline, 0.0))
+                                    worth=self._worth(0, inst["initial"], pipeline, 0.0),
+                                    chain=ChainMap(tuple(level["high"]
+                                                         for level in inst["levels"])))
         return self.state, {"season": self.index, "target": inst["target"],
                             "allowed": inst["allowed"], "generated": self.index is None}
 

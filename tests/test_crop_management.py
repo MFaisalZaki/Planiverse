@@ -273,3 +273,24 @@ def test_a_generated_season_reproduces_from_its_seed():
         assert season["rainfed"] == pytest.approx(scenario.rainfed, abs=1.0)
         assert season["reference"] == pytest.approx(scenario.reference, abs=1.0)
         assert season["reference"] >= season["rainfed"], "irrigation never hurts here"
+
+
+# ------------------------------------------------------------------------- the picture
+
+def test_the_picture_draws_the_field_and_a_status_line(env):
+    from planiverse.rendering.text import missing_glyphs
+
+    state, info = env.reset()
+    text = str(state)
+    picture = state.picture()
+    assert isinstance(picture, str) and picture and not missing_glyphs(picture)
+    assert picture == state.picture(), "the same state draws the same picture"
+    assert picture.splitlines()[0] == "water  " + " ".join("○" * int(info["budget_cm"]))
+    assert "└" in picture and "═" in picture, "the soil column under the ground line"
+    assert picture.splitlines()[-1].startswith(f"day {decision_days()[0]} · decision 1/")
+    child = env.__advance__(state, CropAction(2.0))
+    drawn = child.picture()
+    assert drawn != picture and "╎" in drawn, "the irrigation falls on the field"
+    assert drawn.splitlines()[0].count("●") == 2
+    assert len(drawn.splitlines()) == len(picture.splitlines())
+    assert str(state) == text
