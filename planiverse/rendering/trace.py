@@ -25,9 +25,10 @@ game's, from applying the plan to `game.new_initial_state()` and cloning as it g
 import math
 import os
 
-#: Columns in a contact sheet: one, so the frames stack top to bottom, each caption beside its
-#: state and every picture starting at the same place.
-DEFAULT_COLUMNS = 1
+#: Columns in a contact sheet: None picks them for the plan, so the sheet comes out about
+#: half as wide again as it is tall (`SHEET_ASPECT`) rather than a strip either way.
+DEFAULT_COLUMNS = None
+SHEET_ASPECT = 1.5
 
 #: Room around a typeset text state, and between a caption and its state.
 PADDING = 12
@@ -256,14 +257,32 @@ def _picture(frame):
     return frame.convert("RGB")
 
 
+def _columns(frames, gap):
+    """The columns that bring a sheet of `frames` nearest `SHEET_ASPECT`, wide to tall; of
+    two as near, the one leaving fewer cells empty on the last row."""
+    width = max(frame.width for frame in frames) + gap
+    height = max(frame.height for frame in frames) + gap
+    count = len(frames)
+
+    def badness(columns):
+        rows = -(-count // columns)
+        aspect = columns * width / (rows * height)
+        return abs(math.log(aspect / SHEET_ASPECT)), rows * columns - count
+
+    return min(range(1, count + 1), key=badness)
+
+
 def contact_sheet(frames, columns=DEFAULT_COLUMNS, gap=PADDING):
     """Tile frames into a single image, left to right and top to bottom, each pinned to the
     top left of its cell. A row is as tall as its tallest frame and a column as wide as its
-    widest, so with the default single column every frame keeps its own height."""
+    widest; `columns` left as None is picked so the sheet is about `SHEET_ASPECT` wide to
+    tall."""
     from PIL import Image
 
     if not frames:
         raise ValueError("nothing to tile")
+    if columns is None:
+        columns = _columns(frames, gap)
     columns = max(1, min(columns, len(frames)))
     rows = [frames[start:start + columns] for start in range(0, len(frames), columns)]
     widths = [max(row[k].width for row in rows if k < len(row)) for k in range(columns)]

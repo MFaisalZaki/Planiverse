@@ -150,7 +150,7 @@ def test_kept_indices_thin_a_trace_but_keep_its_ends():
     assert kept_indices(11, max_states=1) == [0]
 
 
-def test_a_sheet_stacks_its_frames_with_every_caption_beside_its_state(tmp_path):
+def test_a_sheet_lines_up_its_frames_with_every_caption_beside_its_state(tmp_path):
     from PIL import Image
 
     from planiverse.rendering import trace_frames
@@ -158,8 +158,9 @@ def test_a_sheet_stacks_its_frames_with_every_caption_beside_its_state(tmp_path)
     states = ["┌─┐\n└─┘", "┌───┐\n│ ☻ │\n└───┘", "x"]
     frames = trace_frames(states, actions=["a short one", "a much longer action name"])
     assert len({frame.size for frame in frames}) == 1, "one caption column, one picture size"
+    assert contact_sheet(frames, columns=1).height > 3 * frames[0].height
     sheet = contact_sheet(frames)
-    assert sheet.height > 3 * frames[0].height and sheet.width < 2 * frames[0].width
+    assert sheet.width > sheet.height, "a few small frames are laid side by side"
     path = tmp_path / "sheet.png"
     render_trace(states, str(path), actions=["a short one", "a much longer action name"])
     assert Image.open(path).size == sheet.size
