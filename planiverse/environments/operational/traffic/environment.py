@@ -117,9 +117,9 @@ def approaches(junction):
 #: with its junctions `BLOCK` apart from `STUB` in. A street is two characters wide, a lane
 #: each way, vehicles keeping to the right.
 PICTURE_SCALE, NET = (0.1, 0.05), 2 * STUB + (GRID - 1) * BLOCK
-#: How a picture draws the city: a block of buildings, a light green and red, a vehicle moving
+#: How a picture draws the city: a block of buildings, free road, a light green and red, a vehicle moving
 #: by its heading (north, east, south, west) and one halted.
-BUILDINGS, GREEN, RED = "░", "○", "●"
+BUILDINGS, ROAD, GREEN, RED = "░", "·", "○", "●"
 MOVING, HALTED = "▲▶▼◀", "■"
 
 
@@ -225,7 +225,7 @@ class TrafficState:
 
     def __str__(self):
         """The city from above: blocks of buildings ░ with streets between them, a lane each
-        way; at each junction a light for each approach on its corner, ○ green and ● red;
+        way, free road ·; at each junction a light for each approach on its corner, ○ green and ● red;
         and every vehicle where it is, an arrow along its heading (▲ ▶ ▼ ◀) while it moves
         and ■ once halted. The columns are lettered and the rows numbered as the junctions
         are named."""
@@ -241,8 +241,8 @@ class TrafficState:
 
         lines = [STUB + k * BLOCK for k in range(GRID)]
         for k, at in enumerate(lines):
-            canvas.fill(col(at), 1, col(at) + 1, height - 1, " ")
-            canvas.fill(2, row(at), width - 1, row(at) + 1, " ")
+            canvas.fill(col(at), 1, col(at) + 1, height - 1, ROAD)
+            canvas.fill(2, row(at), width - 1, row(at) + 1, ROAD)
         for k, at in enumerate(lines):
             canvas.put(col(at), 0, "ABC"[k])
             canvas.put(col(at) + 1, 0, " ")

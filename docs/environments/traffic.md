@@ -146,6 +146,7 @@ reds.
 | Mark | Meaning |
 |---|---|
 | `░` | a block of buildings |
+| `·` | free road |
 | `○` | a green light, on the corner of the approach it lets through |
 | `●` | a red light |
 | `▲` `▶` `▼` `◀` | a vehicle moving north, east, south or west |
