@@ -67,10 +67,12 @@ def test_the_picture_draws_the_engines_map_of_the_layout(env):
     state, _ = env.reset()
     picture = str(state)
     assert isinstance(picture, str) and picture and not missing_glyphs(picture)
-    assert "P" in picture and "═" in picture and "╪" in picture
-    assert all(str(site) in picture for site in range(SITES)), "every site open, by number"
+    assert "p" in picture, "the plant before the engine has powered it"
+    assert "═" in picture and "╪" in picture
+    assert picture.count("□") == SITES, "every site open"
     zoned = env.__advance__(state, MicropolisAction("R", 0))
-    assert "R" in str(zoned) and "R" not in picture and "0" not in str(zoned).splitlines()[3]
+    assert "R" in str(zoned) and "P" in str(zoned) and "R" not in picture
+    assert str(zoned).count("□") == SITES - 1
     assert len(str(zoned).splitlines()) == len(picture.splitlines()), "the patch keeps its size"
 
 

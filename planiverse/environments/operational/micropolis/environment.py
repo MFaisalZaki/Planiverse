@@ -135,10 +135,12 @@ class MicropolisState:
 
     def __str__(self):
         """The engine's map of the layout and a tile round it, two columns to a tile: each
-        zone as a box over its three by three tiles with its letter (R, C or I), filled with ░
-        once something is built in it; the power plant as a box marked P; roads in double lines
-        and power lines in single ones, ╪ where they cross; each site not yet zoned by its
-        number; trees as ♣ and water as ≈."""
+        zone as its three by three tiles with its letter (R, C or I) in the middle, the tiles
+        empty lots · until something is built, a residential zone's first houses ⌂, and a
+        built zone shaded ░ ▒ ▓ █ by its density; the power plant as a box marked P; a zone or
+        plant without power by its letter in lower case; roads in double lines with ∙ beside a
+        tile of light traffic and ▪ of heavy, and power lines in single ones, ╪ where they
+        cross; each site not yet zoned as □; trees as ♣ and water as ≈."""
         from planiverse.rendering.text import Canvas
 
         status = (f"year {self.year}   population {self.population} of {self.target}   "
@@ -171,10 +173,17 @@ class MicropolisState:
                                                  else lines[(1, 0, 1, 0)]))
                 if arms[1]:
                     canvas.put(2 * tx + 1, ty, lines[(0, 1, 0, 1)])
+        for ty, row in enumerate(tiles):
+            for tx, raw in enumerate(row):
+                tile = raw & me.LOMASK
+                if _line_kind(tile) == "road":
+                    mark = next((mark for low, mark in TRAFFIC if low <= tile <= 206), None)
+                    if mark:
+                        canvas.put(2 * tx + 1, ty, mark)
         zoned = {site for kind_, site in self.decisions if kind_ is not None}
         for site, (sx, sy) in enumerate(site_centres(*self.patch.origin)):
             if site not in zoned:
-                canvas.put(2 * (sx - wx), sy - wy, str(site))
+                canvas.put(2 * (sx - wx), sy - wy, "□")
         for ty, row in enumerate(tiles):
             for tx, raw in enumerate(row):
                 if not raw & me.ZONEBIT:
@@ -183,15 +192,27 @@ class MicropolisState:
                 letter = next((name for name, low, high in ZONES if low <= tile <= high), None)
                 if letter is None:
                     continue
-                if letter == "P":
+                if not raw & me.PWRBIT:
+                    letter = letter.lower()
+                if letter in "Pp":
                     canvas.fill(2 * tx - 2, ty - 1, 2 * tx + 5, ty + 2, " ")
                     canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 5, ty + 2)
-                    canvas.put(2 * tx + 1, ty, "P")
+                    canvas.put(2 * tx + 1, ty, letter)
                     continue
-                built = tile not in EMPTY_ZONES
-                canvas.fill(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1, "░" if built else " ")
-                canvas.rect(2 * tx - 2, ty - 1, 2 * tx + 3, ty + 1)
+                base, levels = DENSITY[letter.upper()]
+                fill = LOT if tile in EMPTY_ZONES else \
+                    DENSITY_FILL[min(len(DENSITY_FILL) - 1, (tile - base) // 9 % levels)]
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        here = tiles[ty + dy][tx + dx] & me.LOMASK \
+                            if 0 <= ty + dy < height and 0 <= tx + dx < width else 0
+                        house = fill == LOT and HOUSES[0] <= here <= HOUSES[1]
+                        canvas.put(2 * (tx + dx), ty + dy, HOUSE_MARK if house else fill)
+                        if dx < 1:
+                            canvas.put(2 * (tx + dx) + 1, ty + dy, " " if fill == LOT else fill)
+                canvas.put(2 * tx - 1, ty, " ")
                 canvas.put(2 * tx, ty, letter)
+                canvas.put(2 * tx + 1, ty, " ")
         return str(canvas)
 
 
@@ -208,6 +229,17 @@ class CityPatch(namedtuple("CityPatch", "origin corner tiles")):
 #: built in yet (`FREEZ`, `COMCLR`, `INDCLR`).
 ZONES = (("R", 240, 422), ("C", 423, 611), ("I", 612, 692), ("P", 745, 760), ("P", 811, 826))
 EMPTY_ZONES = (244, 427, 616)
+#: Where a zone's built tiles start (`RZB`, `CZB`, `IZB`) and how many density levels it has:
+#: a built zone's centre is that base plus nine tiles for each step of land value times
+#: density, so its density is the step modulo the levels. A residential zone's first houses
+#: (`LHTHR` to `HHTHR`) stand on its lots before it is built up.
+DENSITY = {"R": (265, 4), "C": (436, 5), "I": (625, 4)}
+HOUSES = (249, 260)
+#: A zone's tiles by its density, from least to most built up, and an empty lot; a house.
+DENSITY_FILL, LOT, HOUSE_MARK = "░▒▓█", "·", "⌂"
+#: A road tile with light traffic (`LTRFBASE` on) and heavy (`HTRFBASE` on), and the mark
+#: each puts beside the road.
+TRAFFIC = ((144, "▪"), (80, "∙"))
 #: Box-drawing by (up, right, down, left) arms: double lines for roads, single for wires.
 DOUBLE = {(0, 1, 0, 1): "═", (1, 0, 1, 0): "║", (0, 1, 1, 0): "╔", (0, 0, 1, 1): "╗",
           (1, 1, 0, 0): "╚", (1, 0, 0, 1): "╝", (1, 1, 1, 0): "╠", (1, 0, 1, 1): "╣",
